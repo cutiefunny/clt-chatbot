@@ -2,7 +2,7 @@
     width: 100%;
     max-width: 900px;
     margin: 0 auto;
-    padding: 1rem 1rem 2rem 1rem;
+    padding: 0rem 1rem 2rem 1rem;
     display: flex;
     flex-direction: column;
     gap: 8px;

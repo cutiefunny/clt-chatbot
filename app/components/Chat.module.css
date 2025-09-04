@@ -6,7 +6,7 @@
   max-width: 900px;
   margin: 0 auto;
   overflow: hidden;
-  /* background: linear-gradient(to bottom, #ffffff, #b2c7d9); */
+  background-color: transparent;
 }
 
 .header {
@@ -77,6 +77,10 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  /* --- 👇 [추가된 부분] --- */
+  -webkit-mask-image: linear-gradient(to bottom, black 95%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 95%, transparent 100%);
+  /* --- 👆 [여기까지] --- */
 }
 
 .messageRow {
