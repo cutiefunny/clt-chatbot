@@ -6,7 +6,7 @@ import styles from './Chat.module.css';
 
 
 export default function Chat() {
-  const { messages, isLoading, createNewConversation } = useChatStore();
+  const { messages, isLoading, createNewConversation, openScenarioPanel } = useChatStore(); // --- 👈 [수정된 부분] ---
   const [copiedMessageId, setCopiedMessageId] = useState(null);
   
   const historyRef = useRef(null);
@@ -57,9 +57,11 @@ export default function Chat() {
               {msg.sender === 'bot' && msg.scenarios && (
                 <div className={styles.scenarioList}>
                   {msg.scenarios.map(name => (
-                    <button key={name} className={styles.optionButton} onClick={() => alert('Scenario button clicked!')}>
+                    // --- 👇 [수정된 부분] ---
+                    <button key={name} className={styles.optionButton} onClick={() => openScenarioPanel(name)}>
                       {name}
                     </button>
+                    // --- 👆 [여기까지 수정] ---
                   ))}
                 </div>
               )}

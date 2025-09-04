@@ -1,19 +1,17 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react'; // useState를 import에 추가했습니다.
+import { useEffect, useRef, useState } from 'react';
 import { useChatStore } from '../store/chatStore';
 import styles from './ChatInput.module.css';
 
-// '+' 아이콘 SVG 컴포넌트
 const AttachIcon = () => (
-    <svg width="24" height="24" viewBox="0 0 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <circle cx="12" cy="12" r="10" stroke="#555" strokeWidth="1.5"/>
         <path d="M12 8V16" stroke="#555" strokeWidth="1.5" strokeLinecap="round"/>
         <path d="M8 12H16" stroke="#555" strokeWidth="1.5" strokeLinecap="round"/>
     </svg>
 );
 
-// 드래그 스크롤을 위한 커스텀 훅
 const useDraggableScroll = () => {
     const ref = useRef(null);
     const [isDragging, setIsDragging] = useState(false);
@@ -39,32 +37,74 @@ const useDraggableScroll = () => {
     return { ref, isDragging, onMouseDown, onMouseLeave, onMouseUp, onMouseMove };
 };
 
-
 export default function ChatInput() {
-    const { messages, isLoading, handleResponse } = useChatStore();
+    // --- 👇 [수정된 부분] ---
+    const { 
+        messages, 
+        isLoading, 
+        handleResponse,
+        activePanel,
+        scenarioPanel,
+        scenarioMessages,
+        currentScenarioNodeId,
+        handleScenarioResponse
+    } = useChatStore();
+    // --- 👆 [여기까지 수정] ---
+    
     const inputRef = useRef(null);
     const quickRepliesSlider = useDraggableScroll();
 
-    const lastMessage = messages[messages.length - 1];
+    // --- 👇 [수정된 부분] ---
+    const lastMessage = activePanel === 'main' 
+        ? messages[messages.length - 1] 
+        : scenarioMessages[scenarioMessages.length - 1];
+    
     const currentBotMessageNode = lastMessage?.sender === 'bot' ? lastMessage.node : null;
+    const isSlotFilling = currentBotMessageNode?.type === 'slotfilling';
+    // --- 👆 [여기까지 수정] ---
 
     useEffect(() => {
-        if (!isLoading && !currentBotMessageNode) {
+        if (!isLoading) {
             inputRef.current?.focus();
         }
-    }, [isLoading, currentBotMessageNode]);
+    }, [isLoading, activePanel, currentBotMessageNode]);
 
     const handleSubmit = (e) => {
         e.preventDefault();
         const input = e.target.elements.userInput.value;
         if (!input.trim() || isLoading) return;
-        handleResponse({ text: input });
+
+        // --- 👇 [수정된 부분] ---
+        if (activePanel === 'scenario') {
+            handleScenarioResponse({
+                scenarioId: scenarioPanel.scenarioId,
+                currentNodeId: currentScenarioNodeId,
+                userInput: input,
+            });
+        } else {
+            handleResponse({ text: input });
+        }
+        // --- 👆 [여기까지 수정] ---
         e.target.reset();
     };
-
+    
+    // --- 👇 [추가된 부분] ---
+    const handleQuickReplyClick = (reply) => {
+        if (activePanel === 'scenario') {
+            handleScenarioResponse({ 
+                scenarioId: scenarioPanel.scenarioId,
+                currentNodeId: currentScenarioNodeId,
+                sourceHandle: reply.value,
+                userInput: reply.display
+            });
+        } else {
+            handleResponse({ text: reply.display });
+        }
+    }
+    // --- 👆 [여기까지 추가] ---
+    
     return (
         <div className={styles.inputArea}>
-            {/* 빠른 응답 버튼(Quick Replies) 렌더링 */}
             {(currentBotMessageNode?.data?.replies) && (
                 <div className={styles.buttonRow}>
                     <div
@@ -75,29 +115,34 @@ export default function ChatInput() {
                         onMouseUp={quickRepliesSlider.onMouseUp}
                         onMouseMove={quickRepliesSlider.onMouseMove}
                     >
-                        {currentBotMessageNode?.data?.replies?.map(reply => (
-                        <button key={reply.value} className={styles.optionButton} onClick={() => handleResponse({ sourceHandle: reply.value, text: reply.display })} disabled={isLoading}>
-                            {reply.display}
-                        </button>
+                        {/* --- 👇 [수정된 부분] --- */}
+                        {currentBotMessageNode.data.replies.map(reply => (
+                            <button key={reply.value} className={styles.optionButton} onClick={() => handleQuickReplyClick(reply)} disabled={isLoading}>
+                                {reply.display}
+                            </button>
                         ))}
+                         {/* --- 👆 [여기까지 수정] --- */}
                     </div>
                 </div>
             )}
             
-            {/* 하단 입력 폼 */}
-            <form className={styles.inputForm} onSubmit={handleSubmit}>
-                <button type="button" className={styles.attachButton}>
-                    <AttachIcon />
-                </button>
-                <input
-                    ref={inputRef}
-                    name="userInput"
-                    className={styles.textInput}
-                    placeholder="Ask about this Booking Master Page"
-                    autoComplete="off"
-                    disabled={isLoading}
-                />
-            </form>
+            {/* --- 👇 [수정된 부분] --- */}
+            {(activePanel === 'main' || isSlotFilling) && (
+                 <form className={styles.inputForm} onSubmit={handleSubmit}>
+                    <button type="button" className={styles.attachButton}>
+                        <AttachIcon />
+                    </button>
+                    <input
+                        ref={inputRef}
+                        name="userInput"
+                        className={styles.textInput}
+                        placeholder={activePanel === 'scenario' ? '응답을 입력하세요...' : 'Ask about this Booking Master Page'}
+                        autoComplete="off"
+                        disabled={isLoading}
+                    />
+                </form>
+            )}
+             {/* --- 👆 [여기까지 수정] --- */}
         </div>
     );
 }

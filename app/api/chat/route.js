@@ -31,8 +31,30 @@ export async function POST(request) {
       }
     }
 
-    // 2. 기본 모드 처리 (키워드 확인)
+    // --- 👇 [수정/추가된 부분] ---
+    // 2. 기본 모드 처리
+    
+    // 2a. 직접 시나리오 ID로 시작 시도
+    try {
+        const potentialScenario = await getScenario(message.text);
+        if (potentialScenario) { // 시나리오가 존재하면 바로 시작
+            const startNode = getNextNode(potentialScenario, null, null);
+            if (startNode.data && startNode.data.content) {
+                startNode.data.content = interpolateMessage(startNode.data.content, slots);
+            }
+            return NextResponse.json({
+                type: 'scenario_start',
+                nextNode: startNode,
+                scenarioState: { scenarioId: message.text, currentNodeId: startNode.id },
+            });
+        }
+    } catch (e) {
+        // getScenario에서 에러 발생 시 (해당 ID의 시나리오가 없음), 무시하고 다음 로직으로 진행
+    }
+    
+    // 2b. 키워드로 시나리오 트리거 (기존 로직)
     const triggeredAction = findScenarioIdByTrigger(message.text);
+    // --- 👆 [여기까지 수정/추가] ---
 
     // "시나리오 목록" 키워드 처리
     if (triggeredAction === 'GET_SCENARIO_LIST') {

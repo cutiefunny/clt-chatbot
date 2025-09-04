@@ -2,7 +2,9 @@
   height: 100vh;
   width: 100vw;
   display: flex;
-  overflow: hidden; /* 전체 페이지의 스크롤바 방지 */
+  overflow: hidden;
+  justify-content: center;
+  align-items: center;
 }
 
 .chatLayout {
@@ -11,9 +13,43 @@
   height: 100%;
 }
 
-.mainContent {
-  flex-grow: 1; /* HistoryPanel을 제외한 모든 너비를 차지 */
+/* --- 👇 [수정된 부분] --- */
+/* 패널과 입력창을 감싸는 수직 Flex 컨테이너 */
+.contentAndInputWrapper {
+  flex: 1; /* HistoryPanel 옆의 남은 공간을 모두 차지 */
   display: flex;
-  flex-direction: column; /* 자식 요소(Chat, ChatInput)를 수직으로 배치 */
-  height: 100vh;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden; /* 내부 콘텐츠가 넘치지 않도록 함 */
+}
+
+/* 메인 채팅과 시나리오 채팅을 감싸는 수평 Flex 컨테이너 */
+.panelsWrapper {
+  display: flex;
+  flex: 1; /* 입력창을 제외한 모든 수직 공간을 차지하도록 성장 */
+  overflow: hidden; /* 패널 너비 변경 시 넘치지 않도록 함 */
+}
+
+/* 메인 채팅 컴포넌트를 담는 컨테이너 */
+.mainContent {
+  width: 100%;
+  display: flex; /* 자식 컴포넌트(Chat)가 크기를 채울 수 있도록 */
+  transition: width 0.3s ease-in-out, opacity 0.3s ease-in-out;
+}
+
+.chatLayout.scenarioOpen .mainContent {
+  width: 60%;
+}
+
+/* 시나리오(캔버스) 컴포넌트를 담는 컨테이너 */
+.scenarioContent {
+  width: 40%;
+  display: flex; /* 자식 컴포넌트(ScenarioChat)가 크기를 채울 수 있도록 */
+  border-left: 1px solid #e0e0e0;
+}
+/* --- 👆 [여기까지 수정] --- */
+
+.inactivePanel {
+  opacity: 0.6;
+  transition: opacity 0.3s ease-in-out;
 }

@@ -12,10 +12,19 @@ const initialState = {
   currentConversationId: null,
   unsubscribeMessages: null,
   unsubscribeConversations: null,
+  scenarioPanel: { isOpen: false, scenarioId: null },
+  scenarioMessages: [],
+  isScenarioLoading: false,
+  currentScenarioNodeId: null,
+  activePanel: 'main', // <--- [추가] 활성 패널 상태 (main or scenario)
 };
 
 export const useChatStore = create((set, get) => ({
   ...initialState,
+
+  // --- 👇 [추가된 부분] ---
+  setActivePanel: (panel) => set({ activePanel: panel }),
+  // --- 👆 [여기까지 추가] ---
 
   initAuth: () => {
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
@@ -94,15 +103,12 @@ export const useChatStore = create((set, get) => ({
     });
   },
   
-  // --- 👇 [추가된 부분] ---
   deleteConversation: async (conversationId) => {
     const user = get().user;
     if (!user) return;
 
-    // Firestore에서 대화 문서 삭제
     const conversationRef = doc(db, "chats", user.uid, "conversations", conversationId);
     
-    // 서브컬렉션의 모든 메시지를 삭제 (선택적이지만 권장)
     const messagesQuery = query(collection(conversationRef, "messages"));
     const messagesSnapshot = await getDocs(messagesQuery);
     messagesSnapshot.forEach(async (messageDoc) => {
@@ -111,12 +117,10 @@ export const useChatStore = create((set, get) => ({
 
     await deleteDoc(conversationRef);
 
-    // 현재 열려있는 대화가 삭제된 대화라면 '새 대화' 상태로 전환
     if (get().currentConversationId === conversationId) {
         get().createNewConversation();
     }
   },
-  // --- 👆 [여기까지 추가] ---
 
   saveMessage: async (message) => {
     const user = get().user;
@@ -255,6 +259,93 @@ export const useChatStore = create((set, get) => ({
       stopLoading();
     }
   },
+
+  openScenarioPanel: async (scenarioId) => {
+    set({
+        scenarioPanel: { isOpen: true, scenarioId },
+        scenarioMessages: [],
+        isScenarioLoading: true,
+        currentScenarioNodeId: null,
+        activePanel: 'scenario', // <--- [추가] 시나리오 패널을 활성화
+    });
+
+    try {
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: { text: scenarioId } }),
+        });
+        const data = await response.json();
+        if (data.type === 'scenario_start') {
+            set(state => ({
+                scenarioMessages: [...state.scenarioMessages, { id: data.nextNode.id, sender: 'bot', node: data.nextNode }],
+                currentScenarioNodeId: data.nextNode.id,
+            }));
+        } else {
+           throw new Error("Failed to start scenario properly");
+        }
+    } catch (error) {
+        console.error("Error starting scenario:", error);
+        set({
+            scenarioMessages: [{id: 'error', sender: 'bot', text: '시나리오를 시작하는 중 오류가 발생했습니다.'}]
+        })
+    } finally {
+        set({ isScenarioLoading: false });
+    }
+  },
+
+  closeScenario: () => {
+    set({
+      scenarioPanel: { isOpen: false, scenarioId: null },
+      scenarioMessages: [],
+      isScenarioLoading: false,
+      currentScenarioNodeId: null,
+      activePanel: 'main', // <--- [추가] 메인 패널을 다시 활성화
+    });
+  },
+
+  handleScenarioResponse: async (payload) => {
+    set({ isScenarioLoading: true });
+    
+    if(payload.userInput) {
+        set(state => ({
+            scenarioMessages: [...state.scenarioMessages, { id: Date.now(), sender: 'user', text: payload.userInput }]
+        }));
+    }
+
+    try {
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                message: { sourceHandle: payload.sourceHandle, text: payload.userInput }, // userInput도 함께 전달
+                scenarioState: { scenarioId: payload.scenarioId, currentNodeId: payload.currentNodeId },
+                slots: {}, 
+            }),
+        });
+        const data = await response.json();
+
+        if (data.type === 'scenario') {
+            set(state => ({
+                scenarioMessages: [...state.scenarioMessages, { id: data.nextNode.id, sender: 'bot', node: data.nextNode }],
+                currentScenarioNodeId: data.nextNode.id,
+            }));
+        } else if (data.type === 'scenario_end') {
+            set(state => ({
+                scenarioMessages: [...state.scenarioMessages, { id: 'end', sender: 'bot', text: data.message }],
+            }));
+        } else {
+            throw new Error("Invalid scenario response");
+        }
+    } catch (error) {
+         console.error("Error in scenario conversation:", error);
+        set(state => ({
+            scenarioMessages: [...state.scenarioMessages, {id: 'error', sender: 'bot', text: '오류가 발생했습니다.'}]
+        }));
+    } finally {
+        set({ isScenarioLoading: false });
+    }
+  }
 }));
 
 useChatStore.getState().initAuth();

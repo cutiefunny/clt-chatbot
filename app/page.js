@@ -4,19 +4,35 @@ import { useChatStore } from '../app/store/chatStore';
 import Chat from '../app/components/Chat';
 import Login from '../app/components/Login';
 import HistoryPanel from '../app/components/HistoryPanel';
-import ChatInput from '../app/components/ChatInput'; // ChatInput 컴포넌트 import
+import ChatInput from '../app/components/ChatInput';
+import ScenarioChat from '../app/components/ScenarioChat'; 
 import styles from './page.module.css';
 
 export default function HomePage() {
-  const { user } = useChatStore();
+  const { user, scenarioPanel, activePanel, setActivePanel } = useChatStore(); 
 
   return (
     <main className={styles.main}>
       {user ? (
         <div className={styles.chatLayout}>
           <HistoryPanel />
-          <div className={styles.mainContent}>
-            <Chat />
+          <div className={styles.contentAndInputWrapper}>
+            <div className={styles.panelsWrapper}>
+              <div 
+                className={`${styles.mainContent} ${activePanel !== 'main' && scenarioPanel.isOpen ? styles.inactivePanel : ''}`} 
+                onClick={() => setActivePanel('main')}
+              >
+                <Chat />
+              </div>
+              {scenarioPanel.isOpen && (
+                <div 
+                  className={`${styles.scenarioContent} ${activePanel !== 'scenario' ? styles.inactivePanel : ''}`} 
+                  onClick={() => setActivePanel('scenario')}
+                >
+                  <ScenarioChat />
+                </div>
+              )}
+            </div>
             <ChatInput />
           </div>
         </div>
