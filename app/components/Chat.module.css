@@ -21,6 +21,7 @@
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid #e0e0e0;
+  flex-shrink: 0;
 }
 
 .headerContent {
@@ -97,6 +98,7 @@
   width: 30px;
   height: 30px;
   margin-top: 10px;
+  flex-shrink: 0;
 }
 
 .message {
@@ -122,17 +124,18 @@
   border-top-right-radius: 4px;
 }
 
-.options {
-  margin: 8px;
-  padding: 8px;
-  background: #fff;
+.scenarioList {
+  margin-top: 10px;
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 8px;
+}
+
+.inputSection {
+  padding: 8px;
+  background-color: transparent;
   flex-shrink: 0;
-  align-items: stretch;
-  box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
-  border-radius: 16px;
 }
 
 .buttonRow {
@@ -140,6 +143,7 @@
     width: 100%;
     gap: 8px;
     align-items: center;
+    margin-bottom: 8px;
 }
 
 .quickRepliesContainer {
@@ -148,45 +152,15 @@
     overflow-x: auto;
     flex-grow: 1;
     padding: 4px 0;
-    scrollbar-width: none; /* Firefox */
+    scrollbar-width: none;
     cursor: grab;
 }
 .quickRepliesContainer::-webkit-scrollbar {
-    display: none; /* Safari and Chrome */
+    display: none;
 }
 .quickRepliesContainer.dragging {
     cursor: grabbing;
     user-select: none;
-}
-
-.textInputRow {
-  display: flex;
-  width: 100%;
-  border-top: 1px solid #f0f0f0;
-  padding-top: 8px;
-}
-
-.textInput {
-  width: 100%;
-  border: none;
-  background: transparent;
-  padding: 8px 10px;
-  font-size: 0.95rem;
-  outline: none;
-  color: #333;
-}
-
-.textInput::placeholder {
-  color: #888;
-}
-
-.sendButton {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0 10px;
-  color: #007aff;
-  font-weight: bold;
 }
 
 .optionButton {
@@ -207,15 +181,66 @@
   border-color: #aaa;
 }
 
-.scenarioList {
-  margin-top: 10px;
+.inputForm {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   gap: 8px;
+  padding: 8px;
+  background-color: #e1e8f0;
+  border-radius: 16px;
 }
 
-.scenarioList .optionButton {
-  width: 100%;
-  text-align: center;
+.attachButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.textInput {
+  flex-grow: 1;
+  border: none;
+  background: transparent;
+  font-size: 1rem;
+  outline: none;
+  color: #333;
+}
+
+.textInput::placeholder {
+  color: #607d8b;
+}
+
+/* --- 👇 [수정/추가된 스크롤바 스타일] --- */
+
+/* Firefox 스크롤바 스타일 */
+.history {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent; /* 스크롤바 기본 숨김 */
+  transition: scrollbar-color 0.3s ease-out;
+}
+
+.history:hover {
+  scrollbar-color: #c1c1c1 transparent; /* 호버 시 스크롤바 색상 */
+}
+
+/* Chrome, Safari, Edge 스크롤바 스타일 */
+.history::-webkit-scrollbar {
+  width: 8px;
+}
+
+.history::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.history::-webkit-scrollbar-thumb {
+  background-color: transparent; /* 스크롤바 기본 숨김 */
+  border-radius: 4px;
+  transition: background-color 0.3s ease-out;
+}
+
+.history:hover::-webkit-scrollbar-thumb {
+  background-color: #c1c1c1; /* 호버 시 스크롤바 색상 */
 }
