@@ -4,18 +4,31 @@ import { useState, useEffect, useRef } from 'react';
 import { useChatStore } from '../store/chatStore';
 import styles from './Chat.module.css';
 
-
 export default function Chat() {
-  const { messages, isLoading, createNewConversation, openScenarioPanel } = useChatStore(); // --- 👈 [수정된 부분] ---
+  const { messages, isLoading, createNewConversation, openScenarioPanel } = useChatStore();
   const [copiedMessageId, setCopiedMessageId] = useState(null);
-  
   const historyRef = useRef(null);
 
   useEffect(() => {
-    // 대화창 스크롤을 맨 아래로 이동
-    if (historyRef.current) {
-      historyRef.current.scrollTop = historyRef.current.scrollHeight;
-    }
+    const scrollContainer = historyRef.current;
+    if (!scrollContainer) return;
+
+    const scrollToBottom = () => {
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+    };
+
+    scrollToBottom();
+
+    const observer = new MutationObserver(scrollToBottom);
+
+    observer.observe(scrollContainer, {
+      childList: true,
+      subtree: true,
+    });
+
+    return () => {
+      observer.disconnect();
+    };
   }, [messages]);
   
   const handleCopy = (text, id) => {
@@ -53,15 +66,15 @@ export default function Chat() {
               onClick={() => msg.sender === 'bot' && handleCopy(msg.text || msg.node?.data.content, msg.id)}
             >
               {copiedMessageId === msg.id && <div className={styles.copyFeedback}>Copied!</div>}
+              {/* --- 👇 [수정된 부분] --- */}
               <p>{msg.text || msg.node?.data.content}</p>
+              {/* --- 👆 [여기까지] --- */}
               {msg.sender === 'bot' && msg.scenarios && (
                 <div className={styles.scenarioList}>
                   {msg.scenarios.map(name => (
-                    // --- 👇 [수정된 부분] ---
                     <button key={name} className={styles.optionButton} onClick={() => openScenarioPanel(name)}>
                       {name}
                     </button>
-                    // --- 👆 [여기까지 수정] ---
                   ))}
                 </div>
               )}

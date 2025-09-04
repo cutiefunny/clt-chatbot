@@ -5,6 +5,9 @@
   overflow: hidden;
   justify-content: center;
   align-items: center;
+  /* --- 👇 [수정/추가된 부분] --- */
+  background: linear-gradient(to bottom, #ffffff, #b2c7d9);
+  /* --- 👆 [여기까지] --- */
 }
 
 .chatLayout {
@@ -13,7 +16,6 @@
   height: 100%;
 }
 
-/* --- 👇 [수정된 부분] --- */
 /* 패널과 입력창을 감싸는 수직 Flex 컨테이너 */
 .contentAndInputWrapper {
   flex: 1; /* HistoryPanel 옆의 남은 공간을 모두 차지 */
@@ -47,7 +49,6 @@
   display: flex; /* 자식 컴포넌트(ScenarioChat)가 크기를 채울 수 있도록 */
   border-left: 1px solid #e0e0e0;
 }
-/* --- 👆 [여기까지 수정] --- */
 
 .inactivePanel {
   opacity: 0.6;

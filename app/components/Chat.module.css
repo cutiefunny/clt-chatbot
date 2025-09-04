@@ -6,7 +6,7 @@
   max-width: 900px;
   margin: 0 auto;
   overflow: hidden;
-  background: linear-gradient(to bottom, #ffffff, #b2c7d9);
+  /* background: linear-gradient(to bottom, #ffffff, #b2c7d9); */
 }
 
 .header {
