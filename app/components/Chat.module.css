@@ -110,12 +110,19 @@
   white-space: pre-wrap;
   text-align: left;
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  position: relative;
 }
 
 .botMessage {
   background-color: #fff;
   color: black;
   border-top-left-radius: 4px;
+  cursor: pointer; /* 복사 가능하도록 커서 변경 */
+  transition: background-color 0.2s;
+}
+
+.botMessage:hover {
+  background-color: #f7f7f7;
 }
 
 .userMessage {
@@ -123,6 +130,30 @@
   color: black;
   border-top-right-radius: 4px;
 }
+
+/* --- 👇 [추가/변경된 부분] --- */
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+  20% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+}
+
+.copyFeedback {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 15px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  animation: fadeInOut 1.5s ease-in-out forwards;
+  pointer-events: none; /* 클릭 이벤트 방해하지 않도록 설정 */
+}
+/* --- 👆 [여기까지 추가/변경] --- */
 
 .scenarioList {
   margin-top: 10px;
@@ -212,8 +243,6 @@
 .textInput::placeholder {
   color: #607d8b;
 }
-
-/* --- 👇 [수정/추가된 스크롤바 스타일] --- */
 
 /* Firefox 스크롤바 스타일 */
 .history {

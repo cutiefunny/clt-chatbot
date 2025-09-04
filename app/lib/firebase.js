@@ -1,5 +1,13 @@
 import { initializeApp, getApps } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, serverTimestamp, deleteDoc } from "firebase/firestore"; // deleteDoc 추가
+import {
+    getAuth,
+    GoogleAuthProvider,
+    signInWithPopup,
+    signOut,
+    onAuthStateChanged
+} from "firebase/auth";
+
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -19,3 +27,5 @@ if (!getApps().length) {
 }
 
 export const db = getFirestore(app);
+export const auth = getAuth(app);
+export { GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, serverTimestamp, deleteDoc }; // deleteDoc export

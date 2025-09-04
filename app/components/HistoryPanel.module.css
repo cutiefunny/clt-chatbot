@@ -1,0 +1,119 @@
+.historyPanel {
+  width: 260px;
+  background-color: #f0f2f5;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #e0e0e0;
+}
+
+.header {
+  padding: 1rem;
+}
+
+.newChatButton {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 1rem;
+  background-color: #fff;
+  color: #333;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  text-align: left;
+}
+
+.newChatButton:hover {
+  background-color: #f7f7f7;
+}
+
+.conversationList {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 0 1rem;
+}
+
+.conversationItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #333;
+}
+
+.conversationItem:hover {
+  background-color: #e9e9e9;
+}
+
+.conversationItem.active {
+  background-color: #dcdcdc;
+  font-weight: bold;
+}
+
+/* --- 👇 [추가된 부분] --- */
+.convoTitle {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-grow: 1;
+    padding-right: 8px;
+}
+
+.deleteButton {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #888;
+    padding: 4px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0; /* 평소에는 숨김 */
+    transition: opacity 0.2s, color 0.2s, background-color 0.2s;
+    flex-shrink: 0;
+}
+
+.conversationItem:hover .deleteButton {
+    opacity: 1; /* 호버 시 나타남 */
+}
+
+.deleteButton:hover {
+    color: #d32f2f; /* 빨간색으로 변경 */
+    background-color: rgba(0,0,0,0.08);
+}
+/* --- 👆 [여기까지 추가] --- */
+
+
+.footer {
+  padding: 1rem;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.userAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.userName {
+  flex-grow: 1;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.logoutButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #555;
+  font-size: 0.9rem;
+}

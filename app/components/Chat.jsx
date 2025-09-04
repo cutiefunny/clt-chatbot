@@ -41,20 +41,18 @@ const useDraggableScroll = () => {
 
 
 export default function Chat() {
-  // Zustand store에서 상태와 액션을 가져옵니다.
-  const { messages, isLoading, handleResponse, restart, startScenario } = useChatStore();
+  const { messages, isLoading, handleResponse, createNewConversation, startScenario } = useChatStore();
+  const [copiedMessageId, setCopiedMessageId] = useState(null);
   
   const historyRef = useRef(null);
   const inputRef = useRef(null);
   const quickRepliesSlider = useDraggableScroll();
 
   useEffect(() => {
-    // 대화창 스크롤을 맨 아래로 이동
     if (historyRef.current) {
       historyRef.current.scrollTop = historyRef.current.scrollHeight;
     }
     
-    // 포커스 관리 로직
     const lastMessage = messages[messages.length - 1];
     if (!isLoading && !lastMessage?.node) {
         inputRef.current?.focus();
@@ -62,9 +60,18 @@ export default function Chat() {
   }, [messages, isLoading]);
   
   const handleScenarioButtonClick = (scenarioId) => {
-      // 시나리오 시작 액션 호출
       startScenario(scenarioId);
   }
+
+  const handleCopy = (text, id) => {
+    // 텍스트가 있는 경우에만 복사 로직 실행
+    if (!text || text.trim() === '') return;
+    
+    navigator.clipboard.writeText(text).then(() => {
+        setCopiedMessageId(id);
+        setTimeout(() => setCopiedMessageId(null), 1500); // 1.5초 후 '복사됨!' 메시지 숨김
+    });
+  };
 
   const currentBotMessage = messages[messages.length - 1];
   const currentBotMessageNode = currentBotMessage?.node;
@@ -80,8 +87,8 @@ export default function Chat() {
           </div>
         </div>
         <div className={styles.headerButtons}>
-          <button className={styles.headerRestartButton} onClick={restart}>
-            Restart
+          <button className={styles.headerRestartButton} onClick={createNewConversation}>
+            New Chat
           </button>
         </div>
       </div>
@@ -90,9 +97,14 @@ export default function Chat() {
         {messages.map((msg) => (
           <div key={msg.id} className={`${styles.messageRow} ${msg.sender === 'user' ? styles.userRow : ''}`}>
             {msg.sender === 'bot' && <img src="/images/avatar.png" alt="Avatar" className={styles.avatar} />}
-            <div className={`${styles.message} ${msg.sender === 'bot' ? styles.botMessage : styles.userMessage}`}>
+            {/* --- 👇 [수정된 부분] --- */}
+            <div 
+              className={`${styles.message} ${msg.sender === 'bot' ? styles.botMessage : styles.userMessage}`}
+              onClick={() => msg.sender === 'bot' && handleCopy(msg.text || msg.node?.data.content, msg.id)}
+            >
+              {copiedMessageId === msg.id && <div className={styles.copyFeedback}>Copied!</div>}
+            {/* --- 👆 [여기까지 수정] --- */}
               <p>{msg.text || msg.node?.data.content}</p>
-              {/* 시나리오 목록 버튼 렌더링 */}
               {msg.sender === 'bot' && msg.scenarios && (
                 <div className={styles.scenarioList}>
                   {msg.scenarios.map(name => (
@@ -114,7 +126,6 @@ export default function Chat() {
       </div>
 
       <div className={styles.inputSection}>
-        {/* 빠른 응답 버튼(Quick Replies) 렌더링 */}
         {(currentBotMessageNode?.data?.replies) && (
              <div className={styles.buttonRow}>
                 <div 
@@ -134,7 +145,6 @@ export default function Chat() {
             </div>
         )}
         
-        {/* 하단 입력 폼 */}
         <form className={styles.inputForm} onSubmit={(e) => {
             e.preventDefault();
             const input = e.target.elements.userInput.value;
