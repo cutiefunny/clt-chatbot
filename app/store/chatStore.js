@@ -16,15 +16,18 @@ const initialState = {
   scenarioMessages: [],
   isScenarioLoading: false,
   currentScenarioNodeId: null,
-  activePanel: 'main', // <--- [추가] 활성 패널 상태 (main or scenario)
+  activePanel: 'main', 
+  focusRequest: 0, // --- 👈 [추가] 포커스 요청을 위한 상태
 };
 
 export const useChatStore = create((set, get) => ({
   ...initialState,
 
   // --- 👇 [추가된 부분] ---
-  setActivePanel: (panel) => set({ activePanel: panel }),
+  focusChatInput: () => set(state => ({ focusRequest: state.focusRequest + 1 })),
   // --- 👆 [여기까지 추가] ---
+
+  setActivePanel: (panel) => set({ activePanel: panel }),
 
   initAuth: () => {
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
@@ -206,7 +209,7 @@ export const useChatStore = create((set, get) => ({
   stopLoading: () => set({ isLoading: false }),
 
   handleResponse: async (messagePayload) => {
-    const { addMessage, updateStreamingMessage, finalizeStreamingMessage, startLoading, stopLoading } = get();
+    const { addMessage, updateStreamingMessage, finalizeStreamingMessage, startLoading, stopLoading, openScenarioPanel } = get();
     startLoading();
 
     if (messagePayload.text) {
@@ -237,6 +240,9 @@ export const useChatStore = create((set, get) => ({
           set({ scenarioState: null });
         } else if (data.type === 'scenario_list') {
           addMessage('bot', { text: data.message, scenarios: data.scenarios });
+        } else if (data.type === 'canvas_trigger') {
+          addMessage('bot', { text: `'${data.scenarioId}' 시나리오를 시작합니다.`});
+          openScenarioPanel(data.scenarioId);
         }
       } else {
         const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
@@ -266,7 +272,7 @@ export const useChatStore = create((set, get) => ({
         scenarioMessages: [],
         isScenarioLoading: true,
         currentScenarioNodeId: null,
-        activePanel: 'scenario', // <--- [추가] 시나리오 패널을 활성화
+        activePanel: 'scenario',
     });
 
     try {
@@ -277,10 +283,12 @@ export const useChatStore = create((set, get) => ({
         });
         const data = await response.json();
         if (data.type === 'scenario_start') {
+            const startNode = data.nextNode;
             set(state => ({
-                scenarioMessages: [...state.scenarioMessages, { id: data.nextNode.id, sender: 'bot', node: data.nextNode }],
-                currentScenarioNodeId: data.nextNode.id,
+                scenarioMessages: [...state.scenarioMessages, { id: startNode.id, sender: 'bot', node: startNode }],
+                currentScenarioNodeId: startNode.id,
             }));
+            await get().continueScenarioIfNeeded(startNode);
         } else {
            throw new Error("Failed to start scenario properly");
         }
@@ -291,6 +299,9 @@ export const useChatStore = create((set, get) => ({
         })
     } finally {
         set({ isScenarioLoading: false });
+        // --- 👇 [추가된 부분] ---
+        get().focusChatInput(); // 모든 작업 완료 후 포커스 요청
+        // --- 👆 [여기까지 추가] ---
     }
   },
 
@@ -300,7 +311,7 @@ export const useChatStore = create((set, get) => ({
       scenarioMessages: [],
       isScenarioLoading: false,
       currentScenarioNodeId: null,
-      activePanel: 'main', // <--- [추가] 메인 패널을 다시 활성화
+      activePanel: 'main',
     });
   },
 
@@ -318,7 +329,7 @@ export const useChatStore = create((set, get) => ({
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                message: { sourceHandle: payload.sourceHandle, text: payload.userInput }, // userInput도 함께 전달
+                message: { sourceHandle: payload.sourceHandle, text: payload.userInput },
                 scenarioState: { scenarioId: payload.scenarioId, currentNodeId: payload.currentNodeId },
                 slots: {}, 
             }),
@@ -326,10 +337,12 @@ export const useChatStore = create((set, get) => ({
         const data = await response.json();
 
         if (data.type === 'scenario') {
+            const nextNode = data.nextNode;
             set(state => ({
-                scenarioMessages: [...state.scenarioMessages, { id: data.nextNode.id, sender: 'bot', node: data.nextNode }],
-                currentScenarioNodeId: data.nextNode.id,
+                scenarioMessages: [...state.scenarioMessages, { id: nextNode.id, sender: 'bot', node: nextNode }],
+                currentScenarioNodeId: nextNode.id,
             }));
+            await get().continueScenarioIfNeeded(nextNode);
         } else if (data.type === 'scenario_end') {
             set(state => ({
                 scenarioMessages: [...state.scenarioMessages, { id: 'end', sender: 'bot', text: data.message }],
@@ -344,6 +357,21 @@ export const useChatStore = create((set, get) => ({
         }));
     } finally {
         set({ isScenarioLoading: false });
+    }
+  },
+  
+  continueScenarioIfNeeded: async (lastNode) => {
+    const isInteractive = lastNode.type === 'slotfilling' || (lastNode.data?.replies && lastNode.data.replies.length > 0);
+
+    if (!isInteractive && lastNode.id !== 'end') {
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      await get().handleScenarioResponse({
+        scenarioId: get().scenarioPanel.scenarioId,
+        currentNodeId: lastNode.id,
+        sourceHandle: null,
+        userInput: null,
+      });
     }
   }
 }));

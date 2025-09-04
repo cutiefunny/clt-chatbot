@@ -5,7 +5,7 @@ import { useChatStore } from '../store/chatStore';
 import styles from './ChatInput.module.css';
 
 const AttachIcon = () => (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width="24" height="24" viewBox="0 0 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <circle cx="12" cy="12" r="10" stroke="#555" strokeWidth="1.5"/>
         <path d="M12 8V16" stroke="#555" strokeWidth="1.5" strokeLinecap="round"/>
         <path d="M8 12H16" stroke="#555" strokeWidth="1.5" strokeLinecap="round"/>
@@ -38,43 +38,42 @@ const useDraggableScroll = () => {
 };
 
 export default function ChatInput() {
-    // --- 👇 [수정된 부분] ---
     const { 
-        messages, 
         isLoading, 
         handleResponse,
         activePanel,
         scenarioPanel,
-        scenarioMessages,
         currentScenarioNodeId,
-        handleScenarioResponse
+        handleScenarioResponse,
+        focusRequest // --- 👈 [추가] 
     } = useChatStore();
-    // --- 👆 [여기까지 수정] ---
     
     const inputRef = useRef(null);
     const quickRepliesSlider = useDraggableScroll();
 
     // --- 👇 [수정된 부분] ---
-    const lastMessage = activePanel === 'main' 
-        ? messages[messages.length - 1] 
-        : scenarioMessages[scenarioMessages.length - 1];
-    
+    const lastMessage = useChatStore(state => 
+        state.activePanel === 'main' 
+            ? state.messages[state.messages.length - 1] 
+            : state.scenarioMessages[state.scenarioMessages.length - 1]
+    );
     const currentBotMessageNode = lastMessage?.sender === 'bot' ? lastMessage.node : null;
-    const isSlotFilling = currentBotMessageNode?.type === 'slotfilling';
-    // --- 👆 [여기까지 수정] ---
 
+    // 포커스 로직을 명시적인 요청과 로딩 상태에만 의존하도록 단순화
     useEffect(() => {
         if (!isLoading) {
             inputRef.current?.focus();
         }
-    }, [isLoading, activePanel, currentBotMessageNode]);
+    }, [isLoading, focusRequest]);
+    // --- 👆 [여기까지 수정] ---
 
     const handleSubmit = (e) => {
         e.preventDefault();
         const input = e.target.elements.userInput.value;
         if (!input.trim() || isLoading) return;
 
-        // --- 👇 [수정된 부분] ---
+        console.log(`[ChatInput] Form submitted. Current activePanel is: '${activePanel}'`);
+
         if (activePanel === 'scenario') {
             handleScenarioResponse({
                 scenarioId: scenarioPanel.scenarioId,
@@ -84,11 +83,9 @@ export default function ChatInput() {
         } else {
             handleResponse({ text: input });
         }
-        // --- 👆 [여기까지 수정] ---
         e.target.reset();
     };
     
-    // --- 👇 [추가된 부분] ---
     const handleQuickReplyClick = (reply) => {
         if (activePanel === 'scenario') {
             handleScenarioResponse({ 
@@ -101,7 +98,6 @@ export default function ChatInput() {
             handleResponse({ text: reply.display });
         }
     }
-    // --- 👆 [여기까지 추가] ---
     
     return (
         <div className={styles.inputArea}>
@@ -115,34 +111,28 @@ export default function ChatInput() {
                         onMouseUp={quickRepliesSlider.onMouseUp}
                         onMouseMove={quickRepliesSlider.onMouseMove}
                     >
-                        {/* --- 👇 [수정된 부분] --- */}
                         {currentBotMessageNode.data.replies.map(reply => (
                             <button key={reply.value} className={styles.optionButton} onClick={() => handleQuickReplyClick(reply)} disabled={isLoading}>
                                 {reply.display}
                             </button>
                         ))}
-                         {/* --- 👆 [여기까지 수정] --- */}
                     </div>
                 </div>
             )}
             
-            {/* --- 👇 [수정된 부분] --- */}
-            {(activePanel === 'main' || isSlotFilling) && (
-                 <form className={styles.inputForm} onSubmit={handleSubmit}>
-                    <button type="button" className={styles.attachButton}>
-                        <AttachIcon />
-                    </button>
-                    <input
-                        ref={inputRef}
-                        name="userInput"
-                        className={styles.textInput}
-                        placeholder={activePanel === 'scenario' ? '응답을 입력하세요...' : 'Ask about this Booking Master Page'}
-                        autoComplete="off"
-                        disabled={isLoading}
-                    />
-                </form>
-            )}
-             {/* --- 👆 [여기까지 수정] --- */}
+            <form className={styles.inputForm} onSubmit={handleSubmit}>
+                <button type="button" className={styles.attachButton}>
+                    <AttachIcon />
+                </button>
+                <input
+                    ref={inputRef}
+                    name="userInput"
+                    className={styles.textInput}
+                    placeholder={activePanel === 'scenario' ? '응답을 입력하세요...' : 'Ask about this Booking Master Page'}
+                    autoComplete="off"
+                    disabled={isLoading}
+                />
+            </form>
         </div>
     );
 }

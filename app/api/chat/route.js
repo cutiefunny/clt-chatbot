@@ -25,7 +25,7 @@ export async function POST(request) {
       } else {
         return NextResponse.json({
           type: 'scenario_end',
-          message: '필요한 도움이 더 있으신가요?',
+          message: '시나리오가 종료되었습니다.',
           scenarioState: null,
         });
       }
