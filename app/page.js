@@ -3,8 +3,9 @@
 import { useChatStore } from '../app/store/chatStore';
 import Chat from '../app/components/Chat';
 import Login from '../app/components/Login';
-import HistoryPanel from '../app/components/HistoryPanel'; // HistoryPanel 컴포넌트 import
-import styles from './page.module.css'; // page.module.css import
+import HistoryPanel from '../app/components/HistoryPanel';
+import ChatInput from '../app/components/ChatInput'; // ChatInput 컴포넌트 import
+import styles from './page.module.css';
 
 export default function HomePage() {
   const { user } = useChatStore();
@@ -14,7 +15,10 @@ export default function HomePage() {
       {user ? (
         <div className={styles.chatLayout}>
           <HistoryPanel />
-          <Chat />
+          <div className={styles.mainContent}>
+            <Chat />
+            <ChatInput />
+          </div>
         </div>
       ) : (
         <Login />

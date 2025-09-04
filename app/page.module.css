@@ -2,13 +2,18 @@
   height: 100vh;
   width: 100vw;
   display: flex;
-  justify-content: center;
-  align-items: center;
-  background-color: #fff;
+  overflow: hidden; /* 전체 페이지의 스크롤바 방지 */
 }
 
 .chatLayout {
   display: flex;
   width: 100%;
   height: 100%;
+}
+
+.mainContent {
+  flex-grow: 1; /* HistoryPanel을 제외한 모든 너비를 차지 */
+  display: flex;
+  flex-direction: column; /* 자식 요소(Chat, ChatInput)를 수직으로 배치 */
+  height: 100vh;
 }
