@@ -33,9 +33,6 @@ export const getScenarioList = async () => {
   return querySnapshot.docs.map(doc => doc.id);
 };
 
-
-// --- 기존 함수들은 그대로 유지 ---
-
 export const getScenario = async (scenarioId) => {
   const scenarioRef = doc(db, 'scenarios', scenarioId);
   const scenarioSnap = await getDoc(scenarioRef);
@@ -47,18 +44,34 @@ export const getScenario = async (scenarioId) => {
   }
 };
 
-export const getNextNode = (scenario, currentNodeId, sourceHandleId = null) => {
+export const getNextNode = (scenario, currentNodeId, sourceHandleId = null, slots = {}) => {
   if (!currentNodeId) {
     const edgeTargets = new Set(scenario.edges.map(edge => edge.target));
     const startNode = scenario.nodes.find(node => !edgeTargets.has(node.id));
     return startNode;
   }
 
-  let nextEdge = scenario.edges.find(
-    edge => edge.source === currentNodeId && edge.sourceHandle === sourceHandleId
-  );
+  const sourceNode = scenario.nodes.find(n => n.id === currentNodeId);
+  let nextEdge;
+
+  // LLM 노드 분기 처리
+  if (sourceNode && sourceNode.type === 'llm' && sourceNode.data.conditions?.length > 0) {
+      const llmOutput = slots[sourceNode.data.outputVar] || '';
+      const matchedCondition = sourceNode.data.conditions.find(cond => 
+          llmOutput.toLowerCase().includes(cond.keyword.toLowerCase())
+      );
+      if (matchedCondition) {
+          nextEdge = scenario.edges.find(edge => edge.source === currentNodeId && edge.sourceHandle === matchedCondition.id);
+      }
+  }
   
-  if (!nextEdge && sourceHandleId === null) {
+  if (!nextEdge) {
+    nextEdge = scenario.edges.find(
+      edge => edge.source === currentNodeId && edge.sourceHandle === sourceHandleId
+    );
+  }
+  
+  if (!nextEdge && !sourceHandleId) {
       nextEdge = scenario.edges.find(edge => edge.source === currentNodeId && !edge.sourceHandle);
   }
 
@@ -69,9 +82,46 @@ export const getNextNode = (scenario, currentNodeId, sourceHandleId = null) => {
   return null;
 };
 
+
 export const interpolateMessage = (message, slots) => {
     if (!message) return '';
     return message.replace(/\{([^}]+)\}/g, (match, key) => {
         return slots.hasOwnProperty(key) ? slots[key] : match;
     });
+};
+
+// --- 👇 [추가된 헬퍼 함수] ---
+export const getNestedValue = (obj, path) => {
+    if (!path) return undefined;
+    return path.split('.').reduce((acc, part) => acc && acc[part], obj);
+};
+
+export const validateInput = (value, validation) => {
+  if (!validation) return { isValid: true };
+
+  switch (validation.type) {
+    case 'email':
+      return {
+        isValid: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value),
+        message: '유효한 이메일 주소를 입력해주세요.'
+      };
+    case 'phone number':
+      return {
+        isValid: /^\d{2,3}-\d{3,4}-\d{4}$/.test(value),
+        message: '유효한 전화번호(XXX-XXXX-XXXX)를 입력해주세요.'
+      };
+    case 'custom':
+      if (validation.regex) {
+        try {
+          const isValid = new RegExp(validation.regex).test(value);
+          return { isValid, message: isValid ? '' : validation.errorMessage || '입력 형식이 올바르지 않습니다.' };
+        } catch (e) {
+          console.error("Invalid regex:", validation.regex);
+          return { isValid: false, message: '시나리오에 설정된 정규식이 올바르지 않습니다.' };
+        }
+      }
+      return { isValid: true };
+    default:
+      return { isValid: true };
+  }
 };

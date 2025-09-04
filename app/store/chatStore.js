@@ -17,15 +17,13 @@ const initialState = {
   isScenarioLoading: false,
   currentScenarioNodeId: null,
   activePanel: 'main', 
-  focusRequest: 0, // --- 👈 [추가] 포커스 요청을 위한 상태
+  focusRequest: 0,
 };
 
 export const useChatStore = create((set, get) => ({
   ...initialState,
 
-  // --- 👇 [추가된 부분] ---
   focusChatInput: () => set(state => ({ focusRequest: state.focusRequest + 1 })),
-  // --- 👆 [여기까지 추가] ---
 
   setActivePanel: (panel) => set({ activePanel: panel }),
 
@@ -287,8 +285,11 @@ export const useChatStore = create((set, get) => ({
             set(state => ({
                 scenarioMessages: [...state.scenarioMessages, { id: startNode.id, sender: 'bot', node: startNode }],
                 currentScenarioNodeId: startNode.id,
+                scenarioState: data.scenarioState,
             }));
+            // --- 👇 [수정/추가] ---
             await get().continueScenarioIfNeeded(startNode);
+            // --- 👆 [여기까지] ---
         } else {
            throw new Error("Failed to start scenario properly");
         }
@@ -299,9 +300,7 @@ export const useChatStore = create((set, get) => ({
         })
     } finally {
         set({ isScenarioLoading: false });
-        // --- 👇 [추가된 부분] ---
-        get().focusChatInput(); // 모든 작업 완료 후 포커스 요청
-        // --- 👆 [여기까지 추가] ---
+        get().focusChatInput();
     }
   },
 
@@ -341,8 +340,11 @@ export const useChatStore = create((set, get) => ({
             set(state => ({
                 scenarioMessages: [...state.scenarioMessages, { id: nextNode.id, sender: 'bot', node: nextNode }],
                 currentScenarioNodeId: nextNode.id,
+                scenarioState: data.scenarioState,
             }));
+            // --- 👇 [수정/추가] ---
             await get().continueScenarioIfNeeded(nextNode);
+            // --- 👆 [여기까지] ---
         } else if (data.type === 'scenario_end') {
             set(state => ({
                 scenarioMessages: [...state.scenarioMessages, { id: 'end', sender: 'bot', text: data.message }],
@@ -360,20 +362,26 @@ export const useChatStore = create((set, get) => ({
     }
   },
   
+  // --- 👇 [수정/추가된 함수] ---
   continueScenarioIfNeeded: async (lastNode) => {
-    const isInteractive = lastNode.type === 'slotfilling' || (lastNode.data?.replies && lastNode.data.replies.length > 0);
+    // 사용자의 입력을 기다려야 하는 대화형 노드인지 판별
+    const isInteractive = lastNode.type === 'slotfilling' || 
+                          lastNode.type === 'form' || 
+                          (lastNode.data?.replies && lastNode.data.replies.length > 0);
 
+    // 대화형 노드가 아니고, 시나리오가 끝나지 않았다면 다음 노드를 자동으로 요청
     if (!isInteractive && lastNode.id !== 'end') {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 500)); // 메시지를 볼 수 있도록 약간의 딜레이
 
       await get().handleScenarioResponse({
         scenarioId: get().scenarioPanel.scenarioId,
         currentNodeId: lastNode.id,
-        sourceHandle: null,
+        sourceHandle: null, // 다음 노드로 자동으로 진행하므로 sourceHandle은 없음
         userInput: null,
       });
     }
   }
+  // --- 👆 [여기까지] ---
 }));
 
 useChatStore.getState().initAuth();
