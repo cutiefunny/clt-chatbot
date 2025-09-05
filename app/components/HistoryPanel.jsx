@@ -11,6 +11,13 @@ const TrashIcon = () => (
     </svg>
 );
 
+// --- 👇 [추가] 메뉴(햄버거) 아이콘 ---
+const MenuIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M4 6H20M4 12H20M4 18H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
 
 export default function HistoryPanel() {
   const { 
@@ -20,20 +27,30 @@ export default function HistoryPanel() {
     loadConversation, 
     createNewConversation,
     currentConversationId,
-    deleteConversation // 스토어에서 함수 가져오기
+    deleteConversation,
+    isHistoryPanelOpen, // --- 👈 [추가] 상태 가져오기
+    toggleHistoryPanel  // --- 👈 [추가] 액션 가져오기
   } = useChatStore();
 
   if (!user) return null;
 
   const handleDelete = (e, convoId) => {
-    e.stopPropagation(); // 부모 요소(대화 로드)의 클릭 이벤트 방지
+    e.stopPropagation();
     if (window.confirm("정말로 이 대화를 삭제하시겠습니까?")) {
         deleteConversation(convoId);
     }
   }
 
   return (
-    <div className={styles.historyPanel}>
+    // --- 👇 [수정] 상태에 따라 클래스 동적 할당 ---
+    <div className={`${styles.historyPanel} ${isHistoryPanelOpen ? styles.open : styles.closed}`}>
+      <div className={styles.topSection}>
+        <button className={styles.toggleButton} onClick={toggleHistoryPanel}>
+            <MenuIcon />
+        </button>
+      </div>
+    {/* --- 👆 [여기까지] --- */}
+
       <div className={styles.header}>
         <button className={styles.newChatButton} onClick={createNewConversation}>
           + New Chat

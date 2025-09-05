@@ -9,14 +9,19 @@ import ScenarioChat from '../app/components/ScenarioChat';
 import styles from './page.module.css';
 
 export default function HomePage() {
-  const { user, scenarioPanel, activePanel, setActivePanel } = useChatStore(); 
+  const { user, scenarioPanel, activePanel, setActivePanel, isHistoryPanelOpen } = useChatStore(); 
 
   return (
     <main className={styles.main}>
       {user ? (
         <div className={styles.chatLayout}>
           <HistoryPanel />
-          <div className={styles.contentAndInputWrapper}>
+          {/* --- 👇 [수정된 부분] --- */}
+          <div 
+            className={styles.contentAndInputWrapper}
+            style={{ marginLeft: isHistoryPanelOpen ? '260px' : '60px' }}
+          >
+          {/* --- 👆 [여기까지] --- */}
             <div className={styles.panelsWrapper}>
               <div 
                 className={`${styles.mainContent} ${activePanel !== 'main' && scenarioPanel.isOpen ? styles.inactivePanel : ''}`} 

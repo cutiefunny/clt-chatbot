@@ -1,10 +1,59 @@
 .historyPanel {
-  width: 260px;
+  /* --- 👇 [수정된 부분] --- */
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100vh;
+  z-index: 10;
   background-color: #f0f2f5;
   display: flex;
   flex-direction: column;
   border-right: 1px solid #e0e0e0;
+  transition: width 0.3s ease-in-out;
+  overflow: hidden;
 }
+
+.historyPanel.closed {
+  width: 60px;
+}
+
+.historyPanel.closed > *:not(.topSection) {
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.historyPanel.open {
+  width: 260px;
+}
+
+.newChatButton, .convoTitle, .userName {
+    white-space: nowrap;
+}
+
+.topSection {
+  padding: 0.75rem;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.toggleButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+.toggleButton:hover {
+  background-color: rgba(0,0,0,0.08);
+}
+/* --- 👆 [여기까지] --- */
+
 
 .header {
   padding: 1rem;
@@ -53,7 +102,6 @@
   font-weight: bold;
 }
 
-/* --- 👇 [추가된 부분] --- */
 .convoTitle {
     white-space: nowrap;
     overflow: hidden;
@@ -72,21 +120,19 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    opacity: 0; /* 평소에는 숨김 */
+    opacity: 0; 
     transition: opacity 0.2s, color 0.2s, background-color 0.2s;
     flex-shrink: 0;
 }
 
 .conversationItem:hover .deleteButton {
-    opacity: 1; /* 호버 시 나타남 */
+    opacity: 1; 
 }
 
 .deleteButton:hover {
-    color: #d32f2f; /* 빨간색으로 변경 */
+    color: #d32f2f;
     background-color: rgba(0,0,0,0.08);
 }
-/* --- 👆 [여기까지 추가] --- */
-
 
 .footer {
   padding: 1rem;

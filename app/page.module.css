@@ -5,9 +5,7 @@
   overflow: hidden;
   justify-content: center;
   align-items: center;
-  /* --- 👇 [수정/추가된 부분] --- */
   background: linear-gradient(to bottom, #ffffff, #b2c7d9);
-  /* --- 👆 [여기까지] --- */
 }
 
 .chatLayout {
@@ -16,26 +14,25 @@
   height: 100%;
 }
 
-/* 패널과 입력창을 감싸는 수직 Flex 컨테이너 */
 .contentAndInputWrapper {
-  flex: 1; /* HistoryPanel 옆의 남은 공간을 모두 차지 */
+  flex: 1; 
   display: flex;
   flex-direction: column;
   height: 100%;
-  overflow: hidden; /* 내부 콘텐츠가 넘치지 않도록 함 */
+  overflow: hidden; 
+  /* --- 👇 [추가] --- */
+  transition: margin-left 0.3s ease-in-out;
 }
 
-/* 메인 채팅과 시나리오 채팅을 감싸는 수평 Flex 컨테이너 */
 .panelsWrapper {
   display: flex;
-  flex: 1; /* 입력창을 제외한 모든 수직 공간을 차지하도록 성장 */
-  overflow: hidden; /* 패널 너비 변경 시 넘치지 않도록 함 */
+  flex: 1; 
+  overflow: hidden;
 }
 
-/* 메인 채팅 컴포넌트를 담는 컨테이너 */
 .mainContent {
   width: 100%;
-  display: flex; /* 자식 컴포넌트(Chat)가 크기를 채울 수 있도록 */
+  display: flex;
   transition: width 0.3s ease-in-out, opacity 0.3s ease-in-out;
 }
 
@@ -43,10 +40,9 @@
   width: 60%;
 }
 
-/* 시나리오(캔버스) 컴포넌트를 담는 컨테이너 */
 .scenarioContent {
   width: 40%;
-  display: flex; /* 자식 컴포넌트(ScenarioChat)가 크기를 채울 수 있도록 */
+  display: flex; 
   border-left: 1px solid #e0e0e0;
 }
 

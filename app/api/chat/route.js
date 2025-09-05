@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getScenario, getNextNode, interpolateMessage, findScenarioIdByTrigger, getScenarioList, validateInput, getNestedValue } from '../../lib/chatbotEngine';
 import { getGeminiStream } from '../../lib/gemini';
 
-async function handleScenario(scenario, scenarioState, message, slots) {
+async function handleScenario(scenario, scenarioState, message, slots) { // request 파라미터 제거
     const { scenarioId, currentNodeId, awaitingInput } = scenarioState;
     let currentId = currentNodeId;
     let newSlots = { ...slots };
@@ -16,7 +16,7 @@ async function handleScenario(scenario, scenarioState, message, slots) {
             return NextResponse.json({
                 type: 'scenario_validation_fail',
                 message: validationMessage,
-                scenarioState: { ...scenarioState, awaitingInput: true }, // Awaiting input again
+                scenarioState: { ...scenarioState, awaitingInput: true },
                 slots: newSlots,
             });
         }
@@ -25,14 +25,11 @@ async function handleScenario(scenario, scenarioState, message, slots) {
 
     let nextNode;
     if (awaitingInput) {
-         // Input was valid, proceed from the current node
          nextNode = getNextNode(scenario, currentId, message.sourceHandle, newSlots);
     } else {
-        // This is not a response to a slot-filling request, so get the next node based on the handle
         nextNode = getNextNode(scenario, currentId, message.sourceHandle, newSlots);
     }
 
-    // Process nodes until an interactive one is found
     while (nextNode) {
         const interpolatedContent = interpolateMessage(nextNode.data.content, newSlots);
         nextNode.data.content = interpolatedContent;
@@ -48,14 +45,25 @@ async function handleScenario(scenario, scenarioState, message, slots) {
 
         if (nextNode.type === 'api') {
             const { method, url, headers, body, responseMapping } = nextNode.data;
-            const interpolatedUrl = interpolateMessage(url, newSlots);
+            
+            // --- 👇 [수정된 부분] ---
+            let interpolatedUrl = interpolateMessage(url, newSlots);
+
+            // 환경 변수를 사용하여 안정적인 절대 URL 생성
+            if (interpolatedUrl.startsWith('/')) {
+                const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL ||
+                              (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+                interpolatedUrl = `${baseURL}${interpolatedUrl}`;
+            }
+            // --- 👆 [여기까지] ---
+
             const interpolatedHeaders = JSON.parse(interpolateMessage(headers || '{}', newSlots));
             const interpolatedBody = method !== 'GET' && body ? interpolateMessage(body, newSlots) : undefined;
 
             let isSuccess = false;
             try {
                 const response = await fetch(interpolatedUrl, { method, headers: interpolatedHeaders, body: interpolatedBody });
-                if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
+                if (!response.ok) throw new Error(`API request failed with status ${response.status} for URL: ${interpolatedUrl}`);
                 
                 const result = await response.json();
                 
@@ -72,7 +80,7 @@ async function handleScenario(scenario, scenarioState, message, slots) {
             }
             
             nextNode = getNextNode(scenario, nextNode.id, isSuccess ? 'onSuccess' : 'onError', newSlots);
-            continue; // Continue processing with the next node
+            continue;
         }
 
         if (nextNode.type === 'llm') {
@@ -96,20 +104,16 @@ async function handleScenario(scenario, scenarioState, message, slots) {
         }
 
         if (nextNode.type === 'message' || nextNode.type === 'branch' || nextNode.type === 'form') {
-           // These are interactive nodes that require user response
            break;
         }
         
-        // For non-interactive nodes like 'message' without replies, just move to the next one
         const nonInteractiveNext = getNextNode(scenario, nextNode.id, null, newSlots);
-        if(!nonInteractiveNext) break; // End of path
+        if(!nonInteractiveNext) break;
         
-        // If the message node has no replies and an edge exists, proceed automatically
         if (nextNode.type === 'message' && (!nextNode.data.replies || nextNode.data.replies.length === 0)) {
-            currentId = nextNode.id; // Update currentId to the message node we just processed
+            currentId = nextNode.id;
             nextNode = getNextNode(scenario, currentId, null, newSlots);
         } else {
-             // It's an interactive node, so we break to send it to the user
             break;
         }
     }
@@ -131,34 +135,23 @@ async function handleScenario(scenario, scenarioState, message, slots) {
     }
 }
 
-// --- 👇 [추가된 부분] ---
 
-/**
- * 사용자 메시지를 기반으로 수행할 작업을 결정하는 헬퍼 함수
- * @param {string} messageText - 사용자 입력 텍스트
- * @returns {Promise<{type: string, payload?: any}>} - 작업 유형과 필요한 데이터를 담은 객체
- */
 async function determineAction(messageText) {
-    // 1. 키워드 기반 트리거 확인
     const triggeredAction = findScenarioIdByTrigger(messageText);
     if (triggeredAction) {
         return { type: triggeredAction };
     }
 
-    // 2. 메시지 자체가 시나리오 ID인지 확인
     try {
         await getScenario(messageText);
-        // getScenario가 에러를 던지지 않으면 해당 ID의 시나리오가 존재함
         return { type: 'START_SCENARIO', payload: { scenarioId: messageText } };
     } catch (e) {
-        // 시나리오 없음, 무시하고 다음으로 진행
+        // Scenario not found, proceed to LLM
     }
 
-    // 3. 위 조건에 해당하지 않으면 기본 LLM 호출
     return { type: 'LLM_FALLBACK' };
 }
 
-// 각 작업 유형에 따른 핸들러 함수 맵
 const actionHandlers = {
     'GET_SCENARIO_LIST': async () => {
         const scenarios = await getScenarioList();
@@ -183,12 +176,10 @@ const actionHandlers = {
             slots: {}
         });
     },
-    // 키워드 트리거로 시나리오를 시작하는 경우 (예: "예약")
     'reservation-scenario': (payload, slots) => actionHandlers.START_SCENARIO({ scenarioId: 'reservation-scenario' }, slots),
     'faq-scenario': (payload, slots) => actionHandlers.START_SCENARIO({ scenarioId: 'faq-scenario' }, slots),
     'Welcome': (payload, slots) => actionHandlers.START_SCENARIO({ scenarioId: 'Welcome' }, slots),
 };
-// --- 👆 [여기까지] ---
 
 
 export async function POST(request) {
@@ -196,30 +187,22 @@ export async function POST(request) {
     const body = await request.json();
     const { message, scenarioState, slots } = body;
     
-    // 1. 시나리오가 이미 진행 중인 경우 우선 처리
     if (scenarioState && scenarioState.scenarioId) {
       const scenario = await getScenario(scenarioState.scenarioId);
-      return await handleScenario(scenario, scenarioState, message, slots);
+      return await handleScenario(scenario, scenarioState, message, slots); // request 제거
     }
     
-    // --- 👇 [수정된 부분] ---
-
-    // 2. 새로운 메시지에 대한 작업 결정
     const action = await determineAction(message.text);
     const handler = actionHandlers[action.type];
 
     if (handler) {
-        // 결정된 작업에 맞는 핸들러 실행
         return await handler(action.payload, slots);
     }
 
-    // 3. 지정된 작업이 없는 경우, 기본 Gemini API 호출 (LLM_FALLBACK)
     const stream = await getGeminiStream(message.text);
     return new Response(stream, {
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },
     });
-
-    // --- 👆 [여기까지] ---
 
   } catch (error) {
     console.error('Chat API Error:', error);
