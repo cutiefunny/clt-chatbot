@@ -1,5 +1,4 @@
 .historyPanel {
-  /* --- 👇 [수정된 부분] --- */
   position: fixed;
   left: 0;
   top: 0;
@@ -16,28 +15,42 @@
 .historyPanel.closed {
   width: 60px;
 }
-
-.historyPanel.closed > *:not(.topSection) {
-  visibility: hidden;
-  opacity: 0;
-  transition: opacity 0.1s;
-}
-
 .historyPanel.open {
   width: 260px;
 }
 
-.newChatButton, .convoTitle, .userName {
-    white-space: nowrap;
-}
-
-.topSection {
+/* --- 👇 [수정된 부분] --- */
+/* 헤더: 메뉴 버튼과 새 대화 버튼을 감싸는 컨테이너 */
+.header {
   padding: 0.75rem;
   display: flex;
-  justify-content: flex-start;
-  align-items: center;
+  flex-direction: column;
+  gap: 0.5rem; /* 버튼 사이의 간격 */
+  align-items: flex-start; /* 아이템들을 항상 왼쪽에 고정 */
+}
+/* --- 👆 [여기까지] --- */
+
+
+/* 패널 콘텐츠: 대화 목록과 푸터를 감싸는 컨테이너 */
+.panelContent {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.historyPanel.closed .panelContent {
+  visibility: hidden;
+  opacity: 0;
+  transition: visibility 0s 0.2s, opacity 0.2s;
+}
+.historyPanel.open .panelContent {
+  visibility: visible;
+  opacity: 1;
+  transition: opacity 0.3s 0.1s;
 }
 
+
+/* 메뉴 토글 버튼 */
 .toggleButton {
   background: none;
   border: none;
@@ -52,36 +65,61 @@
 .toggleButton:hover {
   background-color: rgba(0,0,0,0.08);
 }
-/* --- 👆 [여기까지] --- */
 
 
-.header {
-  padding: 1rem;
-}
-
+/* 새 대화 버튼 */
 .newChatButton {
-  width: 100%;
-  padding: 0.75rem;
-  font-size: 1rem;
-  background-color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  font-size: 0.9rem;
   color: #333;
-  border: 1px solid #ccc;
-  border-radius: 8px;
+  border: none;
+  border-radius: 24px;
   cursor: pointer;
-  transition: background-color 0.2s;
-  text-align: left;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.historyPanel.open .newChatButton {
+  width: 100%;
+}
+.newChatButton:hover {
+  background-color: #d8dade;
+}
+/* 패널이 닫혔을 때 New Chat 버튼을 Toggle 버튼과 동일한 스타일로 변경 */
+.historyPanel.closed .newChatButton {
+  background: none;
+  padding: 0.5rem; /* toggleButton과 동일한 패딩 */
+  border-radius: 50%; /* toggleButton과 동일한 모양 */
+  width: auto; /* width 100% 해제 */
+  gap: 0;
+}
+.historyPanel.closed .newChatButton:hover {
+  background-color: rgba(0,0,0,0.08); /* toggleButton과 동일한 호버 효과 */
 }
 
-.newChatButton:hover {
-  background-color: #f7f7f7;
+
+/* 새 대화 텍스트 */
+.newChatText {
+  transition: opacity 0.2s 0.1s, max-width 0.3s ease-in-out;
+  max-width: 100px;
+  opacity: 1;
+  overflow: hidden;
+  font-weight: 500;
 }
+/* 패널이 닫혔을 때 텍스트 숨기기 */
+.historyPanel.closed .newChatText {
+  max-width: 0;
+  opacity: 0;
+}
+
 
 .conversationList {
   flex-grow: 1;
   overflow-y: auto;
   padding: 0 1rem;
 }
-
 .conversationItem {
   display: flex;
   justify-content: space-between;
@@ -92,16 +130,13 @@
   cursor: pointer;
   color: #333;
 }
-
 .conversationItem:hover {
   background-color: #e9e9e9;
 }
-
 .conversationItem.active {
   background-color: #dcdcdc;
   font-weight: bold;
 }
-
 .convoTitle {
     white-space: nowrap;
     overflow: hidden;
@@ -109,7 +144,6 @@
     flex-grow: 1;
     padding-right: 8px;
 }
-
 .deleteButton {
     background: none;
     border: none;
@@ -120,20 +154,17 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    opacity: 0; 
+    opacity: 0;
     transition: opacity 0.2s, color 0.2s, background-color 0.2s;
     flex-shrink: 0;
 }
-
 .conversationItem:hover .deleteButton {
-    opacity: 1; 
+    opacity: 1;
 }
-
 .deleteButton:hover {
     color: #d32f2f;
     background-color: rgba(0,0,0,0.08);
 }
-
 .footer {
   padding: 1rem;
   border-top: 1px solid #e0e0e0;
@@ -141,13 +172,11 @@
   align-items: center;
   gap: 0.75rem;
 }
-
 .userAvatar {
   width: 32px;
   height: 32px;
   border-radius: 50%;
 }
-
 .userName {
   flex-grow: 1;
   font-size: 0.9rem;
@@ -155,7 +184,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
 .logoutButton {
   background: none;
   border: none;
