@@ -131,60 +131,95 @@ async function handleScenario(scenario, scenarioState, message, slots) {
     }
 }
 
+// --- 👇 [추가된 부분] ---
+
+/**
+ * 사용자 메시지를 기반으로 수행할 작업을 결정하는 헬퍼 함수
+ * @param {string} messageText - 사용자 입력 텍스트
+ * @returns {Promise<{type: string, payload?: any}>} - 작업 유형과 필요한 데이터를 담은 객체
+ */
+async function determineAction(messageText) {
+    // 1. 키워드 기반 트리거 확인
+    const triggeredAction = findScenarioIdByTrigger(messageText);
+    if (triggeredAction) {
+        return { type: triggeredAction };
+    }
+
+    // 2. 메시지 자체가 시나리오 ID인지 확인
+    try {
+        await getScenario(messageText);
+        // getScenario가 에러를 던지지 않으면 해당 ID의 시나리오가 존재함
+        return { type: 'START_SCENARIO', payload: { scenarioId: messageText } };
+    } catch (e) {
+        // 시나리오 없음, 무시하고 다음으로 진행
+    }
+
+    // 3. 위 조건에 해당하지 않으면 기본 LLM 호출
+    return { type: 'LLM_FALLBACK' };
+}
+
+// 각 작업 유형에 따른 핸들러 함수 맵
+const actionHandlers = {
+    'GET_SCENARIO_LIST': async () => {
+        const scenarios = await getScenarioList();
+        return NextResponse.json({
+            type: 'scenario_list',
+            scenarios,
+            message: '실행할 시나리오를 선택해주세요.'
+        });
+    },
+    'START_SCENARIO': async (payload, slots) => {
+        const { scenarioId } = payload;
+        const scenario = await getScenario(scenarioId);
+        const startNode = getNextNode(scenario, null, null);
+
+        const interpolatedContent = interpolateMessage(startNode.data.content, slots);
+        startNode.data.content = interpolatedContent;
+
+        return NextResponse.json({
+            type: 'scenario_start',
+            nextNode: startNode,
+            scenarioState: { scenarioId: scenarioId, currentNodeId: startNode.id, awaitingInput: false },
+            slots: {}
+        });
+    },
+    // 키워드 트리거로 시나리오를 시작하는 경우 (예: "예약")
+    'reservation-scenario': (payload, slots) => actionHandlers.START_SCENARIO({ scenarioId: 'reservation-scenario' }, slots),
+    'faq-scenario': (payload, slots) => actionHandlers.START_SCENARIO({ scenarioId: 'faq-scenario' }, slots),
+    'Welcome': (payload, slots) => actionHandlers.START_SCENARIO({ scenarioId: 'Welcome' }, slots),
+};
+// --- 👆 [여기까지] ---
+
 
 export async function POST(request) {
   try {
     const body = await request.json();
     const { message, scenarioState, slots } = body;
     
-    // 1. 시나리오 모드 처리
+    // 1. 시나리오가 이미 진행 중인 경우 우선 처리
     if (scenarioState && scenarioState.scenarioId) {
       const scenario = await getScenario(scenarioState.scenarioId);
       return await handleScenario(scenario, scenarioState, message, slots);
     }
     
-    // 2. 기본 모드 처리 (시나리오 시작점)
-    let triggeredAction = findScenarioIdByTrigger(message.text);
-    let potentialScenario;
-    try {
-        potentialScenario = await getScenario(message.text);
-    } catch(e) {
-        // 시나리오 없음, 무시
+    // --- 👇 [수정된 부분] ---
+
+    // 2. 새로운 메시지에 대한 작업 결정
+    const action = await determineAction(message.text);
+    const handler = actionHandlers[action.type];
+
+    if (handler) {
+        // 결정된 작업에 맞는 핸들러 실행
+        return await handler(action.payload, slots);
     }
 
-    if (potentialScenario) {
-        triggeredAction = message.text;
-    }
-
-    if (triggeredAction === 'GET_SCENARIO_LIST') {
-      const scenarios = await getScenarioList();
-      return NextResponse.json({
-        type: 'scenario_list',
-        scenarios,
-        message: '실행할 시나리오를 선택해주세요.'
-      });
-    }
-    
-    if (triggeredAction) {
-      const scenario = await getScenario(triggeredAction);
-      const startNode = getNextNode(scenario, null, null);
-      
-      const interpolatedContent = interpolateMessage(startNode.data.content, slots);
-      startNode.data.content = interpolatedContent;
-      
-      return NextResponse.json({
-        type: 'scenario_start',
-        nextNode: startNode,
-        scenarioState: { scenarioId: triggeredAction, currentNodeId: startNode.id, awaitingInput: false },
-        slots: {}
-      });
-    }
-
-    // 3. Gemini API 호출
+    // 3. 지정된 작업이 없는 경우, 기본 Gemini API 호출 (LLM_FALLBACK)
     const stream = await getGeminiStream(message.text);
     return new Response(stream, {
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },
     });
+
+    // --- 👆 [여기까지] ---
 
   } catch (error) {
     console.error('Chat API Error:', error);
