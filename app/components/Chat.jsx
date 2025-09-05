@@ -50,11 +50,6 @@ export default function Chat() {
             <span className={styles.headerSubtitle}>Hybrid Assistant</span>
           </div>
         </div>
-        <div className={styles.headerButtons}>
-          <button className={styles.headerRestartButton} onClick={createNewConversation}>
-            New Chat
-          </button>
-        </div>
       </div>
       
       <div className={styles.history} ref={historyRef}>

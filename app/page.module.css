@@ -15,36 +15,49 @@
 }
 
 .contentAndInputWrapper {
-  flex: 1; 
+  flex: 1;
   display: flex;
   flex-direction: column;
   height: 100%;
-  overflow: hidden; 
-  /* --- 👇 [추가] --- */
+  overflow: hidden;
   transition: margin-left 0.3s ease-in-out;
 }
 
 .panelsWrapper {
   display: flex;
-  flex: 1; 
+  flex: 1;
   overflow: hidden;
 }
 
+/* --- 👇 [수정/추가된 부분] --- */
+
+/* 메인 채팅 컴포넌트를 담는 컨테이너 */
 .mainContent {
-  width: 100%;
+  width: 100%; /* 기본 너비 */
   display: flex;
   transition: width 0.3s ease-in-out, opacity 0.3s ease-in-out;
+  flex-shrink: 0; /* 너비 변경 시 줄어들지 않도록 설정 */
 }
 
+/* 시나리오 패널이 열렸을 때 메인 콘텐츠 너비 조정 */
 .chatLayout.scenarioOpen .mainContent {
   width: 60%;
 }
 
+/* 시나리오(캔버스) 컴포넌트를 담는 컨테이너 */
 .scenarioContent {
-  width: 40%;
-  display: flex; 
+  width: 0; /* 기본적으로 너비 0으로 숨김 */
+  display: flex;
   border-left: 1px solid #e0e0e0;
+  transition: width 0.3s ease-in-out; /* 너비 변경에 애니메이션 적용 */
+  overflow: hidden; /* 내용이 넘치지 않도록 */
 }
+
+/* 시나리오 패널이 열렸을 때 너비 확장 */
+.chatLayout.scenarioOpen .scenarioContent {
+  width: 40%;
+}
+/* --- 👆 [여기까지] --- */
 
 .inactivePanel {
   opacity: 0.6;

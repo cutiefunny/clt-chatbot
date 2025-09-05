@@ -3,7 +3,7 @@ import { db } from './firebase';
 
 // 시나리오를 트리거하는 키워드와 시나리오 ID 맵
 const scenarioTriggers = {
-  "예약": "reservation-scenario",
+  "예약": "선박 예약",
   "문의": "faq-scenario",
   "welcome": "Welcome",
   "시나리오 목록": "GET_SCENARIO_LIST" // <-- 시나리오 목록 요청 키워드 추가

@@ -176,7 +176,7 @@ const actionHandlers = {
             slots: {}
         });
     },
-    'reservation-scenario': (payload, slots) => actionHandlers.START_SCENARIO({ scenarioId: 'reservation-scenario' }, slots),
+    '선박 예약': (payload, slots) => actionHandlers.START_SCENARIO({ scenarioId: '선박 예약' }, slots),
     'faq-scenario': (payload, slots) => actionHandlers.START_SCENARIO({ scenarioId: 'faq-scenario' }, slots),
     'Welcome': (payload, slots) => actionHandlers.START_SCENARIO({ scenarioId: 'Welcome' }, slots),
 };
