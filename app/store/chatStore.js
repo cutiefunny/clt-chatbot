@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-// --- 👇 [수정] import 구문 정리 ---
 import { auth, db, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, serverTimestamp, deleteDoc, doc, getDoc, setDoc, updateDoc } from '../lib/firebase';
 import { collection, addDoc, query, orderBy, onSnapshot, getDocs } from "firebase/firestore";
 import { scenarioTriggers } from '../lib/chatbotEngine';
@@ -22,12 +21,15 @@ const initialState = {
   focusRequest: 0,
   isHistoryPanelOpen: false, 
   theme: 'light',
-  isSettingsModalOpen: false,
   isScenarioModalOpen: false,
   isSearchModalOpen: false,
   scenarioTriggers: {},
   isSearching: false,
   searchResults: [],
+  // --- 👇 [수정/추가] ---
+  fontSize: 'default', // 'default' or 'small'
+  isProfileModalOpen: false,
+  // isSettingsModalOpen: false, // 삭제
 };
 
 export const useChatStore = create((set, get) => {
@@ -110,11 +112,10 @@ export const useChatStore = create((set, get) => {
 
     toggleTheme: async () => {
         const newTheme = get().theme === 'light' ? 'dark' : 'light';
-        
+        set({ theme: newTheme });
         if (typeof window !== 'undefined') {
             localStorage.setItem('theme', newTheme);
         }
-
         const user = get().user;
         if (user) {
             try {
@@ -124,10 +125,29 @@ export const useChatStore = create((set, get) => {
                 console.error("Error saving theme to Firestore:", error);
             }
         }
-        set({ theme: newTheme });
     },
-    openSettingsModal: () => set({ isSettingsModalOpen: true }),
-    closeSettingsModal: () => set({ isSettingsModalOpen: false }),
+    
+    // --- 👇 [추가된 함수] ---
+    setFontSize: async (size) => {
+        set({ fontSize: size });
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('fontSize', size);
+        }
+        const user = get().user;
+        if (user) {
+            try {
+                const userSettingsRef = doc(db, 'settings', user.uid);
+                await setDoc(userSettingsRef, { fontSize: size }, { merge: true });
+            } catch (error) {
+                console.error("Error saving font size to Firestore:", error);
+            }
+        }
+    },
+
+    // --- 👇 [수정/추가] ---
+    openProfileModal: () => set({ isProfileModalOpen: true }),
+    closeProfileModal: () => set({ isProfileModalOpen: false }),
+    // openSettingsModal, closeSettingsModal 삭제
 
     openScenarioModal: () => set({ isScenarioModalOpen: true }),
     closeScenarioModal: () => set({ isScenarioModalOpen: false }),
@@ -147,18 +167,21 @@ export const useChatStore = create((set, get) => {
           try {
             const userSettingsRef = doc(db, 'settings', user.uid);
             const docSnap = await getDoc(userSettingsRef);
-            if (docSnap.exists() && docSnap.data().theme) {
-              set({ theme: docSnap.data().theme });
-            } else if (typeof window !== 'undefined') {
-              const savedTheme = localStorage.getItem('theme') || 'light';
-              set({ theme: savedTheme });
-            }
+            const settings = docSnap.exists() ? docSnap.data() : {};
+            
+            // 테마 설정 불러오기
+            const theme = settings.theme || localStorage.getItem('theme') || 'light';
+            set({ theme });
+
+            // 폰트 크기 설정 불러오기
+            const fontSize = settings.fontSize || localStorage.getItem('fontSize') || 'default';
+            set({ fontSize });
+
           } catch (error) {
-            console.error("Error loading theme from Firestore:", error);
-            if (typeof window !== 'undefined') {
-                const savedTheme = localStorage.getItem('theme') || 'light';
-                set({ theme: savedTheme });
-            }
+            console.error("Error loading settings from Firestore:", error);
+            const theme = localStorage.getItem('theme') || 'light';
+            const fontSize = localStorage.getItem('fontSize') || 'default';
+            set({ theme, fontSize });
           }
           set({ user });
           get().unsubscribeAll();
@@ -168,7 +191,8 @@ export const useChatStore = create((set, get) => {
           set({ ...initialState });
            if (typeof window !== 'undefined') {
               const savedTheme = localStorage.getItem('theme') || 'light';
-              set({ theme: savedTheme });
+              const savedFontSize = localStorage.getItem('fontSize') || 'default';
+              set({ theme: savedTheme, fontSize: savedFontSize });
             }
         }
       });
@@ -383,16 +407,14 @@ export const useChatStore = create((set, get) => {
           scenarioState: null,
       });
     },
-    // --- 👇 [수정된 부분] ---
     handleScenarioResponse: async (payload) => {
       set({ isScenarioLoading: true });
       if (payload.userInput) {
         set(state => ({ scenarioMessages: [...state.scenarioMessages, { id: Date.now(), sender: 'user', text: payload.userInput }] }));
       }
       
-      const currentSlots = get().slots;
-      // get()을 사용하여 스토어에서 직접 최신 scenarioState를 가져옵니다.
-      const currentScenarioState = get().scenarioState; 
+      const currentSlots = get().slots; 
+      const currentScenarioState = get().scenarioState;
 
       try {
         const response = await fetch('/api/chat', {
@@ -403,12 +425,10 @@ export const useChatStore = create((set, get) => {
               sourceHandle: payload.sourceHandle, 
               text: payload.userInput 
             },
-            // API 요청 시, payload 대신 스토어의 최신 상태를 전송합니다.
-            scenarioState: currentScenarioState, 
+            scenarioState: currentScenarioState,
             slots: { ...currentSlots, ...(payload.formData || {}) },
           }),
         });
-    // --- 👆 [여기까지] ---
         const data = await response.json();
 
         if (data.type === 'scenario') {

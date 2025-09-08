@@ -213,50 +213,32 @@
   display: flex;
   align-items: center;
   flex-shrink: 0;
+  justify-content: flex-start;
 }
 
 .historyPanel.closed .footer {
     justify-content: flex-start;
 }
 
-.settingsButton {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--action-button-color);
-    padding: 8px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: color 0.2s, background-color 0.2s;
-    flex-shrink: 0;
-}
-
-.settingsButton:hover {
-    color: var(--action-button-hover-color);
-    background-color: var(--button-hover-bg);
-}
-
+/* --- 👇 [수정된 부분] --- */
 .avatarWrapper {
     position: relative;
     display: flex;
-    justify-content: center;
-    margin-left: auto;
-    transition: opacity 0.2s, max-width 0.3s ease-in-out;
-    max-width: 32px;
-    opacity: 1;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    transition: background-color 0.2s;
+    flex-shrink: 0; /* 이 속성을 추가하여 요소가 줄어드는 것을 방지합니다. */
+    margin-left: -6px;
 }
+/* --- 👆 [여기까지] --- */
 
-.historyPanel.closed .avatarWrapper {
-    max-width: 0;
-    opacity: 0;
-    overflow: hidden;
+.avatarWrapper:hover {
+    background-color: var(--button-hover-bg);
 }
 
 .userAvatar {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  cursor: pointer;
 }
