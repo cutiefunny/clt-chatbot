@@ -46,16 +46,13 @@ async function handleScenario(scenario, scenarioState, message, slots) { // requ
         if (nextNode.type === 'api') {
             const { method, url, headers, body, responseMapping } = nextNode.data;
             
-            // --- 👇 [수정된 부분] ---
             let interpolatedUrl = interpolateMessage(url, newSlots);
 
-            // 환경 변수를 사용하여 안정적인 절대 URL 생성
             if (interpolatedUrl.startsWith('/')) {
                 const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL ||
                               (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
                 interpolatedUrl = `${baseURL}${interpolatedUrl}`;
             }
-            // --- 👆 [여기까지] ---
 
             const interpolatedHeaders = JSON.parse(interpolateMessage(headers || '{}', newSlots));
             const interpolatedBody = method !== 'GET' && body ? interpolateMessage(body, newSlots) : undefined;
@@ -118,10 +115,6 @@ async function handleScenario(scenario, scenarioState, message, slots) { // requ
         }
     }
 
-    console.log("[handleScenario] Next Node:", nextNode);
-    console.log("[handleScenario] Updated Slots:", newSlots);
-    console.log("[handleScenario] Current Scenario State:", scenarioState);
-
     if (nextNode) {
         return NextResponse.json({
             type: 'scenario',
@@ -129,7 +122,7 @@ async function handleScenario(scenario, scenarioState, message, slots) { // requ
             scenarioState: { scenarioId, currentNodeId: nextNode.id, awaitingInput: false },
             slots: newSlots,
         });
-    } else if(scenarioState) {
+    } else {
         return NextResponse.json({
             type: 'scenario_end',
             message: '시나리오가 종료되었습니다.',
@@ -157,14 +150,17 @@ async function determineAction(messageText) {
 }
 
 const actionHandlers = {
+    // --- 👇 [수정된 부분] ---
     'GET_SCENARIO_LIST': async () => {
         const scenarios = await getScenarioList();
         return NextResponse.json({
             type: 'scenario_list',
             scenarios,
-            message: '실행할 시나리오를 선택해주세요.'
+            message: '실행할 시나리오를 선택해주세요.',
+            scenarioState: null // 상태를 null로 명시적으로 전달
         });
     },
+    // --- 👆 [여기까지] ---
     'START_SCENARIO': async (payload, slots) => {
         const { scenarioId } = payload;
         const scenario = await getScenario(scenarioId);

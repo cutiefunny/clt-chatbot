@@ -36,6 +36,7 @@ export const useChatStore = create((set, get) => {
     },
     'scenario_list': (data) => {
       get().addMessage('bot', { text: data.message, scenarios: data.scenarios });
+      set({ scenarioState: data.scenarioState });
     },
     'canvas_trigger': (data) => {
       get().addMessage('bot', { text: `'${data.scenarioId}' 시나리오를 시작합니다.`});
@@ -188,6 +189,7 @@ export const useChatStore = create((set, get) => {
     },
     startLoading: () => set({ isLoading: true }),
     stopLoading: () => set({ isLoading: false }),
+    // --- 👇 [수정된 함수] ---
     handleResponse: async (messagePayload) => {
       const { addMessage, updateStreamingMessage, finalizeStreamingMessage, startLoading, stopLoading } = get();
       startLoading();
@@ -198,7 +200,12 @@ export const useChatStore = create((set, get) => {
         const response = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: messagePayload, scenarioState: get().scenarioState, slots: get().slots }),
+          // 메인 채팅은 항상 scenarioState를 null로 보내 독립적으로 동작하도록 함
+          body: JSON.stringify({ 
+            message: messagePayload, 
+            scenarioState: null, 
+            slots: get().slots 
+          }),
         });
         if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
         const contentType = response.headers.get('content-type');
@@ -230,6 +237,7 @@ export const useChatStore = create((set, get) => {
         stopLoading();
       }
     },
+    // --- 👆 [여기까지] ---
     openScenarioPanel: async (scenarioId) => {
       set({ scenarioPanel: { isOpen: true, scenarioId }, scenarioMessages: [], isScenarioLoading: true, currentScenarioNodeId: null, activePanel: 'scenario' });
       try {
@@ -245,7 +253,7 @@ export const useChatStore = create((set, get) => {
             scenarioMessages: [...state.scenarioMessages, { id: startNode.id, sender: 'bot', node: startNode }],
             currentScenarioNodeId: startNode.id,
             scenarioState: data.scenarioState,
-            slots: data.slots || {}, // --- 👈 [추가] 초기 슬롯 상태 설정
+            slots: data.slots || {}, 
           }));
           await get().continueScenarioIfNeeded(startNode);
         } else {
@@ -260,16 +268,22 @@ export const useChatStore = create((set, get) => {
       }
     },
     closeScenario: () => {
-      set({ scenarioPanel: { isOpen: false, scenarioId: null }, scenarioMessages: [], isScenarioLoading: false, currentScenarioNodeId: null, activePanel: 'main' });
+      set({ 
+          scenarioPanel: { isOpen: false, scenarioId: null }, 
+          scenarioMessages: [], 
+          isScenarioLoading: false, 
+          currentScenarioNodeId: null, 
+          activePanel: 'main',
+          scenarioState: null,
+      });
     },
-    // --- 👇 [수정된 함수] ---
     handleScenarioResponse: async (payload) => {
       set({ isScenarioLoading: true });
       if (payload.userInput) {
         set(state => ({ scenarioMessages: [...state.scenarioMessages, { id: Date.now(), sender: 'user', text: payload.userInput }] }));
       }
       
-      const currentSlots = get().slots; // 현재 슬롯 상태 가져오기
+      const currentSlots = get().slots; 
 
       try {
         const response = await fetch('/api/chat', {
@@ -284,7 +298,6 @@ export const useChatStore = create((set, get) => {
               scenarioId: payload.scenarioId, 
               currentNodeId: payload.currentNodeId 
             },
-            // 현재 슬롯과 form 데이터를 합쳐서 전송
             slots: { ...currentSlots, ...(payload.formData || {}) },
           }),
         });
@@ -296,13 +309,13 @@ export const useChatStore = create((set, get) => {
             scenarioMessages: [...state.scenarioMessages, { id: nextNode.id, sender: 'bot', node: nextNode }],
             currentScenarioNodeId: nextNode.id,
             scenarioState: data.scenarioState,
-            slots: data.slots, // 백엔드로부터 받은 최신 슬롯으로 업데이트
+            slots: data.slots, 
           }));
           await get().continueScenarioIfNeeded(nextNode);
         } else if (data.type === 'scenario_end') {
           set(state => ({ 
             scenarioMessages: [...state.scenarioMessages, { id: 'end', sender: 'bot', text: data.message }],
-            slots: data.slots, // 시나리오 종료 시에도 슬롯 업데이트
+            slots: data.slots, 
           }));
         } else {
           throw new Error("Invalid scenario response");
@@ -314,7 +327,6 @@ export const useChatStore = create((set, get) => {
         set({ isScenarioLoading: false });
       }
     },
-    // --- 👆 [여기까지] ---
     continueScenarioIfNeeded: async (lastNode) => {
       const isInteractive = lastNode.type === 'slotfilling' || lastNode.type === 'form' || (lastNode.data?.replies && lastNode.data.replies.length > 0);
       if (!isInteractive && lastNode.id !== 'end') {
