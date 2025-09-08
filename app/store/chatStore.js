@@ -26,10 +26,8 @@ const initialState = {
   scenarioTriggers: {},
   isSearching: false,
   searchResults: [],
-  // --- 👇 [수정/추가] ---
-  fontSize: 'default', // 'default' or 'small'
+  fontSize: 'default',
   isProfileModalOpen: false,
-  // isSettingsModalOpen: false, // 삭제
 };
 
 export const useChatStore = create((set, get) => {
@@ -127,7 +125,6 @@ export const useChatStore = create((set, get) => {
         }
     },
     
-    // --- 👇 [추가된 함수] ---
     setFontSize: async (size) => {
         set({ fontSize: size });
         if (typeof window !== 'undefined') {
@@ -144,10 +141,8 @@ export const useChatStore = create((set, get) => {
         }
     },
 
-    // --- 👇 [수정/추가] ---
     openProfileModal: () => set({ isProfileModalOpen: true }),
     closeProfileModal: () => set({ isProfileModalOpen: false }),
-    // openSettingsModal, closeSettingsModal 삭제
 
     openScenarioModal: () => set({ isScenarioModalOpen: true }),
     closeScenarioModal: () => set({ isScenarioModalOpen: false }),
@@ -169,11 +164,9 @@ export const useChatStore = create((set, get) => {
             const docSnap = await getDoc(userSettingsRef);
             const settings = docSnap.exists() ? docSnap.data() : {};
             
-            // 테마 설정 불러오기
             const theme = settings.theme || localStorage.getItem('theme') || 'light';
             set({ theme });
 
-            // 폰트 크기 설정 불러오기
             const fontSize = settings.fontSize || localStorage.getItem('fontSize') || 'default';
             set({ fontSize });
 
@@ -188,7 +181,11 @@ export const useChatStore = create((set, get) => {
           get().loadConversations(user.uid);
         } else {
           get().unsubscribeAll();
-          set({ ...initialState });
+          // --- 👇 [수정된 부분] ---
+          // 상태를 초기화할 때, 이미 로드된 scenarioTriggers는 유지합니다.
+          const currentTriggers = get().scenarioTriggers;
+          set({ ...initialState, scenarioTriggers: currentTriggers });
+          // --- 👆 [여기까지] ---
            if (typeof window !== 'undefined') {
               const savedTheme = localStorage.getItem('theme') || 'light';
               const savedFontSize = localStorage.getItem('fontSize') || 'default';

@@ -61,9 +61,7 @@ export default function Chat() {
               onClick={() => msg.sender === 'bot' && handleCopy(msg.text || msg.node?.data.content, msg.id)}
             >
               {copiedMessageId === msg.id && <div className={styles.copyFeedback}>Copied!</div>}
-              {/* --- 👇 [수정된 부분] --- */}
               <p>{msg.text || msg.node?.data.content}</p>
-              {/* --- 👆 [여기까지] --- */}
               {msg.sender === 'bot' && msg.scenarios && (
                 <div className={styles.scenarioList}>
                   {msg.scenarios.map(name => (
