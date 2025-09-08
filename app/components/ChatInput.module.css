@@ -6,8 +6,7 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    /* background-color: #fff; */
-    flex-shrink: 0; /* 부모 컨테이너가 줄어들 때 이 컴포넌트는 줄어들지 않도록 설정 */
+    flex-shrink: 0;
 }
 
 .buttonRow {
@@ -34,12 +33,13 @@
     user-select: none;
 }
 
+/* --- 👇 [수정된 부분] --- */
 .optionButton {
   flex-shrink: 0;
   padding: 8px 16px;
-  border: 1px solid #c5c5c5;
-  background-color: rgba(240, 242, 245, 0.8);
-  color: #333;
+  border: 1px solid var(--option-button-border);
+  background-color: var(--option-button-bg);
+  color: var(--text-color);
   border-radius: 20px;
   cursor: pointer;
   font-size: 0.9rem;
@@ -48,8 +48,8 @@
 }
 
 .optionButton:hover {
-  background-color: #e9e9e9;
-  border-color: #aaa;
+  background-color: var(--button-hover-bg);
+  border-color: var(--option-button-hover-border);
 }
 
 .inputForm {
@@ -57,14 +57,15 @@
   align-items: center;
   gap: 8px;
   padding: 8px;
-  /* background-color: #f0f2f5; */
   border-radius: 16px;
-  border: 2px solid #87B4FF;
+  border: 2px solid var(--input-border-color);
   height: 5rem;
   backdrop-filter: blur(8px);
   flex-shrink: 0;
   box-shadow: 0 0 12px 1px rgba(130, 160, 255, 0.3);
+  background-color: var(--chat-input-bg);
 }
+/* --- 👆 [여기까지] --- */
 
 .attachButton {
   background: none;
@@ -76,15 +77,17 @@
   justify-content: center;
 }
 
+/* --- 👇 [수정된 부분] --- */
 .textInput {
   flex-grow: 1;
   border: none;
   background: transparent;
   font-size: 1rem;
   outline: none;
-  color: #333;
+  color: var(--chat-input-text-color);
 }
 
 .textInput::placeholder {
-  color: #8a8a8e;
+  color: var(--input-placeholder-color);
 }
+/* --- 👆 [여기까지] --- */

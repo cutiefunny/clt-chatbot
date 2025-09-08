@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import { auth, db, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, serverTimestamp, deleteDoc } from '../lib/firebase';
-import { collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc, getDocs } from "firebase/firestore";
+// --- 👇 [수정] doc, getDoc, setDoc 임포트 ---
+import { auth, db, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, serverTimestamp, deleteDoc, doc, getDoc, setDoc } from '../lib/firebase';
+import { collection, addDoc, query, orderBy, onSnapshot, updateDoc, getDocs } from "firebase/firestore";
 
 const initialState = {
   messages: [{ id: 'initial', sender: 'bot', text: '안녕하세요! 무엇을 도와드릴까요?' }],
@@ -19,8 +20,8 @@ const initialState = {
   activePanel: 'main', 
   focusRequest: 0,
   isHistoryPanelOpen: false, 
-  theme: 'light', // --- 👈 [추가]
-  isSettingsModalOpen: false, // --- 👈 [추가]
+  theme: 'light',
+  isSettingsModalOpen: false,
 };
 
 export const useChatStore = create((set, get) => {
@@ -49,39 +50,64 @@ export const useChatStore = create((set, get) => {
   return {
     ...initialState,
 
-    // --- 👇 [추가된 함수들] ---
-    toggleTheme: () => set(state => {
-        const newTheme = state.theme === 'light' ? 'dark' : 'light';
+    // --- 👇 [수정] Firestore에 테마 저장 로직 추가 ---
+    toggleTheme: async () => {
+        const newTheme = get().theme === 'light' ? 'dark' : 'light';
+        
         if (typeof window !== 'undefined') {
             localStorage.setItem('theme', newTheme);
         }
-        return { theme: newTheme };
-    }),
+
+        const user = get().user;
+        if (user) {
+            try {
+                const userSettingsRef = doc(db, 'settings', user.uid);
+                await setDoc(userSettingsRef, { theme: newTheme }, { merge: true });
+            } catch (error) {
+                console.error("Error saving theme to Firestore:", error);
+            }
+        }
+        set({ theme: newTheme });
+    },
     openSettingsModal: () => set({ isSettingsModalOpen: true }),
     closeSettingsModal: () => set({ isSettingsModalOpen: false }),
-    // --- 👆 [여기까지] ---
-
+    
     toggleHistoryPanel: () => set(state => ({ isHistoryPanelOpen: !state.isHistoryPanelOpen })),
 
     focusChatInput: () => set(state => ({ focusRequest: state.focusRequest + 1 })),
     setActivePanel: (panel) => set({ activePanel: panel }),
 
     initAuth: () => {
-      // --- 👇 [수정] 테마 초기화 로직 추가 ---
-      if (typeof window !== 'undefined') {
-        const savedTheme = localStorage.getItem('theme') || 'light';
-        set({ theme: savedTheme });
-      }
-      // --- 👆 [여기까지] ---
-
-      const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      const unsubscribeAuth = onAuthStateChanged(auth, async (user) => { // async 추가
         if (user) {
+          // --- 👇 [수정] Firestore에서 테마 로드 로직 추가 ---
+          try {
+            const userSettingsRef = doc(db, 'settings', user.uid);
+            const docSnap = await getDoc(userSettingsRef);
+            if (docSnap.exists() && docSnap.data().theme) {
+              set({ theme: docSnap.data().theme });
+            } else if (typeof window !== 'undefined') {
+              const savedTheme = localStorage.getItem('theme') || 'light';
+              set({ theme: savedTheme });
+            }
+          } catch (error) {
+            console.error("Error loading theme from Firestore:", error);
+            if (typeof window !== 'undefined') {
+                const savedTheme = localStorage.getItem('theme') || 'light';
+                set({ theme: savedTheme });
+            }
+          }
+          // --- 👆 [여기까지] ---
           set({ user });
           get().unsubscribeAll();
           get().loadConversations(user.uid);
         } else {
           get().unsubscribeAll();
           set({ ...initialState });
+           if (typeof window !== 'undefined') {
+              const savedTheme = localStorage.getItem('theme') || 'light';
+              set({ theme: savedTheme });
+            }
         }
       });
     },
