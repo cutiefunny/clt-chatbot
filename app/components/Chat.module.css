@@ -15,7 +15,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--panel-border-color); /* Themed */
   flex-shrink: 0;
 }
 
@@ -40,7 +40,7 @@
 .headerTitle {
   font-weight: bold;
   font-size: 16px;
-  color: #1c1c1e;
+  color: var(--text-color); /* Themed */
   line-height: 1.2;
 }
 
@@ -58,16 +58,16 @@
 .headerRestartButton {
   padding: 4px 12px;
   font-size: 0.8rem;
-  background-color: #e9e9e9;
-  color: #333;
-  border: 1px solid #ccc;
+  background-color: var(--bot-message-bg); /* Themed */
+  color: var(--text-color); /* Themed */
+  border: 1px solid var(--panel-border-color); /* Themed */
   border-radius: 15px;
   cursor: pointer;
   transition: background-color 0.2s;
 }
 
 .headerRestartButton:hover {
-  background-color: #dcdcdc;
+  background-color: var(--button-hover-bg); /* Themed */
 }
 
 .history {
@@ -77,10 +77,8 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  /* --- 👇 [추가된 부분] --- */
   -webkit-mask-image: linear-gradient(to bottom, black 95%, transparent 100%);
   mask-image: linear-gradient(to bottom, black 95%, transparent 100%);
-  /* --- 👆 [여기까지] --- */
 }
 
 .messageRow {
@@ -113,20 +111,20 @@
 }
 
 .botMessage {
-  background-color: #f0f2f5;
-  color: black;
+  background-color: var(--bot-message-bg); /* Themed */
+  color: var(--text-color); /* Themed */
   border-top-left-radius: 4px;
   cursor: pointer;
   transition: background-color 0.2s;
 }
 
 .botMessage:hover {
-  background-color: #e9e9e9;
+  background-color: var(--button-hover-bg); /* Themed */
 }
 
 .userMessage {
-  background-color: #dadada;
-  color: black;
+  background-color: var(--user-message-bg); /* Themed */
+  color: var(--text-color); /* Themed */
   border-top-right-radius: 4px;
 }
 
@@ -163,9 +161,9 @@
 .optionButton {
   flex-shrink: 0;
   padding: 8px 16px;
-  border: 1px solid #c5c5c5;
-  background-color: rgba(255, 255, 255, 0.8);
-  color: #333;
+  border: 1px solid var(--panel-border-color); /* Themed */
+  background-color: rgba(255, 255, 255, 0.1); /* Adjusted for dark mode */
+  color: var(--text-color); /* Themed */
   border-radius: 20px;
   cursor: pointer;
   font-size: 0.9rem;
@@ -174,7 +172,7 @@
 }
 
 .optionButton:hover {
-  background-color: #fff;
+  background-color: var(--button-hover-bg); /* Themed */
   border-color: #aaa;
 }
 
@@ -188,7 +186,7 @@
 .formContainer h3 {
   margin: 0;
   font-size: 1.1rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--panel-border-color); /* Themed */
   padding-bottom: 10px;
 }
 
@@ -201,13 +199,15 @@
 .formLabel {
   font-size: 0.9rem;
   font-weight: bold;
-  color: #333;
+  color: var(--text-color); /* Themed */
 }
 
 .formInput, .formContainer select {
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--panel-border-color); /* Themed */
+  background-color: var(--panel-bg-color); /* Themed */
+  color: var(--text-color); /* Themed */
   border-radius: 6px;
   font-size: 0.9rem;
   box-sizing: border-box;
@@ -216,7 +216,7 @@
 .formSubmitButton {
   align-self: flex-end;
   padding: 8px 20px;
-  background-color: #007aff;
+  background-color: var(--login-button-bg); /* Themed */
   color: white;
   border: none;
   border-radius: 20px;
@@ -225,8 +225,12 @@
   margin-top: 10px;
 }
 
+.formSubmitButton:hover {
+    background-color: var(--login-button-hover-bg); /* Themed */
+}
+
 .formSubmitButton:disabled {
-  background-color: #f0f2f5;
+  background-color: var(--button-hover-bg); /* Themed */
   cursor: not-allowed;
   opacity: 0.7;
 }
@@ -239,6 +243,9 @@
 }
 .history:hover {
   scrollbar-color: #c1c1c1 transparent;
+}
+body.dark .history:hover {
+  scrollbar-color: #555 transparent;
 }
 .history::-webkit-scrollbar {
   width: 8px;
@@ -254,4 +261,6 @@
 .history:hover::-webkit-scrollbar-thumb {
   background-color: #c1c1c1;
 }
-
+body.dark .history:hover::-webkit-scrollbar-thumb {
+  background-color: #555;
+}

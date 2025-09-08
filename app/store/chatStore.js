@@ -19,6 +19,8 @@ const initialState = {
   activePanel: 'main', 
   focusRequest: 0,
   isHistoryPanelOpen: false, 
+  theme: 'light', // --- 👈 [추가]
+  isSettingsModalOpen: false, // --- 👈 [추가]
 };
 
 export const useChatStore = create((set, get) => {
@@ -47,12 +49,31 @@ export const useChatStore = create((set, get) => {
   return {
     ...initialState,
 
+    // --- 👇 [추가된 함수들] ---
+    toggleTheme: () => set(state => {
+        const newTheme = state.theme === 'light' ? 'dark' : 'light';
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('theme', newTheme);
+        }
+        return { theme: newTheme };
+    }),
+    openSettingsModal: () => set({ isSettingsModalOpen: true }),
+    closeSettingsModal: () => set({ isSettingsModalOpen: false }),
+    // --- 👆 [여기까지] ---
+
     toggleHistoryPanel: () => set(state => ({ isHistoryPanelOpen: !state.isHistoryPanelOpen })),
 
     focusChatInput: () => set(state => ({ focusRequest: state.focusRequest + 1 })),
     setActivePanel: (panel) => set({ activePanel: panel }),
 
     initAuth: () => {
+      // --- 👇 [수정] 테마 초기화 로직 추가 ---
+      if (typeof window !== 'undefined') {
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        set({ theme: savedTheme });
+      }
+      // --- 👆 [여기까지] ---
+
       const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
         if (user) {
           set({ user });
@@ -189,7 +210,6 @@ export const useChatStore = create((set, get) => {
     },
     startLoading: () => set({ isLoading: true }),
     stopLoading: () => set({ isLoading: false }),
-    // --- 👇 [수정된 함수] ---
     handleResponse: async (messagePayload) => {
       const { addMessage, updateStreamingMessage, finalizeStreamingMessage, startLoading, stopLoading } = get();
       startLoading();
@@ -200,7 +220,6 @@ export const useChatStore = create((set, get) => {
         const response = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          // 메인 채팅은 항상 scenarioState를 null로 보내 독립적으로 동작하도록 함
           body: JSON.stringify({ 
             message: messagePayload, 
             scenarioState: null, 
@@ -237,7 +256,6 @@ export const useChatStore = create((set, get) => {
         stopLoading();
       }
     },
-    // --- 👆 [여기까지] ---
     openScenarioPanel: async (scenarioId) => {
       set({ scenarioPanel: { isOpen: true, scenarioId }, scenarioMessages: [], isScenarioLoading: true, currentScenarioNodeId: null, activePanel: 'scenario' });
       try {

@@ -5,7 +5,8 @@
   overflow: hidden;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(to bottom, #ffffff, #b2c7d9);
+  /* --- 👇 [수정] CSS 변수를 사용하여 테마 적용 --- */
+  background: linear-gradient(to bottom, var(--background-gradient-start), var(--background-gradient-end));
 }
 
 .chatLayout {
@@ -20,7 +21,6 @@
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-  /* --- 👇 [수정] transition 속성에 padding-left 추가 --- */
   transition: padding-left 0.3s ease-in-out; 
 }
 
@@ -44,7 +44,8 @@
 .scenarioContent {
   width: 0; 
   display: flex;
-  border-left: 1px solid #e0e0e0;
+  /* --- 👇 [수정] CSS 변수를 사용하여 테마 적용 --- */
+  border-left: 1px solid var(--panel-border-color);
   transition: width 0.3s ease-in-out; 
   overflow: hidden; 
 }

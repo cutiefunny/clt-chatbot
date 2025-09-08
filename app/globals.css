@@ -1,5 +1,40 @@
 @import "tailwindcss";
 
+:root {
+  --background-gradient-start: #ffffff;
+  --background-gradient-end: #b2c7d9;
+  --text-color: #1c1c1e;
+  --panel-bg-color: #f0f2f5;
+  --panel-border-color: #e0e0e0;
+  --button-hover-bg: #e9e9e9;
+  --bot-message-bg: #f0f2f5;
+  --user-message-bg: #dadada;
+  --input-border-color: #87B4FF;
+  --input-placeholder-color: #8a8a8e;
+  --action-button-color: #888;
+  --action-button-hover-color: #333;
+  --login-button-bg: #4285F4;
+  --login-button-hover-bg: #357ae8;
+}
+
+body.dark {
+  --background-gradient-start: #1a1a1a;
+  --background-gradient-end: #0d1a26;
+  --text-color: #e0e0e0;
+  --panel-bg-color: #1e1e1e;
+  --panel-border-color: #333333;
+  --button-hover-bg: #3a3a3a;
+  --bot-message-bg: #2c2c2c;
+  --user-message-bg: #3c3c3c;
+  --input-border-color: #5a8dec;
+  --input-placeholder-color: #888;
+  --action-button-color: #999;
+  --action-button-hover-color: #eee;
+  --login-button-bg: #4285F4;
+  --login-button-hover-bg: #5a95f8;
+}
+
 body {
-    background-color: white;
+    background: linear-gradient(to bottom, var(--background-gradient-start), var(--background-gradient-end));
+    color: var(--text-color);
 }
