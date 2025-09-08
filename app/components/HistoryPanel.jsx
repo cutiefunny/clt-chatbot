@@ -1,9 +1,22 @@
 'use client';
-
+import { useState, useRef, useEffect } from 'react'; // --- 👈 [추가]
 import { useChatStore } from '../store/chatStore';
 import styles from './HistoryPanel.module.css';
 
 // 아이콘 SVG 정의 (TrashIcon, MenuIcon, EditIcon)
+// --- 👇 [추가] ---
+const CheckIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+);
+const PencilIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M17 3C17.5304 3 18.0391 3.21071 18.4142 3.58579C18.7893 3.96086 19 4.46957 19 5V6L8 17H4V13L15 2H17Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M14 3L18 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+);
+// --- 👆 [여기까지] ---
 const TrashIcon = () => (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M3 6H5H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -22,6 +35,74 @@ const EditIcon = () => (
   </svg>
 );
 
+// --- 👇 [추가] 대화 아이템 컴포넌트 ---
+const ConversationItem = ({ convo, isActive, onClick, onDelete, onUpdateTitle }) => {
+    const [isEditing, setIsEditing] = useState(false);
+    const [title, setTitle] = useState(convo.title);
+    const inputRef = useRef(null);
+
+    useEffect(() => {
+        if (isEditing) {
+            inputRef.current?.focus();
+            inputRef.current?.select();
+        }
+    }, [isEditing]);
+
+    const handleUpdate = () => {
+        if (title.trim() && title.trim() !== convo.title) {
+            onUpdateTitle(convo.id, title.trim());
+        }
+        setIsEditing(false);
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            handleUpdate();
+        } else if (e.key === 'Escape') {
+            setTitle(convo.title);
+            setIsEditing(false);
+        }
+    };
+
+    return (
+        <div 
+            className={`${styles.conversationItem} ${isActive ? styles.active : ''}`}
+            onClick={() => !isEditing && onClick(convo.id)}
+        >
+            {isEditing ? (
+                <input
+                    ref={inputRef}
+                    type="text"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    onBlur={handleUpdate}
+                    onKeyDown={handleKeyDown}
+                    className={styles.titleInput}
+                    onClick={(e) => e.stopPropagation()}
+                />
+            ) : (
+                <span className={styles.convoTitle}>{convo.title || 'New Chat'}</span>
+            )}
+            <div className={styles.buttonGroup}>
+                {isEditing ? (
+                    <button className={styles.actionButton} onClick={(e) => { e.stopPropagation(); handleUpdate(); }}>
+                        <CheckIcon />
+                    </button>
+                ) : (
+                    <>
+                        <button className={styles.actionButton} onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}>
+                            <PencilIcon />
+                        </button>
+                        <button className={styles.actionButton} onClick={(e) => onDelete(e, convo.id)}>
+                            <TrashIcon />
+                        </button>
+                    </>
+                )}
+            </div>
+        </div>
+    );
+};
+
 export default function HistoryPanel() {
   const { 
     user, 
@@ -31,6 +112,7 @@ export default function HistoryPanel() {
     createNewConversation,
     currentConversationId,
     deleteConversation,
+    updateConversationTitle, // --- 👈 [추가]
     isHistoryPanelOpen,
     toggleHistoryPanel
   } = useChatStore();
@@ -46,7 +128,6 @@ export default function HistoryPanel() {
 
   return (
     <div className={`${styles.historyPanel} ${isHistoryPanelOpen ? styles.open : styles.closed}`}>
-      {/* --- 👇 [수정된 부분] --- */}
       <div className={styles.header}>
         <button className={styles.toggleButton} onClick={toggleHistoryPanel}>
             <MenuIcon />
@@ -59,17 +140,16 @@ export default function HistoryPanel() {
       
       <div className={styles.panelContent}>
         <div className={styles.conversationList}>
+          {/* --- 👇 [수정] ConversationItem 컴포넌트 사용 --- */}
           {conversations.map((convo) => (
-            <div 
-              key={convo.id} 
-              className={`${styles.conversationItem} ${convo.id === currentConversationId ? styles.active : ''}`}
-              onClick={() => loadConversation(convo.id)}
-            >
-              <span className={styles.convoTitle}>{convo.title || 'New Chat'}</span>
-              <button className={styles.deleteButton} onClick={(e) => handleDelete(e, convo.id)}>
-                  <TrashIcon />
-              </button>
-            </div>
+            <ConversationItem
+                key={convo.id}
+                convo={convo}
+                isActive={convo.id === currentConversationId}
+                onClick={loadConversation}
+                onDelete={handleDelete}
+                onUpdateTitle={updateConversationTitle}
+            />
           ))}
         </div>
         <div className={styles.footer}>
@@ -78,7 +158,6 @@ export default function HistoryPanel() {
           <button onClick={logout} className={styles.logoutButton}>Logout</button>
         </div>
       </div>
-      {/* --- 👆 [여기까지] --- */}
     </div>
   );
 }

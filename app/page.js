@@ -14,12 +14,12 @@ export default function HomePage() {
   return (
     <main className={styles.main}>
       {user ? (
-        // --- 👇 [수정] scenarioPanel.isOpen 상태에 따라 클래스 동적 할당 ---
         <div className={`${styles.chatLayout} ${scenarioPanel.isOpen ? styles.scenarioOpen : ''}`}>
           <HistoryPanel />
+          {/* --- 👇 [수정] style 속성을 paddingLeft로 변경 --- */}
           <div
             className={styles.contentAndInputWrapper}
-            style={{ marginLeft: isHistoryPanelOpen ? '260px' : '60px' }}
+            style={{ paddingLeft: isHistoryPanelOpen ? '260px' : '60px' }} 
           >
             <div className={styles.panelsWrapper}>
               <div
@@ -28,14 +28,12 @@ export default function HomePage() {
               >
                 <Chat />
               </div>
-              {/* --- 👇 [수정] 조건부 렌더링 제거하고 항상 렌더링 --- */}
               <div
                 className={`${styles.scenarioContent} ${activePanel !== 'scenario' ? styles.inactivePanel : ''}`}
                 onClick={() => setActivePanel('scenario')}
               >
                 <ScenarioChat />
               </div>
-              {/* --- 👆 [여기까지] --- */}
             </div>
             <ChatInput />
           </div>

@@ -18,7 +18,7 @@ const initialState = {
   currentScenarioNodeId: null,
   activePanel: 'main', 
   focusRequest: 0,
-  isHistoryPanelOpen: false, // --- 👈 [추가] History Panel 상태
+  isHistoryPanelOpen: false, 
 };
 
 export const useChatStore = create((set, get) => {
@@ -46,9 +46,7 @@ export const useChatStore = create((set, get) => {
   return {
     ...initialState,
 
-    // --- 👇 [추가된 부분] ---
     toggleHistoryPanel: () => set(state => ({ isHistoryPanelOpen: !state.isHistoryPanelOpen })),
-    // --- 👆 [여기까지] ---
 
     focusChatInput: () => set(state => ({ focusRequest: state.focusRequest + 1 })),
     setActivePanel: (panel) => set({ activePanel: panel }),
@@ -120,6 +118,16 @@ export const useChatStore = create((set, get) => {
         get().createNewConversation();
       }
     },
+    // --- 👇 [추가된 함수] ---
+    updateConversationTitle: async (conversationId, newTitle) => {
+        const user = get().user;
+        if (!user || !newTitle.trim()) return;
+        const conversationRef = doc(db, "chats", user.uid, "conversations", conversationId);
+        await updateDoc(conversationRef, {
+            title: newTitle.trim()
+        });
+    },
+    // --- 👆 [여기까지] ---
     saveMessage: async (message) => {
       const user = get().user;
       if (!user) return;

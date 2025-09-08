@@ -118,6 +118,10 @@ async function handleScenario(scenario, scenarioState, message, slots) { // requ
         }
     }
 
+    console.log("[handleScenario] Next Node:", nextNode);
+    console.log("[handleScenario] Updated Slots:", newSlots);
+    console.log("[handleScenario] Current Scenario State:", scenarioState);
+
     if (nextNode) {
         return NextResponse.json({
             type: 'scenario',
@@ -125,7 +129,7 @@ async function handleScenario(scenario, scenarioState, message, slots) { // requ
             scenarioState: { scenarioId, currentNodeId: nextNode.id, awaitingInput: false },
             slots: newSlots,
         });
-    } else {
+    } else if(scenarioState) {
         return NextResponse.json({
             type: 'scenario_end',
             message: '시나리오가 종료되었습니다.',

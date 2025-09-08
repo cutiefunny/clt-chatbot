@@ -19,19 +19,14 @@
   width: 260px;
 }
 
-/* --- 👇 [수정된 부분] --- */
-/* 헤더: 메뉴 버튼과 새 대화 버튼을 감싸는 컨테이너 */
 .header {
   padding: 0.75rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem; /* 버튼 사이의 간격 */
-  align-items: flex-start; /* 아이템들을 항상 왼쪽에 고정 */
+  gap: 0.5rem; 
+  align-items: flex-start;
 }
-/* --- 👆 [여기까지] --- */
 
-
-/* 패널 콘텐츠: 대화 목록과 푸터를 감싸는 컨테이너 */
 .panelContent {
   flex-grow: 1;
   display: flex;
@@ -49,8 +44,6 @@
   transition: opacity 0.3s 0.1s;
 }
 
-
-/* 메뉴 토글 버튼 */
 .toggleButton {
   background: none;
   border: none;
@@ -66,8 +59,6 @@
   background-color: rgba(0,0,0,0.08);
 }
 
-
-/* 새 대화 버튼 */
 .newChatButton {
   display: flex;
   align-items: center;
@@ -87,20 +78,17 @@
 .newChatButton:hover {
   background-color: #d8dade;
 }
-/* 패널이 닫혔을 때 New Chat 버튼을 Toggle 버튼과 동일한 스타일로 변경 */
 .historyPanel.closed .newChatButton {
   background: none;
-  padding: 0.5rem; /* toggleButton과 동일한 패딩 */
-  border-radius: 50%; /* toggleButton과 동일한 모양 */
-  width: auto; /* width 100% 해제 */
+  padding: 0.5rem; 
+  border-radius: 50%;
+  width: auto; 
   gap: 0;
 }
 .historyPanel.closed .newChatButton:hover {
-  background-color: rgba(0,0,0,0.08); /* toggleButton과 동일한 호버 효과 */
+  background-color: rgba(0,0,0,0.08);
 }
 
-
-/* 새 대화 텍스트 */
 .newChatText {
   transition: opacity 0.2s 0.1s, max-width 0.3s ease-in-out;
   max-width: 100px;
@@ -108,12 +96,10 @@
   overflow: hidden;
   font-weight: 500;
 }
-/* 패널이 닫혔을 때 텍스트 숨기기 */
 .historyPanel.closed .newChatText {
   max-width: 0;
   opacity: 0;
 }
-
 
 .conversationList {
   flex-grow: 1;
@@ -144,7 +130,25 @@
     flex-grow: 1;
     padding-right: 8px;
 }
-.deleteButton {
+/* --- 👇 [추가된 스타일] --- */
+.titleInput {
+    width: 100%;
+    background-color: #fff;
+    border: 1px solid #a0a0a0;
+    border-radius: 4px;
+    padding: 4px 6px;
+    font-size: 0.9rem;
+    color: #333;
+    flex-grow: 1;
+    margin-right: 8px;
+}
+.buttonGroup {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+.actionButton {
     background: none;
     border: none;
     cursor: pointer;
@@ -156,15 +160,20 @@
     justify-content: center;
     opacity: 0;
     transition: opacity 0.2s, color 0.2s, background-color 0.2s;
-    flex-shrink: 0;
 }
-.conversationItem:hover .deleteButton {
+.conversationItem:hover .actionButton,
+.conversationItem .actionButton:focus {
     opacity: 1;
 }
-.deleteButton:hover {
-    color: #d32f2f;
+.actionButton:hover {
+    color: #333;
     background-color: rgba(0,0,0,0.08);
 }
+.actionButton:last-of-type:hover {
+    color: #d32f2f;
+}
+/* --- 👆 [여기까지] --- */
+
 .footer {
   padding: 1rem;
   border-top: 1px solid #e0e0e0;
