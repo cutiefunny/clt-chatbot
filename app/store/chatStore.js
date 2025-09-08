@@ -5,7 +5,6 @@ import { scenarioTriggers } from '../lib/chatbotEngine';
 
 const initialState = {
   messages: [{ id: 'initial', sender: 'bot', text: '안녕하세요! 무엇을 도와드릴까요?' }],
-  scenarioState: null,
   slots: {},
   isLoading: false,
   user: null,
@@ -13,10 +12,13 @@ const initialState = {
   currentConversationId: null,
   unsubscribeMessages: null,
   unsubscribeConversations: null,
-  scenarioPanel: { isOpen: false, scenarioId: null },
-  scenarioMessages: [],
-  isScenarioLoading: false,
-  currentScenarioNodeId: null,
+  
+  // --- 👇 [수정] 시나리오 상태를 객체로 관리하여 여러 시나리오 동시 진행 지원 ---
+  scenarioStates: {}, // key: scenarioId, value: { messages, state, slots }
+  activeScenarioId: null,
+  isScenarioPanelOpen: false,
+  // --- 👆 [여기까지] ---
+
   activePanel: 'main', 
   focusRequest: 0,
   isHistoryPanelOpen: false, 
@@ -181,11 +183,8 @@ export const useChatStore = create((set, get) => {
           get().loadConversations(user.uid);
         } else {
           get().unsubscribeAll();
-          // --- 👇 [수정된 부분] ---
-          // 상태를 초기화할 때, 이미 로드된 scenarioTriggers는 유지합니다.
           const currentTriggers = get().scenarioTriggers;
           set({ ...initialState, scenarioTriggers: currentTriggers });
-          // --- 👆 [여기까지] ---
            if (typeof window !== 'undefined') {
               const savedTheme = localStorage.getItem('theme') || 'light';
               const savedFontSize = localStorage.getItem('fontSize') || 'default';
@@ -296,6 +295,9 @@ export const useChatStore = create((set, get) => {
             text: messageData.text,
             scenarios: messageData.scenarios,
             isStreaming: messageData.isStreaming || false,
+            // --- 👇 [추가] 이어하기 버튼을 위한 타입 ---
+            type: messageData.type,
+            scenarioId: messageData.scenarioId,
           };
         }
       }
@@ -365,8 +367,37 @@ export const useChatStore = create((set, get) => {
         stopLoading();
       }
     },
+    // --- 👇 [수정/추가] 시나리오 상태 관리 로직 전면 개편 ---
     openScenarioPanel: async (scenarioId) => {
-      set({ scenarioPanel: { isOpen: true, scenarioId }, scenarioMessages: [], isScenarioLoading: true, currentScenarioNodeId: null, activePanel: 'scenario' });
+      const { scenarioStates } = get();
+
+      // 이미 진행 중인 시나리오가 있다면, 그냥 패널을 열어줍니다.
+      if (scenarioStates[scenarioId]) {
+          set({ 
+              isScenarioPanelOpen: true, 
+              activeScenarioId: scenarioId,
+              activePanel: 'scenario' 
+          });
+          get().focusChatInput();
+          return;
+      }
+      
+      // 새로운 시나리오 시작
+      set({ 
+          isScenarioPanelOpen: true, 
+          activeScenarioId: scenarioId,
+          activePanel: 'scenario',
+          scenarioStates: {
+              ...scenarioStates,
+              [scenarioId]: {
+                  messages: [],
+                  state: null,
+                  slots: {},
+                  isLoading: true,
+              }
+          }
+      });
+      
       try {
         const response = await fetch('/api/chat', {
           method: 'POST',
@@ -374,44 +405,89 @@ export const useChatStore = create((set, get) => {
           body: JSON.stringify({ message: { text: scenarioId } }),
         });
         const data = await response.json();
+
         if (data.type === 'scenario_start') {
           const startNode = data.nextNode;
           set(state => ({
-            scenarioMessages: [...state.scenarioMessages, { id: startNode.id, sender: 'bot', node: startNode }],
-            currentScenarioNodeId: startNode.id,
-            scenarioState: data.scenarioState,
-            slots: data.slots || {}, 
+            scenarioStates: {
+              ...state.scenarioStates,
+              [scenarioId]: {
+                messages: [{ id: startNode.id, sender: 'bot', node: startNode }],
+                state: data.scenarioState,
+                slots: data.slots || {},
+                isLoading: false,
+              },
+            },
           }));
-          await get().continueScenarioIfNeeded(startNode);
+          await get().continueScenarioIfNeeded(startNode, scenarioId);
         } else {
           throw new Error("Failed to start scenario properly");
         }
       } catch (error) {
         console.error("Error starting scenario:", error);
-        set({ scenarioMessages: [{ id: 'error', sender: 'bot', text: '시나리오를 시작하는 중 오류가 발생했습니다.' }] });
+        set(state => ({
+          scenarioStates: {
+            ...state.scenarioStates,
+            [scenarioId]: {
+              ...state.scenarioStates[scenarioId],
+              messages: [{ id: 'error', sender: 'bot', text: '시나리오를 시작하는 중 오류가 발생했습니다.' }],
+              isLoading: false,
+            },
+          },
+        }));
       } finally {
-        set({ isScenarioLoading: false });
         get().focusChatInput();
       }
     },
-    closeScenario: () => {
-      set({ 
-          scenarioPanel: { isOpen: false, scenarioId: null }, 
-          scenarioMessages: [], 
-          isScenarioLoading: false, 
-          currentScenarioNodeId: null, 
-          activePanel: 'main',
-          scenarioState: null,
+    endScenario: (scenarioId) => {
+      const { scenarioStates, messages } = get();
+      const newScenarioStates = { ...scenarioStates };
+      delete newScenarioStates[scenarioId];
+
+      set({
+        scenarioStates: newScenarioStates,
+        isScenarioPanelOpen: false,
+        activeScenarioId: null,
+        activePanel: 'main',
+        messages: messages.filter(msg => msg.type !== 'scenario_resume_prompt' || msg.scenarioId !== scenarioId),
       });
     },
+    setScenarioPanelOpen: (isOpen) => {
+        const { activeScenarioId, addMessage } = get();
+        set({
+            isScenarioPanelOpen: isOpen,
+            activePanel: isOpen ? 'scenario' : 'main',
+        });
+        
+        // 패널을 숨길 때 '이어하기' 메시지 추가
+        if (!isOpen && activeScenarioId) {
+            addMessage('bot', {
+                type: 'scenario_resume_prompt',
+                scenarioId: activeScenarioId,
+                text: `'${activeScenarioId}' 시나리오 이어하기`,
+            });
+        }
+
+        if (isOpen) {
+            get().focusChatInput();
+        }
+    },
     handleScenarioResponse: async (payload) => {
-      set({ isScenarioLoading: true });
-      if (payload.userInput) {
-        set(state => ({ scenarioMessages: [...state.scenarioMessages, { id: Date.now(), sender: 'user', text: payload.userInput }] }));
-      }
+      const { scenarioId } = payload;
+      set(state => ({
+        scenarioStates: {
+          ...state.scenarioStates,
+          [scenarioId]: {
+            ...state.scenarioStates[scenarioId],
+            isLoading: true,
+            messages: payload.userInput 
+              ? [...state.scenarioStates[scenarioId].messages, { id: Date.now(), sender: 'user', text: payload.userInput }]
+              : state.scenarioStates[scenarioId].messages,
+          }
+        }
+      }));
       
-      const currentSlots = get().slots; 
-      const currentScenarioState = get().scenarioState;
+      const currentScenario = get().scenarioStates[scenarioId];
 
       try {
         const response = await fetch('/api/chat', {
@@ -422,8 +498,8 @@ export const useChatStore = create((set, get) => {
               sourceHandle: payload.sourceHandle, 
               text: payload.userInput 
             },
-            scenarioState: currentScenarioState,
-            slots: { ...currentSlots, ...(payload.formData || {}) },
+            scenarioState: currentScenario.state,
+            slots: { ...currentScenario.slots, ...(payload.formData || {}) },
           }),
         });
         const data = await response.json();
@@ -431,39 +507,61 @@ export const useChatStore = create((set, get) => {
         if (data.type === 'scenario') {
           const nextNode = data.nextNode;
           set(state => ({
-            scenarioMessages: [...state.scenarioMessages, { id: nextNode.id, sender: 'bot', node: nextNode }],
-            currentScenarioNodeId: nextNode.id,
-            scenarioState: data.scenarioState,
-            slots: data.slots, 
+            scenarioStates: {
+                ...state.scenarioStates,
+                [scenarioId]: {
+                    ...state.scenarioStates[scenarioId],
+                    messages: [...state.scenarioStates[scenarioId].messages, { id: nextNode.id, sender: 'bot', node: nextNode }],
+                    state: data.scenarioState,
+                    slots: data.slots, 
+                    isLoading: false,
+                }
+            }
           }));
-          await get().continueScenarioIfNeeded(nextNode);
+          await get().continueScenarioIfNeeded(nextNode, scenarioId);
         } else if (data.type === 'scenario_end') {
-          set(state => ({ 
-            scenarioMessages: [...state.scenarioMessages, { id: 'end', sender: 'bot', text: data.message }],
-            slots: data.slots, 
+           set(state => ({
+            scenarioStates: {
+                ...state.scenarioStates,
+                [scenarioId]: {
+                    ...state.scenarioStates[scenarioId],
+                    messages: [...state.scenarioStates[scenarioId].messages, { id: 'end', sender: 'bot', text: data.message }],
+                    slots: data.slots, 
+                    state: null, // 시나리오 종료
+                    isLoading: false,
+                }
+            }
           }));
         } else {
           throw new Error("Invalid scenario response");
         }
       } catch (error) {
         console.error("Error in scenario conversation:", error);
-        set(state => ({ scenarioMessages: [...state.scenarioMessages, { id: 'error', sender: 'bot', text: '오류가 발생했습니다.' }] }));
-      } finally {
-        set({ isScenarioLoading: false });
+         set(state => ({
+            scenarioStates: {
+                ...state.scenarioStates,
+                [scenarioId]: {
+                    ...state.scenarioStates[scenarioId],
+                    messages: [...state.scenarioStates[scenarioId].messages, { id: 'error', sender: 'bot', text: '오류가 발생했습니다.' }],
+                    isLoading: false,
+                }
+            }
+          }));
       }
     },
-    continueScenarioIfNeeded: async (lastNode) => {
+    continueScenarioIfNeeded: async (lastNode, scenarioId) => {
       const isInteractive = lastNode.type === 'slotfilling' || lastNode.type === 'form' || (lastNode.data?.replies && lastNode.data.replies.length > 0);
       if (!isInteractive && lastNode.id !== 'end') {
         await new Promise(resolve => setTimeout(resolve, 500));
         await get().handleScenarioResponse({
-          scenarioId: get().scenarioPanel.scenarioId,
+          scenarioId: scenarioId,
           currentNodeId: lastNode.id,
           sourceHandle: null,
           userInput: null,
         });
       }
     }
+    // --- 👆 [여기까지] ---
   };
 });
 

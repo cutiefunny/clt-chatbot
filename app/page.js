@@ -6,16 +6,19 @@ import Login from '../app/components/Login';
 import HistoryPanel from '../app/components/HistoryPanel';
 import ChatInput from '../app/components/ChatInput';
 import ScenarioChat from '../app/components/ScenarioChat';
-import ScenarioModal from '../app/components/ScenarioModal'; // --- 👈 [추가]
+import ScenarioModal from '../app/components/ScenarioModal';
 import styles from './page.module.css';
 
 export default function HomePage() {
-  const { user, scenarioPanel, activePanel, setActivePanel, isHistoryPanelOpen, isScenarioModalOpen } = useChatStore(); // --- 👈 [isScenarioModalOpen 추가]
+  // --- 👇 [수정] isScenarioPanelOpen 상태 사용 ---
+  const { user, isScenarioPanelOpen, activePanel, setActivePanel, isHistoryPanelOpen, isScenarioModalOpen } = useChatStore();
+  // --- 👆 [여기까지] ---
 
   return (
     <main className={styles.main}>
       {user ? (
-        <div className={`${styles.chatLayout} ${scenarioPanel.isOpen ? styles.scenarioOpen : ''}`}>
+        // --- 👇 [수정] scenarioPanel.isOpen 대신 isScenarioPanelOpen 사용 ---
+        <div className={`${styles.chatLayout} ${isScenarioPanelOpen ? styles.scenarioOpen : ''}`}>
           <HistoryPanel />
           <div
             className={styles.contentAndInputWrapper}
@@ -23,7 +26,7 @@ export default function HomePage() {
           >
             <div className={styles.panelsWrapper}>
               <div
-                className={`${styles.mainContent} ${activePanel !== 'main' && scenarioPanel.isOpen ? styles.inactivePanel : ''}`}
+                className={`${styles.mainContent} ${activePanel !== 'main' && isScenarioPanelOpen ? styles.inactivePanel : ''}`}
                 onClick={() => setActivePanel('main')}
               >
                 <Chat />
@@ -37,7 +40,6 @@ export default function HomePage() {
             </div>
             <ChatInput />
           </div>
-          {/* --- 👇 [추가] 모달 렌더링 --- */}
           {isScenarioModalOpen && <ScenarioModal />}
         </div>
       ) : (

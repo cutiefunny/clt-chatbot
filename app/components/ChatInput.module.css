@@ -9,6 +9,28 @@
     flex-shrink: 0;
 }
 
+/* --- 👇 [추가된 부분] --- */
+.resumeScenarioBar {
+    display: flex;
+    justify-content: center;
+    padding-bottom: 8px;
+}
+.resumeScenarioBar button {
+    background-color: var(--login-button-bg);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+.resumeScenarioBar button:hover {
+    background-color: var(--login-button-hover-bg);
+}
+/* --- 👆 [여기까지] --- */
+
 .buttonRow {
     display: flex;
     width: 100%;
@@ -33,7 +55,6 @@
     user-select: none;
 }
 
-/* --- 👇 [수정된 부분] --- */
 .optionButton {
   flex-shrink: 0;
   padding: 8px 16px;
@@ -65,7 +86,6 @@
   box-shadow: 0 0 12px 1px rgba(130, 160, 255, 0.3);
   background-color: var(--chat-input-bg);
 }
-/* --- 👆 [여기까지] --- */
 
 .attachButton {
   background: none;
@@ -77,7 +97,6 @@
   justify-content: center;
 }
 
-/* --- 👇 [수정된 부분] --- */
 .textInput {
   flex-grow: 1;
   border: none;
@@ -90,4 +109,3 @@
 .textInput::placeholder {
   color: var(--input-placeholder-color);
 }
-/* --- 👆 [여기까지] --- */

@@ -53,6 +53,7 @@
 .headerButtons {
   display: flex;
   align-items: center;
+  gap: 8px;
 }
 
 .headerRestartButton {
@@ -68,6 +69,16 @@
 
 .headerRestartButton:hover {
   background-color: var(--button-hover-bg); /* Themed */
+}
+
+.dangerButton {
+    background-color: #d32f2f;
+    color: white;
+    border-color: #d32f2f;
+}
+.dangerButton:hover {
+    background-color: #b71c1c;
+    border-color: #b71c1c;
 }
 
 .history {

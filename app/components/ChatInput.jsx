@@ -4,13 +4,11 @@ import { useEffect, useRef, useState } from 'react';
 import { useChatStore } from '../store/chatStore';
 import styles from './ChatInput.module.css';
 
-// --- 👇 [수정] AttachIcon을 MenuIcon으로 변경 ---
 const MenuIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M4 6H20M4 12H20M4 18H20" stroke="var(--text-color)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
-// --- 👆 [여기까지] ---
 
 const useDraggableScroll = () => {
     const ref = useRef(null);
@@ -42,39 +40,45 @@ export default function ChatInput() {
         isLoading, 
         handleResponse,
         activePanel,
-        scenarioPanel,
-        currentScenarioNodeId,
+        // --- 👇 [수정된 부분] ---
+        activeScenarioId,
+        scenarioStates,
+        // --- 👆 [여기까지] ---
         handleScenarioResponse,
         focusRequest,
-        openScenarioModal
+        openScenarioModal,
     } = useChatStore();
     
     const inputRef = useRef(null);
     const quickRepliesSlider = useDraggableScroll();
 
-    const lastMessage = useChatStore(state => 
-        state.activePanel === 'main' 
-            ? state.messages[state.messages.length - 1] 
-            : state.scenarioMessages[state.scenarioMessages.length - 1]
-    );
+    // --- 👇 [수정된 부분] ---
+    const activeScenario = activeScenarioId ? scenarioStates[activeScenarioId] : null;
+    const scenarioMessages = activeScenario?.messages || [];
+    const mainMessages = useChatStore(state => state.messages);
+
+    const lastMessage = activePanel === 'main' 
+            ? mainMessages[mainMessages.length - 1] 
+            : scenarioMessages[scenarioMessages.length - 1];
+    
     const currentBotMessageNode = lastMessage?.sender === 'bot' ? lastMessage.node : null;
+    const currentScenarioNodeId = activeScenario?.state?.currentNodeId;
+    // --- 👆 [여기까지] ---
 
     useEffect(() => {
         if (!isLoading) {
             inputRef.current?.focus();
         }
-    }, [isLoading, focusRequest]);
+    }, [isLoading, focusRequest, activePanel]);
 
     const handleSubmit = (e) => {
         e.preventDefault();
         const input = e.target.elements.userInput.value;
         if (!input.trim() || isLoading) return;
 
-        console.log(`[ChatInput] Form submitted. Current activePanel is: '${activePanel}'`);
-
         if (activePanel === 'scenario') {
             handleScenarioResponse({
-                scenarioId: scenarioPanel.scenarioId,
+                scenarioId: activeScenarioId,
                 currentNodeId: currentScenarioNodeId,
                 userInput: input,
             });
@@ -87,7 +91,7 @@ export default function ChatInput() {
     const handleQuickReplyClick = (reply) => {
         if (activePanel === 'scenario') {
             handleScenarioResponse({ 
-                scenarioId: scenarioPanel.scenarioId,
+                scenarioId: activeScenarioId,
                 currentNodeId: currentScenarioNodeId,
                 sourceHandle: reply.value,
                 userInput: reply.display
@@ -120,9 +124,7 @@ export default function ChatInput() {
             
             <form className={styles.inputForm} onSubmit={handleSubmit}>
                 <button type="button" className={styles.attachButton} onClick={openScenarioModal}>
-                    {/* --- 👇 [수정] AttachIcon 대신 MenuIcon 사용 --- */}
                     <MenuIcon />
-                    {/* --- 👆 [여기까지] --- */}
                 </button>
                 <input
                     ref={inputRef}

@@ -5,7 +5,7 @@ import { useChatStore } from '../store/chatStore';
 import styles from './Chat.module.css';
 
 export default function Chat() {
-  const { messages, isLoading, createNewConversation, openScenarioPanel } = useChatStore();
+  const { messages, isLoading, openScenarioPanel } = useChatStore(); // createNewConversation 제거
   const [copiedMessageId, setCopiedMessageId] = useState(null);
   const historyRef = useRef(null);
 
@@ -61,7 +61,17 @@ export default function Chat() {
               onClick={() => msg.sender === 'bot' && handleCopy(msg.text || msg.node?.data.content, msg.id)}
             >
               {copiedMessageId === msg.id && <div className={styles.copyFeedback}>Copied!</div>}
-              <p>{msg.text || msg.node?.data.content}</p>
+              
+              {/* --- 👇 [수정/추가] 이어하기 버튼 렌더링 로직 --- */}
+              {msg.type === 'scenario_resume_prompt' ? (
+                <button className={styles.optionButton} onClick={() => openScenarioPanel(msg.scenarioId)}>
+                  {msg.text}
+                </button>
+              ) : (
+                <p>{msg.text || msg.node?.data.content}</p>
+              )}
+              {/* --- 👆 [여기까지] --- */}
+
               {msg.sender === 'bot' && msg.scenarios && (
                 <div className={styles.scenarioList}>
                   {msg.scenarios.map(name => (

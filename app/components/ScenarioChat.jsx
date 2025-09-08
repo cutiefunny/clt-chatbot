@@ -6,7 +6,7 @@ import styles from './Chat.module.css';
 
 const FormRenderer = ({ node, onFormSubmit }) => {
     const [formData, setFormData] = useState({});
-    const dateInputRef = useRef(null); // --- 👈 [추가]
+    const dateInputRef = useRef(null);
 
     const handleInputChange = (name, value) => {
         setFormData(prev => ({ ...prev, [name]: value }));
@@ -25,7 +25,6 @@ const FormRenderer = ({ node, onFormSubmit }) => {
         onFormSubmit(formData);
     };
 
-    // --- 👇 [추가] 날짜 입력창을 클릭했을 때 DatePicker를 강제로 여는 함수 ---
     const handleDateInputClick = () => {
         try {
             dateInputRef.current?.showPicker();
@@ -42,7 +41,6 @@ const FormRenderer = ({ node, onFormSubmit }) => {
                     <label className={styles.formLabel}>{el.label}</label>
                     {el.type === 'input' && <input className={styles.formInput} type="text" placeholder={el.placeholder} value={formData[el.name] || ''} onChange={e => handleInputChange(el.name, e.target.value)} />}
                     
-                    {/* --- 👇 [수정] ref와 onClick 핸들러 추가 --- */}
                     {el.type === 'date' && (
                         <input 
                             ref={dateInputRef}
@@ -53,7 +51,6 @@ const FormRenderer = ({ node, onFormSubmit }) => {
                             onClick={handleDateInputClick}
                         />
                     )}
-                    {/* --- 👆 [여기까지] --- */}
 
                     {el.type === 'dropbox' && (
                         <select value={formData[el.name] || ''} onChange={e => handleInputChange(el.name, e.target.value)}>
@@ -76,13 +73,18 @@ const FormRenderer = ({ node, onFormSubmit }) => {
 
 export default function ScenarioChat() {
   const { 
-    scenarioPanel,
-    scenarioMessages,
-    isScenarioLoading,
-    closeScenario,
+    isScenarioPanelOpen,
+    activeScenarioId,
+    scenarioStates,
     handleScenarioResponse,
-    currentScenarioNodeId,
+    setScenarioPanelOpen,
+    endScenario,
   } = useChatStore();
+
+  const activeScenario = activeScenarioId ? scenarioStates[activeScenarioId] : null;
+  const scenarioMessages = activeScenario?.messages || [];
+  const isScenarioLoading = activeScenario?.isLoading || false;
+  const currentScenarioNodeId = activeScenario?.state?.currentNodeId;
   
   const historyRef = useRef(null);
 
@@ -107,13 +109,13 @@ export default function ScenarioChat() {
     };
   }, [scenarioMessages]);
 
-  if (!scenarioPanel.isOpen) {
+  if (!isScenarioPanelOpen || !activeScenario) {
     return null;
   }
   
   const handleFormSubmit = (formData) => {
       handleScenarioResponse({
-          scenarioId: scenarioPanel.scenarioId,
+          scenarioId: activeScenarioId,
           currentNodeId: currentScenarioNodeId,
           formData: formData,
       });
@@ -123,11 +125,14 @@ export default function ScenarioChat() {
     <div className={styles.chatContainer} style={{ height: '100%' }}>
       <div className={styles.header}>
         <div className={styles.headerContent}>
-          <span className={styles.headerTitle}>시나리오: {scenarioPanel.scenarioId}</span>
+          <span className={styles.headerTitle}>시나리오: {activeScenarioId}</span>
         </div>
         <div className={styles.headerButtons}>
-          <button className={styles.headerRestartButton} onClick={closeScenario}>
-            닫기
+           <button className={styles.headerRestartButton} onClick={() => setScenarioPanelOpen(false)}>
+            숨기기
+          </button>
+          <button className={`${styles.headerRestartButton} ${styles.dangerButton}`} onClick={() => endScenario(activeScenarioId)}>
+            종료
           </button>
         </div>
       </div>
@@ -149,7 +154,7 @@ export default function ScenarioChat() {
                            key={reply.value} 
                            className={styles.optionButton} 
                            onClick={() => handleScenarioResponse({
-                               scenarioId: scenarioPanel.scenarioId,
+                               scenarioId: activeScenarioId,
                                currentNodeId: msg.node.id,
                                sourceHandle: reply.value,
                                display: reply.display
