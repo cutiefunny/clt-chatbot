@@ -4,13 +4,13 @@ import { useEffect, useRef, useState } from 'react';
 import { useChatStore } from '../store/chatStore';
 import styles from './ChatInput.module.css';
 
-const AttachIcon = () => (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="12" cy="12" r="10" stroke="#555" strokeWidth="1.5"/>
-        <path d="M12 8V16" stroke="#555" strokeWidth="1.5" strokeLinecap="round"/>
-        <path d="M8 12H16" stroke="#555" strokeWidth="1.5" strokeLinecap="round"/>
-    </svg>
+// --- 👇 [수정] AttachIcon을 MenuIcon으로 변경 ---
+const MenuIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M4 6H20M4 12H20M4 18H20" stroke="var(--text-color)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
 );
+// --- 👆 [여기까지] ---
 
 const useDraggableScroll = () => {
     const ref = useRef(null);
@@ -45,13 +45,13 @@ export default function ChatInput() {
         scenarioPanel,
         currentScenarioNodeId,
         handleScenarioResponse,
-        focusRequest // --- 👈 [추가] 
+        focusRequest,
+        openScenarioModal
     } = useChatStore();
     
     const inputRef = useRef(null);
     const quickRepliesSlider = useDraggableScroll();
 
-    // --- 👇 [수정된 부분] ---
     const lastMessage = useChatStore(state => 
         state.activePanel === 'main' 
             ? state.messages[state.messages.length - 1] 
@@ -59,13 +59,11 @@ export default function ChatInput() {
     );
     const currentBotMessageNode = lastMessage?.sender === 'bot' ? lastMessage.node : null;
 
-    // 포커스 로직을 명시적인 요청과 로딩 상태에만 의존하도록 단순화
     useEffect(() => {
         if (!isLoading) {
             inputRef.current?.focus();
         }
     }, [isLoading, focusRequest]);
-    // --- 👆 [여기까지 수정] ---
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -121,8 +119,10 @@ export default function ChatInput() {
             )}
             
             <form className={styles.inputForm} onSubmit={handleSubmit}>
-                <button type="button" className={styles.attachButton}>
-                    <AttachIcon />
+                <button type="button" className={styles.attachButton} onClick={openScenarioModal}>
+                    {/* --- 👇 [수정] AttachIcon 대신 MenuIcon 사용 --- */}
+                    <MenuIcon />
+                    {/* --- 👆 [여기까지] --- */}
                 </button>
                 <input
                     ref={inputRef}

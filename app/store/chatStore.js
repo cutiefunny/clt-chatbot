@@ -2,6 +2,7 @@ import { create } from 'zustand';
 // --- 👇 [수정] doc, getDoc, setDoc 임포트 ---
 import { auth, db, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, serverTimestamp, deleteDoc, doc, getDoc, setDoc } from '../lib/firebase';
 import { collection, addDoc, query, orderBy, onSnapshot, updateDoc, getDocs } from "firebase/firestore";
+import { scenarioTriggers } from '../lib/chatbotEngine';
 
 const initialState = {
   messages: [{ id: 'initial', sender: 'bot', text: '안녕하세요! 무엇을 도와드릴까요?' }],
@@ -22,6 +23,8 @@ const initialState = {
   isHistoryPanelOpen: false, 
   theme: 'light',
   isSettingsModalOpen: false,
+  isScenarioModalOpen: false, // --- 👈 [추가]
+  scenarioTriggers: {}, // --- 👈 [추가]
 };
 
 export const useChatStore = create((set, get) => {
@@ -71,6 +74,12 @@ export const useChatStore = create((set, get) => {
     },
     openSettingsModal: () => set({ isSettingsModalOpen: true }),
     closeSettingsModal: () => set({ isSettingsModalOpen: false }),
+
+    openScenarioModal: () => set({ isScenarioModalOpen: true }),
+    closeScenarioModal: () => set({ isScenarioModalOpen: false }),
+    loadScenarioTriggers: () => {
+        set({ scenarioTriggers });
+    },
     
     toggleHistoryPanel: () => set(state => ({ isHistoryPanelOpen: !state.isHistoryPanelOpen })),
 
@@ -78,6 +87,7 @@ export const useChatStore = create((set, get) => {
     setActivePanel: (panel) => set({ activePanel: panel }),
 
     initAuth: () => {
+      get().loadScenarioTriggers();
       const unsubscribeAuth = onAuthStateChanged(auth, async (user) => { // async 추가
         if (user) {
           // --- 👇 [수정] Firestore에서 테마 로드 로직 추가 ---

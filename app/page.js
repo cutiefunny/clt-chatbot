@@ -6,17 +6,17 @@ import Login from '../app/components/Login';
 import HistoryPanel from '../app/components/HistoryPanel';
 import ChatInput from '../app/components/ChatInput';
 import ScenarioChat from '../app/components/ScenarioChat';
+import ScenarioModal from '../app/components/ScenarioModal'; // --- 👈 [추가]
 import styles from './page.module.css';
 
 export default function HomePage() {
-  const { user, scenarioPanel, activePanel, setActivePanel, isHistoryPanelOpen } = useChatStore();
+  const { user, scenarioPanel, activePanel, setActivePanel, isHistoryPanelOpen, isScenarioModalOpen } = useChatStore(); // --- 👈 [isScenarioModalOpen 추가]
 
   return (
     <main className={styles.main}>
       {user ? (
         <div className={`${styles.chatLayout} ${scenarioPanel.isOpen ? styles.scenarioOpen : ''}`}>
           <HistoryPanel />
-          {/* --- 👇 [수정] style 속성을 paddingLeft로 변경 --- */}
           <div
             className={styles.contentAndInputWrapper}
             style={{ paddingLeft: isHistoryPanelOpen ? '260px' : '60px' }} 
@@ -37,6 +37,8 @@ export default function HomePage() {
             </div>
             <ChatInput />
           </div>
+          {/* --- 👇 [추가] 모달 렌더링 --- */}
+          {isScenarioModalOpen && <ScenarioModal />}
         </div>
       ) : (
         <Login />

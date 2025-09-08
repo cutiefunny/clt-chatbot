@@ -1,0 +1,76 @@
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modalContent {
+    background-color: var(--panel-bg-color);
+    padding: 20px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    color: var(--text-color);
+}
+
+.modalHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--panel-border-color);
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+.modalHeader h2 {
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.closeButton {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-color);
+    padding: 4px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.closeButton:hover {
+    background-color: var(--button-hover-bg);
+}
+
+.modalBody {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 12px;
+}
+
+.scenarioButton {
+    padding: 12px;
+    border: 1px solid var(--panel-border-color);
+    background-color: var(--bot-message-bg);
+    color: var(--text-color);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-align: center;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.scenarioButton:hover {
+    background-color: var(--button-hover-bg);
+    border-color: #aaa;
+}
