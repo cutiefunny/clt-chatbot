@@ -13,11 +13,9 @@ const initialState = {
   unsubscribeMessages: null,
   unsubscribeConversations: null,
   
-  // --- 👇 [수정] 시나리오 상태를 객체로 관리하여 여러 시나리오 동시 진행 지원 ---
-  scenarioStates: {}, // key: scenarioId, value: { messages, state, slots }
+  scenarioStates: {},
   activeScenarioId: null,
   isScenarioPanelOpen: false,
-  // --- 👆 [여기까지] ---
 
   activePanel: 'main', 
   focusRequest: 0,
@@ -221,7 +219,7 @@ export const useChatStore = create((set, get) => {
       const user = get().user;
       if (!user || get().currentConversationId === conversationId) return;
       get().unsubscribeMessages?.();
-      set({ currentConversationId: conversationId, isLoading: true, messages: [], scenarioState: null, slots: {} });
+      set({ currentConversationId: conversationId, isLoading: true, messages: [], scenarioStates: {}, activeScenarioId: null, isScenarioPanelOpen: false });
       const q = query(collection(db, "chats", user.uid, "conversations", conversationId, "messages"), orderBy("createdAt", "asc"));
       const unsubscribe = onSnapshot(q, (snapshot) => {
         const messages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -232,7 +230,7 @@ export const useChatStore = create((set, get) => {
     createNewConversation: () => {
       if (get().currentConversationId === null) return;
       get().unsubscribeMessages?.();
-      set({ messages: initialState.messages, currentConversationId: null, scenarioState: null, slots: {} });
+      set({ messages: initialState.messages, currentConversationId: null, scenarioStates: {}, activeScenarioId: null, isScenarioPanelOpen: false });
     },
     deleteConversation: async (conversationId) => {
       const user = get().user;
@@ -295,7 +293,6 @@ export const useChatStore = create((set, get) => {
             text: messageData.text,
             scenarios: messageData.scenarios,
             isStreaming: messageData.isStreaming || false,
-            // --- 👇 [추가] 이어하기 버튼을 위한 타입 ---
             type: messageData.type,
             scenarioId: messageData.scenarioId,
           };
@@ -367,11 +364,9 @@ export const useChatStore = create((set, get) => {
         stopLoading();
       }
     },
-    // --- 👇 [수정/추가] 시나리오 상태 관리 로직 전면 개편 ---
     openScenarioPanel: async (scenarioId) => {
       const { scenarioStates } = get();
 
-      // 이미 진행 중인 시나리오가 있다면, 그냥 패널을 열어줍니다.
       if (scenarioStates[scenarioId]) {
           set({ 
               isScenarioPanelOpen: true, 
@@ -382,7 +377,6 @@ export const useChatStore = create((set, get) => {
           return;
       }
       
-      // 새로운 시나리오 시작
       set({ 
           isScenarioPanelOpen: true, 
           activeScenarioId: scenarioId,
@@ -452,15 +446,22 @@ export const useChatStore = create((set, get) => {
         messages: messages.filter(msg => msg.type !== 'scenario_resume_prompt' || msg.scenarioId !== scenarioId),
       });
     },
+    // --- 👇 [수정된 부분] ---
     setScenarioPanelOpen: (isOpen) => {
-        const { activeScenarioId, addMessage } = get();
+        const { activeScenarioId, addMessage, messages } = get();
         set({
             isScenarioPanelOpen: isOpen,
             activePanel: isOpen ? 'scenario' : 'main',
         });
         
-        // 패널을 숨길 때 '이어하기' 메시지 추가
         if (!isOpen && activeScenarioId) {
+            // 기존의 동일한 시나리오 이어하기 버튼을 모두 제거합니다.
+            const filteredMessages = messages.filter(msg => 
+                msg.type !== 'scenario_resume_prompt' || msg.scenarioId !== activeScenarioId
+            );
+            set({ messages: filteredMessages });
+
+            // 새로운 이어하기 버튼을 추가합니다.
             addMessage('bot', {
                 type: 'scenario_resume_prompt',
                 scenarioId: activeScenarioId,
@@ -472,6 +473,7 @@ export const useChatStore = create((set, get) => {
             get().focusChatInput();
         }
     },
+    // --- 👆 [여기까지] ---
     handleScenarioResponse: async (payload) => {
       const { scenarioId } = payload;
       set(state => ({
@@ -527,7 +529,7 @@ export const useChatStore = create((set, get) => {
                     ...state.scenarioStates[scenarioId],
                     messages: [...state.scenarioStates[scenarioId].messages, { id: 'end', sender: 'bot', text: data.message }],
                     slots: data.slots, 
-                    state: null, // 시나리오 종료
+                    state: null,
                     isLoading: false,
                 }
             }
@@ -561,7 +563,6 @@ export const useChatStore = create((set, get) => {
         });
       }
     }
-    // --- 👆 [여기까지] ---
   };
 });
 
