@@ -83,12 +83,16 @@ export const getNextNode = (scenario, currentNodeId, sourceHandleId = null, slot
 };
 
 
+// --- 👇 [수정된 부분] ---
 export const interpolateMessage = (message, slots) => {
     if (!message) return '';
+    // 키 값의 앞뒤 공백을 제거하여 예상치 못한 데이터 오류를 방지합니다.
     return message.replace(/\{([^}]+)\}/g, (match, key) => {
-        return slots.hasOwnProperty(key) ? slots[key] : match;
+        const trimmedKey = key.trim();
+        return slots.hasOwnProperty(trimmedKey) ? slots[trimmedKey] : match;
     });
 };
+// --- 👆 [여기까지] ---
 
 // --- 👇 [추가된 헬퍼 함수] ---
 export const getNestedValue = (obj, path) => {

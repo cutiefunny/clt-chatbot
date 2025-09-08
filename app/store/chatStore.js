@@ -383,13 +383,16 @@ export const useChatStore = create((set, get) => {
           scenarioState: null,
       });
     },
+    // --- 👇 [수정된 부분] ---
     handleScenarioResponse: async (payload) => {
       set({ isScenarioLoading: true });
       if (payload.userInput) {
         set(state => ({ scenarioMessages: [...state.scenarioMessages, { id: Date.now(), sender: 'user', text: payload.userInput }] }));
       }
       
-      const currentSlots = get().slots; 
+      const currentSlots = get().slots;
+      // get()을 사용하여 스토어에서 직접 최신 scenarioState를 가져옵니다.
+      const currentScenarioState = get().scenarioState; 
 
       try {
         const response = await fetch('/api/chat', {
@@ -400,13 +403,12 @@ export const useChatStore = create((set, get) => {
               sourceHandle: payload.sourceHandle, 
               text: payload.userInput 
             },
-            scenarioState: { 
-              scenarioId: payload.scenarioId, 
-              currentNodeId: payload.currentNodeId 
-            },
+            // API 요청 시, payload 대신 스토어의 최신 상태를 전송합니다.
+            scenarioState: currentScenarioState, 
             slots: { ...currentSlots, ...(payload.formData || {}) },
           }),
         });
+    // --- 👆 [여기까지] ---
         const data = await response.json();
 
         if (data.type === 'scenario') {
