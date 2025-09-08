@@ -15,8 +15,6 @@
   --action-button-hover-color: #333;
   --login-button-bg: #4285F4;
   --login-button-hover-bg: #357ae8;
-
-  /* --- 👇 [추가된 부분] --- */
   --convo-item-active-bg: #dcdcdc;
   --input-bg: #fff;
   --input-border: #a0a0a0;
@@ -26,7 +24,7 @@
   --option-button-hover-border: #aaa;
   --chat-input-bg: transparent;
   --chat-input-text-color: #333;
-  /* --- 👆 [여기까지] --- */
+  --date-input-scheme: light;
 }
 
 body.dark {
@@ -44,8 +42,6 @@ body.dark {
   --action-button-hover-color: #eee;
   --login-button-bg: #4285F4;
   --login-button-hover-bg: #5a95f8;
-
-  /* --- 👇 [추가된 부분] --- */
   --convo-item-active-bg: #4a4a4a;
   --input-bg: var(--button-hover-bg);
   --input-border: var(--panel-border-color);
@@ -55,7 +51,7 @@ body.dark {
   --option-button-hover-border: #aaa;
   --chat-input-bg: transparent;
   --chat-input-text-color: var(--text-color);
-  /* --- 👆 [여기까지] --- */
+  --date-input-scheme: dark;
 }
 
 body {

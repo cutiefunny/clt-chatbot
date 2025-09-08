@@ -28,6 +28,38 @@
   align-items: flex-start;
 }
 
+.headerTopRow {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    align-items: center;
+}
+
+.historyPanel.closed .headerTopRow {
+    justify-content: flex-start;
+}
+
+.iconButton {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+    color: var(--text-color);
+}
+
+.iconButton:hover {
+    background-color: var(--button-hover-bg);
+}
+
+.historyPanel.closed .iconButton {
+    display: none;
+}
+
 .panelContent {
   flex-grow: 1;
   display: flex;
@@ -228,7 +260,3 @@
   border-radius: 50%;
   cursor: pointer;
 }
-
-/* --- 👇 [제거] 기존 팝업 스타일 --- */
-/* .logoutConfirm, .logoutButtons, ... 등 관련 스타일 모두 제거 */
-/* --- 👆 [여기까지] --- */

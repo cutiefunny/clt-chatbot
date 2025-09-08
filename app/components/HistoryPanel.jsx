@@ -3,8 +3,15 @@ import { useState, useRef, useEffect } from 'react';
 import { useChatStore } from '../store/chatStore';
 import styles from './HistoryPanel.module.css';
 import SettingsModal from './SettingsModal';
-import LogoutModal from './LogoutModal'; // --- 👈 [추가]
+import LogoutModal from './LogoutModal';
+import SearchModal from './SearchModal';
 
+const SearchIcon = () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M11 19C15.4183 19 19 15.4183 19 11C19 6.58172 15.4183 3 11 3C6.58172 3 3 6.58172 3 11C3 15.4183 6.58172 19 11 19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M21 21L16.65 16.65" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+);
 const SettingsIcon = () => (
     <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <g transform="translate(-1.5, -2)">
@@ -109,6 +116,7 @@ const ConversationItem = ({ convo, isActive, onClick, onDelete, onUpdateTitle })
 };
 
 export default function HistoryPanel() {
+  // --- 👇 [수정] useChatStore에서 가져오는 상태 정리 ---
   const { 
     user, 
     logout, 
@@ -122,10 +130,11 @@ export default function HistoryPanel() {
     toggleHistoryPanel,
     isSettingsModalOpen,
     openSettingsModal,
-    closeSettingsModal
+    closeSettingsModal,
+    isSearchModalOpen,
+    openSearchModal
   } = useChatStore();
   
-  // --- 👇 [수정] 상태 변수명 변경 ---
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   if (!user) return null;
@@ -146,13 +155,18 @@ export default function HistoryPanel() {
     <>
       <div className={`${styles.historyPanel} ${isHistoryPanelOpen ? styles.open : styles.closed}`}>
         <div className={styles.header}>
-          <button className={styles.toggleButton} onClick={toggleHistoryPanel}>
-              <MenuIcon />
-          </button>
-          <button className={styles.newChatButton} onClick={createNewConversation}>
-              <EditIcon />
-              <span className={styles.newChatText}>New Chat</span>
-          </button>
+            <div className={styles.headerTopRow}>
+                <button className={styles.toggleButton} onClick={toggleHistoryPanel}>
+                    <MenuIcon />
+                </button>
+                <button className={styles.iconButton} onClick={openSearchModal}>
+                    <SearchIcon />
+                </button>
+            </div>
+            <button className={styles.newChatButton} onClick={createNewConversation}>
+                <EditIcon />
+                <span className={styles.newChatText}>New Chat</span>
+            </button>
         </div>
         
         <div className={styles.panelContent}>
@@ -185,8 +199,8 @@ export default function HistoryPanel() {
       </div>
       
       {isSettingsModalOpen && <SettingsModal onClose={closeSettingsModal} />}
-      {/* --- 👇 [추가] 로그아웃 모달 렌더링 --- */}
       {isLogoutModalOpen && <LogoutModal onClose={() => setIsLogoutModalOpen(false)} onConfirm={handleLogoutConfirm} />}
+      {isSearchModalOpen && <SearchModal />}
     </>
   );
 }

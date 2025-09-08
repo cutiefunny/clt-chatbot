@@ -4,9 +4,9 @@ import { useEffect, useRef, useState } from 'react';
 import { useChatStore } from '../store/chatStore';
 import styles from './Chat.module.css'; 
 
-// --- 👇 [수정된 부분] ---
 const FormRenderer = ({ node, onFormSubmit }) => {
     const [formData, setFormData] = useState({});
+    const dateInputRef = useRef(null); // --- 👈 [추가]
 
     const handleInputChange = (name, value) => {
         setFormData(prev => ({ ...prev, [name]: value }));
@@ -25,6 +25,15 @@ const FormRenderer = ({ node, onFormSubmit }) => {
         onFormSubmit(formData);
     };
 
+    // --- 👇 [추가] 날짜 입력창을 클릭했을 때 DatePicker를 강제로 여는 함수 ---
+    const handleDateInputClick = () => {
+        try {
+            dateInputRef.current?.showPicker();
+        } catch (error) {
+            console.error("Failed to show date picker:", error);
+        }
+    };
+
     return (
         <form onSubmit={handleSubmit} className={styles.formContainer}>
             <h3>{node.data.title}</h3>
@@ -32,7 +41,20 @@ const FormRenderer = ({ node, onFormSubmit }) => {
                 <div key={el.id} className={styles.formElement}>
                     <label className={styles.formLabel}>{el.label}</label>
                     {el.type === 'input' && <input className={styles.formInput} type="text" placeholder={el.placeholder} value={formData[el.name] || ''} onChange={e => handleInputChange(el.name, e.target.value)} />}
-                    {el.type === 'date' && <input className={styles.formInput} type="date" value={formData[el.name] || ''} onChange={e => handleInputChange(el.name, e.target.value)} />}
+                    
+                    {/* --- 👇 [수정] ref와 onClick 핸들러 추가 --- */}
+                    {el.type === 'date' && (
+                        <input 
+                            ref={dateInputRef}
+                            className={styles.formInput} 
+                            type="date" 
+                            value={formData[el.name] || ''} 
+                            onChange={e => handleInputChange(el.name, e.target.value)}
+                            onClick={handleDateInputClick}
+                        />
+                    )}
+                    {/* --- 👆 [여기까지] --- */}
+
                     {el.type === 'dropbox' && (
                         <select value={formData[el.name] || ''} onChange={e => handleInputChange(el.name, e.target.value)}>
                             <option value="" disabled>선택...</option>
@@ -51,7 +73,6 @@ const FormRenderer = ({ node, onFormSubmit }) => {
         </form>
     );
 };
-// --- 👆 [여기까지] ---
 
 export default function ScenarioChat() {
   const { 
@@ -112,7 +133,6 @@ export default function ScenarioChat() {
       </div>
       
       <div className={styles.history} ref={historyRef}>
-        {/* --- 👇 [수정된 부분] --- */}
         {scenarioMessages.map((msg, index) => (
           <div key={`${msg.id}-${index}`} className={`${styles.messageRow} ${msg.sender === 'user' ? styles.userRow : ''}`}>
              {msg.sender === 'bot' && <img src="/images/avatar.png" alt="Avatar" className={styles.avatar} />}
@@ -143,7 +163,6 @@ export default function ScenarioChat() {
              </div>
           </div>
         ))}
-        {/* --- 👆 [여기까지] --- */}
         {isScenarioLoading && <div className={styles.messageRow}><p>...</p></div>}
       </div>
     </div>

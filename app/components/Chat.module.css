@@ -213,6 +213,10 @@
   box-sizing: border-box;
 }
 
+.formInput[type="date"] {
+    color-scheme: var(--date-input-scheme);
+}
+
 .formSubmitButton {
   align-self: flex-end;
   padding: 8px 20px;

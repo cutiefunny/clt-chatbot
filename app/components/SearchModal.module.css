@@ -1,0 +1,95 @@
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 15vh;
+    z-index: 1000;
+}
+
+.modalContent {
+    background-color: var(--panel-bg-color);
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    color: var(--text-color);
+    display: flex;
+    flex-direction: column;
+}
+
+.searchInputWrapper {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--panel-border-color);
+}
+
+.searchInput {
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 1rem;
+    color: var(--text-color);
+}
+
+.searchInput::placeholder {
+    color: var(--input-placeholder-color);
+}
+
+.resultsContainer {
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.resultItem {
+    padding: 12px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    border-bottom: 1px solid var(--panel-border-color);
+}
+
+.resultItem:last-child {
+    border-bottom: none;
+}
+
+.resultItem:hover {
+    background-color: var(--button-hover-bg);
+}
+
+.resultTitle {
+    font-weight: bold;
+    margin-bottom: 6px;
+}
+
+.snippet {
+    font-size: 0.85rem;
+    color: #888;
+    margin: 0 0 4px 0;
+    padding-left: 8px;
+    border-left: 2px solid var(--panel-border-color);
+}
+
+.snippet strong {
+    color: var(--text-color);
+    background-color: rgba(135, 179, 255, 0.3);
+}
+
+body.dark .snippet strong {
+     background-color: rgba(90, 141, 236, 0.4);
+}
+
+.loadingText, .noResults {
+    text-align: center;
+    padding: 20px;
+    color: #888;
+}

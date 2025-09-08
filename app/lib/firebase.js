@@ -1,6 +1,6 @@
 import { initializeApp, getApps } from "firebase/app";
-// --- 👇 [수정] doc, getDoc, setDoc 추가 ---
-import { getFirestore, serverTimestamp, deleteDoc, doc, getDoc, setDoc } from "firebase/firestore";
+// --- 👇 [수정] doc, getDoc, setDoc, updateDoc 추가 ---
+import { getFirestore, serverTimestamp, deleteDoc, doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import {
     getAuth,
     GoogleAuthProvider,
@@ -29,5 +29,5 @@ if (!getApps().length) {
 
 export const db = getFirestore(app);
 export const auth = getAuth(app);
-// --- 👇 [수정] doc, getDoc, setDoc export 추가 ---
-export { GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, serverTimestamp, deleteDoc, doc, getDoc, setDoc };
+// --- 👇 [수정] doc, getDoc, setDoc, updateDoc export 추가 ---
+export { GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, serverTimestamp, deleteDoc, doc, getDoc, setDoc, updateDoc };

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-// --- 👇 [수정] doc, getDoc, setDoc 임포트 ---
-import { auth, db, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, serverTimestamp, deleteDoc, doc, getDoc, setDoc } from '../lib/firebase';
-import { collection, addDoc, query, orderBy, onSnapshot, updateDoc, getDocs } from "firebase/firestore";
+// --- 👇 [수정] import 구문 정리 ---
+import { auth, db, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, serverTimestamp, deleteDoc, doc, getDoc, setDoc, updateDoc } from '../lib/firebase';
+import { collection, addDoc, query, orderBy, onSnapshot, getDocs } from "firebase/firestore";
 import { scenarioTriggers } from '../lib/chatbotEngine';
 
 const initialState = {
@@ -23,8 +23,11 @@ const initialState = {
   isHistoryPanelOpen: false, 
   theme: 'light',
   isSettingsModalOpen: false,
-  isScenarioModalOpen: false, // --- 👈 [추가]
-  scenarioTriggers: {}, // --- 👈 [추가]
+  isScenarioModalOpen: false,
+  isSearchModalOpen: false,
+  scenarioTriggers: {},
+  isSearching: false,
+  searchResults: [],
 };
 
 export const useChatStore = create((set, get) => {
@@ -53,7 +56,58 @@ export const useChatStore = create((set, get) => {
   return {
     ...initialState,
 
-    // --- 👇 [수정] Firestore에 테마 저장 로직 추가 ---
+    openSearchModal: () => set({ isSearchModalOpen: true, searchResults: [], isSearching: false }),
+    closeSearchModal: () => set({ isSearchModalOpen: false }),
+
+    searchConversations: async (searchQuery) => {
+        if (!searchQuery.trim()) {
+            set({ searchResults: [], isSearching: false });
+            return;
+        }
+        set({ isSearching: true, searchResults: [] });
+
+        const user = get().user;
+        const conversations = get().conversations;
+        if (!user || !conversations) {
+            set({ isSearching: false });
+            return;
+        }
+
+        const results = [];
+        const lowerCaseQuery = searchQuery.toLowerCase();
+
+        for (const convo of conversations) {
+            const messagesCollection = collection(db, "chats", user.uid, "conversations", convo.id, "messages");
+            const messagesSnapshot = await getDocs(messagesCollection);
+            
+            let foundInConvo = false;
+            const matchingMessages = [];
+
+            messagesSnapshot.forEach(doc => {
+                const message = doc.data();
+                const content = message.text || message.node?.data?.content || '';
+                if (content.toLowerCase().includes(lowerCaseQuery)) {
+                    foundInConvo = true;
+                    const snippetIndex = content.toLowerCase().indexOf(lowerCaseQuery);
+                    const start = Math.max(0, snippetIndex - 20);
+                    const end = Math.min(content.length, snippetIndex + 20);
+                    const snippet = `...${content.substring(start, end)}...`;
+                    matchingMessages.push(snippet);
+                }
+            });
+
+            if (foundInConvo) {
+                results.push({
+                    id: convo.id,
+                    title: convo.title || 'Untitled Conversation',
+                    snippets: matchingMessages.slice(0, 3)
+                });
+            }
+        }
+        
+        set({ searchResults: results, isSearching: false });
+    },
+
     toggleTheme: async () => {
         const newTheme = get().theme === 'light' ? 'dark' : 'light';
         
@@ -88,9 +142,8 @@ export const useChatStore = create((set, get) => {
 
     initAuth: () => {
       get().loadScenarioTriggers();
-      const unsubscribeAuth = onAuthStateChanged(auth, async (user) => { // async 추가
+      const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
         if (user) {
-          // --- 👇 [수정] Firestore에서 테마 로드 로직 추가 ---
           try {
             const userSettingsRef = doc(db, 'settings', user.uid);
             const docSnap = await getDoc(userSettingsRef);
@@ -107,7 +160,6 @@ export const useChatStore = create((set, get) => {
                 set({ theme: savedTheme });
             }
           }
-          // --- 👆 [여기까지] ---
           set({ user });
           get().unsubscribeAll();
           get().loadConversations(user.uid);
