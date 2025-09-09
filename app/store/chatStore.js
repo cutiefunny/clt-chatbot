@@ -38,6 +38,9 @@ const initialState = {
     message: '',
     type: 'info', 
   },
+
+  toastHistory: [],
+  isNotificationModalOpen: false,
 };
 
 export const useChatStore = create((set, get) => {
@@ -70,10 +73,17 @@ export const useChatStore = create((set, get) => {
     ...initialState,
 
     showToast: (message, type = 'info') => {
-      set({ toast: { visible: true, message, type } });
+      const newToast = { id: Date.now(), message, type };
+      set(state => ({
+        toast: { ...newToast, visible: true },
+        toastHistory: [newToast, ...state.toastHistory], // 새 알림을 히스토리 맨 앞에 추가
+      }));
       setTimeout(() => get().hideToast(), 3000);
     },
     hideToast: () => set(state => ({ toast: { ...state.toast, visible: false } })),
+    
+    openNotificationModal: () => set({ isNotificationModalOpen: true }),
+    closeNotificationModal: () => set({ isNotificationModalOpen: false }),
     
     handleEvents: (events) => {
       if (!events || !Array.isArray(events)) return;

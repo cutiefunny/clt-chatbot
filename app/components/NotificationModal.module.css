@@ -1,0 +1,95 @@
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1002;
+}
+
+.modalContent {
+    background-color: var(--panel-bg-color);
+    border-radius: 12px;
+    width: 90%;
+    max-width: 450px;
+    max-height: 70vh;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    color: var(--text-color);
+    display: flex;
+    flex-direction: column;
+}
+
+.modalHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--panel-border-color);
+    padding: 12px 20px;
+    flex-shrink: 0;
+}
+
+.modalHeader h2 {
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.closeButton {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-color);
+}
+
+.modalBody {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 16px;
+}
+
+.noNotifications {
+    text-align: center;
+    color: #8a8a8e;
+    padding: 20px 0;
+}
+
+.notificationList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.notificationItem {
+    padding: 12px;
+    border-radius: 8px;
+    border-left: 4px solid;
+    background-color: var(--bot-message-bg);
+}
+
+.notificationItem.success {
+    border-left-color: #4CAF50;
+}
+.notificationItem.error {
+    border-left-color: #f44336;
+}
+.notificationItem.info {
+    border-left-color: #2196F3;
+}
+
+.timestamp {
+    display: block;
+    font-size: 0.75rem;
+    color: #8a8a8e;
+    margin-bottom: 4px;
+}
+
+.message {
+    margin: 0;
+    font-size: 0.9rem;
+}

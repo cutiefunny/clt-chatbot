@@ -35,6 +35,15 @@
     align-items: center;
 }
 
+.headerIconGroup {
+    display: flex;
+    align-items: center;
+}
+
+.historyPanel.closed .headerIconGroup {
+    display: none;
+}
+
 .historyPanel.closed .headerTopRow {
     justify-content: flex-start;
 }
