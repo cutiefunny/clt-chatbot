@@ -44,14 +44,17 @@
 .scenarioContent {
   width: 0; 
   display: flex;
-  /* --- 👇 [수정] CSS 변수를 사용하여 테마 적용 --- */
-  border-left: 1px solid var(--panel-border-color);
+  margin : 20 20 20 0;
+  border-radius: 20px;
+  border: 1px solid var(--panel-border-color);
   transition: width 0.3s ease-in-out; 
-  overflow: hidden; 
+  overflow: hidden;
+  /* 부드러운 구분을 위한 미세한 배경색 추가 */
+  background-color: var(--bot-message-bg);
 }
 
 .chatLayout.scenarioOpen .scenarioContent {
-  width: 40%;
+  width: 50%;
 }
 
 .inactivePanel {

@@ -67,6 +67,7 @@
   transition: background-color 0.2s;
 }
 
+
 .headerRestartButton:hover {
   background-color: var(--button-hover-bg); /* Themed */
 }
