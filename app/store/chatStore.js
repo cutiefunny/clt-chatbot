@@ -32,6 +32,12 @@ const initialState = {
   isDevBoardModalOpen: false,
   devMemos: [],
   unsubscribeDevMemos: null,
+  
+  toast: {
+    visible: false,
+    message: '',
+    type: 'info',
+  },
 };
 
 export const useChatStore = create((set, get) => {
@@ -55,10 +61,31 @@ export const useChatStore = create((set, get) => {
       get().addMessage('bot', { text: `'${data.scenarioId}' 시나리오를 시작합니다.`});
       get().openScenarioPanel(data.scenarioId);
     },
+    'toast': (data) => {
+      get().showToast(data.message, data.toastType);
+    },
   };
 
   return {
     ...initialState,
+
+    showToast: (message, type = 'info') => {
+      set({ toast: { visible: true, message, type } });
+      setTimeout(() => get().hideToast(), 3000);
+    },
+    hideToast: () => set(state => ({ toast: { ...state.toast, visible: false } })),
+    
+    // --- 👇 [추가된 부분] ---
+    handleEvents: (events) => {
+      if (!events || !Array.isArray(events)) return;
+      const { showToast } = get();
+      events.forEach(event => {
+        if (event.type === 'toast') {
+          showToast(event.message, event.toastType);
+        }
+      });
+    },
+    // --- 👆 [여기까지] ---
 
     openSearchModal: () => set({ isSearchModalOpen: true, searchResults: [], isSearching: false }),
     closeSearchModal: () => set({ isSearchModalOpen: false }),
@@ -313,7 +340,6 @@ export const useChatStore = create((set, get) => {
       await addDoc(messagesCollection, { ...messageToSave, createdAt: serverTimestamp() });
       await updateDoc(doc(db, "chats", user.uid, "conversations", conversationId), { updatedAt: serverTimestamp() });
     },
-    // --- 👇 [수정된 부분] ---
     addMessage: (sender, messageData) => {
       let newMessage;
       if (sender === 'user') {
@@ -335,12 +361,10 @@ export const useChatStore = create((set, get) => {
       }
       set(state => ({ messages: [...state.messages, newMessage] }));
       
-      // '이어하기' 버튼과 같은 UI 전용 메시지는 저장하지 않습니다.
       if (!newMessage.isStreaming && newMessage.type !== 'scenario_resume_prompt') {
         get().saveMessage(newMessage);
       }
     },
-    // --- 👆 [여기까지] ---
     updateStreamingMessage: (id, chunk) => {
       set(state => ({ messages: state.messages.map(m => m.id === id ? { ...m, text: m.text + chunk } : m) }));
     },
@@ -357,7 +381,7 @@ export const useChatStore = create((set, get) => {
     startLoading: () => set({ isLoading: true }),
     stopLoading: () => set({ isLoading: false }),
     handleResponse: async (messagePayload) => {
-      const { addMessage, updateStreamingMessage, finalizeStreamingMessage, startLoading, stopLoading } = get();
+      const { addMessage, updateStreamingMessage, finalizeStreamingMessage, startLoading, stopLoading, showToast } = get();
       startLoading();
       if (messagePayload.text) {
         addMessage('user', { text: messagePayload.text });
@@ -397,13 +421,13 @@ export const useChatStore = create((set, get) => {
         }
       } catch (error) {
         console.error('Failed to fetch chat response:', error);
-        addMessage('bot', { text: '오류가 발생했습니다. 잠시 후 다시 시도해주세요.' });
+        showToast('오류가 발생했습니다. 잠시 후 다시 시도해주세요.', 'error');
       } finally {
         stopLoading();
       }
     },
     openScenarioPanel: async (scenarioId) => {
-      const { scenarioStates } = get();
+      const { scenarioStates, handleEvents } = get(); // handleEvents 추가
 
       if (scenarioStates[scenarioId]) {
           set({ 
@@ -437,6 +461,8 @@ export const useChatStore = create((set, get) => {
           body: JSON.stringify({ message: { text: scenarioId } }),
         });
         const data = await response.json();
+        
+        handleEvents(data.events); // 이벤트 처리
 
         if (data.type === 'scenario_start') {
           const startNode = data.nextNode;
@@ -484,18 +510,15 @@ export const useChatStore = create((set, get) => {
         messages: messages.filter(msg => msg.type !== 'scenario_resume_prompt' || msg.scenarioId !== scenarioId),
       });
     },
-    // --- 👇 [수정된 부분] ---
     setScenarioPanelOpen: (isOpen) => {
         const { activeScenarioId } = get();
         
         set(state => {
             let newMessages = state.messages;
             if (!isOpen && activeScenarioId) {
-                // 기존 이어하기 버튼 제거
                 newMessages = state.messages.filter(msg =>
                     msg.type !== 'scenario_resume_prompt' || msg.scenarioId !== activeScenarioId
                 );
-                // 새 이어하기 버튼 추가
                 newMessages.push({
                     id: Date.now(),
                     sender: 'bot',
@@ -514,9 +537,11 @@ export const useChatStore = create((set, get) => {
 
         get().focusChatInput();
     },
-    // --- 👆 [여기까지] ---
+    // --- 👇 [수정된 부분] ---
     handleScenarioResponse: async (payload) => {
       const { scenarioId } = payload;
+      const { handleEvents, showToast } = get();
+
       set(state => ({
         scenarioStates: {
           ...state.scenarioStates,
@@ -547,6 +572,8 @@ export const useChatStore = create((set, get) => {
         });
         const data = await response.json();
 
+        handleEvents(data.events); // 1. 이벤트 처리
+
         if (data.type === 'scenario') {
           const nextNode = data.nextNode;
           set(state => ({
@@ -575,8 +602,21 @@ export const useChatStore = create((set, get) => {
                 }
             }
           }));
+          if (scenarioId === '선박 예약') {
+            get().showToast("예약이 성공적으로 완료되었습니다.", "success");
+          }
+        // 2. 유효성 검사 실패 처리 추가
+        } else if (data.type === 'scenario_validation_fail') {
+          showToast(data.message, 'error');
+          set(state => ({
+            scenarioStates: {
+              ...state.scenarioStates,
+              [scenarioId]: { ...state.scenarioStates[scenarioId], isLoading: false }
+            }
+          }));
         } else {
-          throw new Error("Invalid scenario response");
+          // 3. 더 이상 유효하지 않은 응답이므로 에러 throw
+          throw new Error("Invalid scenario response type received: " + data.type);
         }
       } catch (error) {
         console.error("Error in scenario conversation:", error);
@@ -592,6 +632,7 @@ export const useChatStore = create((set, get) => {
           }));
       }
     },
+    // --- 👆 [여기까지] ---
     continueScenarioIfNeeded: async (lastNode, scenarioId) => {
       const isInteractive = lastNode.type === 'slotfilling' || lastNode.type === 'form' || (lastNode.data?.replies && lastNode.data.replies.length > 0);
       if (!isInteractive && lastNode.id !== 'end') {

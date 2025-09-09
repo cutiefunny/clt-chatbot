@@ -7,17 +7,18 @@ import HistoryPanel from '../app/components/HistoryPanel';
 import ChatInput from '../app/components/ChatInput';
 import ScenarioChat from '../app/components/ScenarioChat';
 import ScenarioModal from '../app/components/ScenarioModal';
+// --- 👇 [추가] ---
+import Toast from '../app/components/Toast';
 import styles from './page.module.css';
 
 export default function HomePage() {
-  // --- 👇 [수정] isScenarioPanelOpen 상태 사용 ---
   const { user, isScenarioPanelOpen, activePanel, setActivePanel, isHistoryPanelOpen, isScenarioModalOpen } = useChatStore();
-  // --- 👆 [여기까지] ---
 
   return (
     <main className={styles.main}>
+      {/* --- 👇 [추가] --- */}
+      <Toast />
       {user ? (
-        // --- 👇 [수정] scenarioPanel.isOpen 대신 isScenarioPanelOpen 사용 ---
         <div className={`${styles.chatLayout} ${isScenarioPanelOpen ? styles.scenarioOpen : ''}`}>
           <HistoryPanel />
           <div

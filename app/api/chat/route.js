@@ -56,7 +56,7 @@ export async function POST(request) {
 
     if (scenarioState && scenarioState.scenarioId) {
       const scenario = await getScenario(scenarioState.scenarioId);
-      // --- 👇 [수정] 분리된 시나리오 실행 함수 호출 ---
+      // --- 👇 [수정] 분리된 시나리오 실행 함수 호출 (toast 분기 제거) ---
       const result = await runScenario(scenario, scenarioState, message, slots);
       return NextResponse.json(result);
     }

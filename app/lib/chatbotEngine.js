@@ -133,11 +133,12 @@ export const validateInput = (value, validation) => {
   }
 };
 
-// --- 👇 [추가] route.js에서 분리된 시나리오 실행 로직 ---
+// --- 👇 [수정된 부분] ---
 export async function runScenario(scenario, scenarioState, message, slots) {
     const { scenarioId, currentNodeId, awaitingInput } = scenarioState;
     let currentId = currentNodeId;
     let newSlots = { ...slots };
+    const events = []; // 1. 이벤트를 담을 배열 추가
 
     if (awaitingInput) {
         const currentNode = scenario.nodes.find(n => n.id === currentId);
@@ -150,6 +151,7 @@ export async function runScenario(scenario, scenarioState, message, slots) {
                 message: validationMessage,
                 scenarioState: { ...scenarioState, awaitingInput: true },
                 slots: newSlots,
+                events: [],
             };
         }
         newSlots[currentNode.data.slot] = message.text;
@@ -159,6 +161,18 @@ export async function runScenario(scenario, scenarioState, message, slots) {
 
     while (nextNode) {
         nextNode.data.content = interpolateMessage(nextNode.data.content, newSlots);
+        
+        // 2. Toast 노드를 만나면 events 배열에 추가하고 계속 진행
+        if (nextNode.type === 'toast') {
+            const interpolatedToastMessage = interpolateMessage(nextNode.data.message, newSlots);
+            events.push({
+                type: 'toast',
+                message: interpolatedToastMessage,
+                toastType: nextNode.data.toastType || 'info',
+            });
+            nextNode = getNextNode(scenario, nextNode.id, null, newSlots);
+            continue; 
+        }
 
         if (['slotfilling', 'message', 'branch', 'form'].includes(nextNode.type)) {
             const isAwaiting = nextNode.type === 'slotfilling';
@@ -167,6 +181,7 @@ export async function runScenario(scenario, scenarioState, message, slots) {
                 nextNode,
                 scenarioState: { scenarioId, currentNodeId: nextNode.id, awaitingInput: isAwaiting },
                 slots: newSlots,
+                events, // 3. 최종 응답에 events 배열 포함
             };
         }
 
@@ -174,7 +189,6 @@ export async function runScenario(scenario, scenarioState, message, slots) {
             const { method, url, headers, body, params, responseMapping } = nextNode.data;
             let interpolatedUrl = interpolateMessage(url, newSlots);
 
-            // --- 👇 [수정] GET 요청 시 파라미터 추가 로직 ---
             if (method === 'GET' && params) {
                 const queryParams = new URLSearchParams();
                 for (const key in params) {
@@ -239,8 +253,6 @@ export async function runScenario(scenario, scenarioState, message, slots) {
             nextNode = getNextNode(scenario, nextNode.id, null, newSlots);
             continue;
         }
-
-        // 처리되지 않은 다른 노드 타입이 있다면 루프를 중단하고 현재 상태를 반환하거나 에러 처리
         break;
     }
 
@@ -250,6 +262,7 @@ export async function runScenario(scenario, scenarioState, message, slots) {
             nextNode,
             scenarioState: { scenarioId, currentNodeId: nextNode.id, awaitingInput: false },
             slots: newSlots,
+            events,
         };
     } else {
         return {
@@ -257,6 +270,7 @@ export async function runScenario(scenario, scenarioState, message, slots) {
             message: '시나리오가 종료되었습니다.',
             scenarioState: null,
             slots: newSlots,
+            events,
         };
     }
 }
