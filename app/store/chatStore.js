@@ -28,6 +28,10 @@ const initialState = {
   searchResults: [],
   fontSize: 'default',
   isProfileModalOpen: false,
+
+  isDevBoardModalOpen: false,
+  devMemos: [],
+  unsubscribeDevMemos: null,
 };
 
 export const useChatStore = create((set, get) => {
@@ -108,6 +112,34 @@ export const useChatStore = create((set, get) => {
         set({ searchResults: results, isSearching: false });
     },
 
+    openDevBoardModal: () => set({ isDevBoardModalOpen: true }),
+    closeDevBoardModal: () => set({ isDevBoardModalOpen: false }),
+
+    loadDevMemos: (userId) => {
+        const q = query(collection(db, "dev-board"), orderBy("createdAt", "asc"));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const memos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            set({ devMemos: memos });
+        });
+        set({ unsubscribeDevMemos: unsubscribe });
+    },
+
+    addDevMemo: async (text) => {
+        const user = get().user;
+        if (!user) return;
+        await addDoc(collection(db, "dev-board"), {
+            text,
+            authorName: user.displayName,
+            authorUid: user.uid,
+            createdAt: serverTimestamp(),
+        });
+    },
+
+    deleteDevMemo: async (memoId) => {
+        const memoRef = doc(db, "dev-board", memoId);
+        await deleteDoc(memoRef);
+    },
+
     toggleTheme: async () => {
         const newTheme = get().theme === 'light' ? 'dark' : 'light';
         set({ theme: newTheme });
@@ -179,6 +211,7 @@ export const useChatStore = create((set, get) => {
           set({ user });
           get().unsubscribeAll();
           get().loadConversations(user.uid);
+          get().loadDevMemos(user.uid);
         } else {
           get().unsubscribeAll();
           const currentTriggers = get().scenarioTriggers;
@@ -205,7 +238,8 @@ export const useChatStore = create((set, get) => {
     unsubscribeAll: () => {
       get().unsubscribeConversations?.();
       get().unsubscribeMessages?.();
-      set({ unsubscribeConversations: null, unsubscribeMessages: null });
+      get().unsubscribeDevMemos?.();
+      set({ unsubscribeConversations: null, unsubscribeMessages: null, unsubscribeDevMemos: null });
     },
     loadConversations: (userId) => {
       const q = query(collection(db, "chats", userId, "conversations"), orderBy("updatedAt", "desc"));

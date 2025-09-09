@@ -1,11 +1,10 @@
 'use client';
 
-import { useState } from 'react'; // --- 👈 [추가]
+import { useState } from 'react';
 import { useChatStore } from '../store/chatStore';
 import styles from './ProfileModal.module.css';
-import LogoutModal from './LogoutModal'; // --- 👈 [추가]
+import LogoutModal from './LogoutModal';
 
-// 아이콘 컴포넌트
 const CheckIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M13.3333 4L5.99999 11.3333L2.66666 8" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -28,9 +27,9 @@ export default function ProfileModal() {
     fontSize,
     setFontSize,
     closeProfileModal,
+    openDevBoardModal, // --- 👈 [추가]
   } = useChatStore();
 
-  // --- 👇 [추가된 부분] ---
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   const handleLogoutConfirm = () => {
@@ -38,9 +37,14 @@ export default function ProfileModal() {
       setIsLogoutModalOpen(false);
       closeProfileModal();
   };
-  // --- 👆 [여기까지] ---
   
-  // 모달 외부 클릭 시 닫기
+  // --- 👇 [추가된 부분] ---
+  const handleDevBoardClick = () => {
+    openDevBoardModal();
+    closeProfileModal(); // 프로필 모달은 닫아줍니다.
+  };
+  // --- 👆 [여기까지] ---
+
   const handleOverlayClick = (e) => {
       if (e.target === e.currentTarget) {
           closeProfileModal();
@@ -103,17 +107,19 @@ export default function ProfileModal() {
               </div>
           </div>
 
-          {/* --- 👇 [수정된 부분] --- */}
+          {/* --- 👇 [추가된 부분] --- */}
+          <button onClick={handleDevBoardClick} className={styles.logoutButton}>
+            Dev Board
+          </button>
+          {/* --- 👆 [여기까지] --- */}
+
           <button onClick={() => setIsLogoutModalOpen(true)} className={styles.logoutButton}>
             로그아웃
           </button>
-          {/* --- 👆 [여기까지] --- */}
         </div>
       </div>
       
-      {/* --- 👇 [추가된 부분] --- */}
       {isLogoutModalOpen && <LogoutModal onClose={() => setIsLogoutModalOpen(false)} onConfirm={handleLogoutConfirm} />}
-      {/* --- 👆 [여기까지] --- */}
     </>
   );
 }
