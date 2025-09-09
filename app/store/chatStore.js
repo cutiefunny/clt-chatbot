@@ -279,6 +279,7 @@ export const useChatStore = create((set, get) => {
       await addDoc(messagesCollection, { ...messageToSave, createdAt: serverTimestamp() });
       await updateDoc(doc(db, "chats", user.uid, "conversations", conversationId), { updatedAt: serverTimestamp() });
     },
+    // --- 👇 [수정된 부분] ---
     addMessage: (sender, messageData) => {
       let newMessage;
       if (sender === 'user') {
@@ -299,10 +300,13 @@ export const useChatStore = create((set, get) => {
         }
       }
       set(state => ({ messages: [...state.messages, newMessage] }));
-      if (!newMessage.isStreaming) {
+      
+      // '이어하기' 버튼과 같은 UI 전용 메시지는 저장하지 않습니다.
+      if (!newMessage.isStreaming && newMessage.type !== 'scenario_resume_prompt') {
         get().saveMessage(newMessage);
       }
     },
+    // --- 👆 [여기까지] ---
     updateStreamingMessage: (id, chunk) => {
       set(state => ({ messages: state.messages.map(m => m.id === id ? { ...m, text: m.text + chunk } : m) }));
     },
@@ -448,30 +452,33 @@ export const useChatStore = create((set, get) => {
     },
     // --- 👇 [수정된 부분] ---
     setScenarioPanelOpen: (isOpen) => {
-        const { activeScenarioId, addMessage, messages } = get();
-        set({
-            isScenarioPanelOpen: isOpen,
-            activePanel: isOpen ? 'scenario' : 'main',
-        });
+        const { activeScenarioId } = get();
         
-        if (!isOpen && activeScenarioId) {
-            // 기존의 동일한 시나리오 이어하기 버튼을 모두 제거합니다.
-            const filteredMessages = messages.filter(msg => 
-                msg.type !== 'scenario_resume_prompt' || msg.scenarioId !== activeScenarioId
-            );
-            set({ messages: filteredMessages });
+        set(state => {
+            let newMessages = state.messages;
+            if (!isOpen && activeScenarioId) {
+                // 기존 이어하기 버튼 제거
+                newMessages = state.messages.filter(msg =>
+                    msg.type !== 'scenario_resume_prompt' || msg.scenarioId !== activeScenarioId
+                );
+                // 새 이어하기 버튼 추가
+                newMessages.push({
+                    id: Date.now(),
+                    sender: 'bot',
+                    type: 'scenario_resume_prompt',
+                    scenarioId: activeScenarioId,
+                    text: `'${activeScenarioId}' 시나리오 이어하기`,
+                });
+            }
 
-            // 새로운 이어하기 버튼을 추가합니다.
-            addMessage('bot', {
-                type: 'scenario_resume_prompt',
-                scenarioId: activeScenarioId,
-                text: `'${activeScenarioId}' 시나리오 이어하기`,
-            });
-        }
+            return {
+                isScenarioPanelOpen: isOpen,
+                activePanel: isOpen ? 'scenario' : 'main',
+                messages: newMessages,
+            };
+        });
 
-        if (isOpen) {
-            get().focusChatInput();
-        }
+        get().focusChatInput();
     },
     // --- 👆 [여기까지] ---
     handleScenarioResponse: async (payload) => {

@@ -128,12 +128,14 @@ export default function ScenarioChat() {
           <span className={styles.headerTitle}>시나리오: {activeScenarioId}</span>
         </div>
         <div className={styles.headerButtons}>
-           <button className={styles.headerRestartButton} onClick={() => setScenarioPanelOpen(false)}>
+           {/* --- 👇 [수정된 부분] --- */}
+           <button className={styles.headerRestartButton} onClick={(e) => { e.stopPropagation(); setScenarioPanelOpen(false); }}>
             숨기기
           </button>
-          <button className={`${styles.headerRestartButton} ${styles.dangerButton}`} onClick={() => endScenario(activeScenarioId)}>
+          <button className={`${styles.headerRestartButton} ${styles.dangerButton}`} onClick={(e) => { e.stopPropagation(); endScenario(activeScenarioId); }}>
             종료
           </button>
+           {/* --- 👆 [여기까지] --- */}
         </div>
       </div>
       

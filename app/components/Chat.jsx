@@ -5,7 +5,7 @@ import { useChatStore } from '../store/chatStore';
 import styles from './Chat.module.css';
 
 export default function Chat() {
-  const { messages, isLoading, openScenarioPanel } = useChatStore(); // createNewConversation 제거
+  const { messages, isLoading, openScenarioPanel } = useChatStore();
   const [copiedMessageId, setCopiedMessageId] = useState(null);
   const historyRef = useRef(null);
 
@@ -62,22 +62,24 @@ export default function Chat() {
             >
               {copiedMessageId === msg.id && <div className={styles.copyFeedback}>Copied!</div>}
               
-              {/* --- 👇 [수정/추가] 이어하기 버튼 렌더링 로직 --- */}
               {msg.type === 'scenario_resume_prompt' ? (
-                <button className={styles.optionButton} onClick={() => openScenarioPanel(msg.scenarioId)}>
+                // --- 👇 [수정된 부분] ---
+                <button className={styles.optionButton} onClick={(e) => { e.stopPropagation(); openScenarioPanel(msg.scenarioId); }}>
                   {msg.text}
                 </button>
+                // --- 👆 [여기까지] ---
               ) : (
                 <p>{msg.text || msg.node?.data.content}</p>
               )}
-              {/* --- 👆 [여기까지] --- */}
 
               {msg.sender === 'bot' && msg.scenarios && (
                 <div className={styles.scenarioList}>
                   {msg.scenarios.map(name => (
-                    <button key={name} className={styles.optionButton} onClick={() => openScenarioPanel(name)}>
+                    // --- 👇 [수정된 부분] ---
+                    <button key={name} className={styles.optionButton} onClick={(e) => { e.stopPropagation(); openScenarioPanel(name); }}>
                       {name}
                     </button>
+                    // --- 👆 [여기까지] ---
                   ))}
                 </div>
               )}
