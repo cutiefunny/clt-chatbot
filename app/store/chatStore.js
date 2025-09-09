@@ -36,7 +36,7 @@ const initialState = {
   toast: {
     visible: false,
     message: '',
-    type: 'info',
+    type: 'info', 
   },
 };
 
@@ -75,7 +75,6 @@ export const useChatStore = create((set, get) => {
     },
     hideToast: () => set(state => ({ toast: { ...state.toast, visible: false } })),
     
-    // --- 👇 [추가된 부분] ---
     handleEvents: (events) => {
       if (!events || !Array.isArray(events)) return;
       const { showToast } = get();
@@ -85,7 +84,6 @@ export const useChatStore = create((set, get) => {
         }
       });
     },
-    // --- 👆 [여기까지] ---
 
     openSearchModal: () => set({ isSearchModalOpen: true, searchResults: [], isSearching: false }),
     closeSearchModal: () => set({ isSearchModalOpen: false }),
@@ -427,7 +425,7 @@ export const useChatStore = create((set, get) => {
       }
     },
     openScenarioPanel: async (scenarioId) => {
-      const { scenarioStates, handleEvents } = get(); // handleEvents 추가
+      const { scenarioStates, handleEvents } = get();
 
       if (scenarioStates[scenarioId]) {
           set({ 
@@ -462,7 +460,7 @@ export const useChatStore = create((set, get) => {
         });
         const data = await response.json();
         
-        handleEvents(data.events); // 이벤트 처리
+        handleEvents(data.events);
 
         if (data.type === 'scenario_start') {
           const startNode = data.nextNode;
@@ -537,7 +535,6 @@ export const useChatStore = create((set, get) => {
 
         get().focusChatInput();
     },
-    // --- 👇 [수정된 부분] ---
     handleScenarioResponse: async (payload) => {
       const { scenarioId } = payload;
       const { handleEvents, showToast } = get();
@@ -572,7 +569,7 @@ export const useChatStore = create((set, get) => {
         });
         const data = await response.json();
 
-        handleEvents(data.events); // 1. 이벤트 처리
+        handleEvents(data.events);
 
         if (data.type === 'scenario') {
           const nextNode = data.nextNode;
@@ -602,10 +599,11 @@ export const useChatStore = create((set, get) => {
                 }
             }
           }));
-          if (scenarioId === '선박 예약') {
-            get().showToast("예약이 성공적으로 완료되었습니다.", "success");
-          }
-        // 2. 유효성 검사 실패 처리 추가
+          // --- 👇 [삭제된 부분] ---
+          // if (scenarioId === '선박 예약') {
+          //   get().showToast("예약이 성공적으로 완료되었습니다.", "success");
+          // }
+          // --- 👆 [여기까지] ---
         } else if (data.type === 'scenario_validation_fail') {
           showToast(data.message, 'error');
           set(state => ({
@@ -615,7 +613,6 @@ export const useChatStore = create((set, get) => {
             }
           }));
         } else {
-          // 3. 더 이상 유효하지 않은 응답이므로 에러 throw
           throw new Error("Invalid scenario response type received: " + data.type);
         }
       } catch (error) {
@@ -632,7 +629,6 @@ export const useChatStore = create((set, get) => {
           }));
       }
     },
-    // --- 👆 [여기까지] ---
     continueScenarioIfNeeded: async (lastNode, scenarioId) => {
       const isInteractive = lastNode.type === 'slotfilling' || lastNode.type === 'form' || (lastNode.data?.replies && lastNode.data.replies.length > 0);
       if (!isInteractive && lastNode.id !== 'end') {
