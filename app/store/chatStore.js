@@ -36,11 +36,11 @@ const initialState = {
   toast: {
     visible: false,
     message: '',
-    type: 'info', 
+    type: 'info',
   },
-
   toastHistory: [],
   isNotificationModalOpen: false,
+  unsubscribeNotifications: null,
 };
 
 export const useChatStore = create((set, get) => {
@@ -73,18 +73,46 @@ export const useChatStore = create((set, get) => {
     ...initialState,
 
     showToast: (message, type = 'info') => {
-      const newToast = { id: Date.now(), message, type };
+      const newToast = { id: Date.now(), message, type, createdAt: serverTimestamp() };
+      
       set(state => ({
         toast: { ...newToast, visible: true },
-        toastHistory: [newToast, ...state.toastHistory], // 새 알림을 히스토리 맨 앞에 추가
+        toastHistory: [
+            {...newToast, id: newToast.id.toString(), createdAt: { toDate: () => new Date(newToast.id) } }, 
+            ...state.toastHistory
+        ].sort((a, b) => b.id - a.id)
       }));
+      
+      get().saveNotification(newToast); 
+
       setTimeout(() => get().hideToast(), 3000);
     },
     hideToast: () => set(state => ({ toast: { ...state.toast, visible: false } })),
     
+    saveNotification: async (toastData) => {
+        const user = get().user;
+        if (!user) return;
+        try {
+            const notificationsCollection = collection(db, "users", user.uid, "notifications");
+            const { visible, ...dataToSave } = toastData;
+            await addDoc(notificationsCollection, dataToSave);
+        } catch (error) {
+            console.error("Error saving notification:", error);
+        }
+    },
+
+    loadNotifications: (userId) => {
+        const q = query(collection(db, "users", userId, "notifications"), orderBy("createdAt", "desc"));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const notifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            set({ toastHistory: notifications });
+        });
+        set({ unsubscribeNotifications: unsubscribe });
+    },
+
     openNotificationModal: () => set({ isNotificationModalOpen: true }),
     closeNotificationModal: () => set({ isNotificationModalOpen: false }),
-    
+
     handleEvents: (events) => {
       if (!events || !Array.isArray(events)) return;
       const { showToast } = get();
@@ -247,6 +275,7 @@ export const useChatStore = create((set, get) => {
           get().unsubscribeAll();
           get().loadConversations(user.uid);
           get().loadDevMemos(user.uid);
+          get().loadNotifications(user.uid);
         } else {
           get().unsubscribeAll();
           const currentTriggers = get().scenarioTriggers;
@@ -274,7 +303,13 @@ export const useChatStore = create((set, get) => {
       get().unsubscribeConversations?.();
       get().unsubscribeMessages?.();
       get().unsubscribeDevMemos?.();
-      set({ unsubscribeConversations: null, unsubscribeMessages: null, unsubscribeDevMemos: null });
+      get().unsubscribeNotifications?.();
+      set({ 
+          unsubscribeConversations: null, 
+          unsubscribeMessages: null, 
+          unsubscribeDevMemos: null,
+          unsubscribeNotifications: null 
+      });
     },
     loadConversations: (userId) => {
       const q = query(collection(db, "chats", userId, "conversations"), orderBy("updatedAt", "desc"));
@@ -609,11 +644,6 @@ export const useChatStore = create((set, get) => {
                 }
             }
           }));
-          // --- 👇 [삭제된 부분] ---
-          // if (scenarioId === '선박 예약') {
-          //   get().showToast("예약이 성공적으로 완료되었습니다.", "success");
-          // }
-          // --- 👆 [여기까지] ---
         } else if (data.type === 'scenario_validation_fail') {
           showToast(data.message, 'error');
           set(state => ({
