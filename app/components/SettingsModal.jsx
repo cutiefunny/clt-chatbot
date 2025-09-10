@@ -1,6 +1,6 @@
 'use client';
 
-import { useChatStore } from '../store/chatStore';
+import { useChatStore } from '../store';
 import styles from './SettingsModal.module.css';
 
 const CloseIcon = () => (

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useChatStore } from '../store/chatStore';
+import { useChatStore } from '../store';
 import { useTranslations } from '../hooks/useTranslations';
 import styles from './ChatInput.module.css';
 

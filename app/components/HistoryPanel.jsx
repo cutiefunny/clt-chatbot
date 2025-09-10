@@ -1,6 +1,6 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
-import { useChatStore } from '../store/chatStore';
+import { useChatStore } from '../store';
 import { useTranslations } from '../hooks/useTranslations';
 import styles from './HistoryPanel.module.css';
 import ProfileModal from './ProfileModal';

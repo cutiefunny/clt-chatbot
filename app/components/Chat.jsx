@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useChatStore } from '../store/chatStore';
+import { useChatStore } from '../store';
 import { useTranslations } from '../hooks/useTranslations';
 import styles from './Chat.module.css';
 
@@ -22,7 +22,6 @@ export default function Chat() {
     scrollToBottom();
 
     const observer = new MutationObserver(scrollToBottom);
-
     observer.observe(scrollContainer, {
       childList: true,
       subtree: true,

@@ -1,13 +1,12 @@
 'use client';
 
-import { useChatStore } from '../app/store/chatStore';
+import { useChatStore } from '../app/store';
 import Chat from '../app/components/Chat';
 import Login from '../app/components/Login';
 import HistoryPanel from '../app/components/HistoryPanel';
 import ChatInput from '../app/components/ChatInput';
 import ScenarioChat from '../app/components/ScenarioChat';
 import ScenarioModal from '../app/components/ScenarioModal';
-// --- 👇 [추가] ---
 import Toast from '../app/components/Toast';
 import styles from './page.module.css';
 
@@ -16,7 +15,6 @@ export default function HomePage() {
 
   return (
     <main className={styles.main}>
-      {/* --- 👇 [추가] --- */}
       <Toast />
       {user ? (
         <div className={`${styles.chatLayout} ${isScenarioPanelOpen ? styles.scenarioOpen : ''}`}>

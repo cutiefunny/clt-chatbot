@@ -1,6 +1,6 @@
 'use client';
 
-import { useChatStore } from '../store/chatStore';
+import { useChatStore } from '../store';
 import { useTranslations } from '../hooks/useTranslations';
 import styles from './ScenarioModal.module.css';
 

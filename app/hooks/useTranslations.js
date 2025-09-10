@@ -1,6 +1,6 @@
 'use client';
 
-import { useChatStore } from '../store/chatStore';
+import { useChatStore } from '../store';
 import { locales } from '../lib/locales';
 
 export const useTranslations = () => {
