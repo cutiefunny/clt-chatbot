@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useChatStore } from '../store/chatStore';
+import { useTranslations } from '../hooks/useTranslations';
 import styles from './SearchModal.module.css';
 
 const SearchIcon = () => (
@@ -36,6 +37,7 @@ export default function SearchModal() {
         isSearching,
     } = useChatStore();
     const [query, setQuery] = useState('');
+    const { t } = useTranslations();
 
     useEffect(() => {
         const handler = setTimeout(() => {
@@ -61,16 +63,16 @@ export default function SearchModal() {
                         type="text"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
-                        placeholder="Search conversations..."
+                        placeholder={t('searchConversations')}
                         className={styles.searchInput}
                         autoFocus
                     />
                 </div>
                 <div className={styles.resultsContainer}>
-                    {isSearching && <p className={styles.loadingText}>Searching...</p>}
+                    {isSearching && <p className={styles.loadingText}>{t('searching')}</p>}
                     
                     {!isSearching && query.trim() && searchResults.length === 0 && (
-                        <p className={styles.noResults}>No results found.</p>
+                        <p className={styles.noResults}>{t('noResults')}</p>
                     )}
 
                     {!isSearching && searchResults.map(convo => (

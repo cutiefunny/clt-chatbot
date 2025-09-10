@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useChatStore } from '../store/chatStore';
+import { useTranslations } from '../hooks/useTranslations';
 import styles from './ProfileModal.module.css';
 import LogoutModal from './LogoutModal';
 
@@ -17,7 +18,6 @@ const CloseIcon = () => (
     </svg>
 );
 
-
 export default function ProfileModal() {
   const {
     user,
@@ -28,10 +28,10 @@ export default function ProfileModal() {
     setFontSize,
     closeProfileModal,
     openDevBoardModal,
-    language, // --- 👈 [추가]
-    setLanguage, // --- 👈 [추가]
+    language,
+    setLanguage,
   } = useChatStore();
-
+  const { t } = useTranslations();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   const handleLogoutConfirm = () => {
@@ -63,78 +63,76 @@ export default function ProfileModal() {
 
           <div className={styles.userInfo}>
             <img src={user.photoURL} alt="User Avatar" className={styles.avatar} />
-            <p className={styles.userName}>안녕하세요 {user.displayName} 님</p>
+            <p className={styles.userName}>{t('greeting')(user.displayName)}</p>
             <p className={styles.userEmail}>{user.email}</p>
           </div>
 
           <div className={styles.settingsSection}>
-            <h3 className={styles.sectionTitle}>화면 스타일</h3>
+            <h3 className={styles.sectionTitle}>{t('screenStyle')}</h3>
             <div className={styles.optionGroup}>
               <button
                 className={`${styles.optionButton} ${theme === 'light' ? styles.active : ''}`}
                 onClick={toggleTheme}
               >
                 {theme === 'light' && <div className={styles.checkIcon}><CheckIcon /></div>}
-                라이트 모드
+                {t('lightMode')}
               </button>
               <button
                 className={`${styles.optionButton} ${theme === 'dark' ? styles.active : ''}`}
                 onClick={toggleTheme}
               >
                 {theme === 'dark' && <div className={styles.checkIcon}><CheckIcon /></div>}
-                다크 모드
+                {t('darkMode')}
               </button>
             </div>
           </div>
 
           <div className={styles.settingsSection}>
-              <h3 className={styles.sectionTitle}>글자 크기</h3>
+              <h3 className={styles.sectionTitle}>{t('fontSize')}</h3>
               <div className={styles.optionGroup}>
                   <button
                       className={`${styles.optionButton} ${fontSize === 'small' ? styles.active : ''}`}
                       onClick={() => setFontSize('small')}
                   >
                       {fontSize === 'small' && <div className={styles.checkIcon}><CheckIcon /></div>}
-                      축소
+                      {t('fontSmall')}
                   </button>
                   <button
                       className={`${styles.optionButton} ${fontSize === 'default' ? styles.active : ''}`}
                       onClick={() => setFontSize('default')}
                   >
                       {fontSize === 'default' && <div className={styles.checkIcon}><CheckIcon /></div>}
-                      기본
+                      {t('fontDefault')}
                   </button>
               </div>
           </div>
           
-          {/* --- 👇 [추가된 부분] --- */}
           <div className={styles.settingsSection}>
-              <h3 className={styles.sectionTitle}>언어 설정</h3>
+              <h3 className={styles.sectionTitle}>{t('languageSetting')}</h3>
               <div className={styles.optionGroup}>
                   <button
                       className={`${styles.optionButton} ${language === 'ko' ? styles.active : ''}`}
                       onClick={() => setLanguage('ko')}
                   >
                       {language === 'ko' && <div className={styles.checkIcon}><CheckIcon /></div>}
-                      한국어
+                      {t('korean')}
                   </button>
                   <button
                       className={`${styles.optionButton} ${language === 'en' ? styles.active : ''}`}
                       onClick={() => setLanguage('en')}
                   >
                       {language === 'en' && <div className={styles.checkIcon}><CheckIcon /></div>}
-                      English
+                      {t('english')}
                   </button>
               </div>
           </div>
-          {/* --- 👆 [여기까지] --- */}
 
           <button onClick={handleDevBoardClick} className={styles.logoutButton}>
-            Dev Board
+            {t('devBoard')}
           </button>
 
           <button onClick={() => setIsLogoutModalOpen(true)} className={styles.logoutButton}>
-            로그아웃
+            {t('logout')}
           </button>
         </div>
       </div>

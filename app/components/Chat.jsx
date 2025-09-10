@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useChatStore } from '../store/chatStore';
+import { useTranslations } from '../hooks/useTranslations';
 import styles from './Chat.module.css';
 
 export default function Chat() {
   const { messages, isLoading, openScenarioPanel } = useChatStore();
   const [copiedMessageId, setCopiedMessageId] = useState(null);
   const historyRef = useRef(null);
+  const { t } = useTranslations();
 
   useEffect(() => {
     const scrollContainer = historyRef.current;
@@ -60,14 +62,12 @@ export default function Chat() {
               className={`${styles.message} ${msg.sender === 'bot' ? styles.botMessage : styles.userMessage}`}
               onClick={() => msg.sender === 'bot' && handleCopy(msg.text || msg.node?.data.content, msg.id)}
             >
-              {copiedMessageId === msg.id && <div className={styles.copyFeedback}>Copied!</div>}
+              {copiedMessageId === msg.id && <div className={styles.copyFeedback}>{t('copied')}</div>}
               
               {msg.type === 'scenario_resume_prompt' ? (
-                // --- 👇 [수정된 부분] ---
                 <button className={styles.optionButton} onClick={(e) => { e.stopPropagation(); openScenarioPanel(msg.scenarioId); }}>
-                  {msg.text}
+                  {t('scenarioResume')(msg.scenarioId)}
                 </button>
-                // --- 👆 [여기까지] ---
               ) : (
                 <p>{msg.text || msg.node?.data.content}</p>
               )}
@@ -75,11 +75,9 @@ export default function Chat() {
               {msg.sender === 'bot' && msg.scenarios && (
                 <div className={styles.scenarioList}>
                   {msg.scenarios.map(name => (
-                    // --- 👇 [수정된 부분] ---
                     <button key={name} className={styles.optionButton} onClick={(e) => { e.stopPropagation(); openScenarioPanel(name); }}>
                       {name}
                     </button>
-                    // --- 👆 [여기까지] ---
                   ))}
                 </div>
               )}
@@ -89,7 +87,7 @@ export default function Chat() {
         {isLoading && messages[messages.length-1]?.sender === 'user' && (
             <div className={styles.messageRow}>
                 <img src="/images/avatar-loading.png" alt="Avatar" className={styles.avatar} />
-                <div className={`${styles.message} ${styles.botMessage}`}><img src="/images/Loading.gif" alt="Loading..." style={{ width: '40px', height: '30px' }} /></div>
+                <div className={`${styles.message} ${styles.botMessage}`}><img src="/images/Loading.gif" alt={t('loading')} style={{ width: '40px', height: '30px' }} /></div>
             </div>
         )}
       </div>

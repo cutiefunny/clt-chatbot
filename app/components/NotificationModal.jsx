@@ -1,6 +1,7 @@
 'use client';
 
 import { useChatStore } from '../store/chatStore';
+import { useTranslations } from '../hooks/useTranslations';
 import styles from './NotificationModal.module.css';
 
 const CloseIcon = () => (
@@ -11,8 +12,8 @@ const CloseIcon = () => (
 );
 
 const NotificationModal = () => {
-    // --- 👇 [수정] lastCheckedNotifications 상태 추가 ---
     const { toastHistory, isNotificationModalOpen, closeNotificationModal, lastCheckedNotifications } = useChatStore();
+    const { t, language } = useTranslations();
 
     if (!isNotificationModalOpen) {
         return null;
@@ -28,29 +29,27 @@ const NotificationModal = () => {
         <div className={styles.modalOverlay} onClick={handleOverlayClick}>
             <div className={styles.modalContent}>
                 <div className={styles.modalHeader}>
-                    <h2>알림 내역</h2>
+                    <h2>{t('notificationHistory')}</h2>
                     <button onClick={closeNotificationModal} className={styles.closeButton}>
                         <CloseIcon />
                     </button>
                 </div>
                 <div className={styles.modalBody}>
                     {toastHistory.length === 0 ? (
-                        <p className={styles.noNotifications}>표시할 알림이 없습니다.</p>
+                        <p className={styles.noNotifications}>{t('noNotifications')}</p>
                     ) : (
                         <ul className={styles.notificationList}>
-                            {/* --- 👇 [수정된 부분] --- */}
                             {toastHistory.map((toast) => {
                                 const isNew = toast.createdAt?.toDate().getTime() > lastCheckedNotifications;
                                 return (
                                     <li key={toast.id} className={`${styles.notificationItem} ${styles[toast.type]} ${isNew ? styles.newItem : ''}`}>
                                         <span className={styles.timestamp}>
-                                            {toast.createdAt?.toDate().toLocaleString()}
+                                            {toast.createdAt?.toDate().toLocaleString(language)}
                                         </span>
                                         <p className={styles.message}>{toast.message}</p>
                                     </li>
                                 );
                             })}
-                            {/* --- 👆 [여기까지] --- */}
                         </ul>
                     )}
                 </div>

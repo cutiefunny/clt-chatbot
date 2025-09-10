@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useChatStore } from '../store/chatStore';
+import { useTranslations } from '../hooks/useTranslations';
 import styles from './ChatInput.module.css';
 
 const MenuIcon = () => (
@@ -40,19 +41,17 @@ export default function ChatInput() {
         isLoading, 
         handleResponse,
         activePanel,
-        // --- 👇 [수정된 부분] ---
         activeScenarioId,
         scenarioStates,
-        // --- 👆 [여기까지] ---
         handleScenarioResponse,
         focusRequest,
         openScenarioModal,
     } = useChatStore();
     
+    const { t } = useTranslations();
     const inputRef = useRef(null);
     const quickRepliesSlider = useDraggableScroll();
 
-    // --- 👇 [수정된 부분] ---
     const activeScenario = activeScenarioId ? scenarioStates[activeScenarioId] : null;
     const scenarioMessages = activeScenario?.messages || [];
     const mainMessages = useChatStore(state => state.messages);
@@ -63,7 +62,6 @@ export default function ChatInput() {
     
     const currentBotMessageNode = lastMessage?.sender === 'bot' ? lastMessage.node : null;
     const currentScenarioNodeId = activeScenario?.state?.currentNodeId;
-    // --- 👆 [여기까지] ---
 
     useEffect(() => {
         if (!isLoading) {
@@ -130,7 +128,7 @@ export default function ChatInput() {
                     ref={inputRef}
                     name="userInput"
                     className={styles.textInput}
-                    placeholder={activePanel === 'scenario' ? '응답을 입력하세요...' : 'Ask about this Booking Master Page'}
+                    placeholder={activePanel === 'scenario' ? t('enterResponse') : t('askAboutService')}
                     autoComplete="off"
                     disabled={isLoading}
                 />

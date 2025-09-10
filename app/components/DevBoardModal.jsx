@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useChatStore } from '../store/chatStore';
+import { useTranslations } from '../hooks/useTranslations';
 import styles from './DevBoardModal.module.css';
 
 const CloseIcon = () => (
@@ -17,7 +18,6 @@ const TrashIcon = () => (
     </svg>
 );
 
-
 export default function DevBoardModal() {
     const {
         user,
@@ -28,9 +28,9 @@ export default function DevBoardModal() {
     } = useChatStore();
     const [newMemo, setNewMemo] = useState('');
     const memoListRef = useRef(null);
+    const { t, language } = useTranslations();
 
     useEffect(() => {
-        // 새 메모가 추가되면 스크롤을 맨 아래로 이동
         if (memoListRef.current) {
             memoListRef.current.scrollTop = memoListRef.current.scrollHeight;
         }
@@ -54,7 +54,7 @@ export default function DevBoardModal() {
         <div className={styles.modalOverlay} onClick={handleOverlayClick}>
             <div className={styles.modalContent}>
                 <div className={styles.modalHeader}>
-                    <h2>Dev Board</h2>
+                    <h2>{t('devBoardTitle')}</h2>
                     <button onClick={closeDevBoardModal} className={styles.closeButton}>
                         <CloseIcon />
                     </button>
@@ -66,7 +66,7 @@ export default function DevBoardModal() {
                             <div className={styles.memoHeader}>
                                 <span className={styles.memoAuthor}>{memo.authorName}</span>
                                 <span className={styles.memoTimestamp}>
-                                    {new Date(memo.createdAt?.toDate()).toLocaleString()}
+                                    {new Date(memo.createdAt?.toDate()).toLocaleString(language)}
                                 </span>
                             </div>
                             <p className={styles.memoText}>{memo.text}</p>
@@ -84,11 +84,11 @@ export default function DevBoardModal() {
                         type="text"
                         value={newMemo}
                         onChange={(e) => setNewMemo(e.target.value)}
-                        placeholder="메모를 입력하세요..."
+                        placeholder={t('enterMemo')}
                         className={styles.memoInput}
                     />
                     <button type="submit" className={styles.submitButton}>
-                        작성
+                        {t('post')}
                     </button>
                 </form>
             </div>

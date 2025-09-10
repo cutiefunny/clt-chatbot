@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useChatStore } from '../store/chatStore';
+import { useTranslations } from '../hooks/useTranslations';
 import styles from './Chat.module.css'; 
 
 const FormRenderer = ({ node, onFormSubmit }) => {
     const [formData, setFormData] = useState({});
     const dateInputRef = useRef(null);
+    const { t } = useTranslations();
 
     const handleInputChange = (name, value) => {
         setFormData(prev => ({ ...prev, [name]: value }));
@@ -54,7 +56,7 @@ const FormRenderer = ({ node, onFormSubmit }) => {
 
                     {el.type === 'dropbox' && (
                         <select value={formData[el.name] || ''} onChange={e => handleInputChange(el.name, e.target.value)}>
-                            <option value="" disabled>선택...</option>
+                            <option value="" disabled>{t('select')}</option>
                             {el.options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                         </select>
                     )}
@@ -66,7 +68,7 @@ const FormRenderer = ({ node, onFormSubmit }) => {
                     ))}
                 </div>
             ))}
-            <button type="submit" className={styles.formSubmitButton}>제출</button>
+            <button type="submit" className={styles.formSubmitButton}>{t('submit')}</button>
         </form>
     );
 };
@@ -80,6 +82,7 @@ export default function ScenarioChat() {
     setScenarioPanelOpen,
     endScenario,
   } = useChatStore();
+  const { t } = useTranslations();
 
   const activeScenario = activeScenarioId ? scenarioStates[activeScenarioId] : null;
   const scenarioMessages = activeScenario?.messages || [];
@@ -125,17 +128,15 @@ export default function ScenarioChat() {
     <div className={styles.chatContainer} style={{ height: '100%' }}>
       <div className={styles.header}>
         <div className={styles.headerContent}>
-          <span className={styles.headerTitle}>시나리오: {activeScenarioId}</span>
+          <span className={styles.headerTitle}>{t('scenarioTitle')(activeScenarioId)}</span>
         </div>
         <div className={styles.headerButtons}>
-           {/* --- 👇 [수정된 부분] --- */}
            <button className={styles.headerRestartButton} onClick={(e) => { e.stopPropagation(); setScenarioPanelOpen(false); }}>
-            숨기기
+            {t('hide')}
           </button>
           <button className={`${styles.headerRestartButton} ${styles.dangerButton}`} onClick={(e) => { e.stopPropagation(); endScenario(activeScenarioId); }}>
-            종료
+            {t('end')}
           </button>
-           {/* --- 👆 [여기까지] --- */}
         </div>
       </div>
       
@@ -170,7 +171,7 @@ export default function ScenarioChat() {
              </div>
           </div>
         ))}
-        {isScenarioLoading && <div className={styles.messageRow}><p>...</p></div>}
+        {isScenarioLoading && <div className={styles.messageRow}><p>{t('loading')}...</p></div>}
       </div>
     </div>
   );

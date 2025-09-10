@@ -1,6 +1,7 @@
 'use client';
 
 import { useChatStore } from '../store/chatStore';
+import { useTranslations } from '../hooks/useTranslations';
 import styles from './ScenarioModal.module.css';
 
 const CloseIcon = () => (
@@ -17,6 +18,7 @@ export default function ScenarioModal() {
         openScenarioPanel,
         handleResponse 
     } = useChatStore();
+    const { t } = useTranslations();
 
     const handleOverlayClick = (e) => {
         if (e.target === e.currentTarget) {
@@ -27,11 +29,9 @@ export default function ScenarioModal() {
     const handleScenarioClick = (trigger) => {
         const scenarioId = scenarioTriggers[trigger];
         
-        // '시나리오 목록'은 기존 방식으로 처리
         if (scenarioId === 'GET_SCENARIO_LIST') {
             handleResponse({ text: trigger });
         } else {
-            // 다른 시나리오는 패널을 열도록 처리
             openScenarioPanel(scenarioId);
         }
         closeScenarioModal();
@@ -41,7 +41,7 @@ export default function ScenarioModal() {
         <div className={styles.modalOverlay} onClick={handleOverlayClick}>
             <div className={styles.modalContent}>
                 <div className={styles.modalHeader}>
-                    <h2>Start a Scenario</h2>
+                    <h2>{t('startScenario')}</h2>
                     <button onClick={closeScenarioModal} className={styles.closeButton}>
                         <CloseIcon />
                     </button>

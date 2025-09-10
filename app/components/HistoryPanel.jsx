@@ -1,6 +1,7 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
 import { useChatStore } from '../store/chatStore';
+import { useTranslations } from '../hooks/useTranslations';
 import styles from './HistoryPanel.module.css';
 import ProfileModal from './ProfileModal';
 import SearchModal from './SearchModal';
@@ -53,6 +54,7 @@ const ConversationItem = ({ convo, isActive, onClick, onDelete, onUpdateTitle })
     const [isEditing, setIsEditing] = useState(false);
     const [title, setTitle] = useState(convo.title);
     const inputRef = useRef(null);
+    const { t } = useTranslations();
 
     useEffect(() => {
         if (isEditing) {
@@ -94,7 +96,7 @@ const ConversationItem = ({ convo, isActive, onClick, onDelete, onUpdateTitle })
                     onClick={(e) => e.stopPropagation()}
                 />
             ) : (
-                <span className={styles.convoTitle}>{convo.title || 'New Chat'}</span>
+                <span className={styles.convoTitle}>{convo.title || t('newChat')}</span>
             )}
             <div className={styles.buttonGroup}>
                 {isEditing ? (
@@ -136,12 +138,13 @@ export default function HistoryPanel() {
     openNotificationModal,
     hasUnreadNotifications,
   } = useChatStore();
+  const { t } = useTranslations();
   
   if (!user) return null;
 
   const handleDelete = (e, convoId) => {
     e.stopPropagation();
-    if (window.confirm("정말로 이 대화를 삭제하시겠습니까?")) {
+    if (window.confirm(t('deleteConvoConfirm'))) {
         deleteConversation(convoId);
     }
   };
@@ -168,7 +171,7 @@ export default function HistoryPanel() {
             </div>
             <button className={styles.newChatButton} onClick={createNewConversation}>
                 <EditIcon />
-                <span className={styles.newChatText}>New Chat</span>
+                <span className={styles.newChatText}>{t('newChat')}</span>
             </button>
         </div>
         

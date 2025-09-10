@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getScenario, getNextNode, interpolateMessage, findScenarioIdByTrigger, getScenarioList, runScenario } from '../../lib/chatbotEngine';
 import { getGeminiStream } from '../../lib/gemini';
+import { locales } from '../../lib/locales';
 
 async function determineAction(messageText) {
     const triggeredAction = findScenarioIdByTrigger(messageText);
@@ -19,12 +20,12 @@ async function determineAction(messageText) {
 }
 
 const actionHandlers = {
-    'GET_SCENARIO_LIST': async () => {
+    'GET_SCENARIO_LIST': async (payload, slots, language) => {
         const scenarios = await getScenarioList();
         return NextResponse.json({
             type: 'scenario_list',
             scenarios,
-            message: '실행할 시나리오를 선택해주세요.',
+            message: locales[language].scenarioListMessage,
             scenarioState: null
         });
     },
@@ -52,7 +53,7 @@ const actionHandlers = {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { message, scenarioState, slots, language } = body; // --- 👈 [수정] language 추가
+    const { message, scenarioState, slots, language = 'ko' } = body;
 
     if (scenarioState && scenarioState.scenarioId) {
       const scenario = await getScenario(scenarioState.scenarioId);
@@ -64,10 +65,9 @@ export async function POST(request) {
     const handler = actionHandlers[action.type];
 
     if (handler) {
-        return await handler(action.payload, slots);
+        return await handler(action.payload, slots, language);
     }
-
-    // --- 👇 [수정] language를 getGeminiStream에 전달 ---
+    
     const stream = await getGeminiStream(message.text, language);
     return new Response(stream, {
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },
