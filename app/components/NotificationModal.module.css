@@ -70,7 +70,25 @@
     border-radius: 8px;
     border-left: 4px solid;
     background-color: var(--bot-message-bg);
+    position: relative; /* --- 💡 추가 --- */
 }
+
+/* --- 👇 [추가된 부분] --- */
+.notificationItem.newItem::before {
+    content: 'New';
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background-color: #d32f2f;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+/* --- 👆 [여기까지] --- */
+
 
 .notificationItem.success {
     border-left-color: #4CAF50;

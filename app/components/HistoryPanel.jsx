@@ -134,6 +134,7 @@ export default function HistoryPanel() {
     isDevBoardModalOpen,
     isNotificationModalOpen,
     openNotificationModal,
+    hasUnreadNotifications,
   } = useChatStore();
   
   if (!user) return null;
@@ -154,7 +155,10 @@ export default function HistoryPanel() {
                     <MenuIcon />
                 </button>
                 <div className={styles.headerIconGroup}>
-                    <button className={styles.iconButton} onClick={openNotificationModal}>
+                    <button 
+                        className={`${styles.iconButton} ${hasUnreadNotifications ? styles.unread : ''}`} 
+                        onClick={openNotificationModal}
+                    >
                         <BellIcon />
                     </button>
                     <button className={styles.iconButton} onClick={openSearchModal}>

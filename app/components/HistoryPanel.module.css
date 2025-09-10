@@ -35,6 +35,10 @@
     align-items: center;
 }
 
+.historyPanel.closed .headerTopRow {
+    justify-content: flex-start;
+}
+
 .headerIconGroup {
     display: flex;
     align-items: center;
@@ -42,10 +46,6 @@
 
 .historyPanel.closed .headerIconGroup {
     display: none;
-}
-
-.historyPanel.closed .headerTopRow {
-    justify-content: flex-start;
 }
 
 .iconButton {
@@ -59,6 +59,19 @@
     justify-content: center;
     transition: background-color 0.2s;
     color: var(--text-color);
+    position: relative;
+}
+
+.iconButton.unread::after {
+    content: '';
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 8px;
+    height: 8px;
+    background-color: #d32f2f;
+    border-radius: 50%;
+    border: 2px solid var(--panel-bg-color);
 }
 
 .iconButton:hover {
@@ -228,7 +241,6 @@
     justify-content: flex-start;
 }
 
-/* --- 👇 [수정된 부분] --- */
 .avatarWrapper {
     position: relative;
     display: flex;
@@ -236,10 +248,9 @@
     padding: 8px;
     border-radius: 50%;
     transition: background-color 0.2s;
-    flex-shrink: 0; /* 이 속성을 추가하여 요소가 줄어드는 것을 방지합니다. */
+    flex-shrink: 0;
     margin-left: -6px;
 }
-/* --- 👆 [여기까지] --- */
 
 .avatarWrapper:hover {
     background-color: var(--button-hover-bg);

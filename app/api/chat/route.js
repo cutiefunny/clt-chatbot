@@ -52,11 +52,10 @@ const actionHandlers = {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { message, scenarioState, slots } = body;
+    const { message, scenarioState, slots, language } = body; // --- 👈 [수정] language 추가
 
     if (scenarioState && scenarioState.scenarioId) {
       const scenario = await getScenario(scenarioState.scenarioId);
-      // --- 👇 [수정] 분리된 시나리오 실행 함수 호출 (toast 분기 제거) ---
       const result = await runScenario(scenario, scenarioState, message, slots);
       return NextResponse.json(result);
     }
@@ -68,7 +67,8 @@ export async function POST(request) {
         return await handler(action.payload, slots);
     }
 
-    const stream = await getGeminiStream(message.text);
+    // --- 👇 [수정] language를 getGeminiStream에 전달 ---
+    const stream = await getGeminiStream(message.text, language);
     return new Response(stream, {
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },
     });

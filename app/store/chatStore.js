@@ -3,8 +3,15 @@ import { auth, db, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChan
 import { collection, addDoc, query, orderBy, onSnapshot, getDocs } from "firebase/firestore";
 import { scenarioTriggers } from '../lib/chatbotEngine';
 
+// --- 👇 [추가된 부분] ---
+const initialMessages = {
+  ko: { id: 'initial', sender: 'bot', text: '안녕하세요! 무엇을 도와드릴까요?' },
+  en: { id: 'initial', sender: 'bot', text: 'Hello! How can I help you?' },
+};
+// --- 👆 [여기까지] ---
+
 const initialState = {
-  messages: [{ id: 'initial', sender: 'bot', text: '안녕하세요! 무엇을 도와드릴까요?' }],
+  messages: [initialMessages.ko], // --- 👈 [수정]
   slots: {},
   isLoading: false,
   user: null,
@@ -41,6 +48,7 @@ const initialState = {
   toastHistory: [],
   isNotificationModalOpen: false,
   unsubscribeNotifications: null,
+  language: 'ko',
 };
 
 export const useChatStore = create((set, get) => {
@@ -71,6 +79,27 @@ export const useChatStore = create((set, get) => {
 
   return {
     ...initialState,
+
+    setLanguage: async (lang) => {
+        set({ language: lang });
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('language', lang);
+        }
+        const user = get().user;
+        if (user) {
+            try {
+                const userSettingsRef = doc(db, 'settings', user.uid);
+                await setDoc(userSettingsRef, { language: lang }, { merge: true });
+            } catch (error) {
+                console.error("Error saving language to Firestore:", error);
+            }
+        }
+        // --- 👇 [추가] 언어 변경 시, 현재 대화가 없는 경우 초기 메시지 업데이트 ---
+        const { currentConversationId } = get();
+        if (!currentConversationId) {
+            set({ messages: [initialMessages[lang]] });
+        }
+    },
 
     showToast: (message, type = 'info') => {
       const newToast = { id: Date.now(), message, type, createdAt: serverTimestamp() };
@@ -260,16 +289,18 @@ export const useChatStore = create((set, get) => {
             const settings = docSnap.exists() ? docSnap.data() : {};
             
             const theme = settings.theme || localStorage.getItem('theme') || 'light';
-            set({ theme });
-
             const fontSize = settings.fontSize || localStorage.getItem('fontSize') || 'default';
-            set({ fontSize });
+            const language = settings.language || localStorage.getItem('language') || 'ko';
+            
+            // --- 👇 [수정] settings 로드 시 초기 메시지도 함께 설정 ---
+            set({ theme, fontSize, language, messages: [initialMessages[language]] });
 
           } catch (error) {
             console.error("Error loading settings from Firestore:", error);
             const theme = localStorage.getItem('theme') || 'light';
             const fontSize = localStorage.getItem('fontSize') || 'default';
-            set({ theme, fontSize });
+            const language = localStorage.getItem('language') || 'ko';
+            set({ theme, fontSize, language, messages: [initialMessages[language]] });
           }
           set({ user });
           get().unsubscribeAll();
@@ -277,14 +308,28 @@ export const useChatStore = create((set, get) => {
           get().loadDevMemos(user.uid);
           get().loadNotifications(user.uid);
         } else {
+          // --- 👇 [수정] 로그아웃 시에도 언어에 맞는 초기 메시지 설정 ---
           get().unsubscribeAll();
           const currentTriggers = get().scenarioTriggers;
-          set({ ...initialState, scenarioTriggers: currentTriggers });
-           if (typeof window !== 'undefined') {
-              const savedTheme = localStorage.getItem('theme') || 'light';
-              const savedFontSize = localStorage.getItem('fontSize') || 'default';
-              set({ theme: savedTheme, fontSize: savedFontSize });
-            }
+          
+          let theme = 'light';
+          let fontSize = 'default';
+          let language = 'ko';
+
+          if (typeof window !== 'undefined') {
+             theme = localStorage.getItem('theme') || 'light';
+             fontSize = localStorage.getItem('fontSize') || 'default';
+             language = localStorage.getItem('language') || 'ko';
+          }
+          
+          set({ 
+            ...initialState,
+            messages: [initialMessages[language]],
+            scenarioTriggers: currentTriggers,
+            theme,
+            fontSize,
+            language,
+          });
         }
       });
     },
@@ -323,18 +368,23 @@ export const useChatStore = create((set, get) => {
       const user = get().user;
       if (!user || get().currentConversationId === conversationId) return;
       get().unsubscribeMessages?.();
-      set({ currentConversationId: conversationId, isLoading: true, messages: [], scenarioStates: {}, activeScenarioId: null, isScenarioPanelOpen: false });
+      // --- 👇 [수정] 대화 로드 시, 초기 메시지를 현재 언어에 맞게 설정 ---
+      const { language } = get();
+      set({ currentConversationId: conversationId, isLoading: true, messages: [initialMessages[language]], scenarioStates: {}, activeScenarioId: null, isScenarioPanelOpen: false });
       const q = query(collection(db, "chats", user.uid, "conversations", conversationId, "messages"), orderBy("createdAt", "asc"));
       const unsubscribe = onSnapshot(q, (snapshot) => {
         const messages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        set({ messages: [initialState.messages[0], ...messages], isLoading: false });
+        // --- 👇 [수정] 불러온 메시지를 초기 메시지 뒤에 추가 ---
+        set({ messages: [initialMessages[language], ...messages], isLoading: false });
       });
       set({ unsubscribeMessages: unsubscribe });
     },
     createNewConversation: () => {
       if (get().currentConversationId === null) return;
       get().unsubscribeMessages?.();
-      set({ messages: initialState.messages, currentConversationId: null, scenarioStates: {}, activeScenarioId: null, isScenarioPanelOpen: false });
+      // --- 👇 [수정] 새 대화 시작 시, 현재 언어에 맞는 초기 메시지로 설정 ---
+      const { language } = get();
+      set({ messages: [initialMessages[language]], currentConversationId: null, scenarioStates: {}, activeScenarioId: null, isScenarioPanelOpen: false });
     },
     deleteConversation: async (conversationId) => {
       const user = get().user;
@@ -436,7 +486,8 @@ export const useChatStore = create((set, get) => {
           body: JSON.stringify({ 
             message: messagePayload, 
             scenarioState: null, 
-            slots: get().slots 
+            slots: get().slots,
+            language: get().language,
           }),
         });
         if (!response.ok) throw new Error(`Server error: ${response.statusText}`);

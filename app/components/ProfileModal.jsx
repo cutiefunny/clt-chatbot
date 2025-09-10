@@ -27,7 +27,9 @@ export default function ProfileModal() {
     fontSize,
     setFontSize,
     closeProfileModal,
-    openDevBoardModal, // --- 👈 [추가]
+    openDevBoardModal,
+    language, // --- 👈 [추가]
+    setLanguage, // --- 👈 [추가]
   } = useChatStore();
 
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
@@ -38,13 +40,11 @@ export default function ProfileModal() {
       closeProfileModal();
   };
   
-  // --- 👇 [추가된 부분] ---
   const handleDevBoardClick = () => {
     openDevBoardModal();
-    closeProfileModal(); // 프로필 모달은 닫아줍니다.
+    closeProfileModal(); 
   };
-  // --- 👆 [여기까지] ---
-
+  
   const handleOverlayClick = (e) => {
       if (e.target === e.currentTarget) {
           closeProfileModal();
@@ -106,12 +106,32 @@ export default function ProfileModal() {
                   </button>
               </div>
           </div>
-
+          
           {/* --- 👇 [추가된 부분] --- */}
+          <div className={styles.settingsSection}>
+              <h3 className={styles.sectionTitle}>언어 설정</h3>
+              <div className={styles.optionGroup}>
+                  <button
+                      className={`${styles.optionButton} ${language === 'ko' ? styles.active : ''}`}
+                      onClick={() => setLanguage('ko')}
+                  >
+                      {language === 'ko' && <div className={styles.checkIcon}><CheckIcon /></div>}
+                      한국어
+                  </button>
+                  <button
+                      className={`${styles.optionButton} ${language === 'en' ? styles.active : ''}`}
+                      onClick={() => setLanguage('en')}
+                  >
+                      {language === 'en' && <div className={styles.checkIcon}><CheckIcon /></div>}
+                      English
+                  </button>
+              </div>
+          </div>
+          {/* --- 👆 [여기까지] --- */}
+
           <button onClick={handleDevBoardClick} className={styles.logoutButton}>
             Dev Board
           </button>
-          {/* --- 👆 [여기까지] --- */}
 
           <button onClick={() => setIsLogoutModalOpen(true)} className={styles.logoutButton}>
             로그아웃
