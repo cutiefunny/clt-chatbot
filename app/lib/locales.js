@@ -20,6 +20,7 @@ export const locales = {
     initialBotMessage: '안녕하세요! 무엇을 도와드릴까요?',
     askAboutService: '서비스에 대해 질문해주세요.',
     scenarioResume: (scenarioId) => `'${scenarioId}' 시나리오 이어하기`,
+    scenarioEnded: (scenarioId) => `'${scenarioId}' 시나리오가 종료되었습니다.`,
 
     // Chat Input
     enterResponse: '응답을 입력하세요...',
@@ -88,6 +89,7 @@ export const locales = {
     initialBotMessage: 'Hello! How can I help you?',
     askAboutService: 'Ask about this Booking Master Page',
     scenarioResume: (scenarioId) => `Resume '${scenarioId}' scenario`,
+    scenarioEnded: (scenarioId) => `Scenario '${scenarioId}' has ended.`,
 
     // Chat Input
     enterResponse: 'Enter your response...',

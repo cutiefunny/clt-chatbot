@@ -1,4 +1,5 @@
 import { scenarioTriggers } from '../../lib/chatbotEngine';
+import { locales } from '../../lib/locales';
 
 export const createScenarioSlice = (set, get) => ({
   // State
@@ -13,18 +14,35 @@ export const createScenarioSlice = (set, get) => ({
   },
 
   openScenarioPanel: async (scenarioId) => {
-    const { scenarioStates } = get();
+    const { scenarioStates, handleEvents } = get();
+
+    // If the scenario is already running, just open the panel
     if (scenarioStates[scenarioId]) {
-      set({ isScenarioPanelOpen: true, activeScenarioId: scenarioId, activePanel: 'scenario' });
-      get().focusChatInput();
-      return;
+        set({ 
+            isScenarioPanelOpen: true, 
+            activeScenarioId: scenarioId,
+            activePanel: 'scenario' 
+        });
+        get().focusChatInput();
+        return;
     }
-    set({
-      isScenarioPanelOpen: true,
-      activeScenarioId: scenarioId,
-      activePanel: 'scenario',
-      scenarioStates: { ...scenarioStates, [scenarioId]: { messages: [], state: null, slots: {}, isLoading: true } },
+    
+    // Start a new scenario session
+    set({ 
+        isScenarioPanelOpen: true, 
+        activeScenarioId: scenarioId,
+        activePanel: 'scenario',
+        scenarioStates: {
+            ...scenarioStates,
+            [scenarioId]: {
+                messages: [],
+                state: null,
+                slots: {},
+                isLoading: true,
+            }
+        }
     });
+    
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -32,7 +50,9 @@ export const createScenarioSlice = (set, get) => ({
         body: JSON.stringify({ message: { text: scenarioId } }),
       });
       const data = await response.json();
-      get().handleEvents(data.events);
+      
+      handleEvents(data.events);
+
       if (data.type === 'scenario_start') {
         const startNode = data.nextNode;
         set(state => ({
@@ -55,7 +75,11 @@ export const createScenarioSlice = (set, get) => ({
       set(state => ({
         scenarioStates: {
           ...state.scenarioStates,
-          [scenarioId]: { ...state.scenarioStates[scenarioId], messages: [{ id: 'error', sender: 'bot', text: 'Error starting scenario.' }], isLoading: false },
+          [scenarioId]: {
+            ...state.scenarioStates[scenarioId],
+            messages: [{ id: 'error', sender: 'bot', text: 'An error occurred while starting the scenario.' }],
+            isLoading: false,
+          },
         },
       }));
     } finally {
@@ -64,35 +88,66 @@ export const createScenarioSlice = (set, get) => ({
   },
 
   endScenario: (scenarioId) => {
-    const { scenarioStates, messages } = get();
+    const { language, messages, scenarioStates, saveMessage } = get();
+
+    // 1. Create the "scenario ended" message object
+    const endMessage = {
+      id: Date.now(),
+      sender: 'bot',
+      text: locales[language].scenarioEnded(scenarioId),
+      type: 'scenario_end_notice', // Use a distinct type
+    };
+
+    // 2. Remove any "resume scenario" prompts for this scenario from the main chat
+    const filteredMessages = messages.filter(
+      (msg) => msg.type !== 'scenario_resume_prompt' || msg.scenarioId !== scenarioId
+    );
+
+    // 3. Clean up the state for the ended scenario
     const newScenarioStates = { ...scenarioStates };
     delete newScenarioStates[scenarioId];
+
+    // 4. Update the store in a single call
     set({
       scenarioStates: newScenarioStates,
       isScenarioPanelOpen: false,
       activeScenarioId: null,
       activePanel: 'main',
-      messages: messages.filter(msg => msg.type !== 'scenario_resume_prompt' || msg.scenarioId !== scenarioId),
+      messages: [...filteredMessages, endMessage],
     });
+
+    // 5. Save the "scenario ended" message to Firestore
+    saveMessage(endMessage);
   },
 
   setScenarioPanelOpen: (isOpen) => {
-    const { activeScenarioId } = get();
-    set(state => {
-      let newMessages = state.messages;
-      if (!isOpen && activeScenarioId) {
-        newMessages = state.messages.filter(msg => msg.type !== 'scenario_resume_prompt' || msg.scenarioId !== activeScenarioId);
-        newMessages.push({
-          id: Date.now(),
-          sender: 'bot',
-          type: 'scenario_resume_prompt',
-          scenarioId: activeScenarioId,
-          text: '', // Text is set dynamically in the component via useTranslations
-        });
-      }
-      return { isScenarioPanelOpen: isOpen, activePanel: isOpen ? 'scenario' : 'main', messages: newMessages };
-    });
-    get().focusChatInput();
+      const { activeScenarioId } = get();
+      
+      set(state => {
+          let newMessages = state.messages;
+          if (!isOpen && activeScenarioId) {
+              // Remove any previous resume prompts for the same scenario
+              newMessages = state.messages.filter(msg =>
+                  msg.type !== 'scenario_resume_prompt' || msg.scenarioId !== activeScenarioId
+              );
+              // Add a new resume prompt
+              newMessages.push({
+                  id: Date.now(),
+                  sender: 'bot',
+                  type: 'scenario_resume_prompt',
+                  scenarioId: activeScenarioId,
+                  text: '', // Text is set dynamically in the component
+              });
+          }
+
+          return {
+              isScenarioPanelOpen: isOpen,
+              activePanel: isOpen ? 'scenario' : 'main',
+              messages: newMessages,
+          };
+      });
+
+      get().focusChatInput();
   },
   
   setScenarioState: (scenarioState) => {
@@ -101,75 +156,92 @@ export const createScenarioSlice = (set, get) => ({
 
   handleScenarioResponse: async (payload) => {
     const { scenarioId } = payload;
+    const { handleEvents, showToast } = get();
+
     set(state => ({
       scenarioStates: {
         ...state.scenarioStates,
         [scenarioId]: {
           ...state.scenarioStates[scenarioId],
           isLoading: true,
-          messages: payload.userInput
+          messages: payload.userInput 
             ? [...state.scenarioStates[scenarioId].messages, { id: Date.now(), sender: 'user', text: payload.userInput }]
             : state.scenarioStates[scenarioId].messages,
-        },
-      },
+        }
+      }
     }));
+    
     const currentScenario = get().scenarioStates[scenarioId];
+
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: { sourceHandle: payload.sourceHandle, text: payload.userInput },
+          message: { 
+            sourceHandle: payload.sourceHandle, 
+            text: payload.userInput 
+          },
           scenarioState: currentScenario.state,
           slots: { ...currentScenario.slots, ...(payload.formData || {}) },
+          language: get().language, // Pass language to API
         }),
       });
       const data = await response.json();
-      get().handleEvents(data.events);
+
+      handleEvents(data.events);
+
       if (data.type === 'scenario') {
         const nextNode = data.nextNode;
         set(state => ({
           scenarioStates: {
-            ...state.scenarioStates,
-            [scenarioId]: {
-              ...state.scenarioStates[scenarioId],
-              messages: [...state.scenarioStates[scenarioId].messages, { id: nextNode.id, sender: 'bot', node: nextNode }],
-              state: data.scenarioState,
-              slots: data.slots,
-              isLoading: false,
-            },
-          },
+              ...state.scenarioStates,
+              [scenarioId]: {
+                  ...state.scenarioStates[scenarioId],
+                  messages: [...state.scenarioStates[scenarioId].messages, { id: nextNode.id, sender: 'bot', node: nextNode }],
+                  state: data.scenarioState,
+                  slots: data.slots, 
+                  isLoading: false,
+              }
+          }
         }));
         await get().continueScenarioIfNeeded(nextNode, scenarioId);
       } else if (data.type === 'scenario_end') {
+         set(state => ({
+          scenarioStates: {
+              ...state.scenarioStates,
+              [scenarioId]: {
+                  ...state.scenarioStates[scenarioId],
+                  messages: [...state.scenarioStates[scenarioId].messages, { id: 'end', sender: 'bot', text: data.message }],
+                  slots: data.slots, 
+                  state: null,
+                  isLoading: false,
+              }
+          }
+        }));
+      } else if (data.type === 'scenario_validation_fail') {
+        showToast(data.message, 'error');
         set(state => ({
           scenarioStates: {
             ...state.scenarioStates,
-            [scenarioId]: {
-              ...state.scenarioStates[scenarioId],
-              messages: [...state.scenarioStates[scenarioId].messages, { id: 'end', sender: 'bot', text: data.message }],
-              slots: data.slots,
-              state: null,
-              isLoading: false,
-            },
-          },
-        }));
-      } else if (data.type === 'scenario_validation_fail') {
-        get().showToast(data.message, 'error');
-        set(state => ({
-          scenarioStates: { ...state.scenarioStates, [scenarioId]: { ...state.scenarioStates[scenarioId], isLoading: false } },
+            [scenarioId]: { ...state.scenarioStates[scenarioId], isLoading: false }
+          }
         }));
       } else {
         throw new Error("Invalid scenario response type received: " + data.type);
       }
     } catch (error) {
       console.error("Error in scenario conversation:", error);
-      set(state => ({
-        scenarioStates: {
-          ...state.scenarioStates,
-          [scenarioId]: { ...state.scenarioStates[scenarioId], messages: [...state.scenarioStates[scenarioId].messages, { id: 'error', sender: 'bot', text: 'An error occurred.' }], isLoading: false },
-        },
-      }));
+       set(state => ({
+          scenarioStates: {
+              ...state.scenarioStates,
+              [scenarioId]: {
+                  ...state.scenarioStates[scenarioId],
+                  messages: [...state.scenarioStates[scenarioId].messages, { id: 'error', sender: 'bot', text: 'An error occurred.' }],
+                  isLoading: false,
+              }
+          }
+        }));
     }
   },
 
