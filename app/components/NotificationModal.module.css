@@ -70,10 +70,9 @@
     border-radius: 8px;
     border-left: 4px solid;
     background-color: var(--bot-message-bg);
-    position: relative; /* --- 💡 추가 --- */
+    position: relative;
 }
 
-/* --- 👇 [추가된 부분] --- */
 .notificationItem.newItem::before {
     content: 'New';
     position: absolute;
@@ -87,8 +86,6 @@
     border-radius: 10px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
-/* --- 👆 [여기까지] --- */
-
 
 .notificationItem.success {
     border-left-color: #4CAF50;
@@ -111,3 +108,32 @@
     margin: 0;
     font-size: 0.9rem;
 }
+
+/* --- 👇 [추가된 부분] --- */
+.deleteButton {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: none;
+    border: none;
+    color: var(--action-button-color);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s, background-color 0.2s;
+    padding: 4px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.notificationItem:hover .deleteButton {
+    opacity: 0.7;
+}
+
+.deleteButton:hover {
+    opacity: 1;
+    background-color: var(--button-hover-bg);
+    color: #d32f2f;
+}
+/* --- 👆 [여기까지] --- */
