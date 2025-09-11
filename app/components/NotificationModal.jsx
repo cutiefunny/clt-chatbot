@@ -5,7 +5,7 @@ import { useTranslations } from '../hooks/useTranslations';
 import styles from './NotificationModal.module.css';
 
 const CloseIcon = () => (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width="24" height="24" viewBox="0 0 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
         <path d="M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
@@ -23,8 +23,8 @@ const NotificationModal = () => {
         toastHistory, 
         isNotificationModalOpen, 
         closeNotificationModal, 
-        lastCheckedNotifications,
-        deleteNotification 
+        deleteNotification,
+        markNotificationAsRead // --- 👈 [추가]
     } = useChatStore();
     const { t, language } = useTranslations();
 
@@ -43,6 +43,11 @@ const NotificationModal = () => {
         deleteNotification(id);
     };
 
+    // --- 👇 [추가] 알림 클릭 시 읽음 처리 ---
+    const handleNotificationClick = (id) => {
+        markNotificationAsRead(id);
+    };
+
     return (
         <div className={styles.modalOverlay} onClick={handleOverlayClick}>
             <div className={styles.modalContent}>
@@ -58,9 +63,13 @@ const NotificationModal = () => {
                     ) : (
                         <ul className={styles.notificationList}>
                             {toastHistory.map((toast) => {
-                                const isNew = toast.createdAt?.toDate().getTime() > lastCheckedNotifications;
+                                // --- 👇 [수정] newItem 대신 unreadItem 클래스 사용 ---
                                 return (
-                                    <li key={toast.id} className={`${styles.notificationItem} ${styles[toast.type]} ${isNew ? styles.newItem : ''}`}>
+                                    <li 
+                                        key={toast.id} 
+                                        className={`${styles.notificationItem} ${styles[toast.type]} ${!toast.read ? styles.unreadItem : ''}`}
+                                        onClick={() => handleNotificationClick(toast.id)}
+                                    >
                                         <button className={styles.deleteButton} onClick={(e) => handleDelete(e, toast.id)}>
                                             <TrashIcon />
                                         </button>

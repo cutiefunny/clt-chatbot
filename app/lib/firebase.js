@@ -1,4 +1,3 @@
-'use client';
 import { initializeApp, getApps } from "firebase/app";
 // --- 👇 [수정] doc, getDoc, setDoc, updateDoc, limit, startAfter 추가 ---
 import { getFirestore, serverTimestamp, deleteDoc, doc, getDoc, setDoc, updateDoc, limit, startAfter } from "firebase/firestore";
