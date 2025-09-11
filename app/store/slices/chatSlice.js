@@ -1,5 +1,8 @@
-import { collection, addDoc, query, orderBy, onSnapshot, getDocs, serverTimestamp, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+'use client';
+import { collection, addDoc, query, orderBy, onSnapshot, getDocs, serverTimestamp, deleteDoc, doc, updateDoc, limit, startAfter } from 'firebase/firestore';
 import { locales } from '../../lib/locales';
+
+const MESSAGE_LIMIT = 15;
 
 const getInitialMessages = (lang = 'ko') => {
   return [{ id: 'initial', sender: 'bot', text: locales[lang].initialBotMessage }];
@@ -40,6 +43,8 @@ export const createChatSlice = (set, get) => ({
   slots: {},
   unsubscribeMessages: null,
   unsubscribeConversations: null,
+  lastVisibleMessage: null,
+  hasMoreMessages: true,
 
   loadConversations: (userId) => {
     const q = query(collection(get().db, "chats", userId, "conversations"), orderBy("updatedAt", "desc"));
@@ -56,20 +61,79 @@ export const createChatSlice = (set, get) => ({
     get().unsubscribeMessages?.();
     const { language } = get();
     const initialMessage = getInitialMessages(language)[0];
-    set({ currentConversationId: conversationId, isLoading: true, messages: [initialMessage], scenarioStates: {}, activeScenarioId: null, isScenarioPanelOpen: false });
-    const q = query(collection(get().db, "chats", user.uid, "conversations", conversationId, "messages"), orderBy("createdAt", "asc"));
+    set({ 
+        currentConversationId: conversationId, 
+        isLoading: true, 
+        messages: [initialMessage], 
+        scenarioStates: {}, 
+        activeScenarioId: null, 
+        isScenarioPanelOpen: false,
+        lastVisibleMessage: null,
+        hasMoreMessages: true,
+    });
+
+    const messagesRef = collection(get().db, "chats", user.uid, "conversations", conversationId, "messages");
+    const q = query(messagesRef, orderBy("createdAt", "desc"), limit(MESSAGE_LIMIT));
+    
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const messages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      set({ messages: [initialMessage, ...messages], isLoading: false });
+        const newMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).reverse();
+        const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+        
+        set(state => ({
+            messages: [initialMessage, ...newMessages],
+            lastVisibleMessage: lastVisible,
+            hasMoreMessages: snapshot.docs.length === MESSAGE_LIMIT,
+            isLoading: false,
+        }));
     });
     set({ unsubscribeMessages: unsubscribe });
+  },
+
+  loadMoreMessages: async () => {
+    const user = get().user;
+    const { currentConversationId, lastVisibleMessage, hasMoreMessages, messages } = get();
+    
+    if (!user || !currentConversationId || !hasMoreMessages || !lastVisibleMessage) return;
+
+    set({ isLoading: true });
+
+    try {
+        const messagesRef = collection(get().db, "chats", user.uid, "conversations", currentConversationId, "messages");
+        const q = query(messagesRef, orderBy("createdAt", "desc"), startAfter(lastVisibleMessage), limit(MESSAGE_LIMIT));
+
+        const snapshot = await getDocs(q);
+        const newMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).reverse();
+        const newLastVisible = snapshot.docs[snapshot.docs.length - 1];
+
+        const initialMessage = messages[0];
+        const existingMessages = messages.slice(1);
+
+        set({
+            messages: [initialMessage, ...newMessages, ...existingMessages],
+            lastVisibleMessage: newLastVisible,
+            hasMoreMessages: snapshot.docs.length === MESSAGE_LIMIT,
+        });
+
+    } catch (error) {
+        console.error("Error loading more messages:", error);
+    } finally {
+        set({ isLoading: false });
+    }
   },
 
   createNewConversation: () => {
     if (get().currentConversationId === null) return;
     get().unsubscribeMessages?.();
     const { language } = get();
-    set({ messages: getInitialMessages(language), currentConversationId: null, scenarioStates: {}, activeScenarioId: null, isScenarioPanelOpen: false });
+    set({ 
+        messages: getInitialMessages(language), 
+        currentConversationId: null, 
+        scenarioStates: {}, 
+        activeScenarioId: null, 
+        isScenarioPanelOpen: false,
+        lastVisibleMessage: null,
+        hasMoreMessages: true,
+    });
   },
 
   deleteConversation: async (conversationId) => {
@@ -108,16 +172,17 @@ export const createChatSlice = (set, get) => ({
       conversationId = conversationRef.id;
       set({ currentConversationId: conversationId });
       get().loadConversation(conversationId);
+    } else {
+        const { id, ...messageToSave } = message;
+        Object.keys(messageToSave).forEach(key => (messageToSave[key] === undefined) && delete messageToSave[key]);
+        if (messageToSave.node) {
+            const { data, ...rest } = messageToSave.node;
+            messageToSave.node = { ...rest, data: { content: data?.content, replies: data?.replies } };
+        }
+        const messagesCollection = collection(get().db, "chats", user.uid, "conversations", conversationId, "messages");
+        await addDoc(messagesCollection, { ...messageToSave, createdAt: serverTimestamp() });
+        await updateDoc(doc(get().db, "chats", user.uid, "conversations", conversationId), { updatedAt: serverTimestamp() });
     }
-    const { id, ...messageToSave } = message;
-    Object.keys(messageToSave).forEach(key => (messageToSave[key] === undefined) && delete messageToSave[key]);
-      if (messageToSave.node) {
-        const { data, ...rest } = messageToSave.node;
-        messageToSave.node = { ...rest, data: { content: data?.content, replies: data?.replies } };
-      }
-    const messagesCollection = collection(get().db, "chats", user.uid, "conversations", conversationId, "messages");
-    await addDoc(messagesCollection, { ...messageToSave, createdAt: serverTimestamp() });
-    await updateDoc(doc(get().db, "chats", user.uid, "conversations", conversationId), { updatedAt: serverTimestamp() });
   },
 
   addMessage: (sender, messageData) => {

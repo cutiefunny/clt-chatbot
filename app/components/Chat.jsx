@@ -1,15 +1,24 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useChatStore } from '../store';
 import { useTranslations } from '../hooks/useTranslations';
 import styles from './Chat.module.css';
 
 export default function Chat() {
-  const { messages, isLoading, openScenarioPanel } = useChatStore();
+  const { messages, isLoading, openScenarioPanel, loadMoreMessages, hasMoreMessages } = useChatStore();
   const [copiedMessageId, setCopiedMessageId] = useState(null);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
   const historyRef = useRef(null);
   const { t } = useTranslations();
+
+  const handleScroll = useCallback(async () => {
+    if (historyRef.current?.scrollTop === 0 && hasMoreMessages && !isFetchingMore) {
+        setIsFetchingMore(true);
+        await loadMoreMessages();
+        setIsFetchingMore(false);
+    }
+  }, [hasMoreMessages, isFetchingMore, loadMoreMessages]);
 
   useEffect(() => {
     const scrollContainer = historyRef.current;
@@ -26,11 +35,14 @@ export default function Chat() {
       childList: true,
       subtree: true,
     });
+    
+    scrollContainer.addEventListener('scroll', handleScroll);
 
     return () => {
       observer.disconnect();
+      scrollContainer.removeEventListener('scroll', handleScroll);
     };
-  }, [messages]);
+  }, [messages, handleScroll]);
   
   const handleCopy = (text, id) => {
     if (!text || text.trim() === '') return;
@@ -54,6 +66,12 @@ export default function Chat() {
       </div>
       
       <div className={styles.history} ref={historyRef}>
+        {isFetchingMore && (
+            <div className={styles.messageRow}>
+                <img src="/images/avatar-loading.png" alt="Avatar" className={styles.avatar} />
+                <div className={`${styles.message} ${styles.botMessage}`}><img src="/images/Loading.gif" alt={t('loading')} style={{ width: '40px', height: '30px' }} /></div>
+            </div>
+        )}
         {messages.map((msg) => (
           <div key={msg.id} className={`${styles.messageRow} ${msg.sender === 'user' ? styles.userRow : ''}`}>
             {msg.sender === 'bot' && <img src="/images/avatar.png" alt="Avatar" className={styles.avatar} />}
@@ -83,7 +101,7 @@ export default function Chat() {
             </div>
           </div>
         ))}
-        {isLoading && messages[messages.length-1]?.sender === 'user' && (
+        {isLoading && !isFetchingMore && messages[messages.length-1]?.sender === 'user' && (
             <div className={styles.messageRow}>
                 <img src="/images/avatar-loading.png" alt="Avatar" className={styles.avatar} />
                 <div className={`${styles.message} ${styles.botMessage}`}><img src="/images/Loading.gif" alt={t('loading')} style={{ width: '40px', height: '30px' }} /></div>
