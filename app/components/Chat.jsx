@@ -28,21 +28,24 @@ export default function Chat() {
       scrollContainer.scrollTop = scrollContainer.scrollHeight;
     };
 
-    scrollToBottom();
-
-    const observer = new MutationObserver(scrollToBottom);
-    observer.observe(scrollContainer, {
-      childList: true,
-      subtree: true,
+    const observer = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+            if (mutation.type === 'childList') {
+                if (!isFetchingMore) {
+                    scrollToBottom();
+                }
+            }
+        }
     });
-    
+
+    observer.observe(scrollContainer, { childList: true, subtree: true });
     scrollContainer.addEventListener('scroll', handleScroll);
 
     return () => {
       observer.disconnect();
       scrollContainer.removeEventListener('scroll', handleScroll);
     };
-  }, [messages, handleScroll]);
+  }, [messages, handleScroll, isFetchingMore]);
   
   const handleCopy = (text, id) => {
     if (!text || text.trim() === '') return;
@@ -81,13 +84,19 @@ export default function Chat() {
             >
               {copiedMessageId === msg.id && <div className={styles.copyFeedback}>{t('copied')}</div>}
               
+              {/* --- 👇 [수정] 종료된 시나리오 보기 버튼 추가 --- */}
               {msg.type === 'scenario_resume_prompt' ? (
-                <button className={styles.optionButton} onClick={(e) => { e.stopPropagation(); openScenarioPanel(msg.scenarioId); }}>
+                <button className={styles.optionButton} onClick={(e) => { e.stopPropagation(); openScenarioPanel(msg.scenarioId, msg.scenarioSessionId); }}>
                   {t('scenarioResume')(msg.scenarioId)}
+                </button>
+              ) : msg.type === 'scenario_end_notice' ? (
+                <button className={styles.optionButton} onClick={(e) => { e.stopPropagation(); openScenarioPanel(msg.scenarioId, msg.scenarioSessionId); }}>
+                  {msg.text} (기록 보기)
                 </button>
               ) : (
                 <p>{msg.text || msg.node?.data.content}</p>
               )}
+              {/* --- 👆 [여기까지] --- */}
 
               {msg.sender === 'bot' && msg.scenarios && (
                 <div className={styles.scenarioList}>

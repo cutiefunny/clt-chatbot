@@ -1,143 +1,174 @@
+import { collection, addDoc, doc, updateDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { scenarioTriggers } from '../../lib/chatbotEngine';
 import { locales } from '../../lib/locales';
 
 export const createScenarioSlice = (set, get) => ({
   // State
   scenarioStates: {},
-  activeScenarioId: null,
+  activeScenarioSessionId: null,
   isScenarioPanelOpen: false,
   scenarioTriggers: {},
+  unsubscribeScenario: null,
 
   // Actions
   loadScenarioTriggers: () => {
     set({ scenarioTriggers });
   },
 
-  openScenarioPanel: async (scenarioId) => {
-    const { scenarioStates, handleEvents } = get();
+  openScenarioPanel: async (scenarioId, scenarioSessionId = null) => {
+    const { user, currentConversationId, handleEvents, scenarioStates } = get();
+    if (!user || !currentConversationId) return;
 
-    // If the scenario is already running, just open the panel
-    if (scenarioStates[scenarioId]) {
-        set({ 
-            isScenarioPanelOpen: true, 
-            activeScenarioId: scenarioId,
-            activePanel: 'scenario' 
-        });
-        get().focusChatInput();
-        return;
+    if (scenarioSessionId) {
+      if (!scenarioStates[scenarioSessionId]) {
+        get().subscribeToScenarioSession(scenarioSessionId);
+      }
+      set({
+          isScenarioPanelOpen: true,
+          activeScenarioSessionId: scenarioSessionId,
+          activePanel: 'scenario'
+      });
+      get().focusChatInput();
+      return;
     }
-    
-    // Start a new scenario session
-    set({ 
-        isScenarioPanelOpen: true, 
-        activeScenarioId: scenarioId,
-        activePanel: 'scenario',
-        scenarioStates: {
-            ...scenarioStates,
-            [scenarioId]: {
-                messages: [],
-                state: null,
-                slots: {},
-                isLoading: true,
-            }
-        }
+
+    const scenarioSessionsRef = collection(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions");
+    const newSessionDoc = await addDoc(scenarioSessionsRef, {
+      scenarioId: scenarioId,
+      status: 'active',
+      createdAt: serverTimestamp(),
+      messages: [],
+      state: null,
+      slots: {},
     });
-    
+
+    const newScenarioSessionId = newSessionDoc.id;
+    get().subscribeToScenarioSession(newScenarioSessionId);
+    set({
+        isScenarioPanelOpen: true,
+        activeScenarioSessionId: newScenarioSessionId,
+        activePanel: 'scenario',
+    });
+
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: { text: scenarioId } }),
+        body: JSON.stringify({
+          message: { text: scenarioId },
+          scenarioSessionId: newScenarioSessionId
+        }),
       });
       const data = await response.json();
       
       handleEvents(data.events);
 
-      if (data.type === 'scenario_start') {
-        const startNode = data.nextNode;
-        set(state => ({
-          scenarioStates: {
-            ...state.scenarioStates,
-            [scenarioId]: {
-              messages: [{ id: startNode.id, sender: 'bot', node: startNode }],
-              state: data.scenarioState,
-              slots: data.slots || {},
-              isLoading: false,
-            },
-          },
-        }));
-        await get().continueScenarioIfNeeded(startNode, scenarioId);
+      if (data.type === 'scenario_start' || data.type === 'scenario') {
+        const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", newScenarioSessionId);
+        await updateDoc(sessionRef, {
+            messages: [{ id: data.nextNode.id, sender: 'bot', node: data.nextNode }],
+            state: data.scenarioState,
+            slots: data.slots || {},
+        });
+        await get().continueScenarioIfNeeded(data.nextNode, newScenarioSessionId);
       } else {
         throw new Error("Failed to start scenario properly");
       }
     } catch (error) {
       console.error("Error starting scenario:", error);
-      set(state => ({
-        scenarioStates: {
-          ...state.scenarioStates,
-          [scenarioId]: {
-            ...state.scenarioStates[scenarioId],
-            messages: [{ id: 'error', sender: 'bot', text: 'An error occurred while starting the scenario.' }],
-            isLoading: false,
-          },
-        },
-      }));
+      const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", newScenarioSessionId);
+      await updateDoc(sessionRef, {
+        messages: [{ id: 'error', sender: 'bot', text: 'An error occurred while starting the scenario.' }],
+      });
     } finally {
       get().focusChatInput();
     }
   },
+  
+  subscribeToScenarioSession: (sessionId) => {
+    const { user, currentConversationId } = get();
+    if (!user || !currentConversationId) return;
 
-  endScenario: (scenarioId) => {
-    const { language, messages, scenarioStates, saveMessage } = get();
+    get().unsubscribeScenario?.();
 
-    // 1. Create the "scenario ended" message object
+    const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", sessionId);
+    const unsubscribe = onSnapshot(sessionRef, (doc) => {
+      if (doc.exists()) {
+        set(state => ({
+          scenarioStates: {
+            ...state.scenarioStates,
+            [sessionId]: { ...doc.data(), isLoading: false }
+          }
+        }));
+      }
+    });
+    set({ unsubscribeScenario: unsubscribe });
+  },
+
+  endScenario: async (scenarioSessionId) => {
+    const { user, currentConversationId, messages, saveMessage, scenarioStates } = get();
+    if (!user || !currentConversationId || !scenarioSessionId) return;
+    
+    const scenarioId = scenarioStates[scenarioSessionId]?.scenarioId || 'Scenario';
+    
+    // Firestore 상태를 'completed'로 업데이트
+    const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", scenarioSessionId);
+    await updateDoc(sessionRef, { status: 'completed' });
+
+    // --- 👇 [수정] 종료 메시지에 scenarioSessionId와 scenarioId 추가 ---
     const endMessage = {
       id: Date.now(),
       sender: 'bot',
-      text: locales[language].scenarioEnded(scenarioId),
-      type: 'scenario_end_notice', // Use a distinct type
+      text: locales[get().language].scenarioEnded(scenarioId),
+      type: 'scenario_end_notice',
+      scenarioId: scenarioId,
+      scenarioSessionId: scenarioSessionId, 
     };
+    // --- 👆 [여기까지] ---
 
-    // 2. Remove any "resume scenario" prompts for this scenario from the main chat
     const filteredMessages = messages.filter(
-      (msg) => msg.type !== 'scenario_resume_prompt' || msg.scenarioId !== scenarioId
+      (msg) => msg.type !== 'scenario_resume_prompt' || msg.scenarioSessionId !== scenarioSessionId
     );
-
-    // 3. Clean up the state for the ended scenario
-    const newScenarioStates = { ...scenarioStates };
-    delete newScenarioStates[scenarioId];
-
-    // 4. Update the store in a single call
+    
+    get().unsubscribeScenario?.();
+    
+    // --- 👇 [수정] 로컬 상태에서 시나리오 정보를 삭제하지 않고 유지 ---
     set({
-      scenarioStates: newScenarioStates,
       isScenarioPanelOpen: false,
-      activeScenarioId: null,
+      activeScenarioSessionId: null,
       activePanel: 'main',
       messages: [...filteredMessages, endMessage],
+      unsubscribeScenario: null,
     });
+    // --- 👆 [여기까지] ---
 
-    // 5. Save the "scenario ended" message to Firestore
     saveMessage(endMessage);
   },
 
   setScenarioPanelOpen: (isOpen) => {
-      const { activeScenarioId } = get();
+      const { activeScenarioSessionId } = get();
       
       set(state => {
           let newMessages = state.messages;
-          if (!isOpen && activeScenarioId) {
-              // Remove any previous resume prompts for the same scenario
-              newMessages = state.messages.filter(msg =>
-                  msg.type !== 'scenario_resume_prompt' || msg.scenarioId !== activeScenarioId
+          if (!isOpen && activeScenarioSessionId) {
+              const filteredMessages = state.messages.filter(msg => 
+                  msg.type !== 'scenario_resume_prompt' || msg.scenarioSessionId !== activeScenarioSessionId
               );
-              // Add a new resume prompt
-              newMessages.push({
-                  id: Date.now(),
-                  sender: 'bot',
-                  type: 'scenario_resume_prompt',
-                  scenarioId: activeScenarioId,
-                  text: '', // Text is set dynamically in the component
-              });
+              
+              const scenarioData = state.scenarioStates[activeScenarioSessionId];
+              // 시나리오가 'active' 상태일 때만 '이어하기' 버튼 추가
+              if (scenarioData?.status === 'active') {
+                newMessages = [...filteredMessages, {
+                    id: Date.now(),
+                    sender: 'bot',
+                    type: 'scenario_resume_prompt',
+                    scenarioId: scenarioData.scenarioId,
+                    scenarioSessionId: activeScenarioSessionId,
+                    text: '',
+                }];
+              } else {
+                newMessages = filteredMessages;
+              }
           }
 
           return {
@@ -149,29 +180,30 @@ export const createScenarioSlice = (set, get) => ({
 
       get().focusChatInput();
   },
-  
-  setScenarioState: (scenarioState) => {
-      set({ scenarioState });
-  },
 
   handleScenarioResponse: async (payload) => {
-    const { scenarioId } = payload;
-    const { handleEvents, showToast } = get();
+    const { scenarioSessionId } = payload;
+    const { handleEvents, showToast, user, currentConversationId } = get();
+    if (!user || !currentConversationId || !scenarioSessionId) return;
 
     set(state => ({
-      scenarioStates: {
-        ...state.scenarioStates,
-        [scenarioId]: {
-          ...state.scenarioStates[scenarioId],
-          isLoading: true,
-          messages: payload.userInput 
-            ? [...state.scenarioStates[scenarioId].messages, { id: Date.now(), sender: 'user', text: payload.userInput }]
-            : state.scenarioStates[scenarioId].messages,
+        scenarioStates: {
+            ...state.scenarioStates,
+            [scenarioSessionId]: {
+                ...state.scenarioStates[scenarioSessionId],
+                isLoading: true,
+            }
         }
-      }
     }));
     
-    const currentScenario = get().scenarioStates[scenarioId];
+    const currentScenario = get().scenarioStates[scenarioSessionId];
+    const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", scenarioSessionId);
+
+    if (payload.userInput) {
+        await updateDoc(sessionRef, {
+            messages: [...currentScenario.messages, { id: Date.now(), sender: 'user', text: payload.userInput }]
+        });
+    }
 
     try {
       const response = await fetch('/api/chat', {
@@ -184,73 +216,49 @@ export const createScenarioSlice = (set, get) => ({
           },
           scenarioState: currentScenario.state,
           slots: { ...currentScenario.slots, ...(payload.formData || {}) },
-          language: get().language, // Pass language to API
+          language: get().language,
+          scenarioSessionId: scenarioSessionId,
         }),
       });
       const data = await response.json();
-
       handleEvents(data.events);
-
-      if (data.type === 'scenario') {
-        const nextNode = data.nextNode;
-        set(state => ({
-          scenarioStates: {
-              ...state.scenarioStates,
-              [scenarioId]: {
-                  ...state.scenarioStates[scenarioId],
-                  messages: [...state.scenarioStates[scenarioId].messages, { id: nextNode.id, sender: 'bot', node: nextNode }],
-                  state: data.scenarioState,
-                  slots: data.slots, 
-                  isLoading: false,
-              }
-          }
-        }));
-        await get().continueScenarioIfNeeded(nextNode, scenarioId);
-      } else if (data.type === 'scenario_end') {
-         set(state => ({
-          scenarioStates: {
-              ...state.scenarioStates,
-              [scenarioId]: {
-                  ...state.scenarioStates[scenarioId],
-                  messages: [...state.scenarioStates[scenarioId].messages, { id: 'end', sender: 'bot', text: data.message }],
-                  slots: data.slots, 
-                  state: null,
-                  isLoading: false,
-              }
-          }
-        }));
-      } else if (data.type === 'scenario_validation_fail') {
-        showToast(data.message, 'error');
-        set(state => ({
-          scenarioStates: {
-            ...state.scenarioStates,
-            [scenarioId]: { ...state.scenarioStates[scenarioId], isLoading: false }
-          }
-        }));
+      
+      const updatedMessages = [...get().scenarioStates[scenarioSessionId].messages];
+      if (data.nextNode) {
+          updatedMessages.push({ id: data.nextNode.id, sender: 'bot', node: data.nextNode });
+      } else if (data.message) {
+          updatedMessages.push({ id: 'end', sender: 'bot', text: data.message });
+      }
+      
+      if (data.type === 'scenario_validation_fail') {
+          showToast(data.message, 'error');
+          set(state => ({
+            scenarioStates: { ...state.scenarioStates, [scenarioSessionId]: { ...state.scenarioStates[scenarioSessionId], isLoading: false } }
+          }));
       } else {
-        throw new Error("Invalid scenario response type received: " + data.type);
+        await updateDoc(sessionRef, {
+            messages: updatedMessages,
+            state: data.scenarioState,
+            slots: data.slots,
+        });
+        if (data.nextNode) {
+            await get().continueScenarioIfNeeded(data.nextNode, scenarioSessionId);
+        }
       }
     } catch (error) {
       console.error("Error in scenario conversation:", error);
-       set(state => ({
-          scenarioStates: {
-              ...state.scenarioStates,
-              [scenarioId]: {
-                  ...state.scenarioStates[scenarioId],
-                  messages: [...state.scenarioStates[scenarioId].messages, { id: 'error', sender: 'bot', text: 'An error occurred.' }],
-                  isLoading: false,
-              }
-          }
-        }));
+      await updateDoc(sessionRef, {
+          messages: [...get().scenarioStates[scenarioSessionId].messages, { id: 'error', sender: 'bot', text: 'An error occurred.' }]
+      });
     }
   },
 
-  continueScenarioIfNeeded: async (lastNode, scenarioId) => {
+  continueScenarioIfNeeded: async (lastNode, scenarioSessionId) => {
     const isInteractive = lastNode.type === 'slotfilling' || lastNode.type === 'form' || (lastNode.data?.replies && lastNode.data.replies.length > 0);
     if (!isInteractive && lastNode.id !== 'end') {
       await new Promise(resolve => setTimeout(resolve, 500));
       await get().handleScenarioResponse({
-        scenarioId: scenarioId,
+        scenarioSessionId: scenarioSessionId,
         currentNodeId: lastNode.id,
         sourceHandle: null,
         userInput: null,

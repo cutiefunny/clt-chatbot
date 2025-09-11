@@ -53,21 +53,26 @@ const actionHandlers = {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { message, scenarioState, slots, language = 'ko' } = body;
+    const { message, scenarioState, slots, language = 'ko', scenarioSessionId } = body;
 
-    if (scenarioState && scenarioState.scenarioId) {
+    if (scenarioSessionId && scenarioState && scenarioState.scenarioId) {
       const scenario = await getScenario(scenarioState.scenarioId);
       const result = await runScenario(scenario, scenarioState, message, slots);
       return NextResponse.json(result);
     }
-
-    const action = await determineAction(message.text);
-    const handler = actionHandlers[action.type];
-
-    if (handler) {
-        return await handler(action.payload, slots, language);
-    }
     
+    // --- 👇 [수정된 부분] ---
+    // scenarioState가 없더라도, scenarioSessionId가 없는 초기 시작 요청을 처리하도록 수정
+    if (!scenarioState && message.text) {
+        const action = await determineAction(message.text);
+        const handler = actionHandlers[action.type];
+
+        if (handler) {
+            return await handler(action.payload, slots, language);
+        }
+    }
+    // --- 👆 [여기까지] ---
+
     const stream = await getGeminiStream(message.text, language);
     return new Response(stream, {
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },

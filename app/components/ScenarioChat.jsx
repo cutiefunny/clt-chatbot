@@ -5,7 +5,7 @@ import { useChatStore } from '../store';
 import { useTranslations } from '../hooks/useTranslations';
 import styles from './Chat.module.css'; 
 
-const FormRenderer = ({ node, onFormSubmit }) => {
+const FormRenderer = ({ node, onFormSubmit, disabled }) => {
     const [formData, setFormData] = useState({});
     const dateInputRef = useRef(null);
     const { t } = useTranslations();
@@ -41,7 +41,7 @@ const FormRenderer = ({ node, onFormSubmit }) => {
             {node.data.elements?.map(el => (
                 <div key={el.id} className={styles.formElement}>
                     <label className={styles.formLabel}>{el.label}</label>
-                    {el.type === 'input' && <input className={styles.formInput} type="text" placeholder={el.placeholder} value={formData[el.name] || ''} onChange={e => handleInputChange(el.name, e.target.value)} />}
+                    {el.type === 'input' && <input className={styles.formInput} type="text" placeholder={el.placeholder} value={formData[el.name] || ''} onChange={e => handleInputChange(el.name, e.target.value)} disabled={disabled} />}
                     
                     {el.type === 'date' && (
                         <input 
@@ -51,24 +51,28 @@ const FormRenderer = ({ node, onFormSubmit }) => {
                             value={formData[el.name] || ''} 
                             onChange={e => handleInputChange(el.name, e.target.value)}
                             onClick={handleDateInputClick}
+                            disabled={disabled}
                         />
                     )}
 
                     {el.type === 'dropbox' && (
-                        <select value={formData[el.name] || ''} onChange={e => handleInputChange(el.name, e.target.value)}>
+                        <select value={formData[el.name] || ''} onChange={e => handleInputChange(el.name, e.target.value)} disabled={disabled}>
                             <option value="" disabled>{t('select')}</option>
                             {el.options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                         </select>
                     )}
                     {el.type === 'checkbox' && el.options?.map(opt => (
                         <div key={opt}>
-                            <input type="checkbox" id={`${el.id}-${opt}`} value={opt} onChange={e => handleMultiInputChange(el.name, opt, e.target.checked)} />
+                            <input type="checkbox" id={`${el.id}-${opt}`} value={opt} onChange={e => handleMultiInputChange(el.name, opt, e.target.checked)} disabled={disabled} />
                             <label htmlFor={`${el.id}-${opt}`}>{opt}</label>
                         </div>
                     ))}
                 </div>
             ))}
-            <button type="submit" className={styles.formSubmitButton}>{t('submit')}</button>
+            {/* --- 👇 [수정] 완료 상태일 때 제출 버튼이 보이지 않도록 처리 --- */}
+            {!disabled && (
+              <button type="submit" className={styles.formSubmitButton}>{t('submit')}</button>
+            )}
         </form>
     );
 };
@@ -76,7 +80,7 @@ const FormRenderer = ({ node, onFormSubmit }) => {
 export default function ScenarioChat() {
   const { 
     isScenarioPanelOpen,
-    activeScenarioId,
+    activeScenarioSessionId,
     scenarioStates,
     handleScenarioResponse,
     setScenarioPanelOpen,
@@ -84,10 +88,12 @@ export default function ScenarioChat() {
   } = useChatStore();
   const { t } = useTranslations();
 
-  const activeScenario = activeScenarioId ? scenarioStates[activeScenarioId] : null;
+  const activeScenario = activeScenarioSessionId ? scenarioStates[activeScenarioSessionId] : null;
+  const isCompleted = activeScenario?.status === 'completed';
   const scenarioMessages = activeScenario?.messages || [];
   const isScenarioLoading = activeScenario?.isLoading || false;
   const currentScenarioNodeId = activeScenario?.state?.currentNodeId;
+  const scenarioId = activeScenario?.scenarioId;
   
   const historyRef = useRef(null);
 
@@ -118,7 +124,7 @@ export default function ScenarioChat() {
   
   const handleFormSubmit = (formData) => {
       handleScenarioResponse({
-          scenarioId: activeScenarioId,
+          scenarioSessionId: activeScenarioSessionId,
           currentNodeId: currentScenarioNodeId,
           formData: formData,
       });
@@ -128,15 +134,18 @@ export default function ScenarioChat() {
     <div className={styles.chatContainer} style={{ height: '100%' }}>
       <div className={styles.header}>
         <div className={styles.headerContent}>
-          <span className={styles.headerTitle}>{t('scenarioTitle')(activeScenarioId)}</span>
+          <span className={styles.headerTitle}>{t('scenarioTitle')(scenarioId)}</span>
         </div>
         <div className={styles.headerButtons}>
            <button className={styles.headerRestartButton} onClick={(e) => { e.stopPropagation(); setScenarioPanelOpen(false); }}>
             {t('hide')}
           </button>
-          <button className={`${styles.headerRestartButton} ${styles.dangerButton}`} onClick={(e) => { e.stopPropagation(); endScenario(activeScenarioId); }}>
-            {t('end')}
-          </button>
+           {/* --- 👇 [수정] 완료 상태가 아닐 때만 종료 버튼 렌더링 --- */}
+          {!isCompleted && (
+            <button className={`${styles.headerRestartButton} ${styles.dangerButton}`} onClick={(e) => { e.stopPropagation(); endScenario(activeScenarioSessionId); }}>
+              {t('end')}
+            </button>
+          )}
         </div>
       </div>
       
@@ -146,7 +155,7 @@ export default function ScenarioChat() {
              {msg.sender === 'bot' && <img src="/images/avatar.png" alt="Avatar" className={styles.avatar} />}
              <div className={`${styles.message} ${msg.sender === 'bot' ? styles.botMessage : styles.userMessage}`}>
                {msg.node?.type === 'form' ? (
-                 <FormRenderer node={msg.node} onFormSubmit={handleFormSubmit} />
+                 <FormRenderer node={msg.node} onFormSubmit={handleFormSubmit} disabled={isCompleted} />
                ) : (
                  <p>{msg.text || msg.node?.data.content}</p>
                )}
@@ -157,11 +166,12 @@ export default function ScenarioChat() {
                            key={reply.value} 
                            className={styles.optionButton} 
                            onClick={() => handleScenarioResponse({
-                               scenarioId: activeScenarioId,
+                               scenarioSessionId: activeScenarioSessionId,
                                currentNodeId: msg.node.id,
                                sourceHandle: reply.value,
-                               display: reply.display
+                               userInput: reply.display
                            })}
+                           disabled={isCompleted}
                          >
                              {reply.display}
                          </button>
@@ -171,7 +181,7 @@ export default function ScenarioChat() {
              </div>
           </div>
         ))}
-        {isScenarioLoading && <div className={styles.messageRow}><p>{t('loading')}...</p></div>}
+        {isScenarioLoading && !isCompleted && <div className={styles.messageRow}><p>{t('loading')}...</p></div>}
       </div>
     </div>
   );
