@@ -4,13 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useChatStore } from '../store';
 import { useTranslations } from '../hooks/useTranslations';
 import styles from './DevBoardModal.module.css';
+import Modal from './Modal'; // Modal import
 
-const CloseIcon = () => (
-    <svg width="24" height="24" viewBox="0 0 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-);
 const TrashIcon = () => (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M3 6H5H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -43,23 +38,10 @@ export default function DevBoardModal() {
             setNewMemo('');
         }
     };
-    
-    const handleOverlayClick = (e) => {
-        if (e.target === e.currentTarget) {
-            closeDevBoardModal();
-        }
-    };
 
     return (
-        <div className={styles.modalOverlay} onClick={handleOverlayClick}>
-            <div className={styles.modalContent}>
-                <div className={styles.modalHeader}>
-                    <h2>{t('devBoardTitle')}</h2>
-                    <button onClick={closeDevBoardModal} className={styles.closeButton}>
-                        <CloseIcon />
-                    </button>
-                </div>
-
+        <Modal title={t('devBoardTitle')} onClose={closeDevBoardModal} contentStyle={{ maxWidth: '500px', height: '70vh' }}>
+            <div className={styles.modalContainer}>
                 <div className={styles.memoList} ref={memoListRef}>
                     {devMemos.map(memo => (
                         <div key={memo.id} className={styles.memoItem}>
@@ -92,6 +74,6 @@ export default function DevBoardModal() {
                     </button>
                 </form>
             </div>
-        </div>
+        </Modal>
     );
 }

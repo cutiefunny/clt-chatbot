@@ -83,7 +83,6 @@ export const getNextNode = (scenario, currentNodeId, sourceHandleId = null, slot
 };
 
 
-// --- 👇 [수정된 부분] ---
 export const interpolateMessage = (message, slots) => {
     if (!message) return '';
     // 키 값의 앞뒤 공백을 제거하여 예상치 못한 데이터 오류를 방지합니다.
@@ -92,9 +91,7 @@ export const interpolateMessage = (message, slots) => {
         return slots.hasOwnProperty(trimmedKey) ? slots[trimmedKey] : match;
     });
 };
-// --- 👆 [여기까지] ---
 
-// --- 👇 [추가된 헬퍼 함수] ---
 export const getNestedValue = (obj, path) => {
     if (!path) return undefined;
     return path.split('.').reduce((acc, part) => acc && acc[part], obj);
@@ -103,7 +100,6 @@ export const getNestedValue = (obj, path) => {
 export const validateInput = (value, validation) => {
   if (!validation) return { isValid: true };
 
-  // --- 👇 [수정] validation.message를 동적으로 사용 ---
   const getErrorMessage = (defaultMessage) => validation.errorMessage || defaultMessage;
 
   switch (validation.type) {
@@ -133,13 +129,12 @@ export const validateInput = (value, validation) => {
   }
 };
 
-// --- 👇 [수정된 부분] ---
 export async function runScenario(scenario, scenarioState, message, slots) {
     const { scenarioId, currentNodeId, awaitingInput } = scenarioState;
     let currentId = currentNodeId;
     let newSlots = { ...slots };
-    const events = []; // 1. 이벤트를 담을 배열 추가
-
+    const events = [];
+    
     if (awaitingInput) {
         const currentNode = scenario.nodes.find(n => n.id === currentId);
         const validation = currentNode.data.validation;
@@ -162,7 +157,6 @@ export async function runScenario(scenario, scenarioState, message, slots) {
     while (nextNode) {
         nextNode.data.content = interpolateMessage(nextNode.data.content, newSlots);
         
-        // 2. Toast 노드를 만나면 events 배열에 추가하고 계속 진행
         if (nextNode.type === 'toast') {
             const interpolatedToastMessage = interpolateMessage(nextNode.data.message, newSlots);
             events.push({
@@ -181,7 +175,7 @@ export async function runScenario(scenario, scenarioState, message, slots) {
                 nextNode,
                 scenarioState: { scenarioId, currentNodeId: nextNode.id, awaitingInput: isAwaiting },
                 slots: newSlots,
-                events, // 3. 최종 응답에 events 배열 포함
+                events,
             };
         }
 
@@ -214,7 +208,12 @@ export async function runScenario(scenario, scenarioState, message, slots) {
             let isSuccess = false;
             try {
                 const response = await fetch(interpolatedUrl, { method, headers: interpolatedHeaders, body: interpolatedBody });
-                if (!response.ok) throw new Error(`API request failed with status ${response.status} for URL: ${interpolatedUrl}`);
+                // --- 👇 [수정된 부분] ---
+                if (!response.ok) {
+                    // 응답 본문을 텍스트로 읽어 에러 슬롯에 저장
+                    const errorBody = await response.text();
+                    throw new Error(`API request failed with status ${response.status}. Body: ${errorBody}`);
+                }
 
                 const result = await response.json();
                 if (responseMapping && responseMapping.length > 0) {
@@ -226,13 +225,16 @@ export async function runScenario(scenario, scenarioState, message, slots) {
                 isSuccess = true;
             } catch (error) {
                 console.error("API Node Error:", error);
+                // 에러 정보를 슬롯에 저장하여 시나리오에서 활용할 수 있도록 함
+                newSlots['apiError'] = error.message; 
                 isSuccess = false;
             }
+            // --- 👆 [여기까지] ---
 
             nextNode = getNextNode(scenario, nextNode.id, isSuccess ? 'onSuccess' : 'onError', newSlots);
             continue;
         }
-
+        
         if (nextNode.type === 'llm') {
             const { getGeminiStream } = await import('./gemini'); // 필요할 때만 import
             const interpolatedPrompt = interpolateMessage(nextNode.data.prompt, newSlots);

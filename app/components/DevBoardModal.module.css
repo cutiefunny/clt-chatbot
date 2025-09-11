@@ -1,53 +1,15 @@
-.modalOverlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.6);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1001; /* ProfileModal보다 위에 오도록 z-index 조정 */
-}
+/* modalOverlay, modalContent, modalHeader, closeButton 스타일 제거 */
 
-.modalContent {
-    background-color: var(--panel-bg-color);
-    border-radius: 12px;
-    width: 90%;
-    max-width: 500px;
-    height: 70vh;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-    color: var(--text-color);
+.modalContainer {
     display: flex;
     flex-direction: column;
-}
-
-.modalHeader {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid var(--panel-border-color);
-    padding: 12px 20px;
-    flex-shrink: 0;
-}
-
-.modalHeader h2 {
-    margin: 0;
-    font-size: 1.2rem;
-}
-
-.closeButton {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--text-color);
+    height: 100%;
 }
 
 .memoList {
     flex-grow: 1;
     overflow-y: auto;
-    padding: 16px;
+    /* padding은 modalBody에서 처리하므로 제거 */
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -106,7 +68,7 @@
 .memoForm {
     display: flex;
     gap: 8px;
-    padding: 16px;
+    padding-top: 16px; /* 위쪽 여백 추가 */
     border-top: 1px solid var(--panel-border-color);
     flex-shrink: 0;
 }

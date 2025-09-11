@@ -1,24 +1,6 @@
-.modalOverlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.6);
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    padding-top: 15vh;
-    z-index: 1000;
-}
-
-.modalContent {
-    background-color: var(--panel-bg-color);
-    border-radius: 12px;
-    width: 90%;
-    max-width: 500px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-    color: var(--text-color);
+/* modalOverlay, modalContent 스타일 제거 */
+/* 최상위 클래스를 searchContainer로 변경 */
+.searchContainer {
     display: flex;
     flex-direction: column;
 }

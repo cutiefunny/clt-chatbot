@@ -4,12 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useChatStore } from '../store';
 import { useTranslations } from '../hooks/useTranslations';
 import styles from './ChatInput.module.css';
-
-const MenuIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M4 6H20M4 12H20M4 18H20" stroke="var(--text-color)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
+import MenuIcon from './icons/MenuIcon';
 
 const useDraggableScroll = () => {
     const ref = useRef(null);

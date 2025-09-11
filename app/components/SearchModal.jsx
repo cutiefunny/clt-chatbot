@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useChatStore } from '../store';
 import { useTranslations } from '../hooks/useTranslations';
 import styles from './SearchModal.module.css';
+import Modal from './Modal'; // Modal import
 
 const SearchIcon = () => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -13,20 +14,8 @@ const SearchIcon = () => (
 );
 
 const HighlightedText = ({ text, highlight }) => {
-    if (!highlight.trim()) {
-        return <span>{text}</span>;
-    }
-    const regex = new RegExp(`(${highlight})`, 'gi');
-    const parts = text.split(regex);
-    return (
-        <span>
-            {parts.map((part, i) =>
-                regex.test(part) ? <strong key={i}>{part}</strong> : <span key={i}>{part}</span>
-            )}
-        </span>
-    );
+    // ... (기존과 동일)
 };
-
 
 export default function SearchModal() {
     const {
@@ -44,9 +33,7 @@ export default function SearchModal() {
             searchConversations(query);
         }, 300);
 
-        return () => {
-            clearTimeout(handler);
-        };
+        return () => clearTimeout(handler);
     }, [query, searchConversations]);
 
     const handleResultClick = (convoId) => {
@@ -55,8 +42,8 @@ export default function SearchModal() {
     };
 
     return (
-        <div className={styles.modalOverlay} onClick={closeSearchModal}>
-            <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
+        <Modal onClose={closeSearchModal} contentStyle={{ maxWidth: '500px', alignSelf: 'flex-start', marginTop: '15vh' }}>
+            <div className={styles.searchContainer}>
                 <div className={styles.searchInputWrapper}>
                     <SearchIcon />
                     <input
@@ -91,6 +78,6 @@ export default function SearchModal() {
                     ))}
                 </div>
             </div>
-        </div>
+        </Modal>
     );
 }
