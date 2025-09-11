@@ -41,6 +41,11 @@ export default function Chat() {
     observer.observe(scrollContainer, { childList: true, subtree: true });
     scrollContainer.addEventListener('scroll', handleScroll);
 
+    // 메시지가 변경될 때 스크롤을 맨 아래로 이동
+    if (!isFetchingMore) {
+        scrollToBottom();
+    }
+
     return () => {
       observer.disconnect();
       scrollContainer.removeEventListener('scroll', handleScroll);
