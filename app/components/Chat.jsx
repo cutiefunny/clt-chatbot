@@ -91,7 +91,7 @@ export default function Chat() {
                 </button>
               ) : msg.type === 'scenario_end_notice' ? (
                 <button className={styles.optionButton} onClick={(e) => { e.stopPropagation(); openScenarioPanel(msg.scenarioId, msg.scenarioSessionId); }}>
-                  {msg.text} (기록 보기)
+                  {msg.text}
                 </button>
               ) : (
                 <p>{msg.text || msg.node?.data.content}</p>

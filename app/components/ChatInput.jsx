@@ -4,7 +4,12 @@ import { useEffect, useRef, useState } from 'react';
 import { useChatStore } from '../store';
 import { useTranslations } from '../hooks/useTranslations';
 import styles from './ChatInput.module.css';
-import MenuIcon from './icons/MenuIcon';
+
+const MenuIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M4 6H20M4 12H20M4 18H20" stroke="var(--text-color)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
 
 const useDraggableScroll = () => {
     const ref = useRef(null);
@@ -36,7 +41,7 @@ export default function ChatInput() {
         isLoading, 
         handleResponse,
         activePanel,
-        activeScenarioId,
+        activeScenarioSessionId, // --- 👈 [수정] activeScenarioId -> activeScenarioSessionId
         scenarioStates,
         handleScenarioResponse,
         focusRequest,
@@ -47,9 +52,15 @@ export default function ChatInput() {
     const inputRef = useRef(null);
     const quickRepliesSlider = useDraggableScroll();
 
-    const activeScenario = activeScenarioId ? scenarioStates[activeScenarioId] : null;
+    // --- 👇 [수정] activeScenarioSessionId를 사용하여 현재 시나리오 상태 가져오기 ---
+    const activeScenario = activeScenarioSessionId ? scenarioStates[activeScenarioSessionId] : null;
     const scenarioMessages = activeScenario?.messages || [];
     const mainMessages = useChatStore(state => state.messages);
+    
+    // --- 👇 [추가] 패널에 맞는 로딩 상태 결정 ---
+    const isInputDisabled = activePanel === 'scenario' 
+        ? activeScenario?.isLoading ?? false 
+        : isLoading;
 
     const lastMessage = activePanel === 'main' 
             ? mainMessages[mainMessages.length - 1] 
@@ -59,19 +70,19 @@ export default function ChatInput() {
     const currentScenarioNodeId = activeScenario?.state?.currentNodeId;
 
     useEffect(() => {
-        if (!isLoading) {
+        if (!isInputDisabled) { // isInputDisabled 사용
             inputRef.current?.focus();
         }
-    }, [isLoading, focusRequest, activePanel]);
+    }, [isInputDisabled, focusRequest, activePanel]);
 
     const handleSubmit = (e) => {
         e.preventDefault();
         const input = e.target.elements.userInput.value;
-        if (!input.trim() || isLoading) return;
+        if (!input.trim() || isInputDisabled) return; // isInputDisabled 사용
 
         if (activePanel === 'scenario') {
             handleScenarioResponse({
-                scenarioId: activeScenarioId,
+                scenarioSessionId: activeScenarioSessionId, // --- 👈 [수정]
                 currentNodeId: currentScenarioNodeId,
                 userInput: input,
             });
@@ -84,7 +95,7 @@ export default function ChatInput() {
     const handleQuickReplyClick = (reply) => {
         if (activePanel === 'scenario') {
             handleScenarioResponse({ 
-                scenarioId: activeScenarioId,
+                scenarioSessionId: activeScenarioSessionId, // --- 👈 [수정]
                 currentNodeId: currentScenarioNodeId,
                 sourceHandle: reply.value,
                 userInput: reply.display
@@ -96,6 +107,7 @@ export default function ChatInput() {
     
     return (
         <div className={styles.inputArea}>
+            {/* --- 👇 [수정] isInputDisabled 사용 --- */}
             {(currentBotMessageNode?.data?.replies) && (
                 <div className={styles.buttonRow}>
                     <div
@@ -107,7 +119,7 @@ export default function ChatInput() {
                         onMouseMove={quickRepliesSlider.onMouseMove}
                     >
                         {currentBotMessageNode.data.replies.map(reply => (
-                            <button key={reply.value} className={styles.optionButton} onClick={() => handleQuickReplyClick(reply)} disabled={isLoading}>
+                            <button key={reply.value} className={styles.optionButton} onClick={() => handleQuickReplyClick(reply)} disabled={isInputDisabled}>
                                 {reply.display}
                             </button>
                         ))}
@@ -125,7 +137,7 @@ export default function ChatInput() {
                     className={styles.textInput}
                     placeholder={activePanel === 'scenario' ? t('enterResponse') : t('askAboutService')}
                     autoComplete="off"
-                    disabled={isLoading}
+                    disabled={isInputDisabled}
                 />
             </form>
         </div>

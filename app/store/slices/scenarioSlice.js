@@ -97,7 +97,7 @@ export const createScenarioSlice = (set, get) => ({
         set(state => ({
           scenarioStates: {
             ...state.scenarioStates,
-            [sessionId]: { ...doc.data(), isLoading: false }
+            [sessionId]: { ...doc.data(), isLoading: false } // Firestore 업데이트 시 isLoading은 항상 false로 설정
           }
         }));
       }
@@ -111,11 +111,9 @@ export const createScenarioSlice = (set, get) => ({
     
     const scenarioId = scenarioStates[scenarioSessionId]?.scenarioId || 'Scenario';
     
-    // Firestore 상태를 'completed'로 업데이트
     const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", scenarioSessionId);
     await updateDoc(sessionRef, { status: 'completed' });
 
-    // --- 👇 [수정] 종료 메시지에 scenarioSessionId와 scenarioId 추가 ---
     const endMessage = {
       id: Date.now(),
       sender: 'bot',
@@ -124,7 +122,6 @@ export const createScenarioSlice = (set, get) => ({
       scenarioId: scenarioId,
       scenarioSessionId: scenarioSessionId, 
     };
-    // --- 👆 [여기까지] ---
 
     const filteredMessages = messages.filter(
       (msg) => msg.type !== 'scenario_resume_prompt' || msg.scenarioSessionId !== scenarioSessionId
@@ -132,7 +129,6 @@ export const createScenarioSlice = (set, get) => ({
     
     get().unsubscribeScenario?.();
     
-    // --- 👇 [수정] 로컬 상태에서 시나리오 정보를 삭제하지 않고 유지 ---
     set({
       isScenarioPanelOpen: false,
       activeScenarioSessionId: null,
@@ -140,7 +136,6 @@ export const createScenarioSlice = (set, get) => ({
       messages: [...filteredMessages, endMessage],
       unsubscribeScenario: null,
     });
-    // --- 👆 [여기까지] ---
 
     saveMessage(endMessage);
   },
@@ -156,7 +151,6 @@ export const createScenarioSlice = (set, get) => ({
               );
               
               const scenarioData = state.scenarioStates[activeScenarioSessionId];
-              // 시나리오가 'active' 상태일 때만 '이어하기' 버튼 추가
               if (scenarioData?.status === 'active') {
                 newMessages = [...filteredMessages, {
                     id: Date.now(),
@@ -187,13 +181,7 @@ export const createScenarioSlice = (set, get) => ({
     if (!user || !currentConversationId || !scenarioSessionId) return;
 
     set(state => ({
-        scenarioStates: {
-            ...state.scenarioStates,
-            [scenarioSessionId]: {
-                ...state.scenarioStates[scenarioSessionId],
-                isLoading: true,
-            }
-        }
+        scenarioStates: { ...state.scenarioStates, [scenarioSessionId]: { ...state.scenarioStates[scenarioSessionId], isLoading: true } }
     }));
     
     const currentScenario = get().scenarioStates[scenarioSessionId];
@@ -232,9 +220,6 @@ export const createScenarioSlice = (set, get) => ({
       
       if (data.type === 'scenario_validation_fail') {
           showToast(data.message, 'error');
-          set(state => ({
-            scenarioStates: { ...state.scenarioStates, [scenarioSessionId]: { ...state.scenarioStates[scenarioSessionId], isLoading: false } }
-          }));
       } else {
         await updateDoc(sessionRef, {
             messages: updatedMessages,
@@ -250,6 +235,11 @@ export const createScenarioSlice = (set, get) => ({
       await updateDoc(sessionRef, {
           messages: [...get().scenarioStates[scenarioSessionId].messages, { id: 'error', sender: 'bot', text: 'An error occurred.' }]
       });
+    } finally {
+      // --- 👇 [추가] API 호출 종료 후 항상 isLoading을 false로 설정 ---
+      set(state => ({
+        scenarioStates: { ...state.scenarioStates, [scenarioSessionId]: { ...state.scenarioStates[scenarioSessionId], isLoading: false } }
+      }));
     }
   },
 
