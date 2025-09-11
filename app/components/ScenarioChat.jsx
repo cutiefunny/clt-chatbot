@@ -181,7 +181,10 @@ export default function ScenarioChat() {
              </div>
           </div>
         ))}
-        {isScenarioLoading && !isCompleted && <div className={styles.messageRow}><p>{t('loading')}...</p></div>}
+        {isScenarioLoading && <div className={styles.messageRow}>
+                <img src="/images/avatar-loading.png" alt="Avatar" className={styles.avatar} />
+                <div className={`${styles.message} ${styles.botMessage}`}><img src="/images/Loading.gif" alt={t('loading')} style={{ width: '40px', height: '30px' }} /></div>
+            </div>}
       </div>
     </div>
   );

@@ -115,7 +115,7 @@ export default function Chat() {
             </div>
           </div>
         ))}
-        {isLoading && !isFetchingMore && messages[messages.length-1]?.sender === 'user' && (
+        {messages[messages.length-1]?.sender === 'user' && (
             <div className={styles.messageRow}>
                 <img src="/images/avatar-loading.png" alt="Avatar" className={styles.avatar} />
                 <div className={`${styles.message} ${styles.botMessage}`}><img src="/images/Loading.gif" alt={t('loading')} style={{ width: '40px', height: '30px' }} /></div>
