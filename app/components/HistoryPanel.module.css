@@ -234,11 +234,15 @@
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  justify-content: flex-start;
+  justify-content: space-between;
 }
 
 .historyPanel.closed .footer {
     justify-content: flex-start;
+}
+
+.historyPanel.closed .footer .iconButton {
+    display: none;
 }
 
 .avatarWrapper {

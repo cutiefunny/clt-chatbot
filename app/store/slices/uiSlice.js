@@ -15,6 +15,7 @@ export const createUISlice = (set, get) => ({
   isScenarioModalOpen: false,
   isDevBoardModalOpen: false,
   isNotificationModalOpen: false,
+  isManualModalOpen: false, // --- [추가]
   isHistoryPanelOpen: false,
   activePanel: 'main',
   focusRequest: 0,
@@ -83,6 +84,8 @@ export const createUISlice = (set, get) => ({
   closeDevBoardModal: () => set({ isDevBoardModalOpen: false }),
   openNotificationModal: () => set({ isNotificationModalOpen: true }),
   closeNotificationModal: () => set({ isNotificationModalOpen: false }),
+  openManualModal: () => set({ isManualModalOpen: true }), // --- [추가]
+  closeManualModal: () => set({ isManualModalOpen: false }), // --- [추가]
 
   toggleHistoryPanel: () => set(state => ({ isHistoryPanelOpen: !state.isHistoryPanelOpen })),
   setActivePanel: (panel) => set({ activePanel: panel }),

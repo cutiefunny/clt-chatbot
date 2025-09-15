@@ -7,11 +7,13 @@ import ProfileModal from './ProfileModal';
 import SearchModal from './SearchModal';
 import DevBoardModal from './DevBoardModal';
 import NotificationModal from './NotificationModal';
+import ManualModal from './ManualModal'; // --- [추가]
 import ConversationItem from './ConversationItem';
 import MenuIcon from './icons/MenuIcon'; 
 import BellIcon from './icons/BellIcon';
 import SearchIcon from './icons/SearchIcon';
 import EditIcon from './icons/EditIcon';
+import ManualIcon from './icons/ManualIcon'; // --- [추가]
 
 export default function HistoryPanel() {
   const { 
@@ -32,6 +34,8 @@ export default function HistoryPanel() {
     isNotificationModalOpen,
     openNotificationModal,
     hasUnreadNotifications,
+    isManualModalOpen, // --- [추가]
+    openManualModal, // --- [추가]
   } = useChatStore();
   const { t } = useTranslations();
   
@@ -91,6 +95,11 @@ export default function HistoryPanel() {
                     className={styles.userAvatar}
                 />
             </div>
+            {/* --- 👇 [추가된 부분] --- */}
+            <button className={styles.iconButton} onClick={openManualModal}>
+                <ManualIcon />
+            </button>
+            {/* --- 👆 [여기까지] --- */}
           </div>
         </div>
       </div>
@@ -99,6 +108,7 @@ export default function HistoryPanel() {
       {isSearchModalOpen && <SearchModal />}
       {isDevBoardModalOpen && <DevBoardModal />}
       {isNotificationModalOpen && <NotificationModal />}
+      {isManualModalOpen && <ManualModal />} {/* --- [추가] --- */}
     </>
   );
 }

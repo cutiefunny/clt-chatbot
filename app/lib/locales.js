@@ -9,6 +9,37 @@ export const locales = {
     loading: '로딩 중...',
     copied: '복사되었습니다!',
 
+    //Manual
+    manualTitle: '챗봇 사용 매뉴얼',
+    manualContent: {
+        ko: `
+            <h3>주요 기능</h3>
+            <ul>
+                <li><strong>하이브리드 채팅:</strong> 시나리오 기반 응답과 AI를 통한 자연어 응답을 결합하여 제공합니다.</li>
+                <li><strong>실시간 대화:</strong> 모든 대화 기록은 실시간으로 저장됩니다.</li>
+                <li><strong>사용자 인증:</strong> Google 계정으로 간편하게 로그인할 수 있습니다.</li>
+                <li><strong>대화 히스토리 및 검색:</strong> 이전 대화를 확인하고, 키워드로 메시지를 검색할 수 있습니다.</li>
+                <li><strong>사용자 맞춤 설정:</strong> 라이트/다크 테마와 폰트 크기를 설정할 수 있습니다.</li>
+            </ul>
+            <h3>사용 방법</h3>
+            <p>좌측 상단의 <strong>새로운 대화</strong> 버튼을 클릭하여 대화를 시작할 수 있습니다. 대화 입력창 좌측의 메뉴 아이콘을 클릭하여 시나리오를 직접 실행할 수도 있습니다.</p>
+            <p>사용자 프로필 아이콘을 클릭하여 테마, 폰트 크기, 언어 등 다양한 설정을 변경해보세요.</p>
+        `,
+        en: `
+            <h3>Main Features</h3>
+            <ul>
+                <li><strong>Hybrid Chat:</strong> Combines scenario-based responses with flexible natural language answers through AI.</li>
+                <li><strong>Real-time Conversation:</strong> All conversation history is saved in real-time.</li>
+                <li><strong>User Authentication:</strong> Easily log in with your Google account.</li>
+                <li><strong>Conversation History & Search:</strong> Review past conversations and search for messages by keyword.</li>
+                <li><strong>User Customization:</strong> You can set light/dark themes and font sizes.</li>
+            </ul>
+            <h3>How to Use</h3>
+            <p>You can start a conversation by clicking the <strong>New Chat</strong> button in the top left. You can also run scenarios directly by clicking the menu icon to the left of the chat input field.</p>
+            <p>Click the user profile icon to change various settings such as theme, font size, and language.</p>
+        `
+    },
+
     // Login
     loginPrompt: '계속하려면 로그인해주세요.',
     signInWithGoogle: 'Google 계정으로 로그인',
@@ -77,6 +108,37 @@ export const locales = {
     logout: 'Log Out',
     loading: 'Loading...',
     copied: 'Copied!',
+
+    //Manual
+    manualTitle: 'Chatbot Manual',
+    manualContent: {
+        ko: `
+            <h3>주요 기능</h3>
+            <ul>
+                <li><strong>하이브리드 채팅:</strong> 시나리오 기반 응답과 AI를 통한 자연어 응답을 결합하여 제공합니다.</li>
+                <li><strong>실시간 대화:</strong> 모든 대화 기록은 실시간으로 저장됩니다.</li>
+                <li><strong>사용자 인증:</strong> Google 계정으로 간편하게 로그인할 수 있습니다.</li>
+                <li><strong>대화 히스토리 및 검색:</strong> 이전 대화를 확인하고, 키워드로 메시지를 검색할 수 있습니다.</li>
+                <li><strong>사용자 맞춤 설정:</strong> 라이트/다크 테마와 폰트 크기를 설정할 수 있습니다.</li>
+            </ul>
+            <h3>사용 방법</h3>
+            <p>좌측 상단의 <strong>새로운 대화</strong> 버튼을 클릭하여 대화를 시작할 수 있습니다. 대화 입력창 좌측의 메뉴 아이콘을 클릭하여 시나리오를 직접 실행할 수도 있습니다.</p>
+            <p>사용자 프로필 아이콘을 클릭하여 테마, 폰트 크기, 언어 등 다양한 설정을 변경해보세요.</p>
+        `,
+        en: `
+            <h3>Main Features</h3>
+            <ul>
+                <li><strong>Hybrid Chat:</strong> Combines scenario-based responses with flexible natural language answers through AI.</li>
+                <li><strong>Real-time Conversation:</strong> All conversation history is saved in real-time.</li>
+                <li><strong>User Authentication:</strong> Easily log in with your Google account.</li>
+                <li><strong>Conversation History & Search:</strong> Review past conversations and search for messages by keyword.</li>
+                <li><strong>User Customization:</strong> You can set light/dark themes and font sizes.</li>
+            </ul>
+            <h3>How to Use</h3>
+            <p>You can start a conversation by clicking the <strong>New Chat</strong> button in the top left. You can also run scenarios directly by clicking the menu icon to the left of the chat input field.</p>
+            <p>Click the user profile icon to change various settings such as theme, font size, and language.</p>
+        `
+    },
 
     // Login
     loginPrompt: 'Please log in to continue.',

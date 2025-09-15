@@ -1,0 +1,68 @@
+.manualContainer {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.toolbar {
+    display: flex;
+    justify-content: flex-end;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--panel-border-color);
+    margin-bottom: 12px;
+    flex-shrink: 0;
+}
+
+.languageSelector {
+    display: flex;
+    border: 1px solid var(--panel-border-color);
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+.langButton {
+    background-color: transparent;
+    border: none;
+    padding: 6px 16px;
+    cursor: pointer;
+    color: var(--text-color);
+    font-size: 0.9rem;
+    transition: background-color 0.2s;
+}
+
+.langButton.active {
+    background-color: var(--button-hover-bg);
+    font-weight: bold;
+}
+
+.manualContent {
+    flex-grow: 1;
+    overflow-y: auto;
+    line-height: 1.6;
+}
+
+.manualContent h3 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-top: 20px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--panel-border-color);
+    padding-bottom: 5px;
+}
+
+.manualContent p {
+    margin-bottom: 10px;
+}
+
+.manualContent ul {
+    list-style-type: disc;
+    padding-left: 20px;
+    margin-bottom: 10px;
+}
+
+.manualContent code {
+    background-color: var(--button-hover-bg);
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-family: var(--font-geist-mono);
+}
