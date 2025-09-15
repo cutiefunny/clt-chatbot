@@ -14,11 +14,37 @@
 }
 
 .historyPanel.closed {
-  width: 60px;
+  width: 0;
+  border-right: none;
+  background-color: transparent;
 }
 .historyPanel.open {
   width: 260px;
 }
+
+/* --- 👇 [추가된 부분] --- */
+.floatingToggleButton {
+    position: fixed;
+    top: 0.75rem;
+    left: 0.75rem;
+    z-index: 20;
+}
+
+.panelContentWrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    opacity: 1;
+    transition: opacity 0.2s ease-in-out;
+}
+
+.historyPanel.closed .panelContentWrapper {
+    opacity: 0;
+    pointer-events: none;
+}
+/* --- 👆 [여기까지] --- */
+
 
 .header {
   padding: 0.75rem;
@@ -30,7 +56,7 @@
 
 .headerTopRow {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end; /* --- [수정] --- */
     width: 100%;
     align-items: center;
 }
@@ -78,8 +104,8 @@
     background-color: var(--button-hover-bg);
 }
 
-.historyPanel.closed .iconButton {
-    display: none;
+.historyPanel.open .iconButton { /* --- [수정] --- */
+    display: flex;
 }
 
 .panelContent {
@@ -107,6 +133,13 @@
   transition: background-color 0.2s;
   color: var(--text-color);
 }
+
+.historyPanel.open .toggleButton { /* --- [추가] --- */
+    position: absolute;
+    top: 0.75rem;
+    left: 0.75rem;
+}
+
 .toggleButton:hover {
   background-color: var(--button-hover-bg);
 }
@@ -123,6 +156,7 @@
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
+  margin-top: 3rem; /* --- [추가] --- */
 }
 .historyPanel.open .newChatButton {
   width: 100%;
