@@ -162,14 +162,12 @@
   pointer-events: none;
 }
 
-/* --- 👇 [수정된 부분] --- */
 .scenarioList {
   margin-top: 10px;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
 }
-/* --- 👆 [여기까지] --- */
 
 .optionButton {
   flex-shrink: 0;
@@ -252,6 +250,20 @@
   cursor: not-allowed;
   opacity: 0.7;
 }
+
+/* --- 👇 [추가된 부분] --- */
+.iframeContainer {
+  padding: 0;
+  background-color: transparent;
+  width: 100%;
+  max-width: 450px;
+  aspect-ratio: 16 / 10;
+}
+
+.iframeContainer iframe {
+  display: block;
+}
+/* --- 👆 [여기까지] --- */
 
 /* Scrollbar Styles */
 .history {
