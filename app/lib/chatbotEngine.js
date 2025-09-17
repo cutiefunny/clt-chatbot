@@ -129,7 +129,7 @@ export const validateInput = (value, validation) => {
   }
 };
 
-export async function runScenario(scenario, scenarioState, message, slots) {
+export async function runScenario(scenario, scenarioState, message, slots, scenarioSessionId) {
     const { scenarioId, currentNodeId, awaitingInput } = scenarioState;
     let currentId = currentNodeId;
     let newSlots = { ...slots };
@@ -168,7 +168,22 @@ export async function runScenario(scenario, scenarioState, message, slots) {
             continue; 
         }
 
-        if (['slotfilling', 'message', 'branch', 'form'].includes(nextNode.type)) {
+        if (['slotfilling', 'message', 'branch', 'form', 'iframe'].includes(nextNode.type)) {
+            // --- 👇 [추가된 부분] ---
+            if (nextNode.type === 'iframe' && nextNode.data.url && scenarioSessionId) {
+                try {
+                    const url = new URL(nextNode.data.url);
+                    url.searchParams.set('scenario_session_id', scenarioSessionId);
+                    nextNode.data.url = url.toString();
+                } catch (e) {
+                    console.error("Invalid URL in iFrame node:", nextNode.data.url);
+                    // URL이 완전하지 않으면 쿼리 파라미터를 수동으로 추가
+                    const separator = nextNode.data.url.includes('?') ? '&' : '?';
+                    nextNode.data.url += `${separator}scenario_session_id=${scenarioSessionId}`;
+                }
+            }
+            // --- 👆 [여기까지] ---
+
             const isAwaiting = nextNode.type === 'slotfilling';
             return {
                 type: 'scenario',
@@ -208,9 +223,7 @@ export async function runScenario(scenario, scenarioState, message, slots) {
             let isSuccess = false;
             try {
                 const response = await fetch(interpolatedUrl, { method, headers: interpolatedHeaders, body: interpolatedBody });
-                // --- 👇 [수정된 부분] ---
                 if (!response.ok) {
-                    // 응답 본문을 텍스트로 읽어 에러 슬롯에 저장
                     const errorBody = await response.text();
                     throw new Error(`API request failed with status ${response.status}. Body: ${errorBody}`);
                 }
@@ -225,11 +238,9 @@ export async function runScenario(scenario, scenarioState, message, slots) {
                 isSuccess = true;
             } catch (error) {
                 console.error("API Node Error:", error);
-                // 에러 정보를 슬롯에 저장하여 시나리오에서 활용할 수 있도록 함
                 newSlots['apiError'] = error.message; 
                 isSuccess = false;
             }
-            // --- 👆 [여기까지] ---
 
             nextNode = getNextNode(scenario, nextNode.id, isSuccess ? 'onSuccess' : 'onError', newSlots);
             continue;

@@ -34,24 +34,19 @@ const actionHandlers = {
         const scenario = await getScenario(scenarioId);
         const startNode = getNextNode(scenario, null, null);
 
-        // --- 👇 [수정된 부분] ---
-        // startNode가 유효한지 먼저 확인합니다.
         if (!startNode || !startNode.data) {
-            // 시작 노드가 없는 경우, 시나리오를 시작할 수 없다는 메시지를 담아 정상적인 JSON 응답을 보냅니다.
             return NextResponse.json({
-                type: 'scenario_end', // 클라이언트가 시나리오 종료로 인식하도록 설정
+                type: 'scenario_end',
                 message: `시나리오 '${scenarioId}'를 시작할 수 없습니다. (내용이 비어있거나 시작점이 없습니다.)`,
                 scenarioState: null,
                 slots: {}
             });
         }
 
-        // startNode.data.content가 있을 때만 내용을 변경합니다.
         if (startNode.data.content) {
             const interpolatedContent = interpolateMessage(startNode.data.content, slots);
             startNode.data.content = interpolatedContent;
         }
-        // --- 👆 [여기까지] ---
 
         return NextResponse.json({
             type: 'scenario_start',
@@ -73,7 +68,9 @@ export async function POST(request) {
 
     if (scenarioSessionId && scenarioState && scenarioState.scenarioId) {
       const scenario = await getScenario(scenarioState.scenarioId);
-      const result = await runScenario(scenario, scenarioState, message, slots);
+      // --- 👇 [수정된 부분] ---
+      const result = await runScenario(scenario, scenarioState, message, slots, scenarioSessionId);
+      // --- 👆 [여기까지] ---
       return NextResponse.json(result);
     }
     
