@@ -69,7 +69,6 @@ const FormRenderer = ({ node, onFormSubmit, disabled }) => {
                     ))}
                 </div>
             ))}
-            {/* --- 👇 [수정] 완료 상태일 때 제출 버튼이 보이지 않도록 처리 --- */}
             {!disabled && (
               <button type="submit" className={styles.formSubmitButton}>{t('submit')}</button>
             )}
@@ -140,7 +139,6 @@ export default function ScenarioChat() {
            <button className={styles.headerRestartButton} onClick={(e) => { e.stopPropagation(); setScenarioPanelOpen(false); }}>
             {t('hide')}
           </button>
-           {/* --- 👇 [수정] 완료 상태가 아닐 때만 종료 버튼 렌더링 --- */}
           {!isCompleted && (
             <button className={`${styles.headerRestartButton} ${styles.dangerButton}`} onClick={(e) => { e.stopPropagation(); endScenario(activeScenarioSessionId); }}>
               {t('end')}
@@ -154,11 +152,23 @@ export default function ScenarioChat() {
           <div key={`${msg.id}-${index}`} className={`${styles.messageRow} ${msg.sender === 'user' ? styles.userRow : ''}`}>
              {msg.sender === 'bot' && <img src="/images/avatar.png" alt="Avatar" className={styles.avatar} />}
              <div className={`${styles.message} ${msg.sender === 'bot' ? styles.botMessage : styles.userMessage}`}>
+               {/* --- 👇 [수정된 부분 시작] --- */}
                {msg.node?.type === 'form' ? (
                  <FormRenderer node={msg.node} onFormSubmit={handleFormSubmit} disabled={isCompleted} />
+               ) : msg.node?.type === 'iframe' ? (
+                  <div className={styles.iframeContainer}>
+                    <iframe
+                      src={msg.node.data.url}
+                      width={msg.node.data.width || '100%'}
+                      height={msg.node.data.height || '250'}
+                      style={{ border: 'none', borderRadius: '18px' }}
+                      title="chatbot-iframe"
+                    ></iframe>
+                  </div>
                ) : (
                  <p>{msg.text || msg.node?.data.content}</p>
                )}
+               {/* --- 👆 [여기까지] --- */}
                {msg.node?.type === 'branch' && msg.node.data.replies && (
                  <div className={styles.scenarioList}>
                      {msg.node.data.replies.map(reply => (

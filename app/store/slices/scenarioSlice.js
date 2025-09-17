@@ -71,6 +71,15 @@ export const createScenarioSlice = (set, get) => ({
             slots: data.slots || {},
         });
         await get().continueScenarioIfNeeded(data.nextNode, newScenarioSessionId);
+      // --- 👇 [수정된 부분] ---
+      } else if (data.type === 'scenario_end') {
+        // 시나리오 시작에 실패했지만 정상적인 응답일 경우 (예: 시작 노드 없음)
+        const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", newScenarioSessionId);
+        await updateDoc(sessionRef, {
+            messages: [{ id: 'error-start', sender: 'bot', text: data.message }],
+            status: 'completed', // 시나리오를 즉시 종료 상태로 변경
+        });
+      // --- 👆 [여기까지] ---
       } else {
         throw new Error("Failed to start scenario properly");
       }
@@ -236,7 +245,6 @@ export const createScenarioSlice = (set, get) => ({
           messages: [...get().scenarioStates[scenarioSessionId].messages, { id: 'error', sender: 'bot', text: 'An error occurred.' }]
       });
     } finally {
-      // --- 👇 [추가] API 호출 종료 후 항상 isLoading을 false로 설정 ---
       set(state => ({
         scenarioStates: { ...state.scenarioStates, [scenarioSessionId]: { ...state.scenarioStates[scenarioSessionId], isLoading: false } }
       }));
