@@ -66,14 +66,24 @@ export async function POST(request) {
     const body = await request.json();
     const { message, scenarioState, slots, language = 'ko', scenarioSessionId } = body;
 
+    // Case 1: Continue existing scenario
     if (scenarioSessionId && scenarioState && scenarioState.scenarioId) {
       const scenario = await getScenario(scenarioState.scenarioId);
-      // --- 👇 [수정된 부분] ---
       const result = await runScenario(scenario, scenarioState, message, slots, scenarioSessionId);
-      // --- 👆 [여기까지] ---
       return NextResponse.json(result);
     }
     
+    // --- 👇 [수정된 부분] ---
+    // Case 2: Start a new scenario for a pre-created session
+    if (scenarioSessionId && !scenarioState && message && message.text) {
+        const scenarioId = message.text;
+        const handler = actionHandlers['START_SCENARIO'];
+        const payload = { scenarioId };
+        return await handler(payload, slots || {}, language);
+    }
+    // --- 👆 [여기까지] ---
+
+    // Case 3: A regular message from user, determine what to do
     if (!scenarioState && message.text) {
         const action = await determineAction(message.text);
         const handler = actionHandlers[action.type];
@@ -83,6 +93,7 @@ export async function POST(request) {
         }
     }
 
+    // Fallback to LLM
     const stream = await getGeminiStream(message.text, language);
     return new Response(stream, {
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },

@@ -3,7 +3,7 @@ import { db } from './firebase';
 
 // 시나리오를 트리거하는 키워드와 시나리오 ID 맵
 export const scenarioTriggers = {
-  "reservation": "선박 예약",
+  "reservation": "reservation", // --- [수정] ---
   "question": "faq-scenario",
   "welcome": "Welcome",
   "scenario list": "GET_SCENARIO_LIST"
@@ -169,7 +169,6 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
         }
 
         if (['slotfilling', 'message', 'branch', 'form', 'iframe'].includes(nextNode.type)) {
-            // --- 👇 [추가된 부분] ---
             if (nextNode.type === 'iframe' && nextNode.data.url && scenarioSessionId) {
                 try {
                     const url = new URL(nextNode.data.url);
@@ -177,12 +176,10 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
                     nextNode.data.url = url.toString();
                 } catch (e) {
                     console.error("Invalid URL in iFrame node:", nextNode.data.url);
-                    // URL이 완전하지 않으면 쿼리 파라미터를 수동으로 추가
                     const separator = nextNode.data.url.includes('?') ? '&' : '?';
                     nextNode.data.url += `${separator}scenario_session_id=${scenarioSessionId}`;
                 }
             }
-            // --- 👆 [여기까지] ---
 
             const isAwaiting = nextNode.type === 'slotfilling';
             return {
