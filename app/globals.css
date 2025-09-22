@@ -1,4 +1,75 @@
 @import "tailwindcss";
+@font-face {
+  font-family: "Pretendard";
+  src: url("https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Thin.woff")
+    format("woff");
+  font-weight: 100;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Pretendard";
+  src: url("https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-ExtraLight.woff")
+    format("woff");
+  font-weight: 200;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Pretendard";
+  src: url("https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Light.woff")
+    format("woff");
+  font-weight: 300;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Pretendard";
+  src: url("https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Regular.woff")
+    format("woff");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Pretendard";
+  src: url("https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Medium.woff")
+    format("woff");
+  font-weight: 500;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Pretendard";
+  src: url("https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-SemiBold.woff")
+    format("woff");
+  font-weight: 600;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Pretendard";
+  src: url("https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Bold.woff")
+    format("woff");
+  font-weight: 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Pretendard";
+  src: url("https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-ExtraBold.woff")
+    format("woff");
+  font-weight: 800;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Pretendard";
+  src: url("https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Black.woff")
+    format("woff");
+  font-weight: 900;
+  font-display: swap;
+}
 
 :root {
   --background-gradient-start: #ffffff;
@@ -9,11 +80,11 @@
   --button-hover-bg: #e9e9e9;
   --bot-message-bg: #f0f2f5;
   --user-message-bg: #dadada;
-  --input-border-color: #87B4FF;
+  --input-border-color: #87b4ff;
   --input-placeholder-color: #8a8a8e;
   --action-button-color: #888;
   --action-button-hover-color: #333;
-  --login-button-bg: #4285F4;
+  --login-button-bg: #4285f4;
   --login-button-hover-bg: #357ae8;
   --convo-item-active-bg: #dcdcdc;
   --input-bg: #fff;
@@ -25,6 +96,10 @@
   --chat-input-bg: transparent;
   --chat-input-text-color: #333;
   --date-input-scheme: light;
+
+  /* Addition-Colors on Publishing */
+  --login-gradient: linear-gradient(90deg, #ba9bff 0%, #0e4dec 71.21%);
+  --login-text-color: #282166;
 }
 
 body.dark {
@@ -40,7 +115,7 @@ body.dark {
   --input-placeholder-color: #888;
   --action-button-color: #999;
   --action-button-hover-color: #eee;
-  --login-button-bg: #4285F4;
+  --login-button-bg: #4285f4;
   --login-button-hover-bg: #5a95f8;
   --convo-item-active-bg: #4a4a4a;
   --input-bg: var(--button-hover-bg);
@@ -55,14 +130,30 @@ body.dark {
 }
 
 body {
-    background: linear-gradient(to bottom, var(--background-gradient-start), var(--background-gradient-end));
-    color: var(--text-color);
-    font-size: 16px; /* 기본 폰트 크기 */
-    transition: font-size 0.2s ease-in-out;
+  /* background: linear-gradient(to bottom, var(--background-gradient-start), var(--background-gradient-end)); */
+  color: var(--text-color);
+  font-size: 16px; /* 기본 폰트 크기 */
+  font-family: "Pretendard", sans-serif;
+  transition: font-size 0.2s ease-in-out;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: url("/images/background.png") lightgray 50% / cover no-repeat;
+  filter: blur(28px);
+  opacity: 0.2;
+  pointer-events: none;
+}
+
+body > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* --- 👇 [추가된 부분] --- */
 body.font-small {
-    font-size: 14px;
+  font-size: 14px;
 }
 /* --- 👆 [여기까지] --- */

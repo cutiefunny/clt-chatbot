@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useChatStore } from '../store';
-import { useTranslations } from '../hooks/useTranslations';
-import styles from './Login.module.css';
+import { useChatStore } from "../store";
+import { useTranslations } from "../hooks/useTranslations";
+import styles from "./Login.module.css";
 
 export default function Login() {
   const { login } = useChatStore();
@@ -10,10 +10,15 @@ export default function Login() {
 
   return (
     <div className={styles.loginContainer}>
-      <h2>{t('welcome')}</h2>
-      <p>{t('loginPrompt')}</p>
+      <h2 className={styles.welcomeText}>Welcome to</h2>
+      <h2>NX AI Chatbot</h2>
+      <div className={styles.inputContainer}>
+        <input type="text" placeholder="ID" />
+        <input type="password" placeholder="Password" />
+        <button className={styles.loginButton}>{t("Sign In")}</button>
+      </div>
       <button onClick={login} className={styles.loginButton}>
-        {t('signInWithGoogle')}
+        {t("signInWithGoogle")}
       </button>
     </div>
   );
