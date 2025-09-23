@@ -15,6 +15,7 @@ import SearchIcon from "./icons/SearchIcon";
 import NewChatIcon from "./icons/NewChatIcon";
 import ManualIcon from "./icons/ManualIcon";
 import HistoryIcon from "./icons/HistoryIcon";
+import ExpandIcon from "./icons/ExpandIcon";
 
 export default function HistoryPanel() {
   const {
@@ -82,15 +83,20 @@ export default function HistoryPanel() {
             </div>
           </div>
           <button
-            className={styles.newChatButton}
+            className={styles.sidePanelButton}
             onClick={createNewConversation}
           >
             <NewChatIcon />
-            <span className={styles.newChatText}>{t("newChat")}</span>
+            <span className={styles.sidePanelButtonText}>{t("newChat")}</span>
           </button>
-          <button className={styles.newChatButton}>
+          <button className={styles.sidePanelButton}>
             <HistoryIcon />
-            <span className={styles.newChatText}>{t("History")}</span>
+            <span className={styles.sidePanelButtonText}>{t("History")}</span>
+            {isHistoryPanelOpen && (
+              <span className={styles.expandIconWrapper}>
+                <ExpandIcon />
+              </span>
+            )}
           </button>
         </div>
 

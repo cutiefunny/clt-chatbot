@@ -165,7 +165,7 @@
   background-color: var(--button-hover-bg);
 }
 
-.newChatButton {
+.sidePanelButton {
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -178,36 +178,61 @@
   transition: all 0.2s;
   white-space: nowrap;
 }
-.newChatButton svg {
+.sidePanelButton svg {
   flex-shrink: 0; /* 아이콘 우그러짐 방지 */
 }
-.historyPanel.open .newChatButton {
+.historyPanel.open .sidePanelButton {
   width: 100%;
 }
-.newChatButton:hover {
+.sidePanelButton:hover {
   background-color: var(--button-hover-bg);
 }
-.historyPanel.closed .newChatButton {
+.historyPanel.closed .sidePanelButton {
   background: none;
   padding: 0.5rem;
   border-radius: 50%;
   width: auto;
   gap: 0;
 }
-.historyPanel.closed .newChatButton:hover {
+.historyPanel.closed .sidePanelButton:hover {
   background-color: var(--button-hover-bg);
 }
 
-.newChatText {
+.sidePanelButtonText {
   transition: opacity 0.2s 0.1s, max-width 0.3s ease-in-out;
   max-width: 100px;
   opacity: 1;
   overflow: hidden;
   font-weight: 500;
+  flex: 1;
+  min-width: 0; /* flex 컨텍스트에서 축소 허용 */
+  text-align: left;
 }
-.historyPanel.closed .newChatText {
+.historyPanel.open .sidePanelButtonText {
+  max-width: 100%; /* 열림 시 전체 가용 폭 사용 */
+}
+.historyPanel.closed .sidePanelButtonText {
   max-width: 0;
   opacity: 0;
+}
+
+/* ExpandIcon 등장 애니메이션 */
+@keyframes expandIconFadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.expandIconWrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  animation: expandIconFadeInUp 220ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .conversationList {
