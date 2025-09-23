@@ -14,6 +14,7 @@ import BellIcon from "./icons/BellIcon";
 import SearchIcon from "./icons/SearchIcon";
 import NewChatIcon from "./icons/NewChatIcon";
 import ManualIcon from "./icons/ManualIcon";
+import HistoryIcon from "./icons/HistoryIcon";
 
 export default function HistoryPanel() {
   const {
@@ -86,6 +87,10 @@ export default function HistoryPanel() {
           >
             <NewChatIcon />
             <span className={styles.newChatText}>{t("newChat")}</span>
+          </button>
+          <button className={styles.newChatButton}>
+            <HistoryIcon />
+            <span className={styles.newChatText}>{t("History")}</span>
           </button>
         </div>
 
