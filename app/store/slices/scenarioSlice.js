@@ -1,6 +1,7 @@
 import { collection, addDoc, doc, updateDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { scenarioTriggers } from '../../lib/chatbotEngine';
 import { locales } from '../../lib/locales';
+import { getErrorKey } from '../../lib/errorHandler'; // --- [추가]
 
 export const createScenarioSlice = (set, get) => ({
   // State
@@ -16,7 +17,7 @@ export const createScenarioSlice = (set, get) => ({
   },
 
   openScenarioPanel: async (scenarioId, scenarioSessionId = null) => {
-    const { user, currentConversationId, handleEvents, scenarioStates } = get();
+    const { user, currentConversationId, handleEvents, scenarioStates, language } = get(); // --- language 추가
     if (!user || !currentConversationId) return;
 
     if (scenarioSessionId) {
@@ -59,6 +60,8 @@ export const createScenarioSlice = (set, get) => ({
           scenarioSessionId: newScenarioSessionId
         }),
       });
+       // --- 👇 [수정] response.ok 체크 추가 ---
+      if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
       const data = await response.json();
       
       handleEvents(data.events);
@@ -71,24 +74,25 @@ export const createScenarioSlice = (set, get) => ({
             slots: data.slots || {},
         });
         await get().continueScenarioIfNeeded(data.nextNode, newScenarioSessionId);
-      // --- 👇 [수정된 부분] ---
       } else if (data.type === 'scenario_end') {
-        // 시나리오 시작에 실패했지만 정상적인 응답일 경우 (예: 시작 노드 없음)
         const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", newScenarioSessionId);
         await updateDoc(sessionRef, {
             messages: [{ id: 'error-start', sender: 'bot', text: data.message }],
-            status: 'completed', // 시나리오를 즉시 종료 상태로 변경
+            status: 'completed',
         });
-      // --- 👆 [여기까지] ---
       } else {
         throw new Error("Failed to start scenario properly");
       }
+    // --- 👇 [수정된 부분] ---
     } catch (error) {
-      console.error("Error starting scenario:", error);
+      const errorKey = getErrorKey(error);
+      const errorMessage = locales[language][errorKey] || locales[language]['errorUnexpected'];
       const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", newScenarioSessionId);
       await updateDoc(sessionRef, {
-        messages: [{ id: 'error', sender: 'bot', text: 'An error occurred while starting the scenario.' }],
+        messages: [{ id: 'error', sender: 'bot', text: errorMessage }],
+        status: 'completed'
       });
+    // --- 👆 [여기까지] ---
     } finally {
       get().focusChatInput();
     }
@@ -106,7 +110,7 @@ export const createScenarioSlice = (set, get) => ({
         set(state => ({
           scenarioStates: {
             ...state.scenarioStates,
-            [sessionId]: { ...doc.data(), isLoading: false } // Firestore 업데이트 시 isLoading은 항상 false로 설정
+            [sessionId]: { ...doc.data(), isLoading: false }
           }
         }));
       }
@@ -186,7 +190,7 @@ export const createScenarioSlice = (set, get) => ({
 
   handleScenarioResponse: async (payload) => {
     const { scenarioSessionId } = payload;
-    const { handleEvents, showToast, user, currentConversationId } = get();
+    const { handleEvents, showToast, user, currentConversationId, language } = get(); // --- language 추가
     if (!user || !currentConversationId || !scenarioSessionId) return;
 
     set(state => ({
@@ -217,7 +221,10 @@ export const createScenarioSlice = (set, get) => ({
           scenarioSessionId: scenarioSessionId,
         }),
       });
+      // --- 👇 [수정] response.ok 체크 추가 ---
+      if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
       const data = await response.json();
+
       handleEvents(data.events);
       
       const updatedMessages = [...get().scenarioStates[scenarioSessionId].messages];
@@ -239,11 +246,14 @@ export const createScenarioSlice = (set, get) => ({
             await get().continueScenarioIfNeeded(data.nextNode, scenarioSessionId);
         }
       }
+    // --- 👇 [수정된 부분] ---
     } catch (error) {
-      console.error("Error in scenario conversation:", error);
-      await updateDoc(sessionRef, {
-          messages: [...get().scenarioStates[scenarioSessionId].messages, { id: 'error', sender: 'bot', text: 'An error occurred.' }]
-      });
+        const errorKey = getErrorKey(error);
+        const errorMessage = locales[language][errorKey] || locales[language]['errorUnexpected'];
+        await updateDoc(sessionRef, {
+            messages: [...get().scenarioStates[scenarioSessionId].messages, { id: 'error', sender: 'bot', text: errorMessage }]
+        });
+    // --- 👆 [여기까지] ---
     } finally {
       set(state => ({
         scenarioStates: { ...state.scenarioStates, [scenarioSessionId]: { ...state.scenarioStates[scenarioSessionId], isLoading: false } }

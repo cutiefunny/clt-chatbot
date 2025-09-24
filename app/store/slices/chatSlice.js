@@ -1,5 +1,6 @@
 import { collection, addDoc, query, orderBy, onSnapshot, getDocs, serverTimestamp, deleteDoc, doc, updateDoc, limit, startAfter, where } from 'firebase/firestore';
 import { locales } from '../../lib/locales';
+import { getErrorKey } from '../../lib/errorHandler'; // --- [추가]
 
 const MESSAGE_LIMIT = 15;
 
@@ -314,9 +315,13 @@ export const createChatSlice = (set, get) => ({
           get().updateStreamingMessage(streamingMessageId, value);
         }
       }
+    // --- 👇 [수정된 부분] ---
     } catch (error) {
-      console.error('Failed to fetch chat response:', error);
-      get().showToast('An error occurred. Please try again.', 'error');
+      const errorKey = getErrorKey(error);
+      const { language } = get();
+      const errorMessage = locales[language][errorKey] || locales[language]['errorUnexpected'];
+      get().showToast(errorMessage, 'error');
+    // --- 👆 [여기까지] ---
     } finally {
       set({ isLoading: false });
     }

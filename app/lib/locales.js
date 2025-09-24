@@ -9,6 +9,13 @@ export const locales = {
     loading: '로딩 중...',
     copied: '복사되었습니다!',
 
+    // --- 👇 [추가된 부분] ---
+    // Error Messages
+    errorNetwork: '네트워크 연결을 확인해주세요. 인터넷이 불안정한 것 같아요.',
+    errorServer: '서버에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요.',
+    errorUnexpected: '예상치 못한 오류가 발생했습니다. 다시 시도해주세요.',
+    // --- 👆 [여기까지] ---
+
     //Manual
     manualTitle: '챗봇 사용 매뉴얼',
     manualContent: {
@@ -108,6 +115,13 @@ export const locales = {
     logout: 'Log Out',
     loading: 'Loading...',
     copied: 'Copied!',
+
+    // --- 👇 [추가된 부분] ---
+    // Error Messages
+    errorNetwork: 'Network error. Please check your internet connection.',
+    errorServer: 'There was a problem with the server. Please try again later.',
+    errorUnexpected: 'An unexpected error occurred. Please try again.',
+    // --- 👆 [여기까지] ---
 
     //Manual
     manualTitle: 'Chatbot Manual',
