@@ -61,8 +61,6 @@ body {
     transition: font-size 0.2s ease-in-out;
 }
 
-/* --- 👇 [추가된 부분] --- */
 body.font-small {
     font-size: 14px;
 }
-/* --- 👆 [여기까지] --- */

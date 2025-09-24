@@ -7,6 +7,7 @@ import styles from './ProfileModal.module.css';
 import LogoutModal from './LogoutModal';
 import Modal from './Modal'; // Modal import
 import CloseIcon from './icons/CloseIcon'; // CloseIcon import
+import Link from 'next/link'; // Link 컴포넌트 import
 
 const CheckIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -120,6 +121,17 @@ export default function ProfileModal() {
             <button onClick={handleDevBoardClick} className={styles.logoutButton}>
               {t('devBoard')}
             </button>
+            
+            {/* --- 👇 [수정된 부분] --- */}
+            <Link
+              href="/apidocs"
+              onClick={closeProfileModal}
+              className={styles.logoutButton}
+              style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}
+            >
+              API 문서 보기
+            </Link>
+            {/* --- 👆 [여기까지] --- */}
 
             <button onClick={() => setIsLogoutModalOpen(true)} className={styles.logoutButton}>
               {t('logout')}
