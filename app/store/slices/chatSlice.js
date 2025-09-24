@@ -1,6 +1,6 @@
 import { collection, addDoc, query, orderBy, onSnapshot, getDocs, serverTimestamp, deleteDoc, doc, updateDoc, limit, startAfter, where } from 'firebase/firestore';
 import { locales } from '../../lib/locales';
-import { getErrorKey } from '../../lib/errorHandler'; // --- [추가]
+import { getErrorKey } from '../../lib/errorHandler';
 
 const MESSAGE_LIMIT = 15;
 
@@ -42,6 +42,47 @@ export const createChatSlice = (set, get) => ({
   unsubscribeConversations: null,
   lastVisibleMessage: null,
   hasMoreMessages: true,
+  expandedConversationId: null, // --- [추가]
+  scenariosForConversation: {}, // --- [추가]
+
+  // --- 👇 [추가된 함수] ---
+  toggleConversationExpansion: async (conversationId) => {
+    const { expandedConversationId, scenariosForConversation, user } = get();
+
+    if (expandedConversationId === conversationId) {
+      set({ expandedConversationId: null }); // 현재 열린 대화를 다시 클릭하면 닫기
+    } else {
+      set({ expandedConversationId: conversationId }); // 새로운 대화를 클릭하면 열기
+      
+      // 시나리오 목록이 아직 로드되지 않았다면 Firestore에서 가져오기
+      if (!scenariosForConversation[conversationId] && user) {
+        try {
+          const scenariosRef = collection(get().db, "chats", user.uid, "conversations", conversationId, "scenario_sessions");
+          const q = query(scenariosRef, orderBy("createdAt", "desc"));
+          const snapshot = await getDocs(q);
+          const scenarios = snapshot.docs.map(doc => ({
+            sessionId: doc.id,
+            ...doc.data()
+          }));
+
+          set(state => ({
+            scenariosForConversation: {
+              ...state.scenariosForConversation,
+              [conversationId]: scenarios,
+            }
+          }));
+        } catch (error) {
+          console.error("Failed to load scenarios for conversation:", error);
+          set(state => ({
+            scenariosForConversation: {
+              ...state.scenariosForConversation,
+              [conversationId]: [], // 오류 발생 시 빈 배열로 설정
+            }
+          }));
+        }
+      }
+    }
+  },
 
   loadConversations: (userId) => {
     const q = query(collection(get().db, "chats", userId, "conversations"), orderBy("updatedAt", "desc"));
@@ -57,7 +98,7 @@ export const createChatSlice = (set, get) => ({
     if (!user || get().currentConversationId === conversationId) return;
 
     get().unsubscribeMessages?.();
-    get().unsubscribeScenario?.(); // 다른 대화로 전환 시 시나리오 구독 해제
+    get().unsubscribeScenario?.();
 
     const { language } = get();
     const initialMessage = getInitialMessages(language)[0];
@@ -66,7 +107,7 @@ export const createChatSlice = (set, get) => ({
         currentConversationId: conversationId, 
         isLoading: true, 
         messages: [initialMessage], 
-        scenarioStates: {}, // 이전 대화의 시나리오 상태 초기화
+        scenarioStates: {},
         activeScenarioSessionId: null, 
         isScenarioPanelOpen: false,
         lastVisibleMessage: null,
@@ -80,7 +121,6 @@ export const createChatSlice = (set, get) => ({
         const newMessages = messagesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).reverse();
         const lastVisible = messagesSnapshot.docs[messagesSnapshot.docs.length - 1];
 
-        // --- 👇 [추가된 부분] 활성화된 시나리오 세션을 가져와 이어하기 버튼 생성 ---
         const scenarioSessionsRef = collection(get().db, "chats", user.uid, "conversations", conversationId, "scenario_sessions");
         const scenarioQuery = query(scenarioSessionsRef, where("status", "==", "active"));
         const scenarioSnapshot = await getDocs(scenarioQuery);
@@ -96,19 +136,17 @@ export const createChatSlice = (set, get) => ({
                 type: 'scenario_resume_prompt',
                 scenarioId: session.scenarioId,
                 scenarioSessionId: doc.id,
-                text: '', // 텍스트는 Chat.jsx에서 동적으로 생성
+                text: '',
             });
-            // 이어하기를 위해 시나리오 상태를 미리 로드
             newScenarioStates[doc.id] = session;
         });
-        // --- 👆 [여기까지] ---
         
         set(state => ({
             messages: [initialMessage, ...newMessages, ...resumePrompts],
             lastVisibleMessage: lastVisible,
             hasMoreMessages: messagesSnapshot.docs.length === MESSAGE_LIMIT,
             isLoading: false,
-            scenarioStates: newScenarioStates, // 활성 시나리오 상태 업데이트
+            scenarioStates: newScenarioStates,
         }));
     });
     set({ unsubscribeMessages: unsubscribe });
@@ -131,7 +169,6 @@ export const createChatSlice = (set, get) => ({
         const newLastVisible = snapshot.docs[snapshot.docs.length - 1];
 
         const initialMessage = messages[0];
-        // 이어하기 버튼 등 메시지가 아닌 요소를 제외하고 순수 메시지만 필터링
         const existingMessages = messages.slice(1).filter(m => m.type !== 'scenario_resume_prompt');
 
         set({
@@ -160,6 +197,7 @@ export const createChatSlice = (set, get) => ({
         isScenarioPanelOpen: false,
         lastVisibleMessage: null,
         hasMoreMessages: true,
+        expandedConversationId: null, // --- [추가] 새 대화 시작 시 펼침 상태 초기화
     });
   },
 
@@ -168,21 +206,18 @@ export const createChatSlice = (set, get) => ({
     if (!user) return;
     const conversationRef = doc(get().db, "chats", user.uid, "conversations", conversationId);
 
-    // 하위 컬렉션(scenario_sessions)의 모든 문서 삭제
     const scenariosRef = collection(conversationRef, "scenario_sessions");
     const scenariosSnapshot = await getDocs(scenariosRef);
     scenariosSnapshot.forEach(async (scenarioDoc) => {
       await deleteDoc(scenarioDoc.ref);
     });
 
-    // 하위 컬렉션(messages)의 모든 문서 삭제
     const messagesRef = collection(conversationRef, "messages");
     const messagesSnapshot = await getDocs(messagesRef);
     messagesSnapshot.forEach(async (messageDoc) => {
       await deleteDoc(messageDoc.ref);
     });
 
-    // 상위 문서 삭제
     await deleteDoc(conversationRef);
 
     if (get().currentConversationId === conversationId) {
@@ -209,13 +244,11 @@ export const createChatSlice = (set, get) => ({
         updatedAt: serverTimestamp(),
       });
       conversationId = conversationRef.id;
-      // 새 대화 생성 시, 기존 구독을 해제하고 새 대화를 로드
       get().unsubscribeMessages?.();
       get().loadConversation(conversationId);
     }
     
     const { id, ...messageToSave } = message;
-    // 'scenario_resume_prompt' 타입의 메시지는 저장하지 않음
     if (messageToSave.type === 'scenario_resume_prompt') return;
 
     Object.keys(messageToSave).forEach(key => (messageToSave[key] === undefined) && delete messageToSave[key]);
@@ -315,13 +348,11 @@ export const createChatSlice = (set, get) => ({
           get().updateStreamingMessage(streamingMessageId, value);
         }
       }
-    // --- 👇 [수정된 부분] ---
     } catch (error) {
       const errorKey = getErrorKey(error);
       const { language } = get();
       const errorMessage = locales[language][errorKey] || locales[language]['errorUnexpected'];
       get().showToast(errorMessage, 'error');
-    // --- 👆 [여기까지] ---
     } finally {
       set({ isLoading: false });
     }

@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTranslations } from '../hooks/useTranslations';
 import styles from './HistoryPanel.module.css';
+import ChevronDownIcon from './icons/ChevronDownIcon';
 
 const CheckIcon = () => (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -21,7 +22,17 @@ const TrashIcon = () => (
     </svg>
 );
 
-export default function ConversationItem({ convo, isActive, onClick, onDelete, onUpdateTitle }) {
+export default function ConversationItem({
+    convo,
+    isActive,
+    onClick,
+    onDelete,
+    onUpdateTitle,
+    isExpanded,
+    scenarios,
+    onToggleExpand,
+    onScenarioClick,
+}) {
     const [isEditing, setIsEditing] = useState(false);
     const [title, setTitle] = useState(convo.title);
     const inputRef = useRef(null);
@@ -51,40 +62,71 @@ export default function ConversationItem({ convo, isActive, onClick, onDelete, o
     };
 
     return (
-        <div 
-            className={`${styles.conversationItem} ${isActive ? styles.active : ''}`}
-            onClick={() => !isEditing && onClick(convo.id)}
-        >
-            {isEditing ? (
-                <input
-                    ref={inputRef}
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    onBlur={handleUpdate}
-                    onKeyDown={handleKeyDown}
-                    className={styles.titleInput}
-                    onClick={(e) => e.stopPropagation()}
-                />
-            ) : (
-                <span className={styles.convoTitle}>{convo.title || t('newChat')}</span>
-            )}
-            <div className={styles.buttonGroup}>
+        <>
+            <div
+                className={`${styles.conversationItem} ${isActive ? styles.active : ''}`}
+                onClick={() => !isEditing && onClick(convo.id)}
+            >
+                <button
+                    className={styles.expandButton}
+                    onClick={(e) => { e.stopPropagation(); onToggleExpand(convo.id); }}
+                >
+                    <ChevronDownIcon style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }} />
+                </button>
+
                 {isEditing ? (
-                    <button className={styles.actionButton} onClick={(e) => { e.stopPropagation(); handleUpdate(); }}>
-                        <CheckIcon />
-                    </button>
+                    <input
+                        ref={inputRef}
+                        type="text"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        onBlur={handleUpdate}
+                        onKeyDown={handleKeyDown}
+                        className={styles.titleInput}
+                        onClick={(e) => e.stopPropagation()}
+                    />
                 ) : (
-                    <>
-                        <button className={styles.actionButton} onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}>
-                            <PencilIcon />
-                        </button>
-                        <button className={styles.actionButton} onClick={(e) => onDelete(e, convo.id)}>
-                            <TrashIcon />
-                        </button>
-                    </>
+                    <span className={styles.convoTitle}>{convo.title || t('newChat')}</span>
                 )}
+                <div className={styles.buttonGroup}>
+                    {isEditing ? (
+                        <button className={styles.actionButton} onClick={(e) => { e.stopPropagation(); handleUpdate(); }}>
+                            <CheckIcon />
+                        </button>
+                    ) : (
+                        <>
+                            <button className={styles.actionButton} onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}>
+                                <PencilIcon />
+                            </button>
+                            <button className={styles.actionButton} onClick={(e) => onDelete(e, convo.id)}>
+                                <TrashIcon />
+                            </button>
+                        </>
+                    )}
+                </div>
             </div>
-        </div>
+            {isExpanded && (
+                <div className={styles.scenarioSubList}>
+                    {scenarios ? (
+                        scenarios.length > 0 ? (
+                            scenarios.map(scenario => (
+                                <div
+                                    key={scenario.sessionId}
+                                    className={styles.scenarioItem}
+                                    onClick={() => onScenarioClick(scenario.scenarioId, scenario.sessionId)}
+                                >
+                                    <span className={styles.scenarioStatusDot} data-status={scenario.status}></span>
+                                    <span className={styles.scenarioTitle}>{scenario.scenarioId}</span>
+                                </div>
+                            ))
+                        ) : (
+                            <div className={styles.noScenarios}>{t('noScenariosFound')}</div>
+                        )
+                    ) : (
+                        <div className={styles.noScenarios}>{t('loadingScenarios')}</div>
+                    )}
+                </div>
+            )}
+        </>
     );
 };

@@ -36,6 +36,12 @@ export default function HistoryPanel() {
     hasUnreadNotifications,
     isManualModalOpen,
     openManualModal,
+    // --- 👇 [추가된 부분] ---
+    expandedConversationId,
+    scenariosForConversation,
+    toggleConversationExpansion,
+    openScenarioPanel, 
+    // --- 👆 [여기까지] ---
   } = useChatStore();
   const { t } = useTranslations();
 
@@ -60,7 +66,6 @@ export default function HistoryPanel() {
         <div className={styles.panelContentWrapper}>
             <div className={styles.header}>
                 <div className={styles.headerTopRow}>
-                    {/* The toggle button is now outside for positioning */}
                     <div className={styles.headerIconGroup}>
                         <button
                             className={`${styles.iconButton} ${hasUnreadNotifications ? styles.unread : ''}`}
@@ -82,14 +87,20 @@ export default function HistoryPanel() {
             <div className={styles.panelContent}>
             <div className={styles.conversationList}>
                 {conversations.map((convo) => (
-                <ConversationItem
-                    key={convo.id}
-                    convo={convo}
-                    isActive={convo.id === currentConversationId}
-                    onClick={loadConversation}
-                    onDelete={handleDelete}
-                    onUpdateTitle={updateConversationTitle}
-                />
+                    // --- 👇 [수정된 부분] ---
+                    <ConversationItem
+                        key={convo.id}
+                        convo={convo}
+                        isActive={convo.id === currentConversationId}
+                        onClick={loadConversation}
+                        onDelete={handleDelete}
+                        onUpdateTitle={updateConversationTitle}
+                        isExpanded={convo.id === expandedConversationId}
+                        scenarios={scenariosForConversation[convo.id]}
+                        onToggleExpand={toggleConversationExpansion}
+                        onScenarioClick={openScenarioPanel}
+                    />
+                    // --- 👆 [여기까지] ---
                 ))}
             </div>
             <div className={styles.footer}>
