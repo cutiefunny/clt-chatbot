@@ -66,7 +66,7 @@
 .subCategoryTitle {
     font-size: 0.9rem;
     font-weight: 600;
-    color: var(--text-color);
+    color: #8a8a8e;
     padding: 8px 12px;
 }
 
@@ -74,18 +74,24 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 5px 6px;
-    background: none;
-    border: none;
-    text-align: left;
     width: 100%;
-    cursor: pointer;
     border-radius: 8px;
     transition: background-color 0.2s;
 }
-
 .dropdownItem:hover {
     background-color: var(--button-hover-bg);
+}
+
+.itemContentWrapper {
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    background: none;
+    border: none;
+    text-align: left;
+    cursor: pointer;
 }
 
 .itemIcon {
@@ -93,52 +99,49 @@
     flex-shrink: 0;
 }
 
-/* --- 👇 [수정된 부분 시작] --- */
 .itemContent {
     display: flex;
     align-items: baseline;
     gap: 8px;
-    overflow: hidden; /* 컨테이너를 벗어나는 텍스트 숨김 */
+    overflow: hidden;
 }
 
 .itemTitle {
     font-size: 0.9rem;
     font-weight: 500;
     color: var(--text-color);
-    flex-shrink: 0; /* 제목이 줄어들지 않도록 설정 */
+    flex-shrink: 0;
 }
 
 .itemDescription {
     font-size: 0.7rem;
     color: #8a8a8e;
-    white-space: nowrap; /* 설명이 줄바꿈되지 않도록 설정 */
-    overflow: hidden; /* 넘치는 부분 숨김 */
-    text-overflow: ellipsis; /* 넘치는 부분에 ... 표시 */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
-/* --- 👆 [여기까지] --- */
 
-
-/* --- 기존 스타일 --- */
-.resumeScenarioBar {
-    display: flex;
-    justify-content: center;
-    padding-bottom: 8px;
-}
-.resumeScenarioBar button {
-    background-color: var(--login-button-bg);
-    color: white;
+.favoriteButton {
+    flex-shrink: 0;
+    background: none;
     border: none;
-    padding: 8px 16px;
-    border-radius: 20px;
     cursor: pointer;
-    font-size: 0.9rem;
-    font-weight: 500;
-    transition: background-color 0.2s;
-}
-.resumeScenarioBar button:hover {
-    background-color: var(--login-button-hover-bg);
+    padding: 8px;
+    margin-right: 8px;
+    color: var(--panel-border-color);
+    transition: color 0.2s;
 }
 
+.favoriteButton:hover {
+    color: #fdd835;
+}
+
+.favoriteButton.favorited {
+    color: #fdd835;
+}
+.favoriteButton.favorited svg {
+    fill: #fdd835;
+}
 
 .buttonRow {
     display: flex;

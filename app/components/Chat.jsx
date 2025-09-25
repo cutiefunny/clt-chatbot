@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useChatStore } from '../store';
 import { useTranslations } from '../hooks/useTranslations';
 import styles from './Chat.module.css';
+import FavoritePanel from './FavoritePanel'; // --- [추가]
 
 export default function Chat() {
   const { messages, isLoading, openScenarioPanel, loadMoreMessages, hasMoreMessages } = useChatStore();
@@ -24,32 +25,30 @@ export default function Chat() {
     const scrollContainer = historyRef.current;
     if (!scrollContainer) return;
 
-    const scrollToBottom = () => {
-      scrollContainer.scrollTop = scrollContainer.scrollHeight;
-    };
-
-    const observer = new MutationObserver((mutations) => {
-        for (const mutation of mutations) {
-            if (mutation.type === 'childList') {
-                if (!isFetchingMore) {
+    // --- 👇 [수정] messages.length > 1 조건 추가 ---
+    if (messages.length > 1) {
+        const scrollToBottom = () => {
+          scrollContainer.scrollTop = scrollContainer.scrollHeight;
+        };
+        const observer = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                if (mutation.type === 'childList' && !isFetchingMore) {
                     scrollToBottom();
                 }
             }
+        });
+        observer.observe(scrollContainer, { childList: true, subtree: true });
+        scrollContainer.addEventListener('scroll', handleScroll);
+        
+        if (!isFetchingMore) {
+            scrollToBottom();
         }
-    });
 
-    observer.observe(scrollContainer, { childList: true, subtree: true });
-    scrollContainer.addEventListener('scroll', handleScroll);
-
-    // 메시지가 변경될 때 스크롤을 맨 아래로 이동
-    if (!isFetchingMore) {
-        scrollToBottom();
+        return () => {
+          observer.disconnect();
+          scrollContainer.removeEventListener('scroll', handleScroll);
+        };
     }
-
-    return () => {
-      observer.disconnect();
-      scrollContainer.removeEventListener('scroll', handleScroll);
-    };
   }, [messages, handleScroll, isFetchingMore]);
   
   const handleCopy = (text, id) => {
@@ -73,53 +72,60 @@ export default function Chat() {
         </div>
       </div>
       
+      {/* --- 👇 [수정] 대화 내용이 없을 때 FavoritePanel을 렌더링 --- */}
       <div className={styles.history} ref={historyRef}>
-        {isFetchingMore && (
-            <div className={styles.messageRow}>
-                <img src="/images/avatar-loading.png" alt="Avatar" className={styles.avatar} />
-                <div className={`${styles.message} ${styles.botMessage}`}><img src="/images/Loading.gif" alt={t('loading')} style={{ width: '40px', height: '30px' }} /></div>
-            </div>
-        )}
-        {messages.map((msg) => (
-          <div key={msg.id} className={`${styles.messageRow} ${msg.sender === 'user' ? styles.userRow : ''}`}>
-            {msg.sender === 'bot' && <img src="/images/avatar.png" alt="Avatar" className={styles.avatar} />}
-            <div 
-              className={`${styles.message} ${msg.sender === 'bot' ? styles.botMessage : styles.userMessage}`}
-              onClick={() => msg.sender === 'bot' && handleCopy(msg.text || msg.node?.data.content, msg.id)}
-            >
-              {copiedMessageId === msg.id && <div className={styles.copyFeedback}>{t('copied')}</div>}
-              
-              {/* --- 👇 [수정] 종료된 시나리오 보기 버튼 추가 --- */}
-              {msg.type === 'scenario_resume_prompt' ? (
-                <button className={styles.optionButton} onClick={(e) => { e.stopPropagation(); openScenarioPanel(msg.scenarioId, msg.scenarioSessionId); }}>
-                  {t('scenarioResume')(msg.scenarioId)}
-                </button>
-              ) : msg.type === 'scenario_end_notice' ? (
-                <button className={styles.optionButton} onClick={(e) => { e.stopPropagation(); openScenarioPanel(msg.scenarioId, msg.scenarioSessionId); }}>
-                  {msg.text}
-                </button>
-              ) : (
-                <p>{msg.text || msg.node?.data.content}</p>
-              )}
-              {/* --- 👆 [여기까지] --- */}
-
-              {msg.sender === 'bot' && msg.scenarios && (
-                <div className={styles.scenarioList}>
-                  {msg.scenarios.map(name => (
-                    <button key={name} className={styles.optionButton} onClick={(e) => { e.stopPropagation(); openScenarioPanel(name); }}>
-                      {name}
-                    </button>
-                  ))}
+        {messages.length <= 1 ? (
+          <FavoritePanel />
+        ) : (
+          <>
+            {isFetchingMore && (
+                <div className={styles.messageRow}>
+                    <img src="/images/avatar-loading.png" alt="Avatar" className={styles.avatar} />
+                    <div className={`${styles.message} ${styles.botMessage}`}><img src="/images/Loading.gif" alt={t('loading')} style={{ width: '40px', height: '30px' }} /></div>
                 </div>
-              )}
-            </div>
-          </div>
-        ))}
-        {messages[messages.length-1]?.sender === 'user' && (
-            <div className={styles.messageRow}>
-                <img src="/images/avatar-loading.png" alt="Avatar" className={styles.avatar} />
-                <div className={`${styles.message} ${styles.botMessage}`}><img src="/images/Loading.gif" alt={t('loading')} style={{ width: '40px', height: '30px' }} /></div>
-            </div>
+            )}
+            {messages.map((msg) => (
+              msg.id !== 'initial' && ( // 초기 메시지는 렌더링하지 않음
+                <div key={msg.id} className={`${styles.messageRow} ${msg.sender === 'user' ? styles.userRow : ''}`}>
+                  {msg.sender === 'bot' && <img src="/images/avatar.png" alt="Avatar" className={styles.avatar} />}
+                  <div 
+                    className={`${styles.message} ${msg.sender === 'bot' ? styles.botMessage : styles.userMessage}`}
+                    onClick={() => msg.sender === 'bot' && handleCopy(msg.text || msg.node?.data.content, msg.id)}
+                  >
+                    {copiedMessageId === msg.id && <div className={styles.copyFeedback}>{t('copied')}</div>}
+                    
+                    {msg.type === 'scenario_resume_prompt' ? (
+                      <button className={styles.optionButton} onClick={(e) => { e.stopPropagation(); openScenarioPanel(msg.scenarioId, msg.scenarioSessionId); }}>
+                        {t('scenarioResume')(msg.scenarioId)}
+                      </button>
+                    ) : msg.type === 'scenario_end_notice' ? (
+                      <button className={styles.optionButton} onClick={(e) => { e.stopPropagation(); openScenarioPanel(msg.scenarioId, msg.scenarioSessionId); }}>
+                        {msg.text}
+                      </button>
+                    ) : (
+                      <p>{msg.text || msg.node?.data.content}</p>
+                    )}
+
+                    {msg.sender === 'bot' && msg.scenarios && (
+                      <div className={styles.scenarioList}>
+                        {msg.scenarios.map(name => (
+                          <button key={name} className={styles.optionButton} onClick={(e) => { e.stopPropagation(); openScenarioPanel(name); }}>
+                            {name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            ))}
+            {messages[messages.length-1]?.sender === 'user' && (
+                <div className={styles.messageRow}>
+                    <img src="/images/avatar-loading.png" alt="Avatar" className={styles.avatar} />
+                    <div className={`${styles.message} ${styles.botMessage}`}><img src="/images/Loading.gif" alt={t('loading')} style={{ width: '40px', height: '30px' }} /></div>
+                </div>
+            )}
+          </>
         )}
       </div>
     </div>

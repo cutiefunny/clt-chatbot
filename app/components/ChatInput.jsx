@@ -46,32 +46,26 @@ export default function ChatInput() {
         scenarioStates,
         handleScenarioResponse,
         focusRequest,
-        openScenarioPanel,
         scenarioCategories,
-        addMessage,
+        favorites,
+        toggleFavorite,
+        handleShortcutClick,
     } = useChatStore();
     
     const { t } = useTranslations();
     const inputRef = useRef(null);
     const quickRepliesSlider = useDraggableScroll();
-    const [openMenu, setOpenMenu] = useState(null);
-    const menuRef = useRef(null);
+    const [openMenu, setOpenMenu] = useState(null); // --- [추가] 드롭다운 상태
+    const menuRef = useRef(null); // --- [추가] 외부 클릭 감지를 위한 ref
 
     const activeScenario = activeScenarioSessionId ? scenarioStates[activeScenarioSessionId] : null;
-    const scenarioMessages = activeScenario?.messages || [];
     const mainMessages = useChatStore(state => state.messages);
-    
-    const isInputDisabled = activePanel === 'scenario' 
-        ? activeScenario?.isLoading ?? false 
-        : isLoading;
-
-    const lastMessage = activePanel === 'main' 
-            ? mainMessages[mainMessages.length - 1] 
-            : scenarioMessages[scenarioMessages.length - 1];
-    
+    const isInputDisabled = activePanel === 'scenario' ? activeScenario?.isLoading ?? false : isLoading;
+    const lastMessage = activePanel === 'main' ? mainMessages[mainMessages.length - 1] : activeScenario?.messages[activeScenario.messages.length - 1];
     const currentBotMessageNode = lastMessage?.sender === 'bot' ? lastMessage.node : null;
     const currentScenarioNodeId = activeScenario?.state?.currentNodeId;
-
+    
+    // --- 👇 [추가] 외부 클릭 시 드롭다운 닫기 ---
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -83,7 +77,6 @@ export default function ChatInput() {
             document.removeEventListener("mousedown", handleClickOutside);
         };
     }, []);
-
 
     useEffect(() => {
         if (!isInputDisabled) {
@@ -121,52 +114,39 @@ export default function ChatInput() {
         }
     }
     
-    // --- 👇 [수정] async/await 적용 및 로직 분기 개선 ---
-    const handleScenarioClick = async (item) => {
-        if (!item || !item.action) return;
-
-        setOpenMenu(null); // 메뉴 닫기
-
-        if (item.action.type === 'custom') {
-            // 커스텀 액션: 사용자에게는 title을 보여주고, 시스템은 action.value로 처리
-            await handleResponse({ text: item.action.value, displayText: item.title });
-        } else { 
-            // 시나리오 액션: 사용자 메시지를 먼저 추가하고 저장(대화 생성 보장)
-            await addMessage('user', { text: item.title });
-            // 그 후에 시나리오 패널 열기
-            openScenarioPanel(item.action.value);
-        }
-    };
-    
     return (
         <div className={styles.inputArea}>
             <div className={styles.quickActionsContainer} ref={menuRef}>
-                {scenarioCategories.map(category => (
+                 {scenarioCategories.map(category => (
                     <div key={category.name} className={styles.categoryWrapper}>
                         <button 
                             className={`${styles.categoryButton} ${openMenu === category.name ? styles.active : ''}`}
                             onClick={() => setOpenMenu(openMenu === category.name ? null : category.name)}
                         >
-                            {category.name} <ChevronDownIcon style={{ transform: openMenu === category.name ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}/>
+                            {category.name} <ChevronDownIcon style={{ transform: openMenu === category.name ? 'rotate(180deg)' : 'rotate(0deg)' }}/>
                         </button>
                         {openMenu === category.name && (
                             <div className={styles.dropdownMenu}>
                                {category.subCategories.map(subCategory => (
                                    <div key={subCategory.title} className={styles.subCategorySection}>
                                        <h4 className={styles.subCategoryTitle}>{subCategory.title}</h4>
-                                       {subCategory.items.map(item => (
-                                           <button 
-                                                key={item.title} 
-                                                className={styles.dropdownItem}
-                                                onClick={() => handleScenarioClick(item)}
-                                            >
-                                                <div className={styles.itemIcon}><StarIcon size={14} /></div>
-                                                <div className={styles.itemContent}>
-                                                    <span className={styles.itemTitle}>{item.title}</span>
-                                                    <span className={styles.itemDescription}>{item.description}</span>
-                                                </div>
-                                           </button>
-                                       ))}
+                                       {subCategory.items.map(item => {
+                                        const isFavorited = favorites.some(fav => fav.action.type === item.action.type && fav.action.value === item.action.value);
+                                        return (
+                                           <div key={item.title} className={styles.dropdownItem}>
+                                               <button className={styles.itemContentWrapper} onClick={() => { handleShortcutClick(item); setOpenMenu(null); }}>
+                                                   <div className={styles.itemIcon}><StarIcon size={14} /></div>
+                                                   <div className={styles.itemContent}>
+                                                       <span className={styles.itemTitle}>{item.title}</span>
+                                                       <span className={styles.itemDescription}>{item.description}</span>
+                                                   </div>
+                                               </button>
+                                               <button className={`${styles.favoriteButton} ${isFavorited ? styles.favorited : ''}`} onClick={() => toggleFavorite(item)}>
+                                                   <StarIcon size={18} />
+                                               </button>
+                                           </div>
+                                        )
+                                      })}
                                    </div>
                                ))}
                             </div>

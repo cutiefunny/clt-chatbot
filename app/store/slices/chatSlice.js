@@ -44,6 +44,71 @@ export const createChatSlice = (set, get) => ({
   hasMoreMessages: true,
   expandedConversationId: null,
   scenariosForConversation: {},
+  
+  favorites: [],
+  unsubscribeFavorites: null,
+  // isShortcutPickerOpen state is removed
+
+  loadFavorites: (userId) => {
+    const q = query(collection(get().db, "users", userId, "favorites"), orderBy("createdAt", "asc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const favorites = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      set({ favorites });
+    });
+    set({ unsubscribeFavorites: unsubscribe });
+  },
+
+  addFavorite: async (favoriteData) => {
+    const user = get().user;
+    if (!user) return;
+    const favoritesCollection = collection(get().db, "users", user.uid, "favorites");
+    await addDoc(favoritesCollection, {
+      ...favoriteData,
+      createdAt: serverTimestamp(),
+    });
+  },
+
+  deleteFavorite: async (favoriteId) => {
+    const user = get().user;
+    if (!user) return;
+    const favoriteRef = doc(get().db, "users", user.uid, "favorites", favoriteId);
+    await deleteDoc(favoriteRef);
+  },
+
+  toggleFavorite: async (item) => {
+    const { user, favorites, addFavorite, deleteFavorite, showEphemeralToast } = get();
+    if (!user || !item?.action?.value) return;
+
+    const favoriteToDelete = favorites.find(fav => 
+        fav.action.type === item.action.type && 
+        fav.action.value === item.action.value
+    );
+
+    if (favoriteToDelete) {
+      await deleteFavorite(favoriteToDelete.id);
+      showEphemeralToast('즐겨찾기에서 삭제되었습니다.', 'info');
+    } else {
+      const newFavorite = {
+        icon: '🌟',
+        title: item.title,
+        description: item.description,
+        action: item.action,
+      };
+      await addFavorite(newFavorite);
+      showEphemeralToast('즐겨찾기에 추가되었습니다.', 'success');
+    }
+  },
+
+  handleShortcutClick: async (item) => {
+    if (!item || !item.action) return;
+    
+    if (item.action.type === 'custom') {
+        await get().handleResponse({ text: item.action.value, displayText: item.title });
+    } else { 
+        await get().addMessage('user', { text: item.title });
+        get().openScenarioPanel(item.action.value);
+    }
+  },
 
   toggleConversationExpansion: async (conversationId) => {
     const { expandedConversationId, scenariosForConversation, user } = get();
@@ -259,7 +324,6 @@ export const createChatSlice = (set, get) => ({
     await updateDoc(doc(get().db, "chats", user.uid, "conversations", conversationId), { updatedAt: serverTimestamp() });
   },
 
-  // --- 👇 [수정] async 함수로 변경하고, 내부의 saveMessage를 await 처리 ---
   addMessage: async (sender, messageData) => {
     let newMessage;
     if (sender === 'user') {
@@ -282,7 +346,7 @@ export const createChatSlice = (set, get) => ({
     }
     set(state => ({ messages: [...state.messages, newMessage] }));
     if (!newMessage.isStreaming) {
-      await get().saveMessage(newMessage); // Await this to ensure conversation is created
+      await get().saveMessage(newMessage);
     }
   },
 
@@ -307,11 +371,9 @@ export const createChatSlice = (set, get) => ({
     });
   },
 
-  // --- 👇 [수정] async로 변경하고, optional displayText를 받도록 수정 ---
   handleResponse: async (messagePayload) => {
     set({ isLoading: true });
 
-    // 사용자에게 보여줄 텍스트 (displayText가 있으면 그것을, 없으면 text를 사용)
     const textForUser = messagePayload.displayText || messagePayload.text;
     if (textForUser) {
       await get().addMessage('user', { text: textForUser });
@@ -322,7 +384,7 @@ export const createChatSlice = (set, get) => ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: { text: messagePayload.text }, // API에는 항상 실제 처리할 text를 보냄
+          message: { text: messagePayload.text },
           scenarioState: null,
           slots: get().slots,
           language: get().language,
