@@ -1,21 +1,59 @@
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { getGeminiStream } from './gemini';
-import { locales } from './locales'; // locales.js import 추가
+import { locales } from './locales';
 
-// --- 시나리오 트리거 및 기본 헬퍼 함수들 (기존과 동일) ---
+// --- 👇 [수정] 데이터 구조를 시안에 맞춰 확장 ---
+export const scenarioCategories = [
+  {
+    name: "Process Execution",
+    subCategories: [
+      {
+        title: "Shipment & Booking",
+        items: [
+          { title: "Track Shipment", description: "Check the real-time status of your shipment", scenarioId: "faq-scenario" },
+          { title: "New Booking", description: "Initiate a new shipping booking process", scenarioId: "reservation" },
+          { title: "Vessel Schedule", description: "View vessel sailing and arrival schedules", scenarioId: "welcome" },
+          { title: "Route Search", description: "Find optimal vessel routes for your cargo", scenarioId: "faq-scenario" }
+        ]
+      }
+    ]
+  },
+  {
+    name: "Contracts & Payments",
+    subCategories: [
+        {
+            title: "Payment Inquiry",
+            items: [
+                { title: "Check Balance", description: "View your current account balance", scenarioId: "welcome" },
+                { title: "Payment History", description: "Browse your past transaction records", scenarioId: "welcome" },
+            ]
+        }
+    ]
+  },
+  {
+    name: "Analytics & Reports",
+    subCategories: [
+        {
+            title: "Report Generation",
+            items: [
+                { title: "Scenario List", description: "See all available scenarios", scenarioId: "GET_SCENARIO_LIST" },
+            ]
+        }
+    ]
+  }
+];
 
-export const scenarioTriggers = {
-  "reservation": "reservation",
-  "question": "faq-scenario",
-  "welcome": "Welcome",
-  "scenario list": "GET_SCENARIO_LIST"
-};
 
+// --- 👇 [수정] findScenarioIdByTrigger가 새 구조를 참조하도록 변경 ---
 export function findScenarioIdByTrigger(message) {
-  for (const keyword in scenarioTriggers) {
-    if (message.toLowerCase().includes(keyword.toLowerCase())) {
-      return scenarioTriggers[keyword];
+  for (const category of scenarioCategories) {
+    for (const subCategory of category.subCategories) {
+        for (const item of subCategory.items) {
+            if (message.toLowerCase().includes(item.title.toLowerCase())) {
+                return item.scenarioId;
+            }
+        }
     }
   }
   return null;

@@ -1,23 +1,23 @@
 import { collection, addDoc, doc, updateDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
-import { scenarioTriggers } from '../../lib/chatbotEngine';
+import { scenarioCategories } from '../../lib/chatbotEngine';
 import { locales } from '../../lib/locales';
-import { getErrorKey } from '../../lib/errorHandler'; // --- [추가]
+import { getErrorKey } from '../../lib/errorHandler'; 
 
 export const createScenarioSlice = (set, get) => ({
   // State
   scenarioStates: {},
   activeScenarioSessionId: null,
   isScenarioPanelOpen: false,
-  scenarioTriggers: {},
+  scenarioCategories: [], // --- [수정]
   unsubscribeScenario: null,
 
   // Actions
-  loadScenarioTriggers: () => {
-    set({ scenarioTriggers });
+  loadScenarioCategories: () => { // --- [수정]
+    set({ scenarioCategories });
   },
 
   openScenarioPanel: async (scenarioId, scenarioSessionId = null) => {
-    const { user, currentConversationId, handleEvents, scenarioStates, language } = get(); // --- language 추가
+    const { user, currentConversationId, handleEvents, scenarioStates, language } = get();
     if (!user || !currentConversationId) return;
 
     if (scenarioSessionId) {
@@ -60,7 +60,6 @@ export const createScenarioSlice = (set, get) => ({
           scenarioSessionId: newScenarioSessionId
         }),
       });
-       // --- 👇 [수정] response.ok 체크 추가 ---
       if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
       const data = await response.json();
       
@@ -83,7 +82,6 @@ export const createScenarioSlice = (set, get) => ({
       } else {
         throw new Error("Failed to start scenario properly");
       }
-    // --- 👇 [수정된 부분] ---
     } catch (error) {
       const errorKey = getErrorKey(error);
       const errorMessage = locales[language][errorKey] || locales[language]['errorUnexpected'];
@@ -92,7 +90,6 @@ export const createScenarioSlice = (set, get) => ({
         messages: [{ id: 'error', sender: 'bot', text: errorMessage }],
         status: 'completed'
       });
-    // --- 👆 [여기까지] ---
     } finally {
       get().focusChatInput();
     }
@@ -190,7 +187,7 @@ export const createScenarioSlice = (set, get) => ({
 
   handleScenarioResponse: async (payload) => {
     const { scenarioSessionId } = payload;
-    const { handleEvents, showToast, user, currentConversationId, language } = get(); // --- language 추가
+    const { handleEvents, showToast, user, currentConversationId, language } = get();
     if (!user || !currentConversationId || !scenarioSessionId) return;
 
     set(state => ({
@@ -221,7 +218,6 @@ export const createScenarioSlice = (set, get) => ({
           scenarioSessionId: scenarioSessionId,
         }),
       });
-      // --- 👇 [수정] response.ok 체크 추가 ---
       if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
       const data = await response.json();
 
@@ -246,14 +242,12 @@ export const createScenarioSlice = (set, get) => ({
             await get().continueScenarioIfNeeded(data.nextNode, scenarioSessionId);
         }
       }
-    // --- 👇 [수정된 부분] ---
     } catch (error) {
         const errorKey = getErrorKey(error);
         const errorMessage = locales[language][errorKey] || locales[language]['errorUnexpected'];
         await updateDoc(sessionRef, {
             messages: [...get().scenarioStates[scenarioSessionId].messages, { id: 'error', sender: 'bot', text: errorMessage }]
         });
-    // --- 👆 [여기까지] ---
     } finally {
       set(state => ({
         scenarioStates: { ...state.scenarioStates, [scenarioSessionId]: { ...state.scenarioStates[scenarioSessionId], isLoading: false } }

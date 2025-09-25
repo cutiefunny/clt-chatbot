@@ -4,11 +4,12 @@ import { useEffect, useRef, useState } from 'react';
 import { useChatStore } from '../store';
 import { useTranslations } from '../hooks/useTranslations';
 import styles from './ChatInput.module.css';
+import StarIcon from './icons/StarIcon'; // --- [추가]
 
-const MenuIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M4 6H20M4 12H20M4 18H20" stroke="var(--text-color)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
+const ChevronDownIcon = ({ size = 16, style = {} }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={style}>
+        <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
 );
 
 const useDraggableScroll = () => {
@@ -41,23 +42,24 @@ export default function ChatInput() {
         isLoading, 
         handleResponse,
         activePanel,
-        activeScenarioSessionId, // --- 👈 [수정] activeScenarioId -> activeScenarioSessionId
+        activeScenarioSessionId,
         scenarioStates,
         handleScenarioResponse,
         focusRequest,
-        openScenarioModal,
+        openScenarioPanel,
+        scenarioCategories,
     } = useChatStore();
     
     const { t } = useTranslations();
     const inputRef = useRef(null);
     const quickRepliesSlider = useDraggableScroll();
+    const [openMenu, setOpenMenu] = useState(null);
+    const menuRef = useRef(null);
 
-    // --- 👇 [수정] activeScenarioSessionId를 사용하여 현재 시나리오 상태 가져오기 ---
     const activeScenario = activeScenarioSessionId ? scenarioStates[activeScenarioSessionId] : null;
     const scenarioMessages = activeScenario?.messages || [];
     const mainMessages = useChatStore(state => state.messages);
     
-    // --- 👇 [추가] 패널에 맞는 로딩 상태 결정 ---
     const isInputDisabled = activePanel === 'scenario' 
         ? activeScenario?.isLoading ?? false 
         : isLoading;
@@ -70,7 +72,20 @@ export default function ChatInput() {
     const currentScenarioNodeId = activeScenario?.state?.currentNodeId;
 
     useEffect(() => {
-        if (!isInputDisabled) { // isInputDisabled 사용
+        const handleClickOutside = (event) => {
+            if (menuRef.current && !menuRef.current.contains(event.target)) {
+                setOpenMenu(null);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
+
+
+    useEffect(() => {
+        if (!isInputDisabled) {
             inputRef.current?.focus();
         }
     }, [isInputDisabled, focusRequest, activePanel]);
@@ -78,11 +93,11 @@ export default function ChatInput() {
     const handleSubmit = (e) => {
         e.preventDefault();
         const input = e.target.elements.userInput.value;
-        if (!input.trim() || isInputDisabled) return; // isInputDisabled 사용
+        if (!input.trim() || isInputDisabled) return;
 
         if (activePanel === 'scenario') {
             handleScenarioResponse({
-                scenarioSessionId: activeScenarioSessionId, // --- 👈 [수정]
+                scenarioSessionId: activeScenarioSessionId,
                 currentNodeId: currentScenarioNodeId,
                 userInput: input,
             });
@@ -95,7 +110,7 @@ export default function ChatInput() {
     const handleQuickReplyClick = (reply) => {
         if (activePanel === 'scenario') {
             handleScenarioResponse({ 
-                scenarioSessionId: activeScenarioSessionId, // --- 👈 [수정]
+                scenarioSessionId: activeScenarioSessionId,
                 currentNodeId: currentScenarioNodeId,
                 sourceHandle: reply.value,
                 userInput: reply.display
@@ -105,9 +120,52 @@ export default function ChatInput() {
         }
     }
     
+    const handleScenarioClick = (item) => {
+        if (item.scenarioId === 'GET_SCENARIO_LIST') {
+            handleResponse({ text: item.title });
+        } else {
+            openScenarioPanel(item.scenarioId);
+        }
+        setOpenMenu(null);
+    };
+    
     return (
         <div className={styles.inputArea}>
-            {/* --- 👇 [수정] isInputDisabled 사용 --- */}
+            <div className={styles.quickActionsContainer} ref={menuRef}>
+                {scenarioCategories.map(category => (
+                    <div key={category.name} className={styles.categoryWrapper}>
+                        <button 
+                            className={`${styles.categoryButton} ${openMenu === category.name ? styles.active : ''}`}
+                            onClick={() => setOpenMenu(openMenu === category.name ? null : category.name)}
+                        >
+                            {category.name} <ChevronDownIcon style={{ transform: openMenu === category.name ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}/>
+                        </button>
+                        {openMenu === category.name && (
+                            <div className={styles.dropdownMenu}>
+                               {category.subCategories.map(subCategory => (
+                                   <div key={subCategory.title} className={styles.subCategorySection}>
+                                       <h4 className={styles.subCategoryTitle}>{subCategory.title}</h4>
+                                       {subCategory.items.map(item => (
+                                           <button 
+                                                key={item.title} 
+                                                className={styles.dropdownItem}
+                                                onClick={() => handleScenarioClick(item)}
+                                            >
+                                                <div className={styles.itemIcon}><StarIcon size={14} /></div>
+                                                <div className={styles.itemContent}>
+                                                    <span className={styles.itemTitle}>{item.title}</span>
+                                                    <span className={styles.itemDescription}>{item.description}</span>
+                                                </div>
+                                           </button>
+                                       ))}
+                                   </div>
+                               ))}
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </div>
+
             {(currentBotMessageNode?.data?.replies) && (
                 <div className={styles.buttonRow}>
                     <div
@@ -128,9 +186,6 @@ export default function ChatInput() {
             )}
             
             <form className={styles.inputForm} onSubmit={handleSubmit}>
-                <button type="button" className={styles.attachButton} onClick={openScenarioModal}>
-                    <MenuIcon />
-                </button>
                 <input
                     ref={inputRef}
                     name="userInput"
@@ -139,6 +194,7 @@ export default function ChatInput() {
                     autoComplete="off"
                     disabled={isInputDisabled}
                 />
+                 <button type="submit" className={styles.sendButton} disabled={isInputDisabled}>Send</button>
             </form>
         </div>
     );

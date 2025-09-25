@@ -28,7 +28,7 @@ export const useChatStore = create((set, get) => ({
 
   // Actions that cross multiple slices
   initAuth: () => {
-    get().loadScenarioTriggers();
+    get().loadScenarioCategories(); // --- [수정] 함수명 변경
     onAuthStateChanged(get().auth, async (user) => {
       if (user) {
         set({ user });
@@ -56,7 +56,7 @@ export const useChatStore = create((set, get) => ({
         get().loadNotifications(user.uid);
       } else {
         get().unsubscribeAll();
-        const currentTriggers = get().scenarioTriggers;
+        const currentCategories = get().scenarioCategories; // --- [수정]
         
         let theme = 'light';
         let fontSize = 'default';
@@ -75,7 +75,7 @@ export const useChatStore = create((set, get) => ({
           scenarioStates: {},
           activeScenarioId: null,
           isScenarioPanelOpen: false,
-          scenarioTriggers: currentTriggers,
+          scenarioCategories: currentCategories, // --- [수정]
           theme,
           fontSize,
           language,

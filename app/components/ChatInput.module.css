@@ -9,7 +9,116 @@
     flex-shrink: 0;
 }
 
-/* --- 👇 [추가된 부분] --- */
+.quickActionsContainer {
+    display: flex;
+    gap: 8px;
+    padding-bottom: 8px;
+    position: relative;
+}
+
+.categoryWrapper {
+    position: relative;
+}
+
+.categoryButton {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--panel-border-color);
+    background-color: var(--panel-bg-color);
+    color: var(--text-color);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.categoryButton:hover, .categoryButton.active {
+    background-color: var(--button-hover-bg);
+    border-color: var(--option-button-hover-border);
+}
+
+.dropdownMenu {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    background-color: var(--panel-bg-color);
+    border: 1px solid var(--panel-border-color);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    z-index: 10;
+    width: 400px;
+    margin-bottom: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 8px;
+}
+
+.subCategorySection {
+    margin-bottom: 8px;
+}
+.subCategorySection:last-child {
+    margin-bottom: 0;
+}
+
+.subCategoryTitle {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-color);
+    padding: 8px 12px;
+}
+
+.dropdownItem {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 6px;
+    background: none;
+    border: none;
+    text-align: left;
+    width: 100%;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background-color 0.2s;
+}
+
+.dropdownItem:hover {
+    background-color: var(--button-hover-bg);
+}
+
+.itemIcon {
+    color: #8a8a8e;
+    flex-shrink: 0;
+}
+
+/* --- 👇 [수정된 부분 시작] --- */
+.itemContent {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    overflow: hidden; /* 컨테이너를 벗어나는 텍스트 숨김 */
+}
+
+.itemTitle {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-color);
+    flex-shrink: 0; /* 제목이 줄어들지 않도록 설정 */
+}
+
+.itemDescription {
+    font-size: 0.7rem;
+    color: #8a8a8e;
+    white-space: nowrap; /* 설명이 줄바꿈되지 않도록 설정 */
+    overflow: hidden; /* 넘치는 부분 숨김 */
+    text-overflow: ellipsis; /* 넘치는 부분에 ... 표시 */
+}
+/* --- 👆 [여기까지] --- */
+
+
+/* --- 기존 스타일 --- */
 .resumeScenarioBar {
     display: flex;
     justify-content: center;
@@ -29,7 +138,7 @@
 .resumeScenarioBar button:hover {
     background-color: var(--login-button-hover-bg);
 }
-/* --- 👆 [여기까지] --- */
+
 
 .buttonRow {
     display: flex;
@@ -80,21 +189,11 @@
   padding: 8px;
   border-radius: 16px;
   border: 2px solid var(--input-border-color);
-  height: 5rem;
+  min-height: 5rem;
   backdrop-filter: blur(8px);
   flex-shrink: 0;
   box-shadow: 0 0 12px 1px rgba(130, 160, 255, 0.3);
   background-color: var(--chat-input-bg);
-}
-
-.attachButton {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .textInput {
@@ -104,8 +203,32 @@
   font-size: 1rem;
   outline: none;
   color: var(--chat-input-text-color);
+  align-self: stretch;
+  padding: 8px;
+  resize: none;
 }
 
 .textInput::placeholder {
   color: var(--input-placeholder-color);
+}
+
+.sendButton {
+    background-color: #8A2BE2;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s;
+    align-self: flex-end;
+}
+
+.sendButton:hover {
+    background-color: #9932CC;
+}
+
+.sendButton:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
 }
