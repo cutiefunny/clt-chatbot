@@ -9,12 +9,19 @@ export const locales = {
     loading: '로딩 중...',
     copied: '복사되었습니다!',
 
-    // --- 👇 [추가된 부분] ---
     // Error Messages
     errorNetwork: '네트워크 연결을 확인해주세요. 인터넷이 불안정한 것 같아요.',
     errorServer: '서버에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요.',
     errorUnexpected: '예상치 못한 오류가 발생했습니다. 다시 시도해주세요.',
-    // --- 👆 [여기까지] ---
+
+    // Validation Messages
+    validationEmail: '유효한 이메일 주소를 입력해주세요.',
+    validationPhone: '유효한 전화번호(XXX-XXXX-XXXX)를 입력해주세요.',
+    validationFormat: '입력 형식이 올바르지 않습니다.',
+    validationRegexError: '시나리오에 설정된 정규식이 올바르지 않습니다.',
+    validationDateRange: (startDate, endDate) => `'${startDate}'와 '${endDate}' 사이의 날짜를 입력해주세요.`,
+    validationDateAfter: '오늘 또는 미래의 날짜를 선택해야 합니다.',
+    validationDateBefore: '오늘 또는 과거의 날짜를 선택해야 합니다.',
 
     //Manual
     manualTitle: '챗봇 사용 매뉴얼',
@@ -118,12 +125,19 @@ export const locales = {
     loading: 'Loading...',
     copied: 'Copied!',
 
-    // --- 👇 [추가된 부분] ---
     // Error Messages
     errorNetwork: 'Network error. Please check your internet connection.',
     errorServer: 'There was a problem with the server. Please try again later.',
     errorUnexpected: 'An unexpected error occurred. Please try again.',
-    // --- 👆 [여기까지] ---
+
+    // Validation Messages
+    validationEmail: 'Please enter a valid email address.',
+    validationPhone: 'Please enter a valid phone number (e.g., XXX-XXXX-XXXX).',
+    validationFormat: 'The input format is incorrect.',
+    validationRegexError: 'The regular expression set in the scenario is invalid.',
+    validationDateRange: (startDate, endDate) => `Please enter a date between ${startDate} and ${endDate}.`,
+    validationDateAfter: 'You must select today or a future date.',
+    validationDateBefore: 'You must select today or a past date.',
 
     //Manual
     manualTitle: 'Chatbot Manual',

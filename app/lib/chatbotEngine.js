@@ -1,6 +1,7 @@
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { getGeminiStream } from './gemini';
+import { locales } from './locales'; // locales.js import 추가
 
 // --- 시나리오 트리거 및 기본 헬퍼 함수들 (기존과 동일) ---
 
@@ -37,6 +38,48 @@ export const getScenario = async (scenarioId) => {
   }
 };
 
+const evaluateCondition = (slotValue, operator, conditionValue) => {
+  const lowerCaseConditionValue = String(conditionValue).toLowerCase();
+  if (lowerCaseConditionValue === 'true' || lowerCaseConditionValue === 'false') {
+    const boolConditionValue = lowerCaseConditionValue === 'true';
+    const boolSlotValue = String(slotValue).toLowerCase() === 'true';
+
+    switch (operator) {
+      case '==':
+        return boolSlotValue === boolConditionValue;
+      case '!=':
+        return boolSlotValue !== boolConditionValue;
+      default:
+        return false;
+    }
+  }
+
+  const numSlotValue = parseFloat(slotValue);
+  const numConditionValue = parseFloat(conditionValue);
+
+  switch (operator) {
+    case '==':
+      return slotValue == conditionValue;
+    case '!=':
+      return slotValue != conditionValue;
+    case '>':
+      return !isNaN(numSlotValue) && !isNaN(numConditionValue) && numSlotValue > numConditionValue;
+    case '<':
+      return !isNaN(numSlotValue) && !isNaN(numConditionValue) && numSlotValue < numConditionValue;
+    case '>=':
+      return !isNaN(numSlotValue) && !isNaN(numConditionValue) && numSlotValue >= numConditionValue;
+    case '<=':
+      return !isNaN(numSlotValue) && !isNaN(numConditionValue) && numSlotValue <= numConditionValue;
+    case 'contains':
+      return slotValue && slotValue.toString().includes(conditionValue);
+    case '!contains':
+      return !slotValue || !slotValue.toString().includes(conditionValue);
+    default:
+      return false;
+  }
+};
+
+
 export const getNextNode = (scenario, currentNodeId, sourceHandleId = null, slots = {}) => {
   if (!currentNodeId) {
     const edgeTargets = new Set(scenario.edges.map(edge => edge.target));
@@ -55,6 +98,20 @@ export const getNextNode = (scenario, currentNodeId, sourceHandleId = null, slot
       if (matchedCondition) {
           nextEdge = scenario.edges.find(edge => edge.source === currentNodeId && edge.sourceHandle === matchedCondition.id);
       }
+  }
+  
+  if (!nextEdge && sourceNode && sourceNode.type === 'branch' && sourceNode.data.evaluationType === 'CONDITION') {
+    const conditions = sourceNode.data.conditions || [];
+    for (const condition of conditions) {
+        const slotValue = slots[condition.slot];
+        if (evaluateCondition(slotValue, condition.operator, condition.value)) {
+            const handleId = sourceNode.data.replies[conditions.indexOf(condition)]?.value;
+            if(handleId) {
+                nextEdge = scenario.edges.find(edge => edge.source === currentNodeId && edge.sourceHandle === handleId);
+                if (nextEdge) break;
+            }
+        }
+    }
   }
 
   if (!nextEdge) {
@@ -87,57 +144,69 @@ export const getNestedValue = (obj, path) => {
     return path.split('.').reduce((acc, part) => acc && acc[part], obj);
 };
 
-export const validateInput = (value, validation) => {
+export const validateInput = (value, validation, language = 'ko') => {
   if (!validation) return { isValid: true };
-  const getErrorMessage = (defaultMessage) => validation.errorMessage || defaultMessage;
+  const t = (key, ...args) => {
+    const message = locales[language][key] || key;
+    if (typeof message === 'function') {
+        return message(...args);
+    }
+    return message;
+  }
+
+  const getErrorMessage = (defaultKey) => validation.errorMessage || t(defaultKey);
+
   switch (validation.type) {
     case 'email':
       return {
         isValid: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value),
-        message: getErrorMessage('유효한 이메일 주소를 입력해주세요.')
+        message: getErrorMessage('validationEmail')
       };
     case 'phone number':
       return {
         isValid: /^\d{2,3}-\d{3,4}-\d{4}$/.test(value),
-        message: getErrorMessage('유효한 전화번호(XXX-XXXX-XXXX)를 입력해주세요.')
+        message: getErrorMessage('validationPhone')
       };
     case 'custom':
       if (validation.regex) {
         try {
           const isValid = new RegExp(validation.regex).test(value);
-          return { isValid, message: isValid ? '' : getErrorMessage('입력 형식이 올바르지 않습니다.') };
+          return { isValid, message: isValid ? '' : getErrorMessage('validationFormat') };
         } catch (e) {
           console.error("Invalid regex:", validation.regex);
-          return { isValid: false, message: '시나리오에 설정된 정규식이 올바르지 않습니다.' };
+          return { isValid: false, message: t('validationRegexError') };
         }
       }
+       if (validation.startDate && validation.endDate) {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return { isValid: false, message: getErrorMessage('validationFormat') };
+            const selectedDate = new Date(value);
+            const startDate = new Date(validation.startDate);
+            const endDate = new Date(validation.endDate);
+            startDate.setHours(0, 0, 0, 0);
+            endDate.setHours(23, 59, 59, 999);
+            const isValid = selectedDate >= startDate && selectedDate <= endDate;
+            return { isValid, message: isValid ? '' : t('validationDateRange', validation.startDate, validation.endDate) };
+        }
       return { isValid: true };
+    case 'today after':
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return { isValid: false, message: getErrorMessage('validationFormat') };
+        const selectedDateAfter = new Date(value);
+        const todayAfter = new Date();
+        todayAfter.setHours(0, 0, 0, 0);
+        const isAfterValid = selectedDateAfter >= todayAfter;
+        return { isValid: isAfterValid, message: isAfterValid ? '' : t('validationDateAfter')};
+    case 'today before':
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return { isValid: false, message: getErrorMessage('validationFormat') };
+        const selectedDateBefore = new Date(value);
+        const todayBefore = new Date();
+        todayBefore.setHours(23, 59, 59, 999);
+        const isBeforeValid = selectedDateBefore <= todayBefore;
+        return { isValid: isBeforeValid, message: isBeforeValid ? '' : t('validationDateBefore')};
     default:
       return { isValid: true };
   }
 };
 
-
-// --- 👇 [리팩토링된 부분 시작] ---
-
-/**
- * 각 노드 타입에 맞는 핸들러 함수를 매핑합니다.
- */
-const nodeHandlers = {
-  'toast': handleToastNode,
-  'slotfilling': handleInteractiveNode,
-  'message': handleInteractiveNode,
-  'branch': handleInteractiveNode,
-  'form': handleInteractiveNode,
-  'iframe': handleInteractiveNode,
-  'api': handleApiNode,
-  'llm': handleLlmNode,
-};
-
-/**
- * Toast 노드를 처리합니다.
- * @returns {Promise<{nextNode: object, slots: object, events: object[]}>}
- */
 async function handleToastNode(node, scenario, slots) {
   const interpolatedToastMessage = interpolateMessage(node.data.message, slots);
   const event = {
@@ -149,10 +218,6 @@ async function handleToastNode(node, scenario, slots) {
   return { nextNode, slots, events: [event] };
 }
 
-/**
- * 사용자 입력이 필요한 노드(slotfilling, message, branch, form, iframe)를 처리합니다.
- * @returns {Promise<{nextNode: object}>}
- */
 async function handleInteractiveNode(node, scenario, slots, scenarioSessionId) {
     if (node.type === 'iframe' && node.data.url && scenarioSessionId) {
         try {
@@ -165,14 +230,19 @@ async function handleInteractiveNode(node, scenario, slots, scenarioSessionId) {
             node.data.url += `${separator}scenario_session_id=${scenarioSessionId}`;
         }
     }
+    // 대화형 노드는 자기 자신을 nextNode로 반환하여 루프를 멈추게 함
     return { nextNode: node };
 }
 
+async function handleLinkNode(node, scenario, slots) {
+    if (node.data.content) {
+        window.open(node.data.content, '_blank', 'noopener,noreferrer');
+    }
+    const nextNode = getNextNode(scenario, node.id, null, slots);
+    return { nextNode, slots, events: [] };
+}
 
-/**
- * API 노드를 처리합니다.
- * @returns {Promise<{nextNode: object, slots: object, events: object[]}>}
- */
+
 async function handleApiNode(node, scenario, slots) {
     const { method, url, headers, body, params, responseMapping } = node.data;
     let interpolatedUrl = interpolateMessage(url, slots);
@@ -225,13 +295,9 @@ async function handleApiNode(node, scenario, slots) {
     return { nextNode, slots, events: [] };
 }
 
-/**
- * LLM 노드를 처리합니다.
- * @returns {Promise<{nextNode: object, slots: object, events: object[]}>}
- */
-async function handleLlmNode(node, scenario, slots) {
+async function handleLlmNode(node, scenario, slots, language) {
     const interpolatedPrompt = interpolateMessage(node.data.prompt, slots);
-    const stream = await getGeminiStream(interpolatedPrompt);
+    const stream = await getGeminiStream(interpolatedPrompt, language);
     const reader = stream.getReader();
     const decoder = new TextDecoder();
     let llmResponse = '';
@@ -249,21 +315,39 @@ async function handleLlmNode(node, scenario, slots) {
     return { nextNode, slots, events: [] };
 }
 
+async function handleBranchNode(node, scenario, slots) {
+  if (node.data.evaluationType === 'CONDITION') {
+    // 자동 노드: 즉시 다음 노드를 찾아 반환
+    const nextNode = getNextNode(scenario, node.id, null, slots);
+    return { nextNode, slots, events: [] };
+  } else {
+    // 대화형 노드: 노드 자신을 반환하여 UI 렌더링
+    return { nextNode: node };
+  }
+}
 
-/**
- * 시나리오를 실행하고 다음 상태를 반환하는 메인 함수입니다.
- */
-export async function runScenario(scenario, scenarioState, message, slots, scenarioSessionId) {
+const nodeHandlers = {
+  'toast': handleToastNode,
+  'slotfilling': handleInteractiveNode,
+  'message': handleInteractiveNode,
+  'branch': handleBranchNode, // branch 핸들러 교체
+  'form': handleInteractiveNode,
+  'iframe': handleInteractiveNode,
+  'link': handleLinkNode,
+  'api': handleApiNode,
+  'llm': handleLlmNode,
+};
+
+export async function runScenario(scenario, scenarioState, message, slots, scenarioSessionId, language) {
     const { scenarioId, currentNodeId, awaitingInput } = scenarioState;
     let currentId = currentNodeId;
     let newSlots = { ...slots };
     const allEvents = [];
     
-    // 1. 사용자 입력 처리 (Awaiting Input)
     if (awaitingInput) {
         const currentNode = scenario.nodes.find(n => n.id === currentId);
         const validation = currentNode.data.validation;
-        const { isValid, message: validationMessage } = validateInput(message.text, validation);
+        const { isValid, message: validationMessage } = validateInput(message.text, validation, language);
 
         if (!isValid) {
             return {
@@ -277,34 +361,34 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
         newSlots[currentNode.data.slot] = message.text;
     }
 
-    // 2. 다음 노드 찾기
     let currentNode = getNextNode(scenario, currentId, message.sourceHandle, newSlots);
 
-    // 3. 인터랙티브 노드가 나올 때까지 노드 순차 실행
     while (currentNode) {
-        currentNode.data.content = interpolateMessage(currentNode.data.content, newSlots);
+        if (currentNode.data) {
+            currentNode.data.content = interpolateMessage(currentNode.data.content, newSlots);
+        }
         
         const handler = nodeHandlers[currentNode.type];
         
         if (handler) {
-            const result = await handler(currentNode, scenario, newSlots, scenarioSessionId);
+            const result = await handler(currentNode, scenario, newSlots, scenarioSessionId, language);
             newSlots = result.slots || newSlots;
             if (result.events) allEvents.push(...result.events);
 
-            // 인터랙티브 노드(사용자 입력 대기)에 도달하면 루프 중단
-            if (['slotfilling', 'message', 'branch', 'form', 'iframe'].includes(currentNode.type)) {
+            // 핸들러가 자기 자신을 반환하면, 대화형 노드이므로 루프를 중단
+            if (result.nextNode && result.nextNode.id === currentNode.id) {
                 currentNode = result.nextNode;
                 break;
             }
+            
+            // 핸들러가 다음 노드를 반환하면, 자동 노드이므로 루프 계속
             currentNode = result.nextNode;
-
         } else {
-             // 핸들러가 없는 경우 루프 중단 (예: end 노드)
+            // 핸들러가 없는 노드(예: end)이면 루프 중단
             break;
         }
     }
 
-    // 4. 최종 결과 반환
     if (currentNode) {
         const isAwaiting = currentNode.type === 'slotfilling';
         return {
@@ -324,4 +408,3 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
         };
     }
 }
-// --- 👆 [리팩토링된 부분 끝] ---
