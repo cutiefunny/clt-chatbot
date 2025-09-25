@@ -42,19 +42,17 @@ export const createChatSlice = (set, get) => ({
   unsubscribeConversations: null,
   lastVisibleMessage: null,
   hasMoreMessages: true,
-  expandedConversationId: null, // --- [추가]
-  scenariosForConversation: {}, // --- [추가]
+  expandedConversationId: null,
+  scenariosForConversation: {},
 
-  // --- 👇 [추가된 함수] ---
   toggleConversationExpansion: async (conversationId) => {
     const { expandedConversationId, scenariosForConversation, user } = get();
 
     if (expandedConversationId === conversationId) {
-      set({ expandedConversationId: null }); // 현재 열린 대화를 다시 클릭하면 닫기
+      set({ expandedConversationId: null });
     } else {
-      set({ expandedConversationId: conversationId }); // 새로운 대화를 클릭하면 열기
+      set({ expandedConversationId: conversationId });
       
-      // 시나리오 목록이 아직 로드되지 않았다면 Firestore에서 가져오기
       if (!scenariosForConversation[conversationId] && user) {
         try {
           const scenariosRef = collection(get().db, "chats", user.uid, "conversations", conversationId, "scenario_sessions");
@@ -76,7 +74,7 @@ export const createChatSlice = (set, get) => ({
           set(state => ({
             scenariosForConversation: {
               ...state.scenariosForConversation,
-              [conversationId]: [], // 오류 발생 시 빈 배열로 설정
+              [conversationId]: [],
             }
           }));
         }
@@ -197,7 +195,7 @@ export const createChatSlice = (set, get) => ({
         isScenarioPanelOpen: false,
         lastVisibleMessage: null,
         hasMoreMessages: true,
-        expandedConversationId: null, // --- [추가] 새 대화 시작 시 펼침 상태 초기화
+        expandedConversationId: null,
     });
   },
 
@@ -261,7 +259,8 @@ export const createChatSlice = (set, get) => ({
     await updateDoc(doc(get().db, "chats", user.uid, "conversations", conversationId), { updatedAt: serverTimestamp() });
   },
 
-  addMessage: (sender, messageData) => {
+  // --- 👇 [수정] async 함수로 변경하고, 내부의 saveMessage를 await 처리 ---
+  addMessage: async (sender, messageData) => {
     let newMessage;
     if (sender === 'user') {
       newMessage = { id: Date.now(), sender, text: messageData.text };
@@ -283,7 +282,7 @@ export const createChatSlice = (set, get) => ({
     }
     set(state => ({ messages: [...state.messages, newMessage] }));
     if (!newMessage.isStreaming) {
-      get().saveMessage(newMessage);
+      await get().saveMessage(newMessage); // Await this to ensure conversation is created
     }
   },
 
@@ -308,17 +307,22 @@ export const createChatSlice = (set, get) => ({
     });
   },
 
+  // --- 👇 [수정] async로 변경하고, optional displayText를 받도록 수정 ---
   handleResponse: async (messagePayload) => {
     set({ isLoading: true });
-    if (messagePayload.text) {
-      get().addMessage('user', { text: messagePayload.text });
+
+    // 사용자에게 보여줄 텍스트 (displayText가 있으면 그것을, 없으면 text를 사용)
+    const textForUser = messagePayload.displayText || messagePayload.text;
+    if (textForUser) {
+      await get().addMessage('user', { text: textForUser });
     }
+
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: messagePayload,
+          message: { text: messagePayload.text }, // API에는 항상 실제 처리할 text를 보냄
           scenarioState: null,
           slots: get().slots,
           language: get().language,

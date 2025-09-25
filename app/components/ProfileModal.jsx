@@ -121,8 +121,7 @@ export default function ProfileModal() {
             <button onClick={handleDevBoardClick} className={styles.logoutButton}>
               {t('devBoard')}
             </button>
-            
-            {/* --- 👇 [수정된 부분] --- */}
+
             <Link
               href="/apidocs"
               onClick={closeProfileModal}
@@ -131,7 +130,15 @@ export default function ProfileModal() {
             >
               API 문서 보기
             </Link>
-            {/* --- 👆 [여기까지] --- */}
+
+            <Link
+              href="/admin/scenario-editor"
+              onClick={closeProfileModal}
+              className={styles.logoutButton}
+              style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}
+            >
+              시나리오 메뉴 편집 (임시)
+            </Link>
 
             <button onClick={() => setIsLogoutModalOpen(true)} className={styles.logoutButton}>
               {t('logout')}

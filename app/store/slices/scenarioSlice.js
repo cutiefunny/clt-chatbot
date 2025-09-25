@@ -1,5 +1,4 @@
-import { collection, addDoc, doc, updateDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
-import { scenarioCategories } from '../../lib/chatbotEngine';
+import { collection, addDoc, doc, updateDoc, onSnapshot, serverTimestamp, getDoc, setDoc, getDocs } from 'firebase/firestore';
 import { locales } from '../../lib/locales';
 import { getErrorKey } from '../../lib/errorHandler'; 
 
@@ -8,12 +7,53 @@ export const createScenarioSlice = (set, get) => ({
   scenarioStates: {},
   activeScenarioSessionId: null,
   isScenarioPanelOpen: false,
-  scenarioCategories: [], // --- [수정]
+  scenarioCategories: [],
+  availableScenarios: [], // --- [추가] 사용 가능한 시나리오 ID 목록
   unsubscribeScenario: null,
 
   // Actions
-  loadScenarioCategories: () => { // --- [수정]
-    set({ scenarioCategories });
+  // --- 👇 [추가] scenarios 컬렉션에서 모든 문서 ID를 불러오는 함수 ---
+  loadAvailableScenarios: async () => {
+    try {
+      const scenariosCollection = collection(get().db, 'scenarios');
+      const querySnapshot = await getDocs(scenariosCollection);
+      const scenarioIds = querySnapshot.docs.map(doc => doc.id);
+      set({ availableScenarios: scenarioIds });
+    } catch (error) {
+      console.error("Error loading available scenarios:", error);
+      set({ availableScenarios: [] });
+    }
+  },
+
+  loadScenarioCategories: async () => {
+    try {
+      const shortcutRef = doc(get().db, "shortcut", "main");
+      const docSnap = await getDoc(shortcutRef);
+
+      if (docSnap.exists() && docSnap.data().categories) {
+        set({ scenarioCategories: docSnap.data().categories });
+      } else {
+        console.log("No shortcut document found, initializing with default data.");
+        const initialData = []; 
+        set({ scenarioCategories: initialData });
+        await setDoc(shortcutRef, { categories: initialData });
+      }
+    } catch (error) {
+      console.error("Error loading scenario categories from Firestore.", error);
+      set({ scenarioCategories: [] });
+    }
+  },
+
+  saveScenarioCategories: async (newCategories) => {
+    const shortcutRef = doc(get().db, "shortcut", "main");
+    try {
+      await setDoc(shortcutRef, { categories: newCategories });
+      set({ scenarioCategories: newCategories });
+      return true;
+    } catch (error) {
+      console.error("Error saving scenario categories to Firestore:", error);
+      return false;
+    }
   },
 
   openScenarioPanel: async (scenarioId, scenarioSessionId = null) => {
@@ -268,3 +308,4 @@ export const createScenarioSlice = (set, get) => ({
     }
   },
 });
+

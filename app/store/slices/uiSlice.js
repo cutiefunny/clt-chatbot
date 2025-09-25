@@ -15,12 +15,29 @@ export const createUISlice = (set, get) => ({
   isScenarioModalOpen: false,
   isDevBoardModalOpen: false,
   isNotificationModalOpen: false,
-  isManualModalOpen: false, // --- [추가]
+  isManualModalOpen: false,
   isHistoryPanelOpen: false,
   activePanel: 'main',
   focusRequest: 0,
+  // --- 👇 [추가] UI 전용 휘발성 토스트 상태 ---
+  ephemeralToast: {
+    visible: false,
+    message: '',
+    type: 'info',
+  },
 
   // Actions
+  // --- 👇 [추가] UI 전용 휘발성 토스트를 보여주는 함수 ---
+  showEphemeralToast: (message, type = 'info') => {
+    set({ ephemeralToast: { visible: true, message, type } });
+    setTimeout(() => {
+      set(state => ({ ephemeralToast: { ...state.ephemeralToast, visible: false } }));
+    }, 3000);
+  },
+  hideEphemeralToast: () => {
+     set(state => ({ ephemeralToast: { ...state.ephemeralToast, visible: false } }));
+  },
+  
   toggleTheme: async () => {
     const newTheme = get().theme === 'light' ? 'dark' : 'light';
     set({ theme: newTheme });
@@ -84,8 +101,8 @@ export const createUISlice = (set, get) => ({
   closeDevBoardModal: () => set({ isDevBoardModalOpen: false }),
   openNotificationModal: () => set({ isNotificationModalOpen: true }),
   closeNotificationModal: () => set({ isNotificationModalOpen: false }),
-  openManualModal: () => set({ isManualModalOpen: true }), // --- [추가]
-  closeManualModal: () => set({ isManualModalOpen: false }), // --- [추가]
+  openManualModal: () => set({ isManualModalOpen: true }),
+  closeManualModal: () => set({ isManualModalOpen: false }),
 
   toggleHistoryPanel: () => set(state => ({ isHistoryPanelOpen: !state.isHistoryPanelOpen })),
   setActivePanel: (panel) => set({ activePanel: panel }),

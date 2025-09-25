@@ -2,51 +2,60 @@ import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { getGeminiStream } from './gemini';
 import { locales } from './locales';
+let cachedScenarioCategories = null;
+let lastFetchTime = 0;
+const CACHE_DURATION = 5 * 60 * 1000; // 5분
 
-// --- 👇 [수정] 데이터 구조를 시안에 맞춰 확장 ---
-export const scenarioCategories = [
-  {
-    name: "Process Execution",
-    subCategories: [
-      {
-        title: "Shipment & Booking",
-        items: [
-          { title: "Track Shipment", description: "Check the real-time status of your shipment", scenarioId: "faq-scenario" },
-          { title: "New Booking", description: "Initiate a new shipping booking process", scenarioId: "reservation" },
-          { title: "Vessel Schedule", description: "View vessel sailing and arrival schedules", scenarioId: "welcome" },
-          { title: "Route Search", description: "Find optimal vessel routes for your cargo", scenarioId: "faq-scenario" }
-        ]
-      }
-    ]
-  },
-  {
-    name: "Contracts & Payments",
-    subCategories: [
-        {
-            title: "Payment Inquiry",
-            items: [
-                { title: "Check Balance", description: "View your current account balance", scenarioId: "welcome" },
-                { title: "Payment History", description: "Browse your past transaction records", scenarioId: "welcome" },
-            ]
-        }
-    ]
-  },
-  {
-    name: "Analytics & Reports",
-    subCategories: [
-        {
-            title: "Report Generation",
-            items: [
-                { title: "Scenario List", description: "See all available scenarios", scenarioId: "GET_SCENARIO_LIST" },
-            ]
-        }
-    ]
+/**
+ * Firestore의 'shortcut' 컬렉션에서 시나리오 카테고리 데이터를 가져옵니다.
+ * 성능을 위해 5분 동안 캐시된 데이터를 사용합니다.
+ * @returns {Promise<Array>} 시나리오 카테고리 배열
+ */
+export async function getScenarioCategories() {
+  const now = Date.now();
+  if (cachedScenarioCategories && (now - lastFetchTime < CACHE_DURATION)) {
+    return cachedScenarioCategories;
   }
-];
 
+  try {
+    const shortcutRef = doc(db, "shortcut", "main");
+    const docSnap = await getDoc(shortcutRef);
 
-// --- 👇 [수정] findScenarioIdByTrigger가 새 구조를 참조하도록 변경 ---
-export function findScenarioIdByTrigger(message) {
+    if (docSnap.exists() && docSnap.data().categories) {
+      cachedScenarioCategories = docSnap.data().categories;
+      lastFetchTime = now;
+      return cachedScenarioCategories;
+    } else {
+      console.warn("Shortcut document 'main' not found in Firestore. Returning empty array.");
+      return [];
+    }
+  } catch (error) {
+    console.error("Error fetching scenario categories from Firestore:", error);
+    return []; // 오류 발생 시 빈 배열 반환
+  }
+}
+
+export async function findActionByTrigger(message) {
+  const scenarioCategories = await getScenarioCategories();
+  if (!scenarioCategories) return null;
+
+  for (const category of scenarioCategories) {
+    for (const subCategory of category.subCategories) {
+        for (const item of subCategory.items) {
+            // 사용자가 입력한 텍스트가 아이템의 제목과 일치하는지 확인
+            if (message.toLowerCase().trim() === item.title.toLowerCase().trim()) {
+                return item.action; // { type: 'scenario', value: '...' } 또는 { type: 'custom', value: '...' }
+            }
+        }
+    }
+  }
+  return null;
+}
+
+export async function findScenarioIdByTrigger(message) {
+  const scenarioCategories = await getScenarioCategories();
+  if (!scenarioCategories) return null;
+
   for (const category of scenarioCategories) {
     for (const subCategory of category.subCategories) {
         for (const item of subCategory.items) {

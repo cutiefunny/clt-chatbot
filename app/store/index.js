@@ -28,7 +28,8 @@ export const useChatStore = create((set, get) => ({
 
   // Actions that cross multiple slices
   initAuth: () => {
-    get().loadScenarioCategories(); // --- [수정] 함수명 변경
+    // --- 👇 [수정] Firestore에서 카테고리를 비동기로 로드합니다. ---
+    get().loadScenarioCategories();
     onAuthStateChanged(get().auth, async (user) => {
       if (user) {
         set({ user });
@@ -56,7 +57,6 @@ export const useChatStore = create((set, get) => ({
         get().loadNotifications(user.uid);
       } else {
         get().unsubscribeAll();
-        const currentCategories = get().scenarioCategories; // --- [수정]
         
         let theme = 'light';
         let fontSize = 'default';
@@ -75,7 +75,7 @@ export const useChatStore = create((set, get) => ({
           scenarioStates: {},
           activeScenarioId: null,
           isScenarioPanelOpen: false,
-          scenarioCategories: currentCategories, // --- [수정]
+          // scenarioCategories는 loadScenarioCategories가 처리하므로 여기서 초기화하지 않음
           theme,
           fontSize,
           language,
