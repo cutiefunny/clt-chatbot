@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { db, auth, onAuthStateChanged, doc, getDoc } from '../lib/firebase';
+import { db, auth, onAuthStateChanged, doc, getDoc, collection, getDocs, writeBatch } from '../lib/firebase'; // Firestore import 추가
 import { locales } from '../lib/locales';
 
 import { createAuthSlice } from './slices/authSlice';
@@ -26,13 +26,37 @@ export const useChatStore = create((set, get) => ({
   ...createDevBoardSlice(set, get),
   ...createNotificationSlice(set, get),
 
-  // Actions that cross multiple slices
+  // --- 👇 [수정된 함수] ---
   initAuth: () => {
-    // --- 👇 [수정] Firestore에서 카테고리를 비동기로 로드합니다. ---
     get().loadScenarioCategories();
     onAuthStateChanged(get().auth, async (user) => {
       if (user) {
         set({ user });
+        
+        // --- 👇 [마이그레이션 로직 추가] ---
+        try {
+            console.log("Checking for conversation migration...");
+            const conversationsRef = collection(get().db, "chats", user.uid, "conversations");
+            const snapshot = await getDocs(conversationsRef);
+            const batch = writeBatch(get().db);
+            let updatesNeeded = 0;
+            snapshot.forEach(doc => {
+                if (doc.data().pinned === undefined) {
+                    batch.update(doc.ref, { pinned: false });
+                    updatesNeeded++;
+                }
+            });
+            if (updatesNeeded > 0) {
+                await batch.commit();
+                console.log(`Migration complete: ${updatesNeeded} conversations updated.`);
+            } else {
+                console.log("No conversation migration needed.");
+            }
+        } catch (error) {
+            console.error("Conversation migration failed:", error);
+        }
+        // --- 👆 [마이그레이션 로직 종료] ---
+
         try {
           const userSettingsRef = doc(get().db, 'settings', user.uid);
           const docSnap = await getDoc(userSettingsRef);
@@ -55,7 +79,7 @@ export const useChatStore = create((set, get) => ({
         get().loadConversations(user.uid);
         get().loadDevMemos();
         get().loadNotifications(user.uid);
-        get().loadFavorites(user.uid); // --- 👈 [추가] 로그인 시 즐겨찾기 로드
+        get().loadFavorites(user.uid);
       } else {
         get().unsubscribeAll();
         
@@ -76,7 +100,6 @@ export const useChatStore = create((set, get) => ({
           scenarioStates: {},
           activeScenarioId: null,
           isScenarioPanelOpen: false,
-          // scenarioCategories는 loadScenarioCategories가 처리하므로 여기서 초기화하지 않음
           theme,
           fontSize,
           language,
@@ -90,16 +113,15 @@ export const useChatStore = create((set, get) => ({
     get().unsubscribeMessages?.();
     get().unsubscribeDevMemos?.();
     get().unsubscribeNotifications?.();
-    get().unsubscribeFavorites?.(); // --- 👈 [추가] 즐겨찾기 구독 해제
+    get().unsubscribeFavorites?.();
     set({ 
         unsubscribeConversations: null, 
         unsubscribeMessages: null, 
         unsubscribeDevMemos: null,
         unsubscribeNotifications: null,
-        unsubscribeFavorites: null, // --- 👈 [추가]
+        unsubscribeFavorites: null,
     });
   },
 }));
 
-// Initialize authentication listener when the store is created
 useChatStore.getState().initAuth();

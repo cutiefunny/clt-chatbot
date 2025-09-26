@@ -17,6 +17,15 @@ export const createUISlice = (set, get) => ({
   isNotificationModalOpen: false,
   isManualModalOpen: false,
   isHistoryPanelOpen: false,
+  confirmModal: {
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmText: 'Confirm',
+    cancelText: 'Cancel',
+    onConfirm: () => {},
+    confirmVariant: 'default',
+  },
   activePanel: 'main',
   focusRequest: 0,
   shortcutMenuOpen: null,
@@ -39,9 +48,8 @@ export const createUISlice = (set, get) => ({
      set(state => ({ ephemeralToast: { ...state.ephemeralToast, visible: false } }));
   },
   
-  // --- 👇 [새로운 함수] ---
   setTheme: async (newTheme) => {
-    if (get().theme === newTheme) return; // 불필요한 업데이트 방지
+    if (get().theme === newTheme) return;
     set({ theme: newTheme });
     if (typeof window !== 'undefined') {
       localStorage.setItem('theme', newTheme);
@@ -57,10 +65,9 @@ export const createUISlice = (set, get) => ({
     }
   },
   
-  // --- 👇 [수정된 함수] ---
   toggleTheme: async () => {
     const newTheme = get().theme === 'light' ? 'dark' : 'light';
-    await get().setTheme(newTheme); // setTheme 호출
+    await get().setTheme(newTheme);
   },
 
   setFontSize: async (size) => {
@@ -111,6 +118,13 @@ export const createUISlice = (set, get) => ({
   closeNotificationModal: () => set({ isNotificationModalOpen: false }),
   openManualModal: () => set({ isManualModalOpen: true }),
   closeManualModal: () => set({ isManualModalOpen: false }),
+
+  openConfirmModal: (config) => set((state) => ({
+    confirmModal: { ...state.confirmModal, isOpen: true, ...config },
+  })),
+  closeConfirmModal: () => set((state) => ({
+    confirmModal: { ...state.confirmModal, isOpen: false },
+  })),
 
   toggleHistoryPanel: () => set(state => ({ isHistoryPanelOpen: !state.isHistoryPanelOpen })),
   setActivePanel: (panel) => set({ activePanel: panel }),

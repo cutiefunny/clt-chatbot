@@ -75,6 +75,12 @@ export const locales = {
     deleteConvoConfirm: '정말로 이 대화를 삭제하시겠습니까?',
     noScenariosFound: '실행된 시나리오가 없습니다.',
     loadingScenarios: '시나리오 로딩 중...',
+    // --- 👇 [추가된 부분] ---
+    pin: '고정',
+    unpin: '고정 해제',
+    rename: '이름 변경',
+    delete: '삭제',
+    // --- 👆 [여기까지] ---
 
     // Profile Modal
     greeting: (displayName) => `안녕하세요 ${displayName} 님`,
@@ -191,6 +197,12 @@ export const locales = {
     deleteConvoConfirm: 'Are you sure you want to delete this conversation?',
     noScenariosFound: 'No scenarios were run.',
     loadingScenarios: 'Loading scenarios...',
+    // --- 👇 [추가된 부분] ---
+    pin: 'Pin',
+    unpin: 'Unpin',
+    rename: 'Rename',
+    delete: 'Delete',
+    // --- 👆 [여기까지] ---
 
     // Profile Modal
     greeting: (displayName) => `Hello, ${displayName}`,

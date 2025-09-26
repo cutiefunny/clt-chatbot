@@ -171,8 +171,9 @@ export const createChatSlice = (set, get) => ({
     }
   },
 
+  // --- 👇 [수정된 함수] ---
   loadConversations: (userId) => {
-    const q = query(collection(get().db, "chats", userId, "conversations"), orderBy("updatedAt", "desc"));
+    const q = query(collection(get().db, "chats", userId, "conversations"), orderBy("pinned", "desc"), orderBy("updatedAt", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const conversations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       set({ conversations });
@@ -319,6 +320,15 @@ export const createChatSlice = (set, get) => ({
     await updateDoc(conversationRef, { title: newTitle.trim() });
   },
 
+  // --- 👇 [새로운 함수] ---
+  pinConversation: async (conversationId, pinned) => {
+    const user = get().user;
+    if (!user) return;
+    const conversationRef = doc(get().db, "chats", user.uid, "conversations", conversationId);
+    await updateDoc(conversationRef, { pinned });
+  },
+
+  // --- 👇 [수정된 함수] ---
   saveMessage: async (message) => {
     const user = get().user;
     if (!user) return;
@@ -329,6 +339,7 @@ export const createChatSlice = (set, get) => ({
         title: firstMessageContent.substring(0, 30),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
+        pinned: false, // Pinned 상태 초기화
       });
       conversationId = conversationRef.id;
       get().unsubscribeMessages?.();

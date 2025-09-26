@@ -1,5 +1,4 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
 import { useChatStore } from '../store';
 import { useTranslations } from '../hooks/useTranslations';
 import styles from './HistoryPanel.module.css';
@@ -24,6 +23,7 @@ export default function HistoryPanel() {
     currentConversationId,
     deleteConversation,
     updateConversationTitle,
+    pinConversation,
     isHistoryPanelOpen,
     toggleHistoryPanel,
     isSearchModalOpen,
@@ -36,22 +36,26 @@ export default function HistoryPanel() {
     hasUnreadNotifications,
     isManualModalOpen,
     openManualModal,
-    // --- 👇 [추가된 부분] ---
     expandedConversationId,
     scenariosForConversation,
     toggleConversationExpansion,
-    openScenarioPanel, 
-    // --- 👆 [여기까지] ---
+    openScenarioPanel,
+    openConfirmModal,
   } = useChatStore();
   const { t } = useTranslations();
 
   if (!user) return null;
 
-  const handleDelete = (e, convoId) => {
+  const handleDeleteRequest = (e, convoId) => {
     e.stopPropagation();
-    if (window.confirm(t('deleteConvoConfirm'))) {
-        deleteConversation(convoId);
-    }
+    openConfirmModal({
+      title: 'Alert',
+      message: t('deleteConvoConfirm'),
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      onConfirm: () => deleteConversation(convoId),
+      confirmVariant: 'danger',
+    });
   };
 
   return (
@@ -87,20 +91,19 @@ export default function HistoryPanel() {
             <div className={styles.panelContent}>
             <div className={styles.conversationList}>
                 {conversations.map((convo) => (
-                    // --- 👇 [수정된 부분] ---
                     <ConversationItem
                         key={convo.id}
                         convo={convo}
                         isActive={convo.id === currentConversationId}
                         onClick={loadConversation}
-                        onDelete={handleDelete}
+                        onDelete={handleDeleteRequest}
                         onUpdateTitle={updateConversationTitle}
+                        onPin={pinConversation}
                         isExpanded={convo.id === expandedConversationId}
                         scenarios={scenariosForConversation[convo.id]}
                         onToggleExpand={toggleConversationExpansion}
                         onScenarioClick={openScenarioPanel}
                     />
-                    // --- 👆 [여기까지] ---
                 ))}
             </div>
             <div className={styles.footer}>

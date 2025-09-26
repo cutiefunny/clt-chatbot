@@ -1,10 +1,8 @@
 'use client';
 
-import { useState } from 'react';
 import { useChatStore } from '../store';
 import { useTranslations } from '../hooks/useTranslations';
 import styles from './ProfileModal.module.css';
-import LogoutModal from './LogoutModal';
 import Modal from './Modal';
 import CloseIcon from './icons/CloseIcon';
 import Link from 'next/link';
@@ -23,15 +21,25 @@ export default function ProfileModal() {
     openDevBoardModal,
     language,
     setLanguage,
+    openConfirmModal, // --- 👈 [추가]
   } = useChatStore();
   const { t } = useTranslations();
-  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
-  const handleLogoutConfirm = () => {
-      logout();
-      setIsLogoutModalOpen(false);
-      closeProfileModal();
+  // --- 👇 [수정된 부분] ---
+  const handleLogoutRequest = () => {
+    openConfirmModal({
+      title: 'Log Out',
+      message: t('logoutConfirm'),
+      confirmText: 'Log Out',
+      cancelText: 'Cancel',
+      onConfirm: () => {
+        logout();
+        closeProfileModal();
+      },
+      confirmVariant: 'danger',
+    });
   };
+  // --- 👆 [여기까지] ---
   
   const handleDevBoardClick = () => {
     openDevBoardModal();
@@ -96,13 +104,11 @@ export default function ProfileModal() {
               시나리오 메뉴 편집 (임시)
             </Link>
 
-            <button onClick={() => setIsLogoutModalOpen(true)} className={styles.logoutButton}>
+            <button onClick={handleLogoutRequest} className={styles.logoutButton}>
               {t('logout')}
             </button>
           </div>
       </Modal>
-      
-      {isLogoutModalOpen && <LogoutModal onClose={() => setIsLogoutModalOpen(false)} onConfirm={handleLogoutConfirm} />}
     </>
   );
 }
