@@ -19,7 +19,7 @@ export const createUISlice = (set, get) => ({
   isHistoryPanelOpen: false,
   activePanel: 'main',
   focusRequest: 0,
-  shortcutMenuOpen: null, // --- 👈 [추가] 숏컷 메뉴 상태
+  shortcutMenuOpen: null,
   ephemeralToast: {
     visible: false,
     message: '',
@@ -27,7 +27,7 @@ export const createUISlice = (set, get) => ({
   },
 
   // Actions
-  setShortcutMenuOpen: (menuName) => set({ shortcutMenuOpen: menuName }), // --- 👈 [추가] 숏컷 메뉴 제어 함수
+  setShortcutMenuOpen: (menuName) => set({ shortcutMenuOpen: menuName }),
 
   showEphemeralToast: (message, type = 'info') => {
     set({ ephemeralToast: { visible: true, message, type } });
@@ -39,8 +39,9 @@ export const createUISlice = (set, get) => ({
      set(state => ({ ephemeralToast: { ...state.ephemeralToast, visible: false } }));
   },
   
-  toggleTheme: async () => {
-    const newTheme = get().theme === 'light' ? 'dark' : 'light';
+  // --- 👇 [새로운 함수] ---
+  setTheme: async (newTheme) => {
+    if (get().theme === newTheme) return; // 불필요한 업데이트 방지
     set({ theme: newTheme });
     if (typeof window !== 'undefined') {
       localStorage.setItem('theme', newTheme);
@@ -54,6 +55,12 @@ export const createUISlice = (set, get) => ({
         console.error("Error saving theme to Firestore:", error);
       }
     }
+  },
+  
+  // --- 👇 [수정된 함수] ---
+  toggleTheme: async () => {
+    const newTheme = get().theme === 'light' ? 'dark' : 'light';
+    await get().setTheme(newTheme); // setTheme 호출
   },
 
   setFontSize: async (size) => {

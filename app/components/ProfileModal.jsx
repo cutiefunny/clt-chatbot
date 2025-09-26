@@ -5,9 +5,9 @@ import { useChatStore } from '../store';
 import { useTranslations } from '../hooks/useTranslations';
 import styles from './ProfileModal.module.css';
 import LogoutModal from './LogoutModal';
-import Modal from './Modal'; // Modal import
-import CloseIcon from './icons/CloseIcon'; // CloseIcon import
-import Link from 'next/link'; // Link 컴포넌트 import
+import Modal from './Modal';
+import CloseIcon from './icons/CloseIcon';
+import Link from 'next/link';
 
 const CheckIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -19,10 +19,6 @@ export default function ProfileModal() {
   const {
     user,
     logout,
-    theme,
-    toggleTheme,
-    fontSize,
-    setFontSize,
     closeProfileModal,
     openDevBoardModal,
     language,
@@ -56,46 +52,6 @@ export default function ProfileModal() {
               <img src={user.photoURL} alt="User Avatar" className={styles.avatar} />
               <p className={styles.userName}>{t('greeting')(user.displayName)}</p>
               <p className={styles.userEmail}>{user.email}</p>
-            </div>
-
-            <div className={styles.settingsSection}>
-              <h3 className={styles.sectionTitle}>{t('screenStyle')}</h3>
-              <div className={styles.optionGroup}>
-                <button
-                  className={`${styles.optionButton} ${theme === 'light' ? styles.active : ''}`}
-                  onClick={toggleTheme}
-                >
-                  {theme === 'light' && <div className={styles.checkIcon}><CheckIcon /></div>}
-                  {t('lightMode')}
-                </button>
-                <button
-                  className={`${styles.optionButton} ${theme === 'dark' ? styles.active : ''}`}
-                  onClick={toggleTheme}
-                >
-                  {theme === 'dark' && <div className={styles.checkIcon}><CheckIcon /></div>}
-                  {t('darkMode')}
-                </button>
-              </div>
-            </div>
-
-            <div className={styles.settingsSection}>
-                <h3 className={styles.sectionTitle}>{t('fontSize')}</h3>
-                <div className={styles.optionGroup}>
-                    <button
-                        className={`${styles.optionButton} ${fontSize === 'small' ? styles.active : ''}`}
-                        onClick={() => setFontSize('small')}
-                    >
-                        {fontSize === 'small' && <div className={styles.checkIcon}><CheckIcon /></div>}
-                        {t('fontSmall')}
-                    </button>
-                    <button
-                        className={`${styles.optionButton} ${fontSize === 'default' ? styles.active : ''}`}
-                        onClick={() => setFontSize('default')}
-                    >
-                        {fontSize === 'default' && <div className={styles.checkIcon}><CheckIcon /></div>}
-                        {t('fontDefault')}
-                    </button>
-                </div>
             </div>
             
             <div className={styles.settingsSection}>

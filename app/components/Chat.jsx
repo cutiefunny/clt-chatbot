@@ -4,10 +4,20 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useChatStore } from '../store';
 import { useTranslations } from '../hooks/useTranslations';
 import styles from './Chat.module.css';
-import FavoritePanel from './FavoritePanel'; // --- [추가]
+import FavoritePanel from './FavoritePanel';
 
 export default function Chat() {
-  const { messages, isLoading, openScenarioPanel, loadMoreMessages, hasMoreMessages } = useChatStore();
+  const { 
+    messages, 
+    isLoading, 
+    openScenarioPanel, 
+    loadMoreMessages, 
+    hasMoreMessages,
+    theme,
+    setTheme,
+    fontSize,
+    setFontSize,
+  } = useChatStore();
   const [copiedMessageId, setCopiedMessageId] = useState(null);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const historyRef = useRef(null);
@@ -25,7 +35,6 @@ export default function Chat() {
     const scrollContainer = historyRef.current;
     if (!scrollContainer) return;
 
-    // --- 👇 [수정] messages.length > 1 조건 추가 ---
     if (messages.length > 1) {
         const scrollToBottom = () => {
           scrollContainer.scrollTop = scrollContainer.scrollHeight;
@@ -70,9 +79,40 @@ export default function Chat() {
             <span className={styles.headerSubtitle}>Hybrid Assistant</span>
           </div>
         </div>
+        <div className={styles.headerButtons}>
+            {/* --- 👇 [수정된 부분] --- */}
+            <div className={styles.settingControl}>
+                <span className={styles.settingLabel}>Large text</span>
+                <label className={styles.switch}>
+                    <input
+                        type="checkbox"
+                        checked={fontSize === 'default'}
+                        onChange={() => setFontSize(fontSize === 'default' ? 'small' : 'default')}
+                    />
+                    <span className={styles.slider}></span>
+                </label>
+            </div>
+
+            <div className={styles.separator}></div>
+
+            <div className={styles.themeControl}>
+                <button
+                    className={`${styles.themeButton} ${theme === 'light' ? styles.active : ''}`}
+                    onClick={() => setTheme('light')}
+                >
+                    {theme === 'light' && '✓ '}Light
+                </button>
+                <button
+                    className={`${styles.themeButton} ${theme === 'dark' ? styles.active : ''}`}
+                    onClick={() => setTheme('dark')}
+                >
+                    {theme === 'dark' && '✓ '}Dark
+                </button>
+            </div>
+            {/* --- 👆 [여기까지] --- */}
+        </div>
       </div>
       
-      {/* --- 👇 [수정] 대화 내용이 없을 때 FavoritePanel을 렌더링 --- */}
       <div className={styles.history} ref={historyRef}>
         {messages.length <= 1 ? (
           <FavoritePanel />
@@ -85,7 +125,7 @@ export default function Chat() {
                 </div>
             )}
             {messages.map((msg) => (
-              msg.id !== 'initial' && ( // 초기 메시지는 렌더링하지 않음
+              msg.id !== 'initial' && (
                 <div key={msg.id} className={`${styles.messageRow} ${msg.sender === 'user' ? styles.userRow : ''}`}>
                   {msg.sender === 'bot' && <img src="/images/avatar.png" alt="Avatar" className={styles.avatar} />}
                   <div 
