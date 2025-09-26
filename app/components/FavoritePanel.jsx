@@ -11,7 +11,16 @@ const PlusIcon = () => (
 );
 
 export default function FavoritePanel() {
-    const { favorites, isLoading, handleShortcutClick, openShortcutPicker, updateFavoritesOrder } = useChatStore();
+    // --- 👇 [수정] 필요한 상태와 함수를 스토어에서 가져옵니다. ---
+    const { 
+        favorites, 
+        isLoading, 
+        handleShortcutClick, 
+        updateFavoritesOrder, 
+        setShortcutMenuOpen, 
+        scenarioCategories,
+        deleteFavorite,
+    } = useChatStore();
     
     const onDragEnd = (result) => {
         if (!result.destination) return;
@@ -21,6 +30,13 @@ export default function FavoritePanel() {
         items.splice(result.destination.index, 0, reorderedItem);
 
         updateFavoritesOrder(items);
+    };
+
+    // --- 👇 [추가] 'Add Favorite' 버튼 클릭 핸들러 ---
+    const handleAddFavoriteClick = () => {
+        if (scenarioCategories && scenarioCategories.length > 0) {
+            setShortcutMenuOpen(scenarioCategories[0].name);
+        }
     };
     
     if (isLoading && favorites.length === 0) {
@@ -55,22 +71,37 @@ export default function FavoritePanel() {
                                         <div
                                             ref={provided.innerRef}
                                             {...provided.draggableProps}
-                                            {...provided.dragHandleProps}
                                             className={`${styles.favoriteItem} ${snapshot.isDragging ? styles.dragging : ''}`}
-                                            onClick={() => handleShortcutClick(fav)}
                                         >
-                                            <div className={styles.itemIcon}>{fav.icon || '🌟'}</div>
-                                            <div className={styles.itemText}>
-                                                <div className={styles.itemTitle}>{fav.title}</div>
-                                                <div className={styles.itemDescription}>{fav.description}</div>
+                                            <div
+                                                {...provided.dragHandleProps}
+                                                className={styles.dragHandle}
+                                            >
+                                                ⠿
                                             </div>
+                                            <div className={styles.itemContent} onClick={() => handleShortcutClick(fav)}>
+                                                <div className={styles.itemIcon}>{fav.icon || '🌟'}</div>
+                                                <div className={styles.itemText}>
+                                                    <div className={styles.itemTitle}>{fav.title}</div>
+                                                    <div className={styles.itemDescription}>{fav.description}</div>
+                                                </div>
+                                            </div>
+                                            <button 
+                                                className={styles.deleteButton} 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    deleteFavorite(fav.id);
+                                                }}
+                                            >
+                                                ✕
+                                            </button>
                                         </div>
                                     )}
                                 </Draggable>
                             ))}
                             {provided.placeholder}
                             
-                            <button className={`${styles.favoriteItem} ${styles.addItem}`} onClick={openShortcutPicker}>
+                            <button className={`${styles.favoriteItem} ${styles.addItem}`} onClick={handleAddFavoriteClick}>
                                 <div className={styles.addIcon}><PlusIcon/></div>
                                 <div className={styles.itemText}>
                                     <div className={styles.itemTitle}>Add Favorite</div>

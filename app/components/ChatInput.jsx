@@ -50,13 +50,14 @@ export default function ChatInput() {
         favorites,
         toggleFavorite,
         handleShortcutClick,
+        shortcutMenuOpen, // --- 👈 [수정] 스토어에서 상태 가져오기
+        setShortcutMenuOpen, // --- 👈 [수정] 스토어에서 함수 가져오기
     } = useChatStore();
     
     const { t } = useTranslations();
     const inputRef = useRef(null);
     const quickRepliesSlider = useDraggableScroll();
-    const [openMenu, setOpenMenu] = useState(null);
-    const menuRef = useRef(null);
+    const menuRef = useRef(null); // --- 👈 [수정] 로컬 상태 제거
     
     const activeScenario = activeScenarioSessionId ? scenarioStates[activeScenarioSessionId] : null;
     const mainMessages = useChatStore(state => state.messages);
@@ -68,14 +69,14 @@ export default function ChatInput() {
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (menuRef.current && !menuRef.current.contains(event.target)) {
-                setOpenMenu(null);
+                setShortcutMenuOpen(null); // --- 👈 [수정]
             }
         };
         document.addEventListener("mousedown", handleClickOutside);
         return () => {
             document.removeEventListener("mousedown", handleClickOutside);
         };
-    }, []);
+    }, [setShortcutMenuOpen]);
 
     useEffect(() => {
         if (!isInputDisabled) {
@@ -115,7 +116,7 @@ export default function ChatInput() {
     
     const handleItemClick = (item) => {
         handleShortcutClick(item);
-        setOpenMenu(null);
+        setShortcutMenuOpen(null); // --- 👈 [수정]
     }
 
     return (
@@ -123,13 +124,14 @@ export default function ChatInput() {
             <div className={styles.quickActionsContainer} ref={menuRef}>
                  {scenarioCategories.map(category => (
                     <div key={category.name} className={styles.categoryWrapper}>
+                        {/* --- 👇 [수정] 스토어 상태를 사용하도록 모두 변경 --- */}
                         <button 
-                            className={`${styles.categoryButton} ${openMenu === category.name ? styles.active : ''}`}
-                            onClick={() => setOpenMenu(openMenu === category.name ? null : category.name)}
+                            className={`${styles.categoryButton} ${shortcutMenuOpen === category.name ? styles.active : ''}`}
+                            onClick={() => setShortcutMenuOpen(shortcutMenuOpen === category.name ? null : category.name)}
                         >
-                            {category.name} <ChevronDownIcon style={{ transform: openMenu === category.name ? 'rotate(180deg)' : 'rotate(0deg)' }}/>
+                            {category.name} <ChevronDownIcon style={{ transform: shortcutMenuOpen === category.name ? 'rotate(180deg)' : 'rotate(0deg)' }}/>
                         </button>
-                        {openMenu === category.name && (
+                        {shortcutMenuOpen === category.name && (
                             <div className={styles.dropdownMenu}>
                                {category.subCategories.map(subCategory => (
                                    <div key={subCategory.title} className={styles.subCategorySection}>
@@ -146,13 +148,13 @@ export default function ChatInput() {
                                                     onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleItemClick(item)}
                                                 >
                                                    <button 
-                                                        className={`${styles.favoriteButton} ${isFavorited ? styles.favorited : ''}`} 
-                                                        onClick={(e) => {
-                                                            e.stopPropagation(); 
-                                                            toggleFavorite(item);
-                                                        }}
-                                                    >
-                                                    <StarIcon size={18} filled={isFavorited} />
+                                                            className={`${styles.favoriteButton} ${isFavorited ? styles.favorited : ''}`} 
+                                                            onClick={(e) => {
+                                                                e.stopPropagation(); 
+                                                                toggleFavorite(item);
+                                                            }}
+                                                        >
+                                                        <StarIcon size={18} filled={isFavorited} />
                                                     </button>
                                                    <div className={styles.itemContent}>
                                                        <span className={styles.itemTitle}>{item.title}</span>

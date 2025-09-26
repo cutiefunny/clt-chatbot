@@ -19,7 +19,7 @@ export const createUISlice = (set, get) => ({
   isHistoryPanelOpen: false,
   activePanel: 'main',
   focusRequest: 0,
-  // --- 👇 [추가] UI 전용 휘발성 토스트 상태 ---
+  shortcutMenuOpen: null, // --- 👈 [추가] 숏컷 메뉴 상태
   ephemeralToast: {
     visible: false,
     message: '',
@@ -27,7 +27,8 @@ export const createUISlice = (set, get) => ({
   },
 
   // Actions
-  // --- 👇 [추가] UI 전용 휘발성 토스트를 보여주는 함수 ---
+  setShortcutMenuOpen: (menuName) => set({ shortcutMenuOpen: menuName }), // --- 👈 [추가] 숏컷 메뉴 제어 함수
+
   showEphemeralToast: (message, type = 'info') => {
     set({ ephemeralToast: { visible: true, message, type } });
     setTimeout(() => {
