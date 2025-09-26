@@ -55,17 +55,16 @@ export default function ChatInput() {
     const { t } = useTranslations();
     const inputRef = useRef(null);
     const quickRepliesSlider = useDraggableScroll();
-    const [openMenu, setOpenMenu] = useState(null); // --- [추가] 드롭다운 상태
-    const menuRef = useRef(null); // --- [추가] 외부 클릭 감지를 위한 ref
-
+    const [openMenu, setOpenMenu] = useState(null);
+    const menuRef = useRef(null);
+    
     const activeScenario = activeScenarioSessionId ? scenarioStates[activeScenarioSessionId] : null;
     const mainMessages = useChatStore(state => state.messages);
     const isInputDisabled = activePanel === 'scenario' ? activeScenario?.isLoading ?? false : isLoading;
     const lastMessage = activePanel === 'main' ? mainMessages[mainMessages.length - 1] : activeScenario?.messages[activeScenario.messages.length - 1];
     const currentBotMessageNode = lastMessage?.sender === 'bot' ? lastMessage.node : null;
     const currentScenarioNodeId = activeScenario?.state?.currentNodeId;
-    
-    // --- 👇 [추가] 외부 클릭 시 드롭다운 닫기 ---
+
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -114,6 +113,11 @@ export default function ChatInput() {
         }
     }
     
+    const handleItemClick = (item) => {
+        handleShortcutClick(item);
+        setOpenMenu(null);
+    }
+
     return (
         <div className={styles.inputArea}>
             <div className={styles.quickActionsContainer} ref={menuRef}>
@@ -134,15 +138,22 @@ export default function ChatInput() {
                                         const isFavorited = favorites.some(fav => fav.action.type === item.action.type && fav.action.value === item.action.value);
                                         return (
                                            <div key={item.title} className={styles.dropdownItem}>
-                                               <button className={styles.itemContentWrapper} onClick={() => { handleShortcutClick(item); setOpenMenu(null); }}>
+                                               <button className={styles.itemContentWrapper} onClick={() => handleItemClick(item)}>
                                                    <div className={styles.itemIcon}><StarIcon size={14} /></div>
                                                    <div className={styles.itemContent}>
                                                        <span className={styles.itemTitle}>{item.title}</span>
                                                        <span className={styles.itemDescription}>{item.description}</span>
                                                    </div>
                                                </button>
-                                               <button className={`${styles.favoriteButton} ${isFavorited ? styles.favorited : ''}`} onClick={() => toggleFavorite(item)}>
-                                                   <StarIcon size={18} />
+                                                {/* --- 👇 [수정] 이벤트 버블링을 막기 위해 e.stopPropagation() 추가 --- */}
+                                               <button 
+                                                    className={`${styles.favoriteButton} ${isFavorited ? styles.favorited : ''}`} 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation(); 
+                                                        toggleFavorite(item);
+                                                    }}
+                                                >
+                                                   <StarIcon size={18} filled={isFavorited} />
                                                </button>
                                            </div>
                                         )
@@ -154,6 +165,7 @@ export default function ChatInput() {
                     </div>
                 ))}
             </div>
+
 
             {(currentBotMessageNode?.data?.replies) && (
                 <div className={styles.buttonRow}>

@@ -2,16 +2,15 @@
 
 import { useChatStore } from '../store';
 import styles from './FavoritePanel.module.css';
-// FavoriteEditModal import is removed
 
 const PlusIcon = () => (
-    <svg width="24" height="24" viewBox="0 0 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M12 5V19M5 12H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
 );
 
 export default function FavoritePanel() {
-    const { favorites, isLoading, handleShortcutClick } = useChatStore();
+    const { favorites, isLoading, handleShortcutClick, openShortcutPicker } = useChatStore();
     
     if (isLoading && favorites.length === 0) {
         return (
@@ -28,6 +27,7 @@ export default function FavoritePanel() {
         <div className={styles.panel}>
             <div className={styles.welcomeMessage}>
                 <h2>Welcome to AI Chatbot</h2>
+                <p>You can customize your own action buttons below.</p>
             </div>
 
             <div className={styles.favoritesGrid}>
@@ -41,14 +41,13 @@ export default function FavoritePanel() {
                     </button>
                 ))}
 
-                {/* --- 👇 [수정] onClick 핸들러 제거 --- */}
-                <div className={`${styles.favoriteItem} ${styles.addItem}`}>
+                <button className={`${styles.favoriteItem} ${styles.addItem}`} onClick={openShortcutPicker}>
                     <div className={styles.addIcon}><PlusIcon/></div>
                     <div className={styles.itemText}>
                         <div className={styles.itemTitle}>Add Favorite</div>
                         <div className={styles.itemDescription}>Customize via Shortcuts menu</div>
                     </div>
-                </div>
+                </button>
             </div>
         </div>
     );

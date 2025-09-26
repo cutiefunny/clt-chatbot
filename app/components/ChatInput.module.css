@@ -76,10 +76,6 @@
     gap: 8px;
     width: 100%;
     border-radius: 8px;
-    transition: background-color 0.2s;
-}
-.dropdownItem:hover {
-    background-color: var(--button-hover-bg);
 }
 
 .itemContentWrapper {
@@ -92,6 +88,12 @@
     border: none;
     text-align: left;
     cursor: pointer;
+    border-radius: 6px;
+    transition: background-color 0.2s;
+}
+
+.itemContentWrapper:hover {
+    background-color: var(--button-hover-bg);
 }
 
 .itemIcon {
@@ -126,21 +128,23 @@
     background: none;
     border: none;
     cursor: pointer;
-    padding: 8px;
-    margin-right: 8px;
+    padding: 10px; 
+    border-radius: 50%;
+    margin-right: 4px;
     color: var(--panel-border-color);
-    transition: color 0.2s;
+    transition: color 0.2s, background-color 0.2s;
+    /* --- 👇 [추가] z-index를 추가하여 다른 요소와의 상호작용 우선순위를 높입니다 --- */
+    position: relative;
+    z-index: 2;
 }
 
 .favoriteButton:hover {
     color: #fdd835;
+    background-color: var(--button-hover-bg);
 }
 
 .favoriteButton.favorited {
     color: #fdd835;
-}
-.favoriteButton.favorited svg {
-    fill: #fdd835;
 }
 
 .buttonRow {
