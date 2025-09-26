@@ -1,4 +1,4 @@
-import { collection, addDoc, query, orderBy, onSnapshot, getDocs, serverTimestamp, deleteDoc, doc, updateDoc, limit, startAfter, where } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, getDocs, serverTimestamp, deleteDoc, doc, updateDoc, limit, startAfter, where, writeBatch } from 'firebase/firestore';
 import { locales } from '../../lib/locales';
 import { getErrorKey } from '../../lib/errorHandler';
 
@@ -47,10 +47,9 @@ export const createChatSlice = (set, get) => ({
   
   favorites: [],
   unsubscribeFavorites: null,
-  // isShortcutPickerOpen state is removed
 
   loadFavorites: (userId) => {
-    const q = query(collection(get().db, "users", userId, "favorites"), orderBy("createdAt", "asc"));
+    const q = query(collection(get().db, "users", userId, "favorites"), orderBy("order", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const favorites = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       set({ favorites });
@@ -65,7 +64,29 @@ export const createChatSlice = (set, get) => ({
     await addDoc(favoritesCollection, {
       ...favoriteData,
       createdAt: serverTimestamp(),
+      order: get().favorites.length,
     });
+  },
+
+  updateFavoritesOrder: async (reorderedFavorites) => {
+    const user = get().user;
+    if (!user) return;
+    
+    set({ favorites: reorderedFavorites });
+
+    const batch = writeBatch(get().db);
+    reorderedFavorites.forEach((fav, index) => {
+      const favRef = doc(get().db, "users", user.uid, "favorites", fav.id);
+      batch.update(favRef, { order: index });
+    });
+
+    try {
+      await batch.commit();
+    } catch (error) {
+      console.error("Error updating favorites order:", error);
+      get().showEphemeralToast("Failed to save new order.", "error");
+      get().loadFavorites(user.uid);
+    }
   },
 
   deleteFavorite: async (favoriteId) => {
@@ -73,6 +94,9 @@ export const createChatSlice = (set, get) => ({
     if (!user) return;
     const favoriteRef = doc(get().db, "users", user.uid, "favorites", favoriteId);
     await deleteDoc(favoriteRef);
+    const remainingFavorites = get().favorites.filter(fav => fav.id !== favoriteId)
+      .map((fav, index) => ({ ...fav, order: index }));
+    get().updateFavoritesOrder(remainingFavorites);
   },
 
   toggleFavorite: async (item) => {

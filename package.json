@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@hello-pangea/dnd": "^18.0.1",
     "firebase": "^12.2.1",
     "next": "15.5.2",
     "react": "19.1.0",

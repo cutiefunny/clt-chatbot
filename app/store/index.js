@@ -55,6 +55,7 @@ export const useChatStore = create((set, get) => ({
         get().loadConversations(user.uid);
         get().loadDevMemos();
         get().loadNotifications(user.uid);
+        get().loadFavorites(user.uid); // --- 👈 [추가] 로그인 시 즐겨찾기 로드
       } else {
         get().unsubscribeAll();
         
@@ -89,11 +90,13 @@ export const useChatStore = create((set, get) => ({
     get().unsubscribeMessages?.();
     get().unsubscribeDevMemos?.();
     get().unsubscribeNotifications?.();
+    get().unsubscribeFavorites?.(); // --- 👈 [추가] 즐겨찾기 구독 해제
     set({ 
         unsubscribeConversations: null, 
         unsubscribeMessages: null, 
         unsubscribeDevMemos: null,
-        unsubscribeNotifications: null 
+        unsubscribeNotifications: null,
+        unsubscribeFavorites: null, // --- 👈 [추가]
     });
   },
 }));

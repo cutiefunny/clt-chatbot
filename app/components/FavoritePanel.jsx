@@ -2,6 +2,7 @@
 
 import { useChatStore } from '../store';
 import styles from './FavoritePanel.module.css';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 const PlusIcon = () => (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -10,7 +11,17 @@ const PlusIcon = () => (
 );
 
 export default function FavoritePanel() {
-    const { favorites, isLoading, handleShortcutClick, openShortcutPicker } = useChatStore();
+    const { favorites, isLoading, handleShortcutClick, openShortcutPicker, updateFavoritesOrder } = useChatStore();
+    
+    const onDragEnd = (result) => {
+        if (!result.destination) return;
+
+        const items = Array.from(favorites);
+        const [reorderedItem] = items.splice(result.source.index, 1);
+        items.splice(result.destination.index, 0, reorderedItem);
+
+        updateFavoritesOrder(items);
+    };
     
     if (isLoading && favorites.length === 0) {
         return (
@@ -30,25 +41,46 @@ export default function FavoritePanel() {
                 <p>You can customize your own action buttons below.</p>
             </div>
 
-            <div className={styles.favoritesGrid}>
-                {favorites.map((fav) => (
-                    <button key={fav.id} className={styles.favoriteItem} onClick={() => handleShortcutClick(fav)}>
-                        <div className={styles.itemIcon}>{fav.icon || '🌟'}</div>
-                        <div className={styles.itemText}>
-                            <div className={styles.itemTitle}>{fav.title}</div>
-                            <div className={styles.itemDescription}>{fav.description}</div>
+            <DragDropContext onDragEnd={onDragEnd}>
+                <Droppable droppableId="favorites">
+                    {(provided) => (
+                        <div
+                            className={styles.favoritesGrid}
+                            {...provided.droppableProps}
+                            ref={provided.innerRef}
+                        >
+                            {favorites.map((fav, index) => (
+                                <Draggable key={fav.id} draggableId={fav.id} index={index}>
+                                    {(provided, snapshot) => (
+                                        <div
+                                            ref={provided.innerRef}
+                                            {...provided.draggableProps}
+                                            {...provided.dragHandleProps}
+                                            className={`${styles.favoriteItem} ${snapshot.isDragging ? styles.dragging : ''}`}
+                                            onClick={() => handleShortcutClick(fav)}
+                                        >
+                                            <div className={styles.itemIcon}>{fav.icon || '🌟'}</div>
+                                            <div className={styles.itemText}>
+                                                <div className={styles.itemTitle}>{fav.title}</div>
+                                                <div className={styles.itemDescription}>{fav.description}</div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </Draggable>
+                            ))}
+                            {provided.placeholder}
+                            
+                            <button className={`${styles.favoriteItem} ${styles.addItem}`} onClick={openShortcutPicker}>
+                                <div className={styles.addIcon}><PlusIcon/></div>
+                                <div className={styles.itemText}>
+                                    <div className={styles.itemTitle}>Add Favorite</div>
+                                    <div className={styles.itemDescription}>Customize via Shortcuts menu</div>
+                                </div>
+                            </button>
                         </div>
-                    </button>
-                ))}
-
-                <button className={`${styles.favoriteItem} ${styles.addItem}`} onClick={openShortcutPicker}>
-                    <div className={styles.addIcon}><PlusIcon/></div>
-                    <div className={styles.itemText}>
-                        <div className={styles.itemTitle}>Add Favorite</div>
-                        <div className={styles.itemDescription}>Customize via Shortcuts menu</div>
-                    </div>
-                </button>
-            </div>
+                    )}
+                </Droppable>
+            </DragDropContext>
         </div>
     );
 }

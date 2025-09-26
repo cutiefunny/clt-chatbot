@@ -138,23 +138,27 @@ export default function ChatInput() {
                                         const isFavorited = favorites.some(fav => fav.action.type === item.action.type && fav.action.value === item.action.value);
                                         return (
                                            <div key={item.title} className={styles.dropdownItem}>
-                                               <button className={styles.itemContentWrapper} onClick={() => handleItemClick(item)}>
-                                                   <div className={styles.itemIcon}><StarIcon size={14} /></div>
+                                               <div 
+                                                    className={styles.itemContentWrapper} 
+                                                    onClick={() => handleItemClick(item)}
+                                                    role="button"
+                                                    tabIndex="0"
+                                                    onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleItemClick(item)}
+                                                >
+                                                   <button 
+                                                        className={`${styles.favoriteButton} ${isFavorited ? styles.favorited : ''}`} 
+                                                        onClick={(e) => {
+                                                            e.stopPropagation(); 
+                                                            toggleFavorite(item);
+                                                        }}
+                                                    >
+                                                    <StarIcon size={18} filled={isFavorited} />
+                                                    </button>
                                                    <div className={styles.itemContent}>
                                                        <span className={styles.itemTitle}>{item.title}</span>
                                                        <span className={styles.itemDescription}>{item.description}</span>
                                                    </div>
-                                               </button>
-                                                {/* --- 👇 [수정] 이벤트 버블링을 막기 위해 e.stopPropagation() 추가 --- */}
-                                               <button 
-                                                    className={`${styles.favoriteButton} ${isFavorited ? styles.favorited : ''}`} 
-                                                    onClick={(e) => {
-                                                        e.stopPropagation(); 
-                                                        toggleFavorite(item);
-                                                    }}
-                                                >
-                                                   <StarIcon size={18} filled={isFavorited} />
-                                               </button>
+                                               </div>
                                            </div>
                                         )
                                       })}
