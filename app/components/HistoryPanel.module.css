@@ -122,7 +122,6 @@
 }
 
 .historyPanel.open .iconButton {
- 
   display: flex;
 }
 
@@ -153,7 +152,6 @@
 }
 
 .historyPanel.open .toggleButton {
- 
   position: absolute;
   top: 12px;
   left: 8px;
@@ -247,35 +245,35 @@
 
 /* --- 👇 [수정/추가된 부분] --- */
 .conversationItem {
-    display: flex;
-    align-items: center;
-    margin-bottom: 0.5rem;
-    border-radius: 8px;
-    color: var(--text-color);
-    position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  border-radius: 8px;
+  color: var(--text-color);
+  position: relative;
 }
 .conversationItem:hover {
-    background-color: var(--button-hover-bg);
+  background-color: var(--button-hover-bg);
 }
 .conversationItem.active {
-    background-color: var(--convo-item-active-bg);
-    font-weight: bold;
+  background-color: var(--convo-item-active-bg);
+  font-weight: bold;
 }
 .convoMain {
-    display: flex;
-    align-items: center;
-    flex-grow: 1;
-    cursor: pointer;
-    padding: 0.75rem;
-    gap: 4px;
-    min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-grow: 1;
+  cursor: pointer;
+  padding: 0.75rem;
+  gap: 4px;
+  min-width: 0;
 }
 .pinIndicator {
-    flex-shrink: 0;
-    color: var(--text-color);
-    display: flex;
-    align-items: center;
-    margin-right: 4px;
+  flex-shrink: 0;
+  color: var(--text-color);
+  display: flex;
+  align-items: center;
+  margin-right: 4px;
 }
 .convoTitle {
   white-space: nowrap;
@@ -285,17 +283,17 @@
   padding-right: 8px;
 }
 .titleInput {
-    width: 100%;
-    background-color: var(--input-bg);
-    border: 1px solid var(--input-border);
-    border-radius: 4px;
-    padding: 4px 6px;
-    font-size: 0.9rem;
-    color: var(--text-color);
-    flex-grow: 1;
+  width: 100%;
+  background-color: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 0.9rem;
+  color: var(--text-color);
+  flex-grow: 1;
 }
 .editConfirmButton {
-    padding-right: 8px;
+  padding-right: 8px;
   width: 100%;
   background-color: var(--input-bg);
   border: 1px solid var(--input-border);
@@ -313,24 +311,27 @@
   flex-shrink: 0;
 }
 .actionButton {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--action-button-color);
-    padding: 4px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: opacity 0.2s, color 0.2s, background-color 0.2s;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--action-button-color);
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s, color 0.2s, background-color 0.2s;
 }
 .actionButton:hover {
-    color: var(--action-button-hover-color);
-    background-color: var(--button-hover-bg);
+  color: var(--action-button-hover-color);
+  background-color: var(--button-hover-bg);
+}
+.actionButton:last-of-type:hover {
+  color: #d32f2f;
 }
 .menuContainer {
-    position: relative;
-    padding-right: 4px;
+  position: relative;
+  padding-right: 4px;
 }
 .menuButton {
   background: none;
@@ -349,115 +350,119 @@
 .menuButton[data-open="true"] {
   opacity: 1;
 }
-.menuButton:hover, .menuButton:focus {
+.menuButton:hover,
+.menuButton:focus {
   color: var(--action-button-hover-color);
   background-color: var(--button-hover-bg);
 }
 .dropdownMenu {
-    position: absolute;
-    right: 8px;
-    top: calc(100% - 4px);
-    background-color: var(--panel-bg-color);
-    border: 1px solid var(--panel-border-color);
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    z-index: 20;
-    width: 120px;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    padding: 4px;
+  position: absolute;
+  right: 8px;
+  top: calc(100% - 4px);
+  background-color: var(--panel-bg-color);
+  border: 1px solid var(--panel-border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 20;
+  width: 120px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
 }
 .dropdownMenu button {
-    background: none;
-    border: none;
-    padding: 8px 10px;
-    text-align: left;
-    width: 100%;
-    cursor: pointer;
-    font-size: 0.9rem;
-    color: var(--text-color);
-    transition: background-color 0.2s;
-    border-radius: 6px;
+  background: none;
+  border: none;
+  padding: 8px 10px;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--text-color);
+  transition: background-color 0.2s;
+  border-radius: 6px;
 }
 .dropdownMenu button:hover {
-    background-color: var(--button-hover-bg);
+  background-color: var(--button-hover-bg);
 }
 .dropdownMenu button:last-child:hover {
-    color: #fff;
-    background-color: #e74c3c;
+  color: #fff;
+  background-color: #e74c3c;
 }
 /* --- 👆 [여기까지] --- */
 
 .expandButton {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--action-button-color);
-    padding: 4px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.2s;
-    flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--action-button-color);
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+  flex-shrink: 0;
 }
 .expandButton:hover {
-    background-color: var(--button-hover-bg);
+  background-color: var(--button-hover-bg);
 }
 .scenarioSubList {
-    padding-left: 32px;
-    margin: -4px 0 8px 0;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    animation: fadeIn 0.3s ease-in-out;
+  padding-left: 32px;
+  margin: -4px 0 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  animation: fadeIn 0.3s ease-in-out;
 }
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-5px); }
-    to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 .scenarioItem {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.85rem;
-    transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background-color 0.2s;
 }
 .scenarioItem:hover {
-    background-color: var(--button-hover-bg);
+  background-color: var(--button-hover-bg);
 }
 .scenarioStatusDot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 .scenarioStatusDot[data-status="completed"] {
-    background-color: #8a8a8e;
+  background-color: #8a8a8e;
 }
 .scenarioStatusDot[data-status="active"] {
-    background-color: #2ecc71;
+  background-color: #2ecc71;
 }
 .scenarioTitle {
-    flex-grow: 1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-.actionButton:last-of-type:hover {
-  color: #d32f2f;
+  flex-grow: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .noScenarios {
-    padding: 8px;
-    font-size: 0.85rem;
-    color: #8a8a8e;
-    text-align: center;
+  padding: 8px;
+  font-size: 0.85rem;
+  color: #8a8a8e;
+  text-align: center;
 }
-
 
 .footer {
   padding: 0.75rem;
