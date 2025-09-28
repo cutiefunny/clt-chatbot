@@ -11,11 +11,9 @@ import ConversationItem from "./ConversationItem";
 import MenuIcon from "./icons/MenuIcon";
 import BellIcon from "./icons/BellIcon";
 import SearchIcon from "./icons/SearchIcon";
-import EditIcon from "./icons/EditIcon";
 import ManualIcon from "./icons/ManualIcon";
 import NewChatIcon from "./icons/NewChatIcon";
-import HistoryIcon from "./icons/HistoryIcon";
-import ExpandIcon from "./icons/ExpandIcon";
+import NoHistoryIcon from "./icons/NoHistoryIcon";
 
 export default function HistoryPanel() {
   const {
@@ -39,9 +37,7 @@ export default function HistoryPanel() {
     hasUnreadNotifications,
     isManualModalOpen,
     openManualModal,
-    expandedConversationId,
     scenariosForConversation,
-    toggleConversationExpansion,
     openScenarioPanel,
     openConfirmModal,
   } = useChatStore();
@@ -99,36 +95,35 @@ export default function HistoryPanel() {
               onClick={createNewConversation}
             >
               <NewChatIcon />
-              <span className={styles.sidePanelButtonText}>{t("newChat")}</span>
-            </button>
-            <button className={styles.sidePanelButton}>
-              <HistoryIcon />
-              <span className={styles.sidePanelButtonText}>{t("History")}</span>
-              {isHistoryPanelOpen && (
-                <span className={styles.expandIconWrapper}>
-                  <ExpandIcon />
-                </span>
-              )}
+              <span>{t("newChat")}</span>
             </button>
           </div>
 
           <div className={styles.panelContent}>
+            <span className={styles.commonText}>{t("History")}</span>
             <div className={styles.conversationList}>
-              {conversations.map((convo) => (
-                <ConversationItem
-                  key={convo.id}
-                  convo={convo}
-                  isActive={convo.id === currentConversationId}
-                  onClick={loadConversation}
-                  onDelete={handleDeleteRequest}
-                  onUpdateTitle={updateConversationTitle}
-                  onPin={pinConversation}
-                  isExpanded={convo.id === expandedConversationId}
-                  scenarios={scenariosForConversation[convo.id]}
-                  onToggleExpand={toggleConversationExpansion}
-                  onScenarioClick={openScenarioPanel}
-                />
-              ))}
+              {conversations.length > 0 ? (
+                conversations.map((convo) => (
+                  <ConversationItem
+                    key={convo.id}
+                    convo={convo}
+                    isActive={convo.id === currentConversationId}
+                    onClick={loadConversation}
+                    onDelete={handleDeleteRequest}
+                    onUpdateTitle={updateConversationTitle}
+                    onPin={pinConversation}
+                    scenarios={scenariosForConversation[convo.id]}
+                    onScenarioClick={openScenarioPanel}
+                  />
+                ))
+              ) : (
+                <div className={styles.historyTileWrapper}>
+                  <div className={styles.noHistoryBox}>
+                    <NoHistoryIcon />
+                    {t("noHistory")}
+                  </div>
+                </div>
+              )}
             </div>
             <div className={styles.footer}>
               <div className={styles.avatarWrapper} onClick={openProfileModal}>

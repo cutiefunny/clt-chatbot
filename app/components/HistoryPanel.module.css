@@ -165,26 +165,34 @@
 .sidePanelButton {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem;
-  color: var(--text-color);
+  gap: 8px;
+  padding: 10px 20px 10px 16px;
+  margin-left: 4px;
+  color: var(--Gray-04, #babcd1);
   line-height: 1.1;
-  border: none;
+  border-radius: 40px;
+  border: 1px solid var(--Gray-03, #d8e0eb);
+  background: var(--Gray-01, #f4f5fb);
   border-radius: 24px;
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
 }
+
 .sidePanelButton svg {
   flex-shrink: 0; /* 아이콘 우그러짐 방지 */
-  margin-top: 3rem;
 }
+
 .historyPanel.open .sidePanelButton {
-  width: 100%;
+  width: fit-content;
 }
 .sidePanelButton:hover {
   background-color: var(--button-hover-bg);
+  color: var(--text-color);
 }
+
 .historyPanel.closed .sidePanelButton {
   background: none;
   padding: 0.5rem;
@@ -196,22 +204,43 @@
   background-color: var(--button-hover-bg);
 }
 
-.sidePanelButtonText {
-  transition: opacity 0.2s 0.1s, max-width 0.3s ease-in-out;
-  max-width: 100px;
-  opacity: 1;
-  overflow: hidden;
-  font-weight: 500;
-  flex: 1;
-  min-width: 0; /* flex 컨텍스트에서 축소 허용 */
-  text-align: left;
-}
 .historyPanel.open .sidePanelButtonText {
   max-width: 100%; /* 열림 시 전체 가용 폭 사용 */
 }
 .historyPanel.closed .sidePanelButtonText {
   max-width: 0;
   opacity: 0;
+}
+
+.historyPanel .commonText {
+  color: var(--Gray-07, #5e7599);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  letter-spacing: -0.21px;
+  margin: 0.5rem 1rem;
+}
+
+.historyPanel .historyTileWrapper {
+  border-radius: 12px;
+  border: 1px solid var(--Gray-03, #d8e0eb);
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.historyTileWrapper .noHistoryBox {
+  display: flex;
+  height: 160px;
+  padding: 1rem;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  letter-spacing: -0.21px;
+  color: var(--Gray-04, #babcd1);
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  white-space: nowrap;
 }
 
 /* ExpandIcon 등장 애니메이션 */
@@ -248,9 +277,11 @@
   display: flex;
   align-items: center;
   margin-bottom: 0.5rem;
-  border-radius: 8px;
   color: var(--text-color);
   position: relative;
+  border-radius: 12px;
+  border: 1px solid var(--Gray-03, #d8e0eb);
+  background: var(--Gray-01, #f4f5fb);
 }
 .conversationItem:hover {
   background-color: var(--button-hover-bg);

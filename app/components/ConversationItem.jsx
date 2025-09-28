@@ -81,9 +81,7 @@ export default function ConversationItem({
   onDelete,
   onUpdateTitle,
   onPin,
-  isExpanded,
   scenarios,
-  onToggleExpand,
   onScenarioClick,
 }) {
   const [isEditing, setIsEditing] = useState(false);
@@ -111,6 +109,8 @@ export default function ConversationItem({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  // 확장 상태는 isActive로만 결정
 
   const handleUpdate = () => {
     if (title.trim() && title.trim() !== convo.title) {
@@ -149,10 +149,11 @@ export default function ConversationItem({
   return (
     <>
       <div
-        className={`${styles.conversationItem} ${
-          isActive ? styles.active : ""
-        }`}
-        onClick={() => !isEditing && onClick(convo.id)}
+        className={`${styles.conversationItem}`}
+        onClick={() => {
+          if (isEditing) return;
+          onClick(convo.id);
+        }}
       >
         <div className={styles.convoMain}>
           {convo.pinned && (
@@ -160,19 +161,13 @@ export default function ConversationItem({
               <PinIcon />
             </span>
           )}
-          <button
-            className={styles.expandButton}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleExpand(convo.id);
-            }}
-          >
+          <div className={styles.expandButton} aria-hidden="true">
             <ChevronDownIcon
               style={{
-                transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
+                transform: isActive ? "rotate(180deg)" : "rotate(0deg)",
               }}
             />
-          </button>
+          </div>
 
           {isEditing ? (
             <input
@@ -229,7 +224,7 @@ export default function ConversationItem({
           </div>
         )}
       </div>
-      {isExpanded && (
+      {isActive && (
         <div className={styles.scenarioSubList}>
           {scenarios ? (
             scenarios.length > 0 ? (

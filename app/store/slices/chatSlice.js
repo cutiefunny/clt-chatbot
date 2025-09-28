@@ -1,37 +1,56 @@
-import { collection, addDoc, query, orderBy, onSnapshot, getDocs, serverTimestamp, deleteDoc, doc, updateDoc, limit, startAfter, where, writeBatch } from 'firebase/firestore';
-import { locales } from '../../lib/locales';
-import { getErrorKey } from '../../lib/errorHandler';
+import {
+  collection,
+  addDoc,
+  query,
+  orderBy,
+  onSnapshot,
+  getDocs,
+  serverTimestamp,
+  deleteDoc,
+  doc,
+  updateDoc,
+  limit,
+  startAfter,
+  where,
+  writeBatch,
+} from "firebase/firestore";
+import { locales } from "../../lib/locales";
+import { getErrorKey } from "../../lib/errorHandler";
 
 const MESSAGE_LIMIT = 15;
 
-const getInitialMessages = (lang = 'ko') => {
-  return [{ id: 'initial', sender: 'bot', text: locales[lang].initialBotMessage }];
+const getInitialMessages = (lang = "ko") => {
+  return [
+    { id: "initial", sender: "bot", text: locales[lang].initialBotMessage },
+  ];
 };
 
 const responseHandlers = {
-    'scenario_start': (data, get) => {
-      get().addMessage('bot', data.nextNode);
-    },
-    'scenario': (data, get) => {
-      responseHandlers['scenario_start'](data, get);
-    },
-    'scenario_end': (data, get) => {
-      get().addMessage('bot', { text: data.message });
-    },
-    'scenario_list': (data, get) => {
-      get().addMessage('bot', { text: data.message, scenarios: data.scenarios });
-    },
-    'canvas_trigger': (data, get) => {
-      get().addMessage('bot', { text: `'${data.scenarioId}' 시나리오를 시작합니다.`});
-      get().openScenarioPanel(data.scenarioId);
-    },
-    'toast': (data, get) => {
-      get().showToast(data.message, data.toastType);
-    },
+  scenario_start: (data, get) => {
+    get().addMessage("bot", data.nextNode);
+  },
+  scenario: (data, get) => {
+    responseHandlers["scenario_start"](data, get);
+  },
+  scenario_end: (data, get) => {
+    get().addMessage("bot", { text: data.message });
+  },
+  scenario_list: (data, get) => {
+    get().addMessage("bot", { text: data.message, scenarios: data.scenarios });
+  },
+  canvas_trigger: (data, get) => {
+    get().addMessage("bot", {
+      text: `'${data.scenarioId}' 시나리오를 시작합니다.`,
+    });
+    get().openScenarioPanel(data.scenarioId);
+  },
+  toast: (data, get) => {
+    get().showToast(data.message, data.toastType);
+  },
 };
 
 export const createChatSlice = (set, get) => ({
-  messages: getInitialMessages('ko'),
+  messages: getInitialMessages("ko"),
   conversations: [],
   currentConversationId: null,
   isLoading: false,
@@ -42,16 +61,21 @@ export const createChatSlice = (set, get) => ({
   unsubscribeConversations: null,
   lastVisibleMessage: null,
   hasMoreMessages: true,
-  expandedConversationId: null,
   scenariosForConversation: {},
-  
+
   favorites: [],
   unsubscribeFavorites: null,
 
   loadFavorites: (userId) => {
-    const q = query(collection(get().db, "users", userId, "favorites"), orderBy("order", "asc"));
+    const q = query(
+      collection(get().db, "users", userId, "favorites"),
+      orderBy("order", "asc")
+    );
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const favorites = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const favorites = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
       set({ favorites });
     });
     set({ unsubscribeFavorites: unsubscribe });
@@ -60,7 +84,12 @@ export const createChatSlice = (set, get) => ({
   addFavorite: async (favoriteData) => {
     const user = get().user;
     if (!user) return;
-    const favoritesCollection = collection(get().db, "users", user.uid, "favorites");
+    const favoritesCollection = collection(
+      get().db,
+      "users",
+      user.uid,
+      "favorites"
+    );
     await addDoc(favoritesCollection, {
       ...favoriteData,
       createdAt: serverTimestamp(),
@@ -71,7 +100,7 @@ export const createChatSlice = (set, get) => ({
   updateFavoritesOrder: async (reorderedFavorites) => {
     const user = get().user;
     if (!user) return;
-    
+
     set({ favorites: reorderedFavorites });
 
     const batch = writeBatch(get().db);
@@ -92,90 +121,113 @@ export const createChatSlice = (set, get) => ({
   deleteFavorite: async (favoriteId) => {
     const user = get().user;
     if (!user) return;
-    const favoriteRef = doc(get().db, "users", user.uid, "favorites", favoriteId);
+    const favoriteRef = doc(
+      get().db,
+      "users",
+      user.uid,
+      "favorites",
+      favoriteId
+    );
     await deleteDoc(favoriteRef);
-    const remainingFavorites = get().favorites.filter(fav => fav.id !== favoriteId)
+    const remainingFavorites = get()
+      .favorites.filter((fav) => fav.id !== favoriteId)
       .map((fav, index) => ({ ...fav, order: index }));
     get().updateFavoritesOrder(remainingFavorites);
   },
 
   toggleFavorite: async (item) => {
-    const { user, favorites, addFavorite, deleteFavorite, showEphemeralToast } = get();
+    const { user, favorites, addFavorite, deleteFavorite, showEphemeralToast } =
+      get();
     if (!user || !item?.action?.value) return;
 
-    const favoriteToDelete = favorites.find(fav => 
-        fav.action.type === item.action.type && 
+    const favoriteToDelete = favorites.find(
+      (fav) =>
+        fav.action.type === item.action.type &&
         fav.action.value === item.action.value
     );
 
     if (favoriteToDelete) {
       await deleteFavorite(favoriteToDelete.id);
-      showEphemeralToast('즐겨찾기에서 삭제되었습니다.', 'info');
+      showEphemeralToast("즐겨찾기에서 삭제되었습니다.", "info");
     } else {
       const newFavorite = {
-        icon: '🌟',
+        icon: "🌟",
         title: item.title,
         description: item.description,
         action: item.action,
       };
       await addFavorite(newFavorite);
-      showEphemeralToast('즐겨찾기에 추가되었습니다.', 'success');
+      showEphemeralToast("즐겨찾기에 추가되었습니다.", "success");
     }
   },
 
   handleShortcutClick: async (item) => {
     if (!item || !item.action) return;
-    
-    if (item.action.type === 'custom') {
-        await get().handleResponse({ text: item.action.value, displayText: item.title });
-    } else { 
-        await get().addMessage('user', { text: item.title });
-        get().openScenarioPanel(item.action.value);
+
+    if (item.action.type === "custom") {
+      await get().handleResponse({
+        text: item.action.value,
+        displayText: item.title,
+      });
+    } else {
+      await get().addMessage("user", { text: item.title });
+      get().openScenarioPanel(item.action.value);
     }
   },
 
-  toggleConversationExpansion: async (conversationId) => {
-    const { expandedConversationId, scenariosForConversation, user } = get();
+  // removed: toggleConversationExpansion (expansion now follows isActive)
 
-    if (expandedConversationId === conversationId) {
-      set({ expandedConversationId: null });
-    } else {
-      set({ expandedConversationId: conversationId });
-      
-      if (!scenariosForConversation[conversationId] && user) {
-        try {
-          const scenariosRef = collection(get().db, "chats", user.uid, "conversations", conversationId, "scenario_sessions");
-          const q = query(scenariosRef, orderBy("createdAt", "desc"));
-          const snapshot = await getDocs(q);
-          const scenarios = snapshot.docs.map(doc => ({
-            sessionId: doc.id,
-            ...doc.data()
-          }));
+  // 활성화된 대화의 시나리오 세션 목록을 로드하여 캐싱
+  loadScenariosForConversation: async (conversationId) => {
+    const { user, scenariosForConversation } = get();
+    if (!user || !conversationId) return;
+    if (scenariosForConversation[conversationId]) return; // 이미 로드됨
 
-          set(state => ({
-            scenariosForConversation: {
-              ...state.scenariosForConversation,
-              [conversationId]: scenarios,
-            }
-          }));
-        } catch (error) {
-          console.error("Failed to load scenarios for conversation:", error);
-          set(state => ({
-            scenariosForConversation: {
-              ...state.scenariosForConversation,
-              [conversationId]: [],
-            }
-          }));
-        }
-      }
+    try {
+      const scenariosRef = collection(
+        get().db,
+        "chats",
+        user.uid,
+        "conversations",
+        conversationId,
+        "scenario_sessions"
+      );
+      const q = query(scenariosRef, orderBy("createdAt", "desc"));
+      const snapshot = await getDocs(q);
+      const scenarios = snapshot.docs.map((doc) => ({
+        sessionId: doc.id,
+        ...doc.data(),
+      }));
+
+      set((state) => ({
+        scenariosForConversation: {
+          ...state.scenariosForConversation,
+          [conversationId]: scenarios,
+        },
+      }));
+    } catch (error) {
+      console.error("Failed to load scenarios for conversation:", error);
+      set((state) => ({
+        scenariosForConversation: {
+          ...state.scenariosForConversation,
+          [conversationId]: [],
+        },
+      }));
     }
   },
 
   // --- 👇 [수정된 함수] ---
   loadConversations: (userId) => {
-    const q = query(collection(get().db, "chats", userId, "conversations"), orderBy("pinned", "desc"), orderBy("updatedAt", "desc"));
+    const q = query(
+      collection(get().db, "chats", userId, "conversations"),
+      orderBy("pinned", "desc"),
+      orderBy("updatedAt", "desc")
+    );
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const conversations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const conversations = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
       set({ conversations });
     });
     set({ unsubscribeConversations: unsubscribe });
@@ -190,85 +242,138 @@ export const createChatSlice = (set, get) => ({
 
     const { language } = get();
     const initialMessage = getInitialMessages(language)[0];
-    
-    set({ 
-        currentConversationId: conversationId, 
-        isLoading: true, 
-        messages: [initialMessage], 
-        scenarioStates: {},
-        activeScenarioSessionId: null, 
-        isScenarioPanelOpen: false,
-        lastVisibleMessage: null,
-        hasMoreMessages: true,
+
+    set({
+      currentConversationId: conversationId,
+      isLoading: true,
+      messages: [initialMessage],
+      scenarioStates: {},
+      activeScenarioSessionId: null,
+      isScenarioPanelOpen: false,
+      lastVisibleMessage: null,
+      hasMoreMessages: true,
     });
 
-    const messagesRef = collection(get().db, "chats", user.uid, "conversations", conversationId, "messages");
-    const q = query(messagesRef, orderBy("createdAt", "desc"), limit(MESSAGE_LIMIT));
-    
+    // 시나리오 세션 목록 로드 (확장 버튼 제거 이후 isActive로 확장되므로 필요)
+    get().loadScenariosForConversation(conversationId);
+
+    const messagesRef = collection(
+      get().db,
+      "chats",
+      user.uid,
+      "conversations",
+      conversationId,
+      "messages"
+    );
+    const q = query(
+      messagesRef,
+      orderBy("createdAt", "desc"),
+      limit(MESSAGE_LIMIT)
+    );
+
     const unsubscribe = onSnapshot(q, async (messagesSnapshot) => {
-        const newMessages = messagesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).reverse();
-        const lastVisible = messagesSnapshot.docs[messagesSnapshot.docs.length - 1];
+      const newMessages = messagesSnapshot.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .reverse();
+      const lastVisible =
+        messagesSnapshot.docs[messagesSnapshot.docs.length - 1];
 
-        const scenarioSessionsRef = collection(get().db, "chats", user.uid, "conversations", conversationId, "scenario_sessions");
-        const scenarioQuery = query(scenarioSessionsRef, where("status", "==", "active"));
-        const scenarioSnapshot = await getDocs(scenarioQuery);
+      const scenarioSessionsRef = collection(
+        get().db,
+        "chats",
+        user.uid,
+        "conversations",
+        conversationId,
+        "scenario_sessions"
+      );
+      const scenarioQuery = query(
+        scenarioSessionsRef,
+        where("status", "==", "active")
+      );
+      const scenarioSnapshot = await getDocs(scenarioQuery);
 
-        const resumePrompts = [];
-        const newScenarioStates = {};
+      const resumePrompts = [];
+      const newScenarioStates = {};
 
-        scenarioSnapshot.forEach(doc => {
-            const session = doc.data();
-            resumePrompts.push({
-                id: `resume-${doc.id}`,
-                sender: 'bot',
-                type: 'scenario_resume_prompt',
-                scenarioId: session.scenarioId,
-                scenarioSessionId: doc.id,
-                text: '',
-            });
-            newScenarioStates[doc.id] = session;
+      scenarioSnapshot.forEach((doc) => {
+        const session = doc.data();
+        resumePrompts.push({
+          id: `resume-${doc.id}`,
+          sender: "bot",
+          type: "scenario_resume_prompt",
+          scenarioId: session.scenarioId,
+          scenarioSessionId: doc.id,
+          text: "",
         });
-        
-        set(state => ({
-            messages: [initialMessage, ...newMessages, ...resumePrompts],
-            lastVisibleMessage: lastVisible,
-            hasMoreMessages: messagesSnapshot.docs.length === MESSAGE_LIMIT,
-            isLoading: false,
-            scenarioStates: newScenarioStates,
-        }));
+        newScenarioStates[doc.id] = session;
+      });
+
+      set((state) => ({
+        messages: [initialMessage, ...newMessages, ...resumePrompts],
+        lastVisibleMessage: lastVisible,
+        hasMoreMessages: messagesSnapshot.docs.length === MESSAGE_LIMIT,
+        isLoading: false,
+        scenarioStates: newScenarioStates,
+      }));
     });
     set({ unsubscribeMessages: unsubscribe });
   },
 
   loadMoreMessages: async () => {
     const user = get().user;
-    const { currentConversationId, lastVisibleMessage, hasMoreMessages, messages } = get();
-    
-    if (!user || !currentConversationId || !hasMoreMessages || !lastVisibleMessage) return;
+    const {
+      currentConversationId,
+      lastVisibleMessage,
+      hasMoreMessages,
+      messages,
+    } = get();
+
+    if (
+      !user ||
+      !currentConversationId ||
+      !hasMoreMessages ||
+      !lastVisibleMessage
+    )
+      return;
 
     set({ isLoading: true });
 
     try {
-        const messagesRef = collection(get().db, "chats", user.uid, "conversations", currentConversationId, "messages");
-        const q = query(messagesRef, orderBy("createdAt", "desc"), startAfter(lastVisibleMessage), limit(MESSAGE_LIMIT));
+      const messagesRef = collection(
+        get().db,
+        "chats",
+        user.uid,
+        "conversations",
+        currentConversationId,
+        "messages"
+      );
+      const q = query(
+        messagesRef,
+        orderBy("createdAt", "desc"),
+        startAfter(lastVisibleMessage),
+        limit(MESSAGE_LIMIT)
+      );
 
-        const snapshot = await getDocs(q);
-        const newMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).reverse();
-        const newLastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const snapshot = await getDocs(q);
+      const newMessages = snapshot.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .reverse();
+      const newLastVisible = snapshot.docs[snapshot.docs.length - 1];
 
-        const initialMessage = messages[0];
-        const existingMessages = messages.slice(1).filter(m => m.type !== 'scenario_resume_prompt');
+      const initialMessage = messages[0];
+      const existingMessages = messages
+        .slice(1)
+        .filter((m) => m.type !== "scenario_resume_prompt");
 
-        set({
-            messages: [initialMessage, ...newMessages, ...existingMessages],
-            lastVisibleMessage: newLastVisible,
-            hasMoreMessages: snapshot.docs.length === MESSAGE_LIMIT,
-        });
-
+      set({
+        messages: [initialMessage, ...newMessages, ...existingMessages],
+        lastVisibleMessage: newLastVisible,
+        hasMoreMessages: snapshot.docs.length === MESSAGE_LIMIT,
+      });
     } catch (error) {
-        console.error("Error loading more messages:", error);
+      console.error("Error loading more messages:", error);
     } finally {
-        set({ isLoading: false });
+      set({ isLoading: false });
     }
   },
 
@@ -277,22 +382,27 @@ export const createChatSlice = (set, get) => ({
     get().unsubscribeMessages?.();
     get().unsubscribeScenario?.();
     const { language } = get();
-    set({ 
-        messages: getInitialMessages(language), 
-        currentConversationId: null, 
-        scenarioStates: {}, 
-        activeScenarioSessionId: null, 
-        isScenarioPanelOpen: false,
-        lastVisibleMessage: null,
-        hasMoreMessages: true,
-        expandedConversationId: null,
+    set({
+      messages: getInitialMessages(language),
+      currentConversationId: null,
+      scenarioStates: {},
+      activeScenarioSessionId: null,
+      isScenarioPanelOpen: false,
+      lastVisibleMessage: null,
+      hasMoreMessages: true,
     });
   },
 
   deleteConversation: async (conversationId) => {
     const user = get().user;
     if (!user) return;
-    const conversationRef = doc(get().db, "chats", user.uid, "conversations", conversationId);
+    const conversationRef = doc(
+      get().db,
+      "chats",
+      user.uid,
+      "conversations",
+      conversationId
+    );
 
     const scenariosRef = collection(conversationRef, "scenario_sessions");
     const scenariosSnapshot = await getDocs(scenariosRef);
@@ -316,7 +426,13 @@ export const createChatSlice = (set, get) => ({
   updateConversationTitle: async (conversationId, newTitle) => {
     const user = get().user;
     if (!user || !newTitle.trim()) return;
-    const conversationRef = doc(get().db, "chats", user.uid, "conversations", conversationId);
+    const conversationRef = doc(
+      get().db,
+      "chats",
+      user.uid,
+      "conversations",
+      conversationId
+    );
     await updateDoc(conversationRef, { title: newTitle.trim() });
   },
 
@@ -324,7 +440,13 @@ export const createChatSlice = (set, get) => ({
   pinConversation: async (conversationId, pinned) => {
     const user = get().user;
     if (!user) return;
-    const conversationRef = doc(get().db, "chats", user.uid, "conversations", conversationId);
+    const conversationRef = doc(
+      get().db,
+      "chats",
+      user.uid,
+      "conversations",
+      conversationId
+    );
     await updateDoc(conversationRef, { pinned });
   },
 
@@ -334,74 +456,98 @@ export const createChatSlice = (set, get) => ({
     if (!user) return;
     let conversationId = get().currentConversationId;
     if (!conversationId) {
-      const firstMessageContent = message.text || message.node?.data?.content || 'New Conversation';
-      const conversationRef = await addDoc(collection(get().db, "chats", user.uid, "conversations"), {
-        title: firstMessageContent.substring(0, 30),
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        pinned: false, // Pinned 상태 초기화
-      });
+      const firstMessageContent =
+        message.text || message.node?.data?.content || "New Conversation";
+      const conversationRef = await addDoc(
+        collection(get().db, "chats", user.uid, "conversations"),
+        {
+          title: firstMessageContent.substring(0, 30),
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          pinned: false, // Pinned 상태 초기화
+        }
+      );
       conversationId = conversationRef.id;
       get().unsubscribeMessages?.();
       get().loadConversation(conversationId);
     }
-    
-    const { id, ...messageToSave } = message;
-    if (messageToSave.type === 'scenario_resume_prompt') return;
 
-    Object.keys(messageToSave).forEach(key => (messageToSave[key] === undefined) && delete messageToSave[key]);
-      if (messageToSave.node) {
-        const { data, ...rest } = messageToSave.node;
-        messageToSave.node = { ...rest, data: { content: data?.content, replies: data?.replies } };
-      }
-    const messagesCollection = collection(get().db, "chats", user.uid, "conversations", conversationId, "messages");
-    await addDoc(messagesCollection, { ...messageToSave, createdAt: serverTimestamp() });
-    await updateDoc(doc(get().db, "chats", user.uid, "conversations", conversationId), { updatedAt: serverTimestamp() });
+    const { id, ...messageToSave } = message;
+    if (messageToSave.type === "scenario_resume_prompt") return;
+
+    Object.keys(messageToSave).forEach(
+      (key) => messageToSave[key] === undefined && delete messageToSave[key]
+    );
+    if (messageToSave.node) {
+      const { data, ...rest } = messageToSave.node;
+      messageToSave.node = {
+        ...rest,
+        data: { content: data?.content, replies: data?.replies },
+      };
+    }
+    const messagesCollection = collection(
+      get().db,
+      "chats",
+      user.uid,
+      "conversations",
+      conversationId,
+      "messages"
+    );
+    await addDoc(messagesCollection, {
+      ...messageToSave,
+      createdAt: serverTimestamp(),
+    });
+    await updateDoc(
+      doc(get().db, "chats", user.uid, "conversations", conversationId),
+      { updatedAt: serverTimestamp() }
+    );
   },
 
   addMessage: async (sender, messageData) => {
     let newMessage;
-    if (sender === 'user') {
+    if (sender === "user") {
       newMessage = { id: Date.now(), sender, text: messageData.text };
     } else {
-        if (messageData.data) {
-            newMessage = { id: messageData.id, sender: 'bot', node: messageData };
-        } else {
-            newMessage = {
-                id: messageData.id || Date.now(),
-                sender: 'bot',
-                text: messageData.text,
-                scenarios: messageData.scenarios,
-                isStreaming: messageData.isStreaming || false,
-                type: messageData.type,
-                scenarioId: messageData.scenarioId,
-                scenarioSessionId: messageData.scenarioSessionId,
-            };
-        }
+      if (messageData.data) {
+        newMessage = { id: messageData.id, sender: "bot", node: messageData };
+      } else {
+        newMessage = {
+          id: messageData.id || Date.now(),
+          sender: "bot",
+          text: messageData.text,
+          scenarios: messageData.scenarios,
+          isStreaming: messageData.isStreaming || false,
+          type: messageData.type,
+          scenarioId: messageData.scenarioId,
+          scenarioSessionId: messageData.scenarioSessionId,
+        };
+      }
     }
-    set(state => ({ messages: [...state.messages, newMessage] }));
+    set((state) => ({ messages: [...state.messages, newMessage] }));
     if (!newMessage.isStreaming) {
       await get().saveMessage(newMessage);
     }
   },
 
   updateStreamingMessage: (id, chunk) => {
-    set(state => ({
-      messages: state.messages.map(m =>
-        m.id === id ? { ...m, text: (m.text || '') + chunk } : m
+    set((state) => ({
+      messages: state.messages.map((m) =>
+        m.id === id ? { ...m, text: (m.text || "") + chunk } : m
       ),
     }));
   },
 
   finalizeStreamingMessage: (id) => {
-    set(state => {
-      const finalMessage = state.messages.find(m => m.id === id);
+    set((state) => {
+      const finalMessage = state.messages.find((m) => m.id === id);
       if (finalMessage) {
         const messageToSave = { ...finalMessage, isStreaming: false };
         get().saveMessage(messageToSave);
       }
       return {
-        messages: state.messages.map(m => (m.id === id ? { ...m, isStreaming: false } : m)),
+        messages: state.messages.map((m) =>
+          m.id === id ? { ...m, isStreaming: false } : m
+        ),
       };
     });
   },
@@ -411,13 +557,13 @@ export const createChatSlice = (set, get) => ({
 
     const textForUser = messagePayload.displayText || messagePayload.text;
     if (textForUser) {
-      await get().addMessage('user', { text: textForUser });
+      await get().addMessage("user", { text: textForUser });
     }
 
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: { text: messagePayload.text },
           scenarioState: null,
@@ -426,9 +572,9 @@ export const createChatSlice = (set, get) => ({
         }),
       });
       if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
-      
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
+
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
         const data = await response.json();
         const handler = responseHandlers[data.type];
         if (handler) {
@@ -437,9 +583,15 @@ export const createChatSlice = (set, get) => ({
           console.warn(`[ChatStore] Unhandled response type: ${data.type}`);
         }
       } else {
-        const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+        const reader = response.body
+          .pipeThrough(new TextDecoderStream())
+          .getReader();
         const streamingMessageId = Date.now();
-        get().addMessage('bot', { id: streamingMessageId, text: '', isStreaming: true });
+        get().addMessage("bot", {
+          id: streamingMessageId,
+          text: "",
+          isStreaming: true,
+        });
         while (true) {
           const { value, done } = await reader.read();
           if (done) {
@@ -452,8 +604,9 @@ export const createChatSlice = (set, get) => ({
     } catch (error) {
       const errorKey = getErrorKey(error);
       const { language } = get();
-      const errorMessage = locales[language][errorKey] || locales[language]['errorUnexpected'];
-      get().showToast(errorMessage, 'error');
+      const errorMessage =
+        locales[language][errorKey] || locales[language]["errorUnexpected"];
+      get().showToast(errorMessage, "error");
     } finally {
       set({ isLoading: false });
     }
@@ -461,42 +614,49 @@ export const createChatSlice = (set, get) => ({
 
   searchConversations: async (searchQuery) => {
     if (!searchQuery.trim()) {
-        set({ searchResults: [], isSearching: false });
-        return;
+      set({ searchResults: [], isSearching: false });
+      return;
     }
     set({ isSearching: true, searchResults: [] });
     const user = get().user;
     const conversations = get().conversations;
     if (!user || !conversations) {
-        set({ isSearching: false });
-        return;
+      set({ isSearching: false });
+      return;
     }
     const results = [];
     const lowerCaseQuery = searchQuery.toLowerCase();
     for (const convo of conversations) {
-        const messagesCollection = collection(get().db, "chats", user.uid, "conversations", convo.id, "messages");
-        const messagesSnapshot = await getDocs(messagesCollection);
-        let foundInConvo = false;
-        const matchingMessages = [];
-        messagesSnapshot.forEach(doc => {
-            const message = doc.data();
-            const content = message.text || message.node?.data?.content || '';
-            if (content.toLowerCase().includes(lowerCaseQuery)) {
-                foundInConvo = true;
-                const snippetIndex = content.toLowerCase().indexOf(lowerCaseQuery);
-                const start = Math.max(0, snippetIndex - 20);
-                const end = Math.min(content.length, snippetIndex + 20);
-                const snippet = `...${content.substring(start, end)}...`;
-                matchingMessages.push(snippet);
-            }
-        });
-        if (foundInConvo) {
-            results.push({
-                id: convo.id,
-                title: convo.title || 'Untitled Conversation',
-                snippets: matchingMessages.slice(0, 3)
-            });
+      const messagesCollection = collection(
+        get().db,
+        "chats",
+        user.uid,
+        "conversations",
+        convo.id,
+        "messages"
+      );
+      const messagesSnapshot = await getDocs(messagesCollection);
+      let foundInConvo = false;
+      const matchingMessages = [];
+      messagesSnapshot.forEach((doc) => {
+        const message = doc.data();
+        const content = message.text || message.node?.data?.content || "";
+        if (content.toLowerCase().includes(lowerCaseQuery)) {
+          foundInConvo = true;
+          const snippetIndex = content.toLowerCase().indexOf(lowerCaseQuery);
+          const start = Math.max(0, snippetIndex - 20);
+          const end = Math.min(content.length, snippetIndex + 20);
+          const snippet = `...${content.substring(start, end)}...`;
+          matchingMessages.push(snippet);
         }
+      });
+      if (foundInConvo) {
+        results.push({
+          id: convo.id,
+          title: convo.title || "Untitled Conversation",
+          snippets: matchingMessages.slice(0, 3),
+        });
+      }
     }
     set({ searchResults: results, isSearching: false });
   },
