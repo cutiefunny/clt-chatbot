@@ -152,7 +152,21 @@ body > * {
   z-index: 1;
 }
 
-/* --- 👇 [추가된 부분] --- */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: url("/images/background.png") lightgray 50% / cover no-repeat;
+  filter: blur(28px);
+  opacity: 0.2;
+  pointer-events: none;
+}
+
+body > * {
+  position: relative;
+  z-index: 1;
+}
+
 body.font-small {
   font-size: 14px;
 }

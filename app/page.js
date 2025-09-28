@@ -9,9 +9,17 @@ import ScenarioChat from '../app/components/ScenarioChat';
 import ScenarioModal from '../app/components/ScenarioModal';
 import Toast from '../app/components/Toast';
 import styles from './page.module.css';
+import ConfirmModal from '../app/components/ConfirmModal';
 
 export default function HomePage() {
-  const { user, isScenarioPanelOpen, activePanel, setActivePanel, isHistoryPanelOpen, isScenarioModalOpen } = useChatStore();
+  const { user, isScenarioPanelOpen, activePanel, setActivePanel, isHistoryPanelOpen, isScenarioModalOpen, confirmModal, closeConfirmModal } = useChatStore();
+
+  const handleConfirm = () => {
+    if (confirmModal.onConfirm) {
+      confirmModal.onConfirm();
+    }
+    closeConfirmModal();
+  };
 
   return (
     <main className={styles.main}>
@@ -43,6 +51,17 @@ export default function HomePage() {
         </div>
       ) : (
         <Login />
+      )}
+      {confirmModal.isOpen && (
+        <ConfirmModal
+          title={confirmModal.title}
+          message={confirmModal.message}
+          confirmText={confirmModal.confirmText}
+          cancelText={confirmModal.cancelText}
+          onConfirm={handleConfirm}
+          onClose={closeConfirmModal}
+          confirmVariant={confirmModal.confirmVariant}
+        />
       )}
     </main>
   );

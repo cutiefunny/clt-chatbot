@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from 'react';
 import { useChatStore } from '../store';
 import { useTranslations } from '../hooks/useTranslations';
 import styles from './Chat.module.css'; 
+import { validateInput } from '../lib/chatbotEngine';
 
-const FormRenderer = ({ node, onFormSubmit, disabled }) => {
+const FormRenderer = ({ node, onFormSubmit, disabled, language }) => {
     const [formData, setFormData] = useState({});
     const dateInputRef = useRef(null);
     const { t } = useTranslations();
@@ -24,6 +25,16 @@ const FormRenderer = ({ node, onFormSubmit, disabled }) => {
     
     const handleSubmit = (e) => {
         e.preventDefault();
+        for (const element of node.data.elements) {
+            if (element.type === 'input' || element.type === 'date') {
+                const value = formData[element.name] || '';
+                const { isValid, message } = validateInput(value, element.validation, language);
+                if (!isValid) {
+                    alert(message);
+                    return;
+                }
+            }
+        }
         onFormSubmit(formData);
     };
 
@@ -38,7 +49,19 @@ const FormRenderer = ({ node, onFormSubmit, disabled }) => {
     return (
         <form onSubmit={handleSubmit} className={styles.formContainer}>
             <h3>{node.data.title}</h3>
-            {node.data.elements?.map(el => (
+            {node.data.elements?.map(el => {
+                const dateProps = {};
+                if (el.type === 'date' && el.validation) {
+                    if (el.validation.type === 'today after') {
+                        dateProps.min = new Date().toISOString().split('T')[0];
+                    } else if (el.validation.type === 'today before') {
+                        dateProps.max = new Date().toISOString().split('T')[0];
+                    } else if (el.validation.type === 'custom') {
+                        if(el.validation.startDate) dateProps.min = el.validation.startDate;
+                        if(el.validation.endDate) dateProps.max = el.validation.endDate;
+                    }
+                }
+                return(
                 <div key={el.id} className={styles.formElement}>
                     <label className={styles.formLabel}>{el.label}</label>
                     {el.type === 'input' && <input className={styles.formInput} type="text" placeholder={el.placeholder} value={formData[el.name] || ''} onChange={e => handleInputChange(el.name, e.target.value)} disabled={disabled} />}
@@ -52,6 +75,7 @@ const FormRenderer = ({ node, onFormSubmit, disabled }) => {
                             onChange={e => handleInputChange(el.name, e.target.value)}
                             onClick={handleDateInputClick}
                             disabled={disabled}
+                            {...dateProps}
                         />
                     )}
 
@@ -68,7 +92,7 @@ const FormRenderer = ({ node, onFormSubmit, disabled }) => {
                         </div>
                     ))}
                 </div>
-            ))}
+            )})}
             {!disabled && (
               <button type="submit" className={styles.formSubmitButton}>{t('submit')}</button>
             )}
@@ -85,7 +109,7 @@ export default function ScenarioChat() {
     setScenarioPanelOpen,
     endScenario,
   } = useChatStore();
-  const { t } = useTranslations();
+  const { t, language } = useTranslations();
 
   const activeScenario = activeScenarioSessionId ? scenarioStates[activeScenarioSessionId] : null;
   const isCompleted = activeScenario?.status === 'completed';
@@ -152,9 +176,8 @@ export default function ScenarioChat() {
           <div key={`${msg.id}-${index}`} className={`${styles.messageRow} ${msg.sender === 'user' ? styles.userRow : ''}`}>
              {msg.sender === 'bot' && <img src="/images/avatar.png" alt="Avatar" className={styles.avatar} />}
              <div className={`${styles.message} ${msg.sender === 'bot' ? styles.botMessage : styles.userMessage}`}>
-               {/* --- 👇 [수정된 부분 시작] --- */}
                {msg.node?.type === 'form' ? (
-                 <FormRenderer node={msg.node} onFormSubmit={handleFormSubmit} disabled={isCompleted} />
+                 <FormRenderer node={msg.node} onFormSubmit={handleFormSubmit} disabled={isCompleted} language={language} />
                ) : msg.node?.type === 'iframe' ? (
                   <div className={styles.iframeContainer}>
                     <iframe
@@ -165,10 +188,14 @@ export default function ScenarioChat() {
                       title="chatbot-iframe"
                     ></iframe>
                   </div>
+               ) : msg.node?.type === 'link' ? (
+                 <div>
+                    <span>Opening link in a new tab: </span>
+                    <a href={msg.node.data.content} target="_blank" rel="noopener noreferrer">{msg.node.data.display || msg.node.data.content}</a>
+                 </div>
                ) : (
                  <p>{msg.text || msg.node?.data.content}</p>
                )}
-               {/* --- 👆 [여기까지] --- */}
                {msg.node?.type === 'branch' && msg.node.data.replies && (
                  <div className={styles.scenarioList}>
                      {msg.node.data.replies.map(reply => (

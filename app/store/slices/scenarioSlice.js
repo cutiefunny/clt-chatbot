@@ -1,22 +1,62 @@
-import { collection, addDoc, doc, updateDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
-import { scenarioTriggers } from '../../lib/chatbotEngine';
+import { collection, addDoc, doc, updateDoc, onSnapshot, serverTimestamp, getDoc, setDoc, getDocs, query, orderBy, where } from 'firebase/firestore';
 import { locales } from '../../lib/locales';
+import { getErrorKey } from '../../lib/errorHandler'; 
 
 export const createScenarioSlice = (set, get) => ({
   // State
   scenarioStates: {},
   activeScenarioSessionId: null,
   isScenarioPanelOpen: false,
-  scenarioTriggers: {},
+  scenarioCategories: [],
+  availableScenarios: [],
   unsubscribeScenario: null,
 
   // Actions
-  loadScenarioTriggers: () => {
-    set({ scenarioTriggers });
+  loadAvailableScenarios: async () => {
+    try {
+      const scenariosCollection = collection(get().db, 'scenarios');
+      const querySnapshot = await getDocs(scenariosCollection);
+      const scenarioIds = querySnapshot.docs.map(doc => doc.id);
+      set({ availableScenarios: scenarioIds });
+    } catch (error) {
+      console.error("Error loading available scenarios:", error);
+      set({ availableScenarios: [] });
+    }
+  },
+
+  loadScenarioCategories: async () => {
+    try {
+      const shortcutRef = doc(get().db, "shortcut", "main");
+      const docSnap = await getDoc(shortcutRef);
+
+      if (docSnap.exists() && docSnap.data().categories) {
+        set({ scenarioCategories: docSnap.data().categories });
+      } else {
+        console.log("No shortcut document found, initializing with default data.");
+        const initialData = []; 
+        set({ scenarioCategories: initialData });
+        await setDoc(shortcutRef, { categories: initialData });
+      }
+    } catch (error) {
+      console.error("Error loading scenario categories from Firestore.", error);
+      set({ scenarioCategories: [] });
+    }
+  },
+
+  saveScenarioCategories: async (newCategories) => {
+    const shortcutRef = doc(get().db, "shortcut", "main");
+    try {
+      await setDoc(shortcutRef, { categories: newCategories });
+      set({ scenarioCategories: newCategories });
+      return true;
+    } catch (error) {
+      console.error("Error saving scenario categories to Firestore:", error);
+      return false;
+    }
   },
 
   openScenarioPanel: async (scenarioId, scenarioSessionId = null) => {
-    const { user, currentConversationId, handleEvents, scenarioStates } = get();
+    const { user, currentConversationId, handleEvents, scenarioStates, language } = get();
     if (!user || !currentConversationId) return;
 
     if (scenarioSessionId) {
@@ -59,6 +99,7 @@ export const createScenarioSlice = (set, get) => ({
           scenarioSessionId: newScenarioSessionId
         }),
       });
+      if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
       const data = await response.json();
       
       handleEvents(data.events);
@@ -71,23 +112,22 @@ export const createScenarioSlice = (set, get) => ({
             slots: data.slots || {},
         });
         await get().continueScenarioIfNeeded(data.nextNode, newScenarioSessionId);
-      // --- 👇 [수정된 부분] ---
       } else if (data.type === 'scenario_end') {
-        // 시나리오 시작에 실패했지만 정상적인 응답일 경우 (예: 시작 노드 없음)
         const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", newScenarioSessionId);
         await updateDoc(sessionRef, {
             messages: [{ id: 'error-start', sender: 'bot', text: data.message }],
-            status: 'completed', // 시나리오를 즉시 종료 상태로 변경
+            status: 'completed',
         });
-      // --- 👆 [여기까지] ---
       } else {
         throw new Error("Failed to start scenario properly");
       }
     } catch (error) {
-      console.error("Error starting scenario:", error);
+      const errorKey = getErrorKey(error);
+      const errorMessage = locales[language][errorKey] || locales[language]['errorUnexpected'];
       const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", newScenarioSessionId);
       await updateDoc(sessionRef, {
-        messages: [{ id: 'error', sender: 'bot', text: 'An error occurred while starting the scenario.' }],
+        messages: [{ id: 'error', sender: 'bot', text: errorMessage }],
+        status: 'completed'
       });
     } finally {
       get().focusChatInput();
@@ -106,7 +146,7 @@ export const createScenarioSlice = (set, get) => ({
         set(state => ({
           scenarioStates: {
             ...state.scenarioStates,
-            [sessionId]: { ...doc.data(), isLoading: false } // Firestore 업데이트 시 isLoading은 항상 false로 설정
+            [sessionId]: { ...doc.data(), isLoading: false }
           }
         }));
       }
@@ -186,20 +226,23 @@ export const createScenarioSlice = (set, get) => ({
 
   handleScenarioResponse: async (payload) => {
     const { scenarioSessionId } = payload;
-    const { handleEvents, showToast, user, currentConversationId } = get();
+    const { handleEvents, showToast, user, currentConversationId, language } = get();
     if (!user || !currentConversationId || !scenarioSessionId) return;
 
+    const currentScenario = get().scenarioStates[scenarioSessionId] || {};
+    const existingMessages = Array.isArray(currentScenario.messages) ? currentScenario.messages : [];
+
     set(state => ({
-        scenarioStates: { ...state.scenarioStates, [scenarioSessionId]: { ...state.scenarioStates[scenarioSessionId], isLoading: true } }
+        scenarioStates: { ...state.scenarioStates, [scenarioSessionId]: { ...currentScenario, isLoading: true } }
     }));
     
-    const currentScenario = get().scenarioStates[scenarioSessionId];
     const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", scenarioSessionId);
+    
+    let newMessages = [...existingMessages];
 
     if (payload.userInput) {
-        await updateDoc(sessionRef, {
-            messages: [...currentScenario.messages, { id: Date.now(), sender: 'user', text: payload.userInput }]
-        });
+        newMessages.push({ id: Date.now(), sender: 'user', text: payload.userInput });
+        await updateDoc(sessionRef, { messages: newMessages });
     }
 
     try {
@@ -217,21 +260,22 @@ export const createScenarioSlice = (set, get) => ({
           scenarioSessionId: scenarioSessionId,
         }),
       });
+      if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
       const data = await response.json();
+
       handleEvents(data.events);
       
-      const updatedMessages = [...get().scenarioStates[scenarioSessionId].messages];
       if (data.nextNode) {
-          updatedMessages.push({ id: data.nextNode.id, sender: 'bot', node: data.nextNode });
+          newMessages.push({ id: data.nextNode.id, sender: 'bot', node: data.nextNode });
       } else if (data.message) {
-          updatedMessages.push({ id: 'end', sender: 'bot', text: data.message });
+          newMessages.push({ id: 'end', sender: 'bot', text: data.message });
       }
       
       if (data.type === 'scenario_validation_fail') {
           showToast(data.message, 'error');
       } else {
         await updateDoc(sessionRef, {
-            messages: updatedMessages,
+            messages: newMessages,
             state: data.scenarioState,
             slots: data.slots,
         });
@@ -240,10 +284,11 @@ export const createScenarioSlice = (set, get) => ({
         }
       }
     } catch (error) {
-      console.error("Error in scenario conversation:", error);
-      await updateDoc(sessionRef, {
-          messages: [...get().scenarioStates[scenarioSessionId].messages, { id: 'error', sender: 'bot', text: 'An error occurred.' }]
-      });
+        const errorKey = getErrorKey(error);
+        const errorMessage = locales[language][errorKey] || locales[language]['errorUnexpected'];
+        
+        const errorMessages = [...existingMessages, { id: 'error', sender: 'bot', text: errorMessage }];
+        await updateDoc(sessionRef, { messages: errorMessages });
     } finally {
       set(state => ({
         scenarioStates: { ...state.scenarioStates, [scenarioSessionId]: { ...state.scenarioStates[scenarioSessionId], isLoading: false } }

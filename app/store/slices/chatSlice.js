@@ -1,5 +1,6 @@
-import { collection, addDoc, query, orderBy, onSnapshot, getDocs, serverTimestamp, deleteDoc, doc, updateDoc, limit, startAfter, where } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, getDocs, serverTimestamp, deleteDoc, doc, updateDoc, limit, startAfter, where, writeBatch } from 'firebase/firestore';
 import { locales } from '../../lib/locales';
+import { getErrorKey } from '../../lib/errorHandler';
 
 const MESSAGE_LIMIT = 15;
 
@@ -41,9 +42,138 @@ export const createChatSlice = (set, get) => ({
   unsubscribeConversations: null,
   lastVisibleMessage: null,
   hasMoreMessages: true,
+  expandedConversationId: null,
+  scenariosForConversation: {},
+  
+  favorites: [],
+  unsubscribeFavorites: null,
 
+  loadFavorites: (userId) => {
+    const q = query(collection(get().db, "users", userId, "favorites"), orderBy("order", "asc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const favorites = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      set({ favorites });
+    });
+    set({ unsubscribeFavorites: unsubscribe });
+  },
+
+  addFavorite: async (favoriteData) => {
+    const user = get().user;
+    if (!user) return;
+    const favoritesCollection = collection(get().db, "users", user.uid, "favorites");
+    await addDoc(favoritesCollection, {
+      ...favoriteData,
+      createdAt: serverTimestamp(),
+      order: get().favorites.length,
+    });
+  },
+
+  updateFavoritesOrder: async (reorderedFavorites) => {
+    const user = get().user;
+    if (!user) return;
+    
+    set({ favorites: reorderedFavorites });
+
+    const batch = writeBatch(get().db);
+    reorderedFavorites.forEach((fav, index) => {
+      const favRef = doc(get().db, "users", user.uid, "favorites", fav.id);
+      batch.update(favRef, { order: index });
+    });
+
+    try {
+      await batch.commit();
+    } catch (error) {
+      console.error("Error updating favorites order:", error);
+      get().showEphemeralToast("Failed to save new order.", "error");
+      get().loadFavorites(user.uid);
+    }
+  },
+
+  deleteFavorite: async (favoriteId) => {
+    const user = get().user;
+    if (!user) return;
+    const favoriteRef = doc(get().db, "users", user.uid, "favorites", favoriteId);
+    await deleteDoc(favoriteRef);
+    const remainingFavorites = get().favorites.filter(fav => fav.id !== favoriteId)
+      .map((fav, index) => ({ ...fav, order: index }));
+    get().updateFavoritesOrder(remainingFavorites);
+  },
+
+  toggleFavorite: async (item) => {
+    const { user, favorites, addFavorite, deleteFavorite, showEphemeralToast } = get();
+    if (!user || !item?.action?.value) return;
+
+    const favoriteToDelete = favorites.find(fav => 
+        fav.action.type === item.action.type && 
+        fav.action.value === item.action.value
+    );
+
+    if (favoriteToDelete) {
+      await deleteFavorite(favoriteToDelete.id);
+      showEphemeralToast('즐겨찾기에서 삭제되었습니다.', 'info');
+    } else {
+      const newFavorite = {
+        icon: '🌟',
+        title: item.title,
+        description: item.description,
+        action: item.action,
+      };
+      await addFavorite(newFavorite);
+      showEphemeralToast('즐겨찾기에 추가되었습니다.', 'success');
+    }
+  },
+
+  handleShortcutClick: async (item) => {
+    if (!item || !item.action) return;
+    
+    if (item.action.type === 'custom') {
+        await get().handleResponse({ text: item.action.value, displayText: item.title });
+    } else { 
+        await get().addMessage('user', { text: item.title });
+        get().openScenarioPanel(item.action.value);
+    }
+  },
+
+  toggleConversationExpansion: async (conversationId) => {
+    const { expandedConversationId, scenariosForConversation, user } = get();
+
+    if (expandedConversationId === conversationId) {
+      set({ expandedConversationId: null });
+    } else {
+      set({ expandedConversationId: conversationId });
+      
+      if (!scenariosForConversation[conversationId] && user) {
+        try {
+          const scenariosRef = collection(get().db, "chats", user.uid, "conversations", conversationId, "scenario_sessions");
+          const q = query(scenariosRef, orderBy("createdAt", "desc"));
+          const snapshot = await getDocs(q);
+          const scenarios = snapshot.docs.map(doc => ({
+            sessionId: doc.id,
+            ...doc.data()
+          }));
+
+          set(state => ({
+            scenariosForConversation: {
+              ...state.scenariosForConversation,
+              [conversationId]: scenarios,
+            }
+          }));
+        } catch (error) {
+          console.error("Failed to load scenarios for conversation:", error);
+          set(state => ({
+            scenariosForConversation: {
+              ...state.scenariosForConversation,
+              [conversationId]: [],
+            }
+          }));
+        }
+      }
+    }
+  },
+
+  // --- 👇 [수정된 함수] ---
   loadConversations: (userId) => {
-    const q = query(collection(get().db, "chats", userId, "conversations"), orderBy("updatedAt", "desc"));
+    const q = query(collection(get().db, "chats", userId, "conversations"), orderBy("pinned", "desc"), orderBy("updatedAt", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const conversations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       set({ conversations });
@@ -56,7 +186,7 @@ export const createChatSlice = (set, get) => ({
     if (!user || get().currentConversationId === conversationId) return;
 
     get().unsubscribeMessages?.();
-    get().unsubscribeScenario?.(); // 다른 대화로 전환 시 시나리오 구독 해제
+    get().unsubscribeScenario?.();
 
     const { language } = get();
     const initialMessage = getInitialMessages(language)[0];
@@ -65,7 +195,7 @@ export const createChatSlice = (set, get) => ({
         currentConversationId: conversationId, 
         isLoading: true, 
         messages: [initialMessage], 
-        scenarioStates: {}, // 이전 대화의 시나리오 상태 초기화
+        scenarioStates: {},
         activeScenarioSessionId: null, 
         isScenarioPanelOpen: false,
         lastVisibleMessage: null,
@@ -79,7 +209,6 @@ export const createChatSlice = (set, get) => ({
         const newMessages = messagesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).reverse();
         const lastVisible = messagesSnapshot.docs[messagesSnapshot.docs.length - 1];
 
-        // --- 👇 [추가된 부분] 활성화된 시나리오 세션을 가져와 이어하기 버튼 생성 ---
         const scenarioSessionsRef = collection(get().db, "chats", user.uid, "conversations", conversationId, "scenario_sessions");
         const scenarioQuery = query(scenarioSessionsRef, where("status", "==", "active"));
         const scenarioSnapshot = await getDocs(scenarioQuery);
@@ -95,19 +224,17 @@ export const createChatSlice = (set, get) => ({
                 type: 'scenario_resume_prompt',
                 scenarioId: session.scenarioId,
                 scenarioSessionId: doc.id,
-                text: '', // 텍스트는 Chat.jsx에서 동적으로 생성
+                text: '',
             });
-            // 이어하기를 위해 시나리오 상태를 미리 로드
             newScenarioStates[doc.id] = session;
         });
-        // --- 👆 [여기까지] ---
         
         set(state => ({
             messages: [initialMessage, ...newMessages, ...resumePrompts],
             lastVisibleMessage: lastVisible,
             hasMoreMessages: messagesSnapshot.docs.length === MESSAGE_LIMIT,
             isLoading: false,
-            scenarioStates: newScenarioStates, // 활성 시나리오 상태 업데이트
+            scenarioStates: newScenarioStates,
         }));
     });
     set({ unsubscribeMessages: unsubscribe });
@@ -130,7 +257,6 @@ export const createChatSlice = (set, get) => ({
         const newLastVisible = snapshot.docs[snapshot.docs.length - 1];
 
         const initialMessage = messages[0];
-        // 이어하기 버튼 등 메시지가 아닌 요소를 제외하고 순수 메시지만 필터링
         const existingMessages = messages.slice(1).filter(m => m.type !== 'scenario_resume_prompt');
 
         set({
@@ -159,6 +285,7 @@ export const createChatSlice = (set, get) => ({
         isScenarioPanelOpen: false,
         lastVisibleMessage: null,
         hasMoreMessages: true,
+        expandedConversationId: null,
     });
   },
 
@@ -167,21 +294,18 @@ export const createChatSlice = (set, get) => ({
     if (!user) return;
     const conversationRef = doc(get().db, "chats", user.uid, "conversations", conversationId);
 
-    // 하위 컬렉션(scenario_sessions)의 모든 문서 삭제
     const scenariosRef = collection(conversationRef, "scenario_sessions");
     const scenariosSnapshot = await getDocs(scenariosRef);
     scenariosSnapshot.forEach(async (scenarioDoc) => {
       await deleteDoc(scenarioDoc.ref);
     });
 
-    // 하위 컬렉션(messages)의 모든 문서 삭제
     const messagesRef = collection(conversationRef, "messages");
     const messagesSnapshot = await getDocs(messagesRef);
     messagesSnapshot.forEach(async (messageDoc) => {
       await deleteDoc(messageDoc.ref);
     });
 
-    // 상위 문서 삭제
     await deleteDoc(conversationRef);
 
     if (get().currentConversationId === conversationId) {
@@ -196,6 +320,15 @@ export const createChatSlice = (set, get) => ({
     await updateDoc(conversationRef, { title: newTitle.trim() });
   },
 
+  // --- 👇 [새로운 함수] ---
+  pinConversation: async (conversationId, pinned) => {
+    const user = get().user;
+    if (!user) return;
+    const conversationRef = doc(get().db, "chats", user.uid, "conversations", conversationId);
+    await updateDoc(conversationRef, { pinned });
+  },
+
+  // --- 👇 [수정된 함수] ---
   saveMessage: async (message) => {
     const user = get().user;
     if (!user) return;
@@ -206,15 +339,14 @@ export const createChatSlice = (set, get) => ({
         title: firstMessageContent.substring(0, 30),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
+        pinned: false, // Pinned 상태 초기화
       });
       conversationId = conversationRef.id;
-      // 새 대화 생성 시, 기존 구독을 해제하고 새 대화를 로드
       get().unsubscribeMessages?.();
       get().loadConversation(conversationId);
     }
     
     const { id, ...messageToSave } = message;
-    // 'scenario_resume_prompt' 타입의 메시지는 저장하지 않음
     if (messageToSave.type === 'scenario_resume_prompt') return;
 
     Object.keys(messageToSave).forEach(key => (messageToSave[key] === undefined) && delete messageToSave[key]);
@@ -227,7 +359,7 @@ export const createChatSlice = (set, get) => ({
     await updateDoc(doc(get().db, "chats", user.uid, "conversations", conversationId), { updatedAt: serverTimestamp() });
   },
 
-  addMessage: (sender, messageData) => {
+  addMessage: async (sender, messageData) => {
     let newMessage;
     if (sender === 'user') {
       newMessage = { id: Date.now(), sender, text: messageData.text };
@@ -249,7 +381,7 @@ export const createChatSlice = (set, get) => ({
     }
     set(state => ({ messages: [...state.messages, newMessage] }));
     if (!newMessage.isStreaming) {
-      get().saveMessage(newMessage);
+      await get().saveMessage(newMessage);
     }
   },
 
@@ -276,15 +408,18 @@ export const createChatSlice = (set, get) => ({
 
   handleResponse: async (messagePayload) => {
     set({ isLoading: true });
-    if (messagePayload.text) {
-      get().addMessage('user', { text: messagePayload.text });
+
+    const textForUser = messagePayload.displayText || messagePayload.text;
+    if (textForUser) {
+      await get().addMessage('user', { text: textForUser });
     }
+
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: messagePayload,
+          message: { text: messagePayload.text },
           scenarioState: null,
           slots: get().slots,
           language: get().language,
@@ -315,8 +450,10 @@ export const createChatSlice = (set, get) => ({
         }
       }
     } catch (error) {
-      console.error('Failed to fetch chat response:', error);
-      get().showToast('An error occurred. Please try again.', 'error');
+      const errorKey = getErrorKey(error);
+      const { language } = get();
+      const errorMessage = locales[language][errorKey] || locales[language]['errorUnexpected'];
+      get().showToast(errorMessage, 'error');
     } finally {
       set({ isLoading: false });
     }

@@ -9,6 +9,20 @@ export const locales = {
     loading: '로딩 중...',
     copied: '복사되었습니다!',
 
+    // Error Messages
+    errorNetwork: '네트워크 연결을 확인해주세요. 인터넷이 불안정한 것 같아요.',
+    errorServer: '서버에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요.',
+    errorUnexpected: '예상치 못한 오류가 발생했습니다. 다시 시도해주세요.',
+
+    // Validation Messages
+    validationEmail: '유효한 이메일 주소를 입력해주세요.',
+    validationPhone: '유효한 전화번호(XXX-XXXX-XXXX)를 입력해주세요.',
+    validationFormat: '입력 형식이 올바르지 않습니다.',
+    validationRegexError: '시나리오에 설정된 정규식이 올바르지 않습니다.',
+    validationDateRange: (startDate, endDate) => `'${startDate}'와 '${endDate}' 사이의 날짜를 입력해주세요.`,
+    validationDateAfter: '오늘 또는 미래의 날짜를 선택해야 합니다.',
+    validationDateBefore: '오늘 또는 과거의 날짜를 선택해야 합니다.',
+
     //Manual
     manualTitle: '챗봇 사용 매뉴얼',
     manualContent: {
@@ -59,6 +73,14 @@ export const locales = {
     // History Panel
     newChat: '새로운 대화',
     deleteConvoConfirm: '정말로 이 대화를 삭제하시겠습니까?',
+    noScenariosFound: '실행된 시나리오가 없습니다.',
+    loadingScenarios: '시나리오 로딩 중...',
+    // --- 👇 [추가된 부분] ---
+    pin: '고정',
+    unpin: '고정 해제',
+    rename: '이름 변경',
+    delete: '삭제',
+    // --- 👆 [여기까지] ---
 
     // Profile Modal
     greeting: (displayName) => `안녕하세요 ${displayName} 님`,
@@ -108,6 +130,20 @@ export const locales = {
     logout: 'Log Out',
     loading: 'Loading...',
     copied: 'Copied!',
+
+    // Error Messages
+    errorNetwork: 'Network error. Please check your internet connection.',
+    errorServer: 'There was a problem with the server. Please try again later.',
+    errorUnexpected: 'An unexpected error occurred. Please try again.',
+
+    // Validation Messages
+    validationEmail: 'Please enter a valid email address.',
+    validationPhone: 'Please enter a valid phone number (e.g., XXX-XXXX-XXXX).',
+    validationFormat: 'The input format is incorrect.',
+    validationRegexError: 'The regular expression set in the scenario is invalid.',
+    validationDateRange: (startDate, endDate) => `Please enter a date between ${startDate} and ${endDate}.`,
+    validationDateAfter: 'You must select today or a future date.',
+    validationDateBefore: 'You must select today or a past date.',
 
     //Manual
     manualTitle: 'Chatbot Manual',
@@ -159,6 +195,14 @@ export const locales = {
     // History Panel
     newChat: 'New Chat',
     deleteConvoConfirm: 'Are you sure you want to delete this conversation?',
+    noScenariosFound: 'No scenarios were run.',
+    loadingScenarios: 'Loading scenarios...',
+    // --- 👇 [추가된 부분] ---
+    pin: 'Pin',
+    unpin: 'Unpin',
+    rename: 'Rename',
+    delete: 'Delete',
+    // --- 👆 [여기까지] ---
 
     // Profile Modal
     greeting: (displayName) => `Hello, ${displayName}`,

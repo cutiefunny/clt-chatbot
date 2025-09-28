@@ -1,5 +1,4 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
 import { useChatStore } from "../store";
 import { useTranslations } from "../hooks/useTranslations";
 import styles from "./HistoryPanel.module.css";
@@ -12,8 +11,9 @@ import ConversationItem from "./ConversationItem";
 import MenuIcon from "./icons/MenuIcon";
 import BellIcon from "./icons/BellIcon";
 import SearchIcon from "./icons/SearchIcon";
-import NewChatIcon from "./icons/NewChatIcon";
+import EditIcon from "./icons/EditIcon";
 import ManualIcon from "./icons/ManualIcon";
+import NewChatIcon from "./icons/NewChatIcon";
 import HistoryIcon from "./icons/HistoryIcon";
 import ExpandIcon from "./icons/ExpandIcon";
 
@@ -26,6 +26,7 @@ export default function HistoryPanel() {
     currentConversationId,
     deleteConversation,
     updateConversationTitle,
+    pinConversation,
     isHistoryPanelOpen,
     toggleHistoryPanel,
     isSearchModalOpen,
@@ -38,16 +39,26 @@ export default function HistoryPanel() {
     hasUnreadNotifications,
     isManualModalOpen,
     openManualModal,
+    expandedConversationId,
+    scenariosForConversation,
+    toggleConversationExpansion,
+    openScenarioPanel,
+    openConfirmModal,
   } = useChatStore();
   const { t } = useTranslations();
 
   if (!user) return null;
 
-  const handleDelete = (e, convoId) => {
+  const handleDeleteRequest = (e, convoId) => {
     e.stopPropagation();
-    if (window.confirm(t("deleteConvoConfirm"))) {
-      deleteConversation(convoId);
-    }
+    openConfirmModal({
+      title: "Alert",
+      message: t("deleteConvoConfirm"),
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      onConfirm: () => deleteConversation(convoId),
+      confirmVariant: "danger",
+    });
   };
 
   return (
@@ -65,42 +76,42 @@ export default function HistoryPanel() {
         >
           <MenuIcon />
         </button>
-        <div className={styles.header}>
-          <div className={styles.headerTopRow}>
-            {/* The toggle button is now outside for positioning */}
-            <div className={styles.headerIconGroup}>
-              <button
-                className={`${styles.iconButton} ${
-                  hasUnreadNotifications ? styles.unread : ""
-                }`}
-                onClick={openNotificationModal}
-              >
-                <BellIcon />
-              </button>
-              <button className={styles.iconButton} onClick={openSearchModal}>
-                <SearchIcon />
-              </button>
-            </div>
-          </div>
-          <button
-            className={styles.sidePanelButton}
-            onClick={createNewConversation}
-          >
-            <NewChatIcon />
-            <span className={styles.sidePanelButtonText}>{t("newChat")}</span>
-          </button>
-          <button className={styles.sidePanelButton}>
-            <HistoryIcon />
-            <span className={styles.sidePanelButtonText}>{t("History")}</span>
-            {isHistoryPanelOpen && (
-              <span className={styles.expandIconWrapper}>
-                <ExpandIcon />
-              </span>
-            )}
-          </button>
-        </div>
 
         <div className={styles.panelContentWrapper}>
+          <div className={styles.header}>
+            <div className={styles.headerTopRow}>
+              <div className={styles.headerIconGroup}>
+                <button
+                  className={`${styles.iconButton} ${
+                    hasUnreadNotifications ? styles.unread : ""
+                  }`}
+                  onClick={openNotificationModal}
+                >
+                  <BellIcon />
+                </button>
+                <button className={styles.iconButton} onClick={openSearchModal}>
+                  <SearchIcon />
+                </button>
+              </div>
+            </div>
+            <button
+              className={styles.sidePanelButton}
+              onClick={createNewConversation}
+            >
+              <NewChatIcon />
+              <span className={styles.sidePanelButtonText}>{t("newChat")}</span>
+            </button>
+            <button className={styles.sidePanelButton}>
+              <HistoryIcon />
+              <span className={styles.sidePanelButtonText}>{t("History")}</span>
+              {isHistoryPanelOpen && (
+                <span className={styles.expandIconWrapper}>
+                  <ExpandIcon />
+                </span>
+              )}
+            </button>
+          </div>
+
           <div className={styles.panelContent}>
             <div className={styles.conversationList}>
               {conversations.map((convo) => (
@@ -109,8 +120,13 @@ export default function HistoryPanel() {
                   convo={convo}
                   isActive={convo.id === currentConversationId}
                   onClick={loadConversation}
-                  onDelete={handleDelete}
+                  onDelete={handleDeleteRequest}
                   onUpdateTitle={updateConversationTitle}
+                  onPin={pinConversation}
+                  isExpanded={convo.id === expandedConversationId}
+                  scenarios={scenariosForConversation[convo.id]}
+                  onToggleExpand={toggleConversationExpansion}
+                  onScenarioClick={openScenarioPanel}
                 />
               ))}
             </div>

@@ -1,24 +1,9 @@
 import { NextResponse } from 'next/server';
-import { getScenario, getNextNode, interpolateMessage, findScenarioIdByTrigger, getScenarioList, runScenario } from '../../lib/chatbotEngine';
+import { getScenario, getNextNode, interpolateMessage, findActionByTrigger, getScenarioList, runScenario } from '../../lib/chatbotEngine';
 import { getGeminiStream } from '../../lib/gemini';
 import { locales } from '../../lib/locales';
 
-async function determineAction(messageText) {
-    const triggeredAction = findScenarioIdByTrigger(messageText);
-    if (triggeredAction) {
-        return { type: triggeredAction };
-    }
-
-    try {
-        await getScenario(messageText);
-        return { type: 'START_SCENARIO', payload: { scenarioId: messageText } };
-    } catch (e) {
-        // Scenario not found, proceed to LLM
-    }
-
-    return { type: 'LLM_FALLBACK' };
-}
-
+// --- 👇 [수정] actionHandlers를 간소화하고, 커스텀 액션에 집중 ---
 const actionHandlers = {
     'GET_SCENARIO_LIST': async (payload, slots, language) => {
         const scenarios = await getScenarioList();
@@ -55,10 +40,39 @@ const actionHandlers = {
             slots: {}
         });
     },
-    '선박 예약': (payload, slots) => actionHandlers.START_SCENARIO({ scenarioId: '선박 예약' }, slots),
-    'faq-scenario': (payload, slots) => actionHandlers.START_SCENARIO({ scenarioId: 'faq-scenario' }, slots),
-    'Welcome': (payload, slots) => actionHandlers.START_SCENARIO({ scenarioId: 'Welcome' }, slots),
 };
+
+// --- 👇 [수정] 동작을 결정하는 로직을 체계적으로 변경 ---
+async function determineAction(messageText) {
+    // 1. 메시지가 actionHandlers에 직접 정의된 커스텀 액션인지 확인
+    if (Object.keys(actionHandlers).includes(messageText)) {
+        return { type: messageText };
+    }
+
+    // 2. 메시지가 숏컷의 'title'과 일치하는지 확인 (사용자가 직접 입력한 경우)
+    const triggeredAction = await findActionByTrigger(messageText);
+    if (triggeredAction) {
+        if (triggeredAction.type === 'custom') {
+            // 커스텀 액션일 경우, 해당 액션 값을 타입으로 반환
+            return { type: triggeredAction.value };
+        }
+        if (triggeredAction.type === 'scenario') {
+            // 시나리오일 경우, START_SCENARIO 타입과 시나리오 ID를 payload로 반환
+            return { type: 'START_SCENARIO', payload: { scenarioId: triggeredAction.value } };
+        }
+    }
+
+    // 3. 메시지가 시나리오 ID와 직접 일치하는지 확인
+    try {
+        await getScenario(messageText);
+        return { type: 'START_SCENARIO', payload: { scenarioId: messageText } };
+    } catch (e) {
+        // 일치하는 시나리오가 없으면 다음 단계로 진행
+    }
+
+    // 4. 위 모든 조건에 해당하지 않으면 LLM으로 처리
+    return { type: 'LLM_FALLBACK' };
+}
 
 
 export async function POST(request) {
@@ -73,7 +87,6 @@ export async function POST(request) {
       return NextResponse.json(result);
     }
     
-    // --- 👇 [수정된 부분] ---
     // Case 2: Start a new scenario for a pre-created session
     if (scenarioSessionId && !scenarioState && message && message.text) {
         const scenarioId = message.text;
@@ -81,7 +94,6 @@ export async function POST(request) {
         const payload = { scenarioId };
         return await handler(payload, slots || {}, language);
     }
-    // --- 👆 [여기까지] ---
 
     // Case 3: A regular message from user, determine what to do
     if (!scenarioState && message.text) {

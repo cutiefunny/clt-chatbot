@@ -1,12 +1,11 @@
 'use client';
 
-import { useState } from 'react';
 import { useChatStore } from '../store';
 import { useTranslations } from '../hooks/useTranslations';
 import styles from './ProfileModal.module.css';
-import LogoutModal from './LogoutModal';
-import Modal from './Modal'; // Modal import
-import CloseIcon from './icons/CloseIcon'; // CloseIcon import
+import Modal from './Modal';
+import CloseIcon from './icons/CloseIcon';
+import Link from 'next/link';
 
 const CheckIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -18,23 +17,29 @@ export default function ProfileModal() {
   const {
     user,
     logout,
-    theme,
-    toggleTheme,
-    fontSize,
-    setFontSize,
     closeProfileModal,
     openDevBoardModal,
     language,
     setLanguage,
+    openConfirmModal, // --- 👈 [추가]
   } = useChatStore();
   const { t } = useTranslations();
-  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
-  const handleLogoutConfirm = () => {
-      logout();
-      setIsLogoutModalOpen(false);
-      closeProfileModal();
+  // --- 👇 [수정된 부분] ---
+  const handleLogoutRequest = () => {
+    openConfirmModal({
+      title: 'Log Out',
+      message: t('logoutConfirm'),
+      confirmText: 'Log Out',
+      cancelText: 'Cancel',
+      onConfirm: () => {
+        logout();
+        closeProfileModal();
+      },
+      confirmVariant: 'danger',
+    });
   };
+  // --- 👆 [여기까지] ---
   
   const handleDevBoardClick = () => {
     openDevBoardModal();
@@ -55,46 +60,6 @@ export default function ProfileModal() {
               <img src={user.photoURL} alt="User Avatar" className={styles.avatar} />
               <p className={styles.userName}>{t('greeting')(user.displayName)}</p>
               <p className={styles.userEmail}>{user.email}</p>
-            </div>
-
-            <div className={styles.settingsSection}>
-              <h3 className={styles.sectionTitle}>{t('screenStyle')}</h3>
-              <div className={styles.optionGroup}>
-                <button
-                  className={`${styles.optionButton} ${theme === 'light' ? styles.active : ''}`}
-                  onClick={toggleTheme}
-                >
-                  {theme === 'light' && <div className={styles.checkIcon}><CheckIcon /></div>}
-                  {t('lightMode')}
-                </button>
-                <button
-                  className={`${styles.optionButton} ${theme === 'dark' ? styles.active : ''}`}
-                  onClick={toggleTheme}
-                >
-                  {theme === 'dark' && <div className={styles.checkIcon}><CheckIcon /></div>}
-                  {t('darkMode')}
-                </button>
-              </div>
-            </div>
-
-            <div className={styles.settingsSection}>
-                <h3 className={styles.sectionTitle}>{t('fontSize')}</h3>
-                <div className={styles.optionGroup}>
-                    <button
-                        className={`${styles.optionButton} ${fontSize === 'small' ? styles.active : ''}`}
-                        onClick={() => setFontSize('small')}
-                    >
-                        {fontSize === 'small' && <div className={styles.checkIcon}><CheckIcon /></div>}
-                        {t('fontSmall')}
-                    </button>
-                    <button
-                        className={`${styles.optionButton} ${fontSize === 'default' ? styles.active : ''}`}
-                        onClick={() => setFontSize('default')}
-                    >
-                        {fontSize === 'default' && <div className={styles.checkIcon}><CheckIcon /></div>}
-                        {t('fontDefault')}
-                    </button>
-                </div>
             </div>
             
             <div className={styles.settingsSection}>
@@ -121,13 +86,29 @@ export default function ProfileModal() {
               {t('devBoard')}
             </button>
 
-            <button onClick={() => setIsLogoutModalOpen(true)} className={styles.logoutButton}>
+            <Link
+              href="/apidocs"
+              onClick={closeProfileModal}
+              className={styles.logoutButton}
+              style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}
+            >
+              API 문서 보기
+            </Link>
+
+            <Link
+              href="/admin/scenario-editor"
+              onClick={closeProfileModal}
+              className={styles.logoutButton}
+              style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}
+            >
+              시나리오 메뉴 편집 (임시)
+            </Link>
+
+            <button onClick={handleLogoutRequest} className={styles.logoutButton}>
               {t('logout')}
             </button>
           </div>
       </Modal>
-      
-      {isLogoutModalOpen && <LogoutModal onClose={() => setIsLogoutModalOpen(false)} onConfirm={handleLogoutConfirm} />}
     </>
   );
 }

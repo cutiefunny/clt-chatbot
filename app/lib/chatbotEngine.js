@@ -1,32 +1,73 @@
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
-
-// 시나리오를 트리거하는 키워드와 시나리오 ID 맵
-export const scenarioTriggers = {
-  "reservation": "reservation", // --- [수정] ---
-  "question": "faq-scenario",
-  "welcome": "Welcome",
-  "scenario list": "GET_SCENARIO_LIST"
-};
+import { getGeminiStream } from './gemini';
+import { locales } from './locales';
+let cachedScenarioCategories = null;
+let lastFetchTime = 0;
+const CACHE_DURATION = 5 * 60 * 1000; // 5분
 
 /**
- * 사용자 메시지에서 키워드를 찾아 해당하는 시나리오 ID 또는 액션을 반환하는 함수
- * @param {string} message - 사용자 입력 메시지
- * @returns {string | null} - 발견된 시나리오 ID 또는 액션 ID, 없으면 null
+ * Firestore의 'shortcut' 컬렉션에서 시나리오 카테고리 데이터를 가져옵니다.
+ * 성능을 위해 5분 동안 캐시된 데이터를 사용합니다.
+ * @returns {Promise<Array>} 시나리오 카테고리 배열
  */
-export function findScenarioIdByTrigger(message) {
-  for (const keyword in scenarioTriggers) {
-    if (message.toLowerCase().includes(keyword.toLowerCase())) {
-      return scenarioTriggers[keyword];
+export async function getScenarioCategories() {
+  const now = Date.now();
+  if (cachedScenarioCategories && (now - lastFetchTime < CACHE_DURATION)) {
+    return cachedScenarioCategories;
+  }
+
+  try {
+    const shortcutRef = doc(db, "shortcut", "main");
+    const docSnap = await getDoc(shortcutRef);
+
+    if (docSnap.exists() && docSnap.data().categories) {
+      cachedScenarioCategories = docSnap.data().categories;
+      lastFetchTime = now;
+      return cachedScenarioCategories;
+    } else {
+      console.warn("Shortcut document 'main' not found in Firestore. Returning empty array.");
+      return [];
+    }
+  } catch (error) {
+    console.error("Error fetching scenario categories from Firestore:", error);
+    return []; // 오류 발생 시 빈 배열 반환
+  }
+}
+
+export async function findActionByTrigger(message) {
+  const scenarioCategories = await getScenarioCategories();
+  if (!scenarioCategories) return null;
+
+  for (const category of scenarioCategories) {
+    for (const subCategory of category.subCategories) {
+        for (const item of subCategory.items) {
+            // 사용자가 입력한 텍스트가 아이템의 제목과 일치하는지 확인
+            if (message.toLowerCase().trim() === item.title.toLowerCase().trim()) {
+                return item.action; // { type: 'scenario', value: '...' } 또는 { type: 'custom', value: '...' }
+            }
+        }
     }
   }
   return null;
 }
 
-/**
- * Firestore에서 모든 시나리오의 목록(ID)을 가져오는 함수
- * @returns {Promise<string[]>} 시나리오 ID 목록 배열
- */
+export async function findScenarioIdByTrigger(message) {
+  const scenarioCategories = await getScenarioCategories();
+  if (!scenarioCategories) return null;
+
+  for (const category of scenarioCategories) {
+    for (const subCategory of category.subCategories) {
+        for (const item of subCategory.items) {
+            if (message.toLowerCase().includes(item.title.toLowerCase())) {
+                return item.scenarioId;
+            }
+        }
+    }
+  }
+  return null;
+}
+
 export const getScenarioList = async () => {
   const scenariosCollection = collection(db, 'scenarios');
   const querySnapshot = await getDocs(scenariosCollection);
@@ -44,6 +85,48 @@ export const getScenario = async (scenarioId) => {
   }
 };
 
+const evaluateCondition = (slotValue, operator, conditionValue) => {
+  const lowerCaseConditionValue = String(conditionValue).toLowerCase();
+  if (lowerCaseConditionValue === 'true' || lowerCaseConditionValue === 'false') {
+    const boolConditionValue = lowerCaseConditionValue === 'true';
+    const boolSlotValue = String(slotValue).toLowerCase() === 'true';
+
+    switch (operator) {
+      case '==':
+        return boolSlotValue === boolConditionValue;
+      case '!=':
+        return boolSlotValue !== boolConditionValue;
+      default:
+        return false;
+    }
+  }
+
+  const numSlotValue = parseFloat(slotValue);
+  const numConditionValue = parseFloat(conditionValue);
+
+  switch (operator) {
+    case '==':
+      return slotValue == conditionValue;
+    case '!=':
+      return slotValue != conditionValue;
+    case '>':
+      return !isNaN(numSlotValue) && !isNaN(numConditionValue) && numSlotValue > numConditionValue;
+    case '<':
+      return !isNaN(numSlotValue) && !isNaN(numConditionValue) && numSlotValue < numConditionValue;
+    case '>=':
+      return !isNaN(numSlotValue) && !isNaN(numConditionValue) && numSlotValue >= numConditionValue;
+    case '<=':
+      return !isNaN(numSlotValue) && !isNaN(numConditionValue) && numSlotValue <= numConditionValue;
+    case 'contains':
+      return slotValue && slotValue.toString().includes(conditionValue);
+    case '!contains':
+      return !slotValue || !slotValue.toString().includes(conditionValue);
+    default:
+      return false;
+  }
+};
+
+
 export const getNextNode = (scenario, currentNodeId, sourceHandleId = null, slots = {}) => {
   if (!currentNodeId) {
     const edgeTargets = new Set(scenario.edges.map(edge => edge.target));
@@ -54,7 +137,6 @@ export const getNextNode = (scenario, currentNodeId, sourceHandleId = null, slot
   const sourceNode = scenario.nodes.find(n => n.id === currentNodeId);
   let nextEdge;
 
-  // LLM 노드 분기 처리
   if (sourceNode && sourceNode.type === 'llm' && sourceNode.data.conditions?.length > 0) {
       const llmOutput = slots[sourceNode.data.outputVar] || '';
       const matchedCondition = sourceNode.data.conditions.find(cond =>
@@ -63,6 +145,20 @@ export const getNextNode = (scenario, currentNodeId, sourceHandleId = null, slot
       if (matchedCondition) {
           nextEdge = scenario.edges.find(edge => edge.source === currentNodeId && edge.sourceHandle === matchedCondition.id);
       }
+  }
+  
+  if (!nextEdge && sourceNode && sourceNode.type === 'branch' && sourceNode.data.evaluationType === 'CONDITION') {
+    const conditions = sourceNode.data.conditions || [];
+    for (const condition of conditions) {
+        const slotValue = slots[condition.slot];
+        if (evaluateCondition(slotValue, condition.operator, condition.value)) {
+            const handleId = sourceNode.data.replies[conditions.indexOf(condition)]?.value;
+            if(handleId) {
+                nextEdge = scenario.edges.find(edge => edge.source === currentNodeId && edge.sourceHandle === handleId);
+                if (nextEdge) break;
+            }
+        }
+    }
   }
 
   if (!nextEdge) {
@@ -82,10 +178,8 @@ export const getNextNode = (scenario, currentNodeId, sourceHandleId = null, slot
   return null;
 };
 
-
 export const interpolateMessage = (message, slots) => {
     if (!message) return '';
-    // 키 값의 앞뒤 공백을 제거하여 예상치 못한 데이터 오류를 방지합니다.
     return message.replace(/\{([^}]+)\}/g, (match, key) => {
         const trimmedKey = key.trim();
         return slots.hasOwnProperty(trimmedKey) ? slots[trimmedKey] : match;
@@ -97,48 +191,210 @@ export const getNestedValue = (obj, path) => {
     return path.split('.').reduce((acc, part) => acc && acc[part], obj);
 };
 
-export const validateInput = (value, validation) => {
+export const validateInput = (value, validation, language = 'ko') => {
   if (!validation) return { isValid: true };
+  const t = (key, ...args) => {
+    const message = locales[language][key] || key;
+    if (typeof message === 'function') {
+        return message(...args);
+    }
+    return message;
+  }
 
-  const getErrorMessage = (defaultMessage) => validation.errorMessage || defaultMessage;
+  const getErrorMessage = (defaultKey) => validation.errorMessage || t(defaultKey);
 
   switch (validation.type) {
     case 'email':
       return {
         isValid: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value),
-        message: getErrorMessage('유효한 이메일 주소를 입력해주세요.')
+        message: getErrorMessage('validationEmail')
       };
     case 'phone number':
       return {
         isValid: /^\d{2,3}-\d{3,4}-\d{4}$/.test(value),
-        message: getErrorMessage('유효한 전화번호(XXX-XXXX-XXXX)를 입력해주세요.')
+        message: getErrorMessage('validationPhone')
       };
     case 'custom':
       if (validation.regex) {
         try {
           const isValid = new RegExp(validation.regex).test(value);
-          return { isValid, message: isValid ? '' : getErrorMessage('입력 형식이 올바르지 않습니다.') };
+          return { isValid, message: isValid ? '' : getErrorMessage('validationFormat') };
         } catch (e) {
           console.error("Invalid regex:", validation.regex);
-          return { isValid: false, message: '시나리오에 설정된 정규식이 올바르지 않습니다.' };
+          return { isValid: false, message: t('validationRegexError') };
         }
       }
+       if (validation.startDate && validation.endDate) {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return { isValid: false, message: getErrorMessage('validationFormat') };
+            const selectedDate = new Date(value);
+            const startDate = new Date(validation.startDate);
+            const endDate = new Date(validation.endDate);
+            startDate.setHours(0, 0, 0, 0);
+            endDate.setHours(23, 59, 59, 999);
+            const isValid = selectedDate >= startDate && selectedDate <= endDate;
+            return { isValid, message: isValid ? '' : t('validationDateRange', validation.startDate, validation.endDate) };
+        }
       return { isValid: true };
+    case 'today after':
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return { isValid: false, message: getErrorMessage('validationFormat') };
+        const selectedDateAfter = new Date(value);
+        const todayAfter = new Date();
+        todayAfter.setHours(0, 0, 0, 0);
+        const isAfterValid = selectedDateAfter >= todayAfter;
+        return { isValid: isAfterValid, message: isAfterValid ? '' : t('validationDateAfter')};
+    case 'today before':
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return { isValid: false, message: getErrorMessage('validationFormat') };
+        const selectedDateBefore = new Date(value);
+        const todayBefore = new Date();
+        todayBefore.setHours(23, 59, 59, 999);
+        const isBeforeValid = selectedDateBefore <= todayBefore;
+        return { isValid: isBeforeValid, message: isBeforeValid ? '' : t('validationDateBefore')};
     default:
       return { isValid: true };
   }
 };
 
-export async function runScenario(scenario, scenarioState, message, slots, scenarioSessionId) {
+async function handleToastNode(node, scenario, slots) {
+  const interpolatedToastMessage = interpolateMessage(node.data.message, slots);
+  const event = {
+    type: 'toast',
+    message: interpolatedToastMessage,
+    toastType: node.data.toastType || 'info',
+  };
+  const nextNode = getNextNode(scenario, node.id, null, slots);
+  return { nextNode, slots, events: [event] };
+}
+
+async function handleInteractiveNode(node, scenario, slots, scenarioSessionId) {
+    if (node.type === 'iframe' && node.data.url && scenarioSessionId) {
+        try {
+            const url = new URL(node.data.url);
+            url.searchParams.set('scenario_session_id', scenarioSessionId);
+            node.data.url = url.toString();
+        } catch (e) {
+            console.error("Invalid URL in iFrame node:", node.data.url);
+            const separator = node.data.url.includes('?') ? '&' : '?';
+            node.data.url += `${separator}scenario_session_id=${scenarioSessionId}`;
+        }
+    }
+    // 대화형 노드는 자기 자신을 nextNode로 반환하여 루프를 멈추게 함
+    return { nextNode: node };
+}
+
+async function handleLinkNode(node, scenario, slots) {
+    if (node.data.content) {
+        window.open(node.data.content, '_blank', 'noopener,noreferrer');
+    }
+    const nextNode = getNextNode(scenario, node.id, null, slots);
+    return { nextNode, slots, events: [] };
+}
+
+
+async function handleApiNode(node, scenario, slots) {
+    const { method, url, headers, body, params, responseMapping } = node.data;
+    let interpolatedUrl = interpolateMessage(url, slots);
+    
+    if (method === 'GET' && params) {
+        const queryParams = new URLSearchParams();
+        for (const key in params) {
+            if (Object.hasOwnProperty.call(params, key)) {
+                const value = interpolateMessage(params[key], slots);
+                if (value) queryParams.append(key, value);
+            }
+        }
+        const queryString = queryParams.toString();
+        if (queryString) {
+            interpolatedUrl += (interpolatedUrl.includes('?') ? '&' : '?') + queryString;
+        }
+    }
+
+    if (interpolatedUrl.startsWith('/')) {
+        const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+        interpolatedUrl = `${baseURL}${interpolatedUrl}`;
+    }
+
+    const interpolatedHeaders = JSON.parse(interpolateMessage(headers || '{}', slots));
+    const interpolatedBody = method !== 'GET' && body ? interpolateMessage(body, slots) : undefined;
+
+    let isSuccess = false;
+    try {
+        const response = await fetch(interpolatedUrl, { method, headers: interpolatedHeaders, body: interpolatedBody });
+        if (!response.ok) {
+            const errorBody = await response.text();
+            throw new Error(`API request failed with status ${response.status}. Body: ${errorBody}`);
+        }
+
+        const result = await response.json();
+        if (responseMapping && responseMapping.length > 0) {
+            responseMapping.forEach(mapping => {
+                const value = getNestedValue(result, mapping.path);
+                if (value !== undefined) slots[mapping.slot] = value;
+            });
+        }
+        isSuccess = true;
+    } catch (error) {
+        console.error("API Node Error:", error);
+        slots['apiError'] = error.message;
+        isSuccess = false;
+    }
+
+    const nextNode = getNextNode(scenario, node.id, isSuccess ? 'onSuccess' : 'onError', slots);
+    return { nextNode, slots, events: [] };
+}
+
+async function handleLlmNode(node, scenario, slots, language) {
+    const interpolatedPrompt = interpolateMessage(node.data.prompt, slots);
+    const stream = await getGeminiStream(interpolatedPrompt, language);
+    const reader = stream.getReader();
+    const decoder = new TextDecoder();
+    let llmResponse = '';
+    while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        llmResponse += decoder.decode(value, { stream: true });
+    }
+
+    if (node.data.outputVar) {
+        slots[node.data.outputVar] = llmResponse;
+    }
+
+    const nextNode = getNextNode(scenario, node.id, null, slots);
+    return { nextNode, slots, events: [] };
+}
+
+async function handleBranchNode(node, scenario, slots) {
+  if (node.data.evaluationType === 'CONDITION') {
+    // 자동 노드: 즉시 다음 노드를 찾아 반환
+    const nextNode = getNextNode(scenario, node.id, null, slots);
+    return { nextNode, slots, events: [] };
+  } else {
+    // 대화형 노드: 노드 자신을 반환하여 UI 렌더링
+    return { nextNode: node };
+  }
+}
+
+const nodeHandlers = {
+  'toast': handleToastNode,
+  'slotfilling': handleInteractiveNode,
+  'message': handleInteractiveNode,
+  'branch': handleBranchNode, // branch 핸들러 교체
+  'form': handleInteractiveNode,
+  'iframe': handleInteractiveNode,
+  'link': handleLinkNode,
+  'api': handleApiNode,
+  'llm': handleLlmNode,
+};
+
+export async function runScenario(scenario, scenarioState, message, slots, scenarioSessionId, language) {
     const { scenarioId, currentNodeId, awaitingInput } = scenarioState;
     let currentId = currentNodeId;
     let newSlots = { ...slots };
-    const events = [];
+    const allEvents = [];
     
     if (awaitingInput) {
         const currentNode = scenario.nodes.find(n => n.id === currentId);
         const validation = currentNode.data.validation;
-        const { isValid, message: validationMessage } = validateInput(message.text, validation);
+        const { isValid, message: validationMessage } = validateInput(message.text, validation, language);
 
         if (!isValid) {
             return {
@@ -152,127 +408,42 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
         newSlots[currentNode.data.slot] = message.text;
     }
 
-    let nextNode = getNextNode(scenario, currentId, message.sourceHandle, newSlots);
+    let currentNode = getNextNode(scenario, currentId, message.sourceHandle, newSlots);
 
-    while (nextNode) {
-        nextNode.data.content = interpolateMessage(nextNode.data.content, newSlots);
+    while (currentNode) {
+        if (currentNode.data) {
+            currentNode.data.content = interpolateMessage(currentNode.data.content, newSlots);
+        }
         
-        if (nextNode.type === 'toast') {
-            const interpolatedToastMessage = interpolateMessage(nextNode.data.message, newSlots);
-            events.push({
-                type: 'toast',
-                message: interpolatedToastMessage,
-                toastType: nextNode.data.toastType || 'info',
-            });
-            nextNode = getNextNode(scenario, nextNode.id, null, newSlots);
-            continue; 
-        }
+        const handler = nodeHandlers[currentNode.type];
+        
+        if (handler) {
+            const result = await handler(currentNode, scenario, newSlots, scenarioSessionId, language);
+            newSlots = result.slots || newSlots;
+            if (result.events) allEvents.push(...result.events);
 
-        if (['slotfilling', 'message', 'branch', 'form', 'iframe'].includes(nextNode.type)) {
-            if (nextNode.type === 'iframe' && nextNode.data.url && scenarioSessionId) {
-                try {
-                    const url = new URL(nextNode.data.url);
-                    url.searchParams.set('scenario_session_id', scenarioSessionId);
-                    nextNode.data.url = url.toString();
-                } catch (e) {
-                    console.error("Invalid URL in iFrame node:", nextNode.data.url);
-                    const separator = nextNode.data.url.includes('?') ? '&' : '?';
-                    nextNode.data.url += `${separator}scenario_session_id=${scenarioSessionId}`;
-                }
-            }
-
-            const isAwaiting = nextNode.type === 'slotfilling';
-            return {
-                type: 'scenario',
-                nextNode,
-                scenarioState: { scenarioId, currentNodeId: nextNode.id, awaitingInput: isAwaiting },
-                slots: newSlots,
-                events,
-            };
-        }
-
-        if (nextNode.type === 'api') {
-            const { method, url, headers, body, params, responseMapping } = nextNode.data;
-            let interpolatedUrl = interpolateMessage(url, newSlots);
-
-            if (method === 'GET' && params) {
-                const queryParams = new URLSearchParams();
-                for (const key in params) {
-                    if (Object.hasOwnProperty.call(params, key)) {
-                        const value = interpolateMessage(params[key], newSlots);
-                        if (value) queryParams.append(key, value);
-                    }
-                }
-                const queryString = queryParams.toString();
-                if (queryString) {
-                    interpolatedUrl += (interpolatedUrl.includes('?') ? '&' : '?') + queryString;
-                }
+            // 핸들러가 자기 자신을 반환하면, 대화형 노드이므로 루프를 중단
+            if (result.nextNode && result.nextNode.id === currentNode.id) {
+                currentNode = result.nextNode;
+                break;
             }
             
-            if (interpolatedUrl.startsWith('/')) {
-                const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
-                interpolatedUrl = `${baseURL}${interpolatedUrl}`;
-            }
-
-            const interpolatedHeaders = JSON.parse(interpolateMessage(headers || '{}', newSlots));
-            const interpolatedBody = method !== 'GET' && body ? interpolateMessage(body, newSlots) : undefined;
-
-            let isSuccess = false;
-            try {
-                const response = await fetch(interpolatedUrl, { method, headers: interpolatedHeaders, body: interpolatedBody });
-                if (!response.ok) {
-                    const errorBody = await response.text();
-                    throw new Error(`API request failed with status ${response.status}. Body: ${errorBody}`);
-                }
-
-                const result = await response.json();
-                if (responseMapping && responseMapping.length > 0) {
-                    responseMapping.forEach(mapping => {
-                        const value = getNestedValue(result, mapping.path);
-                        if (value !== undefined) newSlots[mapping.slot] = value;
-                    });
-                }
-                isSuccess = true;
-            } catch (error) {
-                console.error("API Node Error:", error);
-                newSlots['apiError'] = error.message; 
-                isSuccess = false;
-            }
-
-            nextNode = getNextNode(scenario, nextNode.id, isSuccess ? 'onSuccess' : 'onError', newSlots);
-            continue;
+            // 핸들러가 다음 노드를 반환하면, 자동 노드이므로 루프 계속
+            currentNode = result.nextNode;
+        } else {
+            // 핸들러가 없는 노드(예: end)이면 루프 중단
+            break;
         }
-        
-        if (nextNode.type === 'llm') {
-            const { getGeminiStream } = await import('./gemini'); // 필요할 때만 import
-            const interpolatedPrompt = interpolateMessage(nextNode.data.prompt, newSlots);
-            const stream = await getGeminiStream(interpolatedPrompt);
-            const reader = stream.getReader();
-            const decoder = new TextDecoder();
-            let llmResponse = '';
-            while (true) {
-                const { value, done } = await reader.read();
-                if (done) break;
-                llmResponse += decoder.decode(value, { stream: true });
-            }
-
-            if (nextNode.data.outputVar) {
-                newSlots[nextNode.data.outputVar] = llmResponse;
-            }
-
-            nextNode = getNextNode(scenario, nextNode.id, null, newSlots);
-            continue;
-        }
-        break;
     }
 
-    if (nextNode) {
+    if (currentNode) {
+        const isAwaiting = currentNode.type === 'slotfilling';
         return {
             type: 'scenario',
-            nextNode,
-            scenarioState: { scenarioId, currentNodeId: nextNode.id, awaitingInput: false },
+            nextNode: currentNode,
+            scenarioState: { scenarioId, currentNodeId: currentNode.id, awaitingInput: isAwaiting },
             slots: newSlots,
-            events,
+            events: allEvents,
         };
     } else {
         return {
@@ -280,7 +451,7 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
             message: '시나리오가 종료되었습니다.',
             scenarioState: null,
             slots: newSlots,
-            events,
+            events: allEvents,
         };
     }
 }

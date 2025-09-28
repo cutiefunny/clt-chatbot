@@ -15,14 +15,41 @@ export const createUISlice = (set, get) => ({
   isScenarioModalOpen: false,
   isDevBoardModalOpen: false,
   isNotificationModalOpen: false,
-  isManualModalOpen: false, // --- [추가]
+  isManualModalOpen: false,
   isHistoryPanelOpen: false,
+  confirmModal: {
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmText: 'Confirm',
+    cancelText: 'Cancel',
+    onConfirm: () => {},
+    confirmVariant: 'default',
+  },
   activePanel: 'main',
   focusRequest: 0,
+  shortcutMenuOpen: null,
+  ephemeralToast: {
+    visible: false,
+    message: '',
+    type: 'info',
+  },
 
   // Actions
-  toggleTheme: async () => {
-    const newTheme = get().theme === 'light' ? 'dark' : 'light';
+  setShortcutMenuOpen: (menuName) => set({ shortcutMenuOpen: menuName }),
+
+  showEphemeralToast: (message, type = 'info') => {
+    set({ ephemeralToast: { visible: true, message, type } });
+    setTimeout(() => {
+      set(state => ({ ephemeralToast: { ...state.ephemeralToast, visible: false } }));
+    }, 3000);
+  },
+  hideEphemeralToast: () => {
+     set(state => ({ ephemeralToast: { ...state.ephemeralToast, visible: false } }));
+  },
+  
+  setTheme: async (newTheme) => {
+    if (get().theme === newTheme) return;
     set({ theme: newTheme });
     if (typeof window !== 'undefined') {
       localStorage.setItem('theme', newTheme);
@@ -36,6 +63,11 @@ export const createUISlice = (set, get) => ({
         console.error("Error saving theme to Firestore:", error);
       }
     }
+  },
+  
+  toggleTheme: async () => {
+    const newTheme = get().theme === 'light' ? 'dark' : 'light';
+    await get().setTheme(newTheme);
   },
 
   setFontSize: async (size) => {
@@ -84,8 +116,15 @@ export const createUISlice = (set, get) => ({
   closeDevBoardModal: () => set({ isDevBoardModalOpen: false }),
   openNotificationModal: () => set({ isNotificationModalOpen: true }),
   closeNotificationModal: () => set({ isNotificationModalOpen: false }),
-  openManualModal: () => set({ isManualModalOpen: true }), // --- [추가]
-  closeManualModal: () => set({ isManualModalOpen: false }), // --- [추가]
+  openManualModal: () => set({ isManualModalOpen: true }),
+  closeManualModal: () => set({ isManualModalOpen: false }),
+
+  openConfirmModal: (config) => set((state) => ({
+    confirmModal: { ...state.confirmModal, isOpen: true, ...config },
+  })),
+  closeConfirmModal: () => set((state) => ({
+    confirmModal: { ...state.confirmModal, isOpen: false },
+  })),
 
   toggleHistoryPanel: () => set(state => ({ isHistoryPanelOpen: !state.isHistoryPanelOpen })),
   setActivePanel: (panel) => set({ activePanel: panel }),

@@ -2,6 +2,9 @@
 import { useState, useRef, useEffect } from "react";
 import { useTranslations } from "../hooks/useTranslations";
 import styles from "./HistoryPanel.module.css";
+import ChevronDownIcon from "./icons/ChevronDownIcon";
+import KebabMenuIcon from "./icons/KebabMenuIcon";
+import PinIcon from "./icons/PinIcon";
 
 const CheckIcon = () => (
   <svg
@@ -20,6 +23,7 @@ const CheckIcon = () => (
     />
   </svg>
 );
+
 const PencilIcon = () => (
   <svg
     width="16"
@@ -44,6 +48,7 @@ const PencilIcon = () => (
     />
   </svg>
 );
+
 const TrashIcon = () => (
   <svg
     width="16"
@@ -75,10 +80,17 @@ export default function ConversationItem({
   onClick,
   onDelete,
   onUpdateTitle,
+  onPin,
+  isExpanded,
+  scenarios,
+  onToggleExpand,
+  onScenarioClick,
 }) {
   const [isEditing, setIsEditing] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [title, setTitle] = useState(convo.title);
   const inputRef = useRef(null);
+  const menuRef = useRef(null);
   const { t } = useTranslations();
 
   useEffect(() => {
@@ -87,6 +99,18 @@ export default function ConversationItem({
       inputRef.current?.select();
     }
   }, [isEditing]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const handleUpdate = () => {
     if (title.trim() && title.trim() !== convo.title) {
@@ -104,57 +128,136 @@ export default function ConversationItem({
     }
   };
 
+  const handleRename = (e) => {
+    e.stopPropagation();
+    setIsEditing(true);
+    setIsMenuOpen(false);
+  };
+
+  const handleDelete = (e) => {
+    e.stopPropagation();
+    onDelete(e, convo.id);
+    setIsMenuOpen(false);
+  };
+
+  const handlePin = (e) => {
+    e.stopPropagation();
+    onPin(convo.id, !convo.pinned);
+    setIsMenuOpen(false);
+  };
+
   return (
-    <div
-      className={`${styles.conversationItem} ${isActive ? styles.active : ""}`}
-      onClick={() => !isEditing && onClick(convo.id)}
-    >
-      {isEditing ? (
-        <input
-          ref={inputRef}
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onBlur={handleUpdate}
-          onKeyDown={handleKeyDown}
-          className={styles.titleInput}
-          onClick={(e) => e.stopPropagation()}
-        />
-      ) : (
-        <span className={styles.convoTitle}>{convo.title || t("newChat")}</span>
-      )}
-      <div className={styles.buttonGroup}>
-        {isEditing ? (
+    <>
+      <div
+        className={`${styles.conversationItem} ${
+          isActive ? styles.active : ""
+        }`}
+        onClick={() => !isEditing && onClick(convo.id)}
+      >
+        <div className={styles.convoMain}>
+          {convo.pinned && (
+            <span className={styles.pinIndicator}>
+              <PinIcon />
+            </span>
+          )}
           <button
-            className={styles.actionButton}
+            className={styles.expandButton}
             onClick={(e) => {
               e.stopPropagation();
-              handleUpdate();
+              onToggleExpand(convo.id);
             }}
           >
-            <CheckIcon />
+            <ChevronDownIcon
+              style={{
+                transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
+              }}
+            />
           </button>
-        ) : (
-          <>
+
+          {isEditing ? (
+            <input
+              ref={inputRef}
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onBlur={handleUpdate}
+              onKeyDown={handleKeyDown}
+              className={styles.titleInput}
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <span className={styles.convoTitle}>
+              {convo.title || t("newChat")}
+            </span>
+          )}
+        </div>
+
+        {isEditing ? (
+          <div className={styles.editConfirmButton}>
             <button
               className={styles.actionButton}
-              onClic
-              k={(e) => {
+              style={{ opacity: 1 }}
+              onClick={(e) => {
                 e.stopPropagation();
-                setIsEditing(true);
+                handleUpdate();
               }}
             >
-              <PencilIcon />
+              <CheckIcon />
             </button>
+          </div>
+        ) : (
+          <div className={styles.menuContainer} ref={menuRef}>
             <button
-              className={styles.actionButton}
-              onClick={(e) => onDelete(e, convo.id)}
+              className={styles.menuButton}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsMenuOpen(!isMenuOpen);
+              }}
+              data-open={isMenuOpen}
             >
-              <TrashIcon />
+              <KebabMenuIcon />
             </button>
-          </>
+            {isMenuOpen && (
+              <div className={styles.dropdownMenu}>
+                <button onClick={handlePin}>
+                  {convo.pinned ? t("unpin") : t("pin")}
+                </button>
+                <button onClick={handleRename}>{t("rename")}</button>
+                <button onClick={handleDelete}>{t("delete")}</button>
+              </div>
+            )}
+          </div>
         )}
       </div>
-    </div>
+      {isExpanded && (
+        <div className={styles.scenarioSubList}>
+          {scenarios ? (
+            scenarios.length > 0 ? (
+              scenarios.map((scenario) => (
+                <div
+                  key={scenario.sessionId}
+                  className={styles.scenarioItem}
+                  onClick={() =>
+                    onScenarioClick(scenario.scenarioId, scenario.sessionId)
+                  }
+                >
+                  <span
+                    className={styles.scenarioStatusDot}
+                    data-status={scenario.status}
+                  ></span>
+                  <span className={styles.scenarioTitle}>
+                    {scenario.scenarioId}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <div className={styles.noScenarios}>{t("noScenariosFound")}</div>
+            )
+          ) : (
+            <div className={styles.noScenarios}>{t("loadingScenarios")}</div>
+          )}
+        </div>
+      )}
+    </>
   );
 }

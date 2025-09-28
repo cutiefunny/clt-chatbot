@@ -9,27 +9,149 @@
     flex-shrink: 0;
 }
 
-/* --- 👇 [추가된 부분] --- */
-.resumeScenarioBar {
+.quickActionsContainer {
     display: flex;
-    justify-content: center;
+    gap: 8px;
     padding-bottom: 8px;
+    position: relative;
 }
-.resumeScenarioBar button {
-    background-color: var(--login-button-bg);
-    color: white;
-    border: none;
-    padding: 8px 16px;
+
+.categoryWrapper {
+    position: relative;
+}
+
+.categoryButton {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
     border-radius: 20px;
+    border: 1px solid var(--panel-border-color);
+    background-color: var(--panel-bg-color);
+    color: var(--text-color);
+    font-size: 0.85rem;
     cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.categoryButton:hover, .categoryButton.active {
+    background-color: var(--button-hover-bg);
+    border-color: var(--option-button-hover-border);
+}
+
+.dropdownMenu {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    background-color: var(--panel-bg-color);
+    border: 1px solid var(--panel-border-color);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    z-index: 10;
+    width: 400px;
+    margin-bottom: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 8px;
+}
+
+.subCategorySection {
+    margin-bottom: 8px;
+}
+.subCategorySection:last-child {
+    margin-bottom: 0;
+}
+
+.subCategoryTitle {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #8a8a8e;
+    padding: 8px 12px;
+}
+
+.dropdownItem {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    border-radius: 8px;
+    position: relative; 
+}
+
+.itemContentWrapper {
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    background: none;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background-color 0.2s;
+    z-index: 1; 
+}
+
+.itemContentWrapper:hover {
+    background-color: var(--button-hover-bg);
+}
+
+.itemIcon {
+    color: #8a8a8e;
+    flex-shrink: 0;
+}
+
+.itemContent {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    overflow: hidden;
+}
+
+.itemTitle {
     font-size: 0.9rem;
     font-weight: 500;
-    transition: background-color 0.2s;
+    color: var(--text-color);
+    flex-shrink: 0;
 }
-.resumeScenarioBar button:hover {
-    background-color: var(--login-button-hover-bg);
+
+.itemDescription {
+    font-size: 0.7rem;
+    color: #8a8a8e;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
-/* --- 👆 [여기까지] --- */
+
+.favoriteButton {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px; 
+    border-radius: 50%;
+    /* margin-right: 4px; */
+    color: var(--panel-border-color);
+    transition: color 0.2s, background-color 0.2s;
+    position: relative;
+    z-index: 2; 
+}
+
+.favoriteButton:hover {
+    color: #fdd835;
+    background-color: var(--button-hover-bg);
+}
+
+/* --- 👇 [추가] hover 시 SVG 내부를 채우는 스타일 --- */
+.favoriteButton:hover svg {
+    fill: currentColor;
+}
+
+.favoriteButton.favorited {
+    color: #fdd835;
+}
 
 .buttonRow {
     display: flex;
@@ -80,21 +202,11 @@
   padding: 8px;
   border-radius: 16px;
   border: 2px solid var(--input-border-color);
-  height: 5rem;
+  min-height: 5rem;
   backdrop-filter: blur(8px);
   flex-shrink: 0;
   box-shadow: 0 0 12px 1px rgba(130, 160, 255, 0.3);
   background-color: var(--chat-input-bg);
-}
-
-.attachButton {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .textInput {
@@ -104,8 +216,32 @@
   font-size: 1rem;
   outline: none;
   color: var(--chat-input-text-color);
+  align-self: stretch;
+  padding: 8px;
+  resize: none;
 }
 
 .textInput::placeholder {
   color: var(--input-placeholder-color);
+}
+
+.sendButton {
+    background-color: #8A2BE2;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s;
+    align-self: flex-end;
+}
+
+.sendButton:hover {
+    background-color: #9932CC;
+}
+
+.sendButton:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
 }

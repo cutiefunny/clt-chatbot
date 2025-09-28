@@ -4,11 +4,12 @@ import { useEffect, useRef, useState } from 'react';
 import { useChatStore } from '../store';
 import { useTranslations } from '../hooks/useTranslations';
 import styles from './ChatInput.module.css';
+import StarIcon from './icons/StarIcon';
 
-const MenuIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M4 6H20M4 12H20M4 18H20" stroke="var(--text-color)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
+const ChevronDownIcon = ({ size = 16, style = {} }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={style}>
+        <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
 );
 
 const useDraggableScroll = () => {
@@ -41,73 +42,137 @@ export default function ChatInput() {
         isLoading, 
         handleResponse,
         activePanel,
-        activeScenarioSessionId, // --- 👈 [수정] activeScenarioId -> activeScenarioSessionId
+        activeScenarioSessionId,
         scenarioStates,
         handleScenarioResponse,
         focusRequest,
-        openScenarioModal,
+        scenarioCategories,
+        favorites,
+        toggleFavorite,
+        handleShortcutClick,
+        shortcutMenuOpen, // --- 👈 [수정] 스토어에서 상태 가져오기
+        setShortcutMenuOpen, // --- 👈 [수정] 스토어에서 함수 가져오기
     } = useChatStore();
     
     const { t } = useTranslations();
     const inputRef = useRef(null);
     const quickRepliesSlider = useDraggableScroll();
-
-    // --- 👇 [수정] activeScenarioSessionId를 사용하여 현재 시나리오 상태 가져오기 ---
+    const menuRef = useRef(null); // --- 👈 [수정] 로컬 상태 제거
+    
     const activeScenario = activeScenarioSessionId ? scenarioStates[activeScenarioSessionId] : null;
-    const scenarioMessages = activeScenario?.messages || [];
     const mainMessages = useChatStore(state => state.messages);
-    
-    // --- 👇 [추가] 패널에 맞는 로딩 상태 결정 ---
-    const isInputDisabled = activePanel === 'scenario' 
-        ? activeScenario?.isLoading ?? false 
-        : isLoading;
-
-    const lastMessage = activePanel === 'main' 
-            ? mainMessages[mainMessages.length - 1] 
-            : scenarioMessages[scenarioMessages.length - 1];
-    
+    const isInputDisabled = activePanel === 'scenario' ? activeScenario?.isLoading ?? false : isLoading;
+    const lastMessage = activePanel === 'main' ? mainMessages[mainMessages.length - 1] : activeScenario?.messages[activeScenario.messages.length - 1];
     const currentBotMessageNode = lastMessage?.sender === 'bot' ? lastMessage.node : null;
     const currentScenarioNodeId = activeScenario?.state?.currentNodeId;
 
     useEffect(() => {
-        if (!isInputDisabled) { // isInputDisabled 사용
+        const handleClickOutside = (event) => {
+            if (menuRef.current && !menuRef.current.contains(event.target)) {
+                setShortcutMenuOpen(null); // --- 👈 [수정]
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [setShortcutMenuOpen]);
+
+    useEffect(() => {
+        if (!isInputDisabled) {
             inputRef.current?.focus();
         }
     }, [isInputDisabled, focusRequest, activePanel]);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         const input = e.target.elements.userInput.value;
-        if (!input.trim() || isInputDisabled) return; // isInputDisabled 사용
+        if (!input.trim() || isInputDisabled) return;
 
         if (activePanel === 'scenario') {
-            handleScenarioResponse({
-                scenarioSessionId: activeScenarioSessionId, // --- 👈 [수정]
+            await handleScenarioResponse({
+                scenarioSessionId: activeScenarioSessionId,
                 currentNodeId: currentScenarioNodeId,
                 userInput: input,
             });
         } else {
-            handleResponse({ text: input });
+            await handleResponse({ text: input });
         }
         e.target.reset();
     };
     
-    const handleQuickReplyClick = (reply) => {
+    const handleQuickReplyClick = async (reply) => {
         if (activePanel === 'scenario') {
-            handleScenarioResponse({ 
-                scenarioSessionId: activeScenarioSessionId, // --- 👈 [수정]
+            await handleScenarioResponse({ 
+                scenarioSessionId: activeScenarioSessionId,
                 currentNodeId: currentScenarioNodeId,
                 sourceHandle: reply.value,
                 userInput: reply.display
             });
         } else {
-            handleResponse({ text: reply.display });
+            await handleResponse({ text: reply.display });
         }
     }
     
+    const handleItemClick = (item) => {
+        handleShortcutClick(item);
+        setShortcutMenuOpen(null); // --- 👈 [수정]
+    }
+
     return (
         <div className={styles.inputArea}>
-            {/* --- 👇 [수정] isInputDisabled 사용 --- */}
+            <div className={styles.quickActionsContainer} ref={menuRef}>
+                 {scenarioCategories.map(category => (
+                    <div key={category.name} className={styles.categoryWrapper}>
+                        {/* --- 👇 [수정] 스토어 상태를 사용하도록 모두 변경 --- */}
+                        <button 
+                            className={`${styles.categoryButton} ${shortcutMenuOpen === category.name ? styles.active : ''}`}
+                            onClick={() => setShortcutMenuOpen(shortcutMenuOpen === category.name ? null : category.name)}
+                        >
+                            {category.name} <ChevronDownIcon style={{ transform: shortcutMenuOpen === category.name ? 'rotate(180deg)' : 'rotate(0deg)' }}/>
+                        </button>
+                        {shortcutMenuOpen === category.name && (
+                            <div className={styles.dropdownMenu}>
+                               {category.subCategories.map(subCategory => (
+                                   <div key={subCategory.title} className={styles.subCategorySection}>
+                                       <h4 className={styles.subCategoryTitle}>{subCategory.title}</h4>
+                                       {subCategory.items.map(item => {
+                                        const isFavorited = favorites.some(fav => fav.action.type === item.action.type && fav.action.value === item.action.value);
+                                        return (
+                                           <div key={item.title} className={styles.dropdownItem}>
+                                               <div 
+                                                    className={styles.itemContentWrapper} 
+                                                    onClick={() => handleItemClick(item)}
+                                                    role="button"
+                                                    tabIndex="0"
+                                                    onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleItemClick(item)}
+                                                >
+                                                   <button 
+                                                            className={`${styles.favoriteButton} ${isFavorited ? styles.favorited : ''}`} 
+                                                            onClick={(e) => {
+                                                                e.stopPropagation(); 
+                                                                toggleFavorite(item);
+                                                            }}
+                                                        >
+                                                        <StarIcon size={18} filled={isFavorited} />
+                                                    </button>
+                                                   <div className={styles.itemContent}>
+                                                       <span className={styles.itemTitle}>{item.title}</span>
+                                                       <span className={styles.itemDescription}>{item.description}</span>
+                                                   </div>
+                                               </div>
+                                           </div>
+                                        )
+                                      })}
+                                   </div>
+                               ))}
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </div>
+
+
             {(currentBotMessageNode?.data?.replies) && (
                 <div className={styles.buttonRow}>
                     <div
@@ -128,9 +193,6 @@ export default function ChatInput() {
             )}
             
             <form className={styles.inputForm} onSubmit={handleSubmit}>
-                <button type="button" className={styles.attachButton} onClick={openScenarioModal}>
-                    <MenuIcon />
-                </button>
                 <input
                     ref={inputRef}
                     name="userInput"
@@ -139,6 +201,7 @@ export default function ChatInput() {
                     autoComplete="off"
                     disabled={isInputDisabled}
                 />
+                 <button type="submit" className={styles.sendButton} disabled={isInputDisabled}>Send</button>
             </form>
         </div>
     );

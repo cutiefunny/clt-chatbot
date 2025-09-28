@@ -1,0 +1,95 @@
+.panel {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+    width: 100%;
+    height: 100%;
+    padding: 1rem;
+    gap: 1rem;
+}
+
+.welcomeMessage {
+    text-align: center;
+    color: var(--text-color);
+}
+
+.welcomeMessage h2 {
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.welcomeMessage p {
+    font-size: 1rem;
+    color: #8a8a8e;
+}
+
+.favoritesGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+    width: 100%;
+    max-width: 800px;
+}
+
+.favoriteItem {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    border: 1px dashed var(--panel-border-color);
+    border-radius: 12px;
+    background-color: transparent;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    text-align: left;
+    color: var(--text-color);
+}
+
+.favoriteItem:hover {
+    border-style: solid;
+    border-color: var(--input-border-color);
+    background-color: var(--button-hover-bg);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.itemIcon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.addIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: var(--button-hover-bg);
+    color: var(--text-color);
+}
+
+.itemText {
+    display: flex;
+    flex-direction: column;
+}
+
+.itemTitle {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.itemDescription {
+    font-size: 0.85rem;
+    color: #8a8a8e;
+}
+
+.addItem {
+    color: #8a8a8e;
+}
+
+.addItem .itemTitle {
+    color: var(--text-color);
+}

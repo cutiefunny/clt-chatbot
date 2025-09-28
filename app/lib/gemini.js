@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // API 키를 사용하여 Gemini 클라이언트 초기화
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
 /**
  * Gemini API에 프롬프트를 보내고 스트리밍 응답을 처리하는 함수
