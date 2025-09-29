@@ -3,6 +3,8 @@
 import { useChatStore } from "../store";
 import styles from "./FavoritePanel.module.css";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import DragIndicatorIcon from "./icons/DragIndicatorIcon";
+import StarIcon from "./icons/StarIcon";
 
 const PlusIcon = () => (
   <svg
@@ -88,9 +90,9 @@ export default function FavoritePanel() {
                       >
                         <div
                           {...provided.dragHandleProps}
-                          className={styles.dragHandle}
+                          className={`${styles.dragHandle} ${styles.itemIcon}`}
                         >
-                          ⠿
+                          <DragIndicatorIcon />
                         </div>
                         <div
                           className={styles.itemContent}
@@ -104,13 +106,13 @@ export default function FavoritePanel() {
                           </div>
                         </div>
                         <button
-                          className={styles.deleteButton}
+                          className={`${styles.deleteButton} ${styles.itemIcon}`}
                           onClick={(e) => {
                             e.stopPropagation();
                             deleteFavorite(fav.id);
                           }}
                         >
-                          ✕
+                          <StarIcon filled={true} />
                         </button>
                       </div>
                     )}

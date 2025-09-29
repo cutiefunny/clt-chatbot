@@ -405,6 +405,7 @@
   border: 1px solid var(--panel-border-color);
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
   z-index: 20;
   width: 120px;
   overflow: hidden;
