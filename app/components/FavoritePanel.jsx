@@ -84,7 +84,7 @@ export default function FavoritePanel() {
                       <div
                         ref={provided.innerRef}
                         {...provided.draggableProps}
-                        className={`GlassEffect ${styles.favoriteItem} ${
+                        className={`GlassEffect active ${styles.favoriteItem} ${
                           snapshot.isDragging ? styles.dragging : ""
                         }`}
                       >
@@ -125,7 +125,7 @@ export default function FavoritePanel() {
         </DragDropContext>
       ) : (
         <button
-          className={`${styles.favoriteItem} ${styles.addItem}`}
+          className={`GlassEffect ${styles.favoriteItem} ${styles.addItem}`}
           onClick={handleAddFavoriteClick}
         >
           <div className={styles.itemText}>

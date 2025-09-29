@@ -89,6 +89,10 @@
   color: var(--Gray-06, #868eba);
 }
 
+.addItem:hover {
+  background: var(--White-Opacity-64, rgba(255, 255, 255, 0.64));
+}
+
 .deleteButton {
   color: var(--Purple-02, #806bf5);
   cursor: pointer;

@@ -240,12 +240,11 @@ input:checked + .slider:before {
 .botMessage .messageContent {
   padding: 16px 20px;
   display: flex;
-  gap: 1rem;
+  flex-direction: column;
   border-bottom: 1px solid var(--panel-border-color);
 }
 
 .botMessage {
-  background: var(--White-Opacity-64, rgba(255, 255, 255, 0.64));
   color: var(--text-color); /* Themed */
   transition: background-color 0.2s;
 }
@@ -431,12 +430,25 @@ input:checked + .slider:before {
 }
 
 @keyframes wobble {
-  0%, 100% { transform: translateX(0%); }
-  15% { transform: translateX(-10px) rotate(-3deg); }
-  30% { transform: translateX(8px) rotate(2deg); }
-  45% { transform: translateX(-6px) rotate(-1deg); }
-  60% { transform: translateX(4px) rotate(0.5deg); }
-  75% { transform: translateX(-2px) rotate(0deg); }
+  0%,
+  100% {
+    transform: translateX(0%);
+  }
+  15% {
+    transform: translateX(-10px) rotate(-3deg);
+  }
+  30% {
+    transform: translateX(8px) rotate(2deg);
+  }
+  45% {
+    transform: translateX(-6px) rotate(-1deg);
+  }
+  60% {
+    transform: translateX(4px) rotate(0.5deg);
+  }
+  75% {
+    transform: translateX(-2px) rotate(0deg);
+  }
 }
 
 .highlightedMessage {
@@ -477,7 +489,6 @@ input:checked + .slider:before {
   background-color: #e74c3c; /* Failed */
 }
 /* --- 👆 [여기까지] --- */
-
 
 /* Scrollbar Styles */
 .history {

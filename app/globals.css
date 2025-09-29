@@ -103,167 +103,21 @@ body.font-small {
 /* --- 👆 [여기까지] --- */
 
 .GlassEffect {
-  /* CSS 변수로 Glass Effect 파라미터 설정 */
-  --glass-light-degree: 45deg; /* 0~360: 빛의 각도 */
-  --glass-light-offset: 80; /* 0~100: 빛의 오프셋 거리 */
-  --glass-refraction: 100; /* 0~100: 굴절 효과 */
-  --glass-depth: 36; /* 0~100: 깊이감 */
-  --glass-dispersion: 50; /* 0~100: 색 분산 효과 */
-  --glass-frost: 28; /* 0~100: 프로스트/흐림 효과 */
-  --glass-rim-width: 1.5px; /* 외곽 림(굴절선) 두께 */
+  --glass-blur: 12px;
+  --glass-saturate: 1.2;
+  --glass-contrast: 1.05;
+  --glass-brightness: 1.05;
 
-  /* 기본 Glass 스타일 */
-  position: relative;
-  background:
-    /* 방향성 미세 라이트 그라데이션 (내부 전체 과백 방지로 낮은 알파) */ linear-gradient(
-      var(--glass-light-degree),
-      rgba(255, 255, 255, calc(0.004 * var(--glass-refraction))),
-      rgba(255, 255, 255, calc(0.0015 * var(--glass-refraction)))
-    ),
-    /* 기본 유리 충전색(아주 옅게) */ rgba(255, 255, 255, 0.06);
-  background-clip: padding-box;
-
-  /* 프로스트 효과 (흐림) */
-  backdrop-filter: blur(calc(var(--glass-frost) * 0.5px))
-    saturate(calc(100% + var(--glass-refraction) * 0.6%))
-    contrast(calc(1 + var(--glass-refraction) * 0.004))
-    brightness(calc(1 + var(--glass-refraction) * 0.002));
-  -webkit-backdrop-filter: blur(calc(var(--glass-frost) * 0.5px))
-    saturate(calc(100% + var(--glass-refraction) * 0.6%))
-    contrast(calc(1 + var(--glass-refraction) * 0.004))
-    brightness(calc(1 + var(--glass-refraction) * 0.002));
-
-  /* 깊이감과 빛 효과 */
-  box-shadow: 
-    /* 내부 빛 반사 (기본) - 과도한 백색감 완화 */ inset
-      calc(var(--glass-light-offset) * 0.5px)
-      calc(var(--glass-light-offset) * 0.5px) calc(var(--glass-depth) * 0.8px)
-      rgba(255, 255, 255, calc(0.0015 * var(--glass-refraction))),
-    /* 방향성 내부 하이라이트 (각도 기반 림라이트) */ inset
-      calc(cos(var(--glass-light-degree)) * 2px)
-      calc(sin(var(--glass-light-degree)) * 2px)
-      calc(var(--glass-depth) * 0.2px) rgba(255, 255, 255, 0.35),
-    /* 선명한 하얀 윤곽선(내부 1px 림) */ inset 0 0 0 1px
-      rgba(255, 255, 255, calc(0.3 + var(--glass-refraction) * 0.003)),
-    /* 외부 그림자 (깊이) */ 0 calc(var(--glass-depth) * 0.2px)
-      calc(var(--glass-depth) * 0.5px)
-      rgba(0, 0, 0, calc(0.1 + var(--glass-depth) * 0.002)),
-    /* 외곽 빛 번짐(글로우) - 가장자리 강조 */ 0 0
-      calc(var(--glass-refraction) * 0.12px) rgba(255, 255, 255, 0.22),
-    /* 빛 반사 하이라이트(방향성 스펙룰러) */
-      calc(sin(var(--glass-light-degree)) * var(--glass-light-offset) * -0.2px)
-      calc(cos(var(--glass-light-degree)) * var(--glass-light-offset) * -0.2px)
-      calc(var(--glass-light-offset) * 0.5px)
-      rgba(255, 255, 255, calc(0.003 * var(--glass-light-offset)));
-
-  /* 테두리 효과 */
-  border: 1px solid
-    rgba(255, 255, 255, calc(0.1 + var(--glass-refraction) * 0.003));
-  border-radius: 12px;
-
-  /* 오버플로우 처리 */
-  overflow: hidden;
-
-  /* 부드러운 전환 효과 */
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate))
+    contrast(var(--glass-contrast)) brightness(var(--glass-brightness));
+  -webkit-backdrop-filter: blur(var(--glass-blur))
+    saturate(var(--glass-saturate)) contrast(var(--glass-contrast))
+    brightness(var(--glass-brightness));
+  border: 1px solid rgba(255, 255, 255, 0.54);
+  box-shadow: 0 6px 16px 0 #dfe2fe;
+  transition: all 0.2s ease-in-out;
 }
 
-/* 분산/굴절 림 효과를 위한 가상 요소 (프리즘 + 가장자리 리프랙션) */
-.GlassEffect::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  /* 가장자리에 가까울수록 밝아지는 림(굴절 라이트/쉐도우) */
-  background: conic-gradient(
-      from var(--glass-light-degree),
-      rgba(255, 255, 255, 0.16) 0deg,
-      rgba(255, 255, 255, 0) 60deg,
-      rgba(0, 0, 0, 0.12) 180deg,
-      rgba(255, 255, 255, 0) 300deg,
-      rgba(255, 255, 255, 0.16) 360deg
-    ),
-    linear-gradient(
-      calc(var(--glass-light-degree) + 90deg),
-      transparent,
-      rgba(255, 255, 255, calc(0.0005 * var(--glass-dispersion))),
-      transparent,
-      rgba(255, 182, 193, calc(0.0003 * var(--glass-dispersion))),
-      transparent,
-      rgba(173, 216, 230, calc(0.0003 * var(--glass-dispersion))),
-      transparent
-    );
-  mix-blend-mode: screen;
-  pointer-events: none;
-  opacity: calc(0.25 + var(--glass-dispersion) * 0.015);
-  /* 내부로 스며들지 않도록 가장자리만 남기는 마스크 */
-  -webkit-mask: radial-gradient(
-    circle at center,
-    transparent calc(100% - var(--glass-rim-width) - 1px),
-    black calc(100% - var(--glass-rim-width))
-  );
-  mask: radial-gradient(
-    circle at center,
-    transparent calc(100% - var(--glass-rim-width) - 1px),
-    black calc(100% - var(--glass-rim-width))
-  );
-}
-
-/* 상단 글로시 라이트 스위프 */
-.GlassEffect::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 50%;
-  background: linear-gradient(
-    to bottom,
-    rgba(255, 255, 255, calc(0.001 * var(--glass-light-offset))),
-    transparent
-  );
-  pointer-events: none;
-  border-radius: 12px 12px 0 0;
-}
-
-/* 다크모드 대응 */
-body.dark .GlassEffect {
-  background: linear-gradient(
-    var(--glass-light-degree),
-    rgba(255, 255, 255, calc(0.0035 * var(--glass-refraction))),
-    rgba(255, 255, 255, calc(0.0015 * var(--glass-refraction)))
-  );
-  border-color: rgba(
-    255,
-    255,
-    255,
-    calc(0.05 + var(--glass-refraction) * 0.002)
-  );
-}
-
-/* 사용 예시 클래스들 */
-.GlassEffect-subtle {
-  --glass-light-degree: 135deg;
-  --glass-light-offset: 15;
-  --glass-refraction: 20;
-  --glass-depth: 30;
-  --glass-dispersion: 5;
-  --glass-frost: 15;
-}
-
-.GlassEffect-strong {
-  --glass-light-degree: 45deg;
-  --glass-light-offset: 40;
-  --glass-refraction: 50;
-  --glass-depth: 60;
-  --glass-dispersion: 25;
-  --glass-frost: 35;
-}
-
-.GlassEffect-colorful {
-  --glass-light-degree: 270deg;
-  --glass-light-offset: 30;
-  --glass-refraction: 40;
-  --glass-depth: 50;
-  --glass-dispersion: 80;
-  --glass-frost: 20;
+.GlassEffect.active {
+  background: rgba(255, 255, 255, 0.48);
 }
