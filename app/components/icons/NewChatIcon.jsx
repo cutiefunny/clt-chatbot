@@ -7,6 +7,18 @@ export default function NewChatIcon() {
       viewBox="0 0 24 24"
       fill="none"
     >
+      <defs>
+        <linearGradient
+          id="spbIconGradient"
+          x1="0%"
+          y1="0%"
+          x2="100%"
+          y2="100%"
+        >
+          <stop offset="0%" stopColor="#3051ea" />
+          <stop offset="100%" stopColor="#7f30c5" />
+        </linearGradient>
+      </defs>
       <path
         d="M20.4199 16.832L15.1201 22.1328H13V20.0127L18.2998 14.7129L20.4199 16.832ZM17 3C18.1 3 19 3.9 19 5V12H17V5H5V17H12V19H5C3.9 19 3 18.1 3 17V5C3 3.9 3.9 3 5 3H17ZM19.7197 13.293C20.1097 12.903 20.7399 12.903 21.1299 13.293L21.8398 14.0029C22.2297 14.3929 22.2297 15.0221 21.8398 15.4121L21.1299 16.1221L19.0098 14.0029L19.7197 13.293Z"
         fill="currentColor"

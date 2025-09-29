@@ -149,7 +149,9 @@ export default function ConversationItem({
   return (
     <div className={styles.conversationItemWrapper}>
       <div
-        className={`${styles.conversationItem}`}
+        className={`${styles.conversationItem} ${
+          isActive ? styles.active : ""
+        }`}
         onClick={() => {
           if (isEditing) return;
           onClick(convo.id);

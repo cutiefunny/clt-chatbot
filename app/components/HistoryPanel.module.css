@@ -188,8 +188,27 @@
   width: fit-content;
 }
 .sidePanelButton:hover {
-  background-color: var(--button-hover-bg);
-  color: var(--text-color);
+  /* 라운드가 유지되는 그라디언트 보더 */
+  border: 1px solid transparent;
+  background-image: linear-gradient(
+      var(--Gray-01, #f4f5fb),
+      var(--Gray-01, #f4f5fb)
+    ),
+    linear-gradient(135deg, #3051ea 0%, #7f30c5 100%);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  border-radius: 24px;
+}
+
+/* 텍스트는 별도로 그라디언트 적용 (선명한 텍스트 유지) */
+.sidePanelButton:hover span {
+  background: var(
+    --Color-Light-Gradation-03,
+    linear-gradient(135deg, #3051ea 0%, #7f30c5 100%)
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 /* 비활성화 상태 스타일 */
@@ -205,6 +224,27 @@
 .sidePanelButton:disabled:hover,
 .sidePanelButton[aria-disabled="true"]:hover {
   background-color: var(--option-button-bg);
+  /* hover 그라디언트 완전 비활성화 */
+  background-image: none;
+  background-clip: border-box;
+  -webkit-background-clip: border-box;
+  -webkit-text-fill-color: inherit;
+  border: 1px solid var(--option-button-border);
+}
+
+/* disabled + hover 시 텍스트 그라디언트 해제 */
+.sidePanelButton:disabled:hover span,
+.sidePanelButton[aria-disabled="true"]:hover span {
+  background: none;
+  background-clip: border-box;
+  -webkit-background-clip: border-box;
+  -webkit-text-fill-color: currentColor;
+}
+
+/* disabled + hover 시 아이콘 그라디언트 해제 */
+.sidePanelButton:disabled:hover svg [fill="currentColor"],
+.sidePanelButton[aria-disabled="true"]:hover svg [fill="currentColor"] {
+  fill: currentColor;
 }
 
 .historyPanel.closed .sidePanelButton {
@@ -216,6 +256,12 @@
 }
 .historyPanel.closed .sidePanelButton:hover {
   background-color: var(--button-hover-bg);
+}
+
+/* 아이콘 그라디언트는 두께 변화 방지 위해 fill만 변경 */
+.sidePanelButton:hover svg [fill="currentColor"],
+.sidePanelButton:hover svg path[fill="currentColor"] {
+  fill: url(#spbIconGradient);
 }
 
 .historyPanel.open .sidePanelButtonText {
@@ -294,14 +340,27 @@
   flex-direction: column;
   border-radius: 12px;
   border: 1px solid var(--Gray-03, #d8e0eb);
+  background: white;
 }
+
 /* --- 👇 [수정/추가된 부분] --- */
 .conversationItem {
   display: flex;
   align-items: center;
   color: var(--text-color);
   position: relative;
+  border-radius: 12px 12px 0 0;
 }
+
+.conversationItem:hover {
+  background: var(--Gray-01, #f4f5fb);
+  border-radius: 12px;
+}
+
+.conversationItem.active {
+  border-radius: 12px 12px 0 0;
+}
+
 .convoMain {
   display: flex;
   align-items: center;
@@ -462,7 +521,7 @@
   background: var(--Gray-01, #f4f5fb);
 }
 .scenarioItem:hover {
-  background-color: var(--button-hover-bg);
+  background-color: var(--Gray-02, #e1e4f2);
 }
 .scenarioStatusDot {
   width: 8px;

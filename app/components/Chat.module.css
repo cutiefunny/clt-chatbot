@@ -86,7 +86,7 @@
   gap: 8px;
 }
 .settingLabel {
-  font-size: 0.8rem;
+  font-size: 14px;
   color: var(--text-color);
   white-space: nowrap;
 }
@@ -124,7 +124,7 @@
   border-radius: 50%;
 }
 input:checked + .slider {
-  background-color: var(--login-button-bg);
+  background-color: var(--Purple-03, #634de2);
 }
 input:checked + .slider:before {
   transform: translateX(14px);
@@ -134,6 +134,19 @@ input:checked + .slider:before {
   height: 16px;
   background-color: var(--panel-border-color);
 }
+
+.themeToggleButton {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 100px;
+  border: 1px solid var(--Gray-03, #d8e0eb);
+  background: var(--White-Opacity-48, rgba(255, 255, 255, 0.48));
+  cursor: pointer;
+}
+
 .themeControl {
   display: flex;
   align-items: center;
@@ -216,33 +229,48 @@ input:checked + .slider:before {
 }
 
 .message {
-  padding: 10px 15px;
-  border-radius: 18px;
+  border-radius: 16px;
   max-width: 70%;
   word-wrap: break-word;
   line-height: 1.4;
   white-space: pre-wrap;
   text-align: left;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 6px 16px 0 #dfe2fe;
   position: relative;
 }
 
+.messageContent {
+  padding: 16px 20px;
+  display: flex;
+  gap: 1rem;
+  border-bottom: 1px solid var(--panel-border-color);
+}
+
+.messageActionArea {
+  padding: 12px 20px;
+}
+
 .botMessage {
-  background-color: var(--bot-message-bg); /* Themed */
+  background: var(--White-Opacity-64, rgba(255, 255, 255, 0.64));
   color: var(--text-color); /* Themed */
-  border-top-left-radius: 4px;
-  cursor: pointer;
   transition: background-color 0.2s;
 }
 
-.botMessage:hover {
-  background-color: var(--button-hover-bg); /* Themed */
+.botMessage svg {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
 }
 
 .userMessage {
-  background-color: var(--user-message-bg); /* Themed */
-  color: var(--text-color); /* Themed */
+  padding: 12px 20px;
+  color: var(--White, #fff); /* Themed */
   border-top-right-radius: 4px;
+  border-radius: var(--2, 16px);
+  background: var(
+    --Color-Light-Gradation-01,
+    linear-gradient(90deg, #8f9aff 0%, #634ce2 100%)
+  );
 }
 
 @keyframes fadeInOut {

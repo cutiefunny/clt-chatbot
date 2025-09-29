@@ -5,6 +5,8 @@ import { useChatStore } from "../store";
 import { useTranslations } from "../hooks/useTranslations";
 import styles from "./Chat.module.css";
 import FavoritePanel from "./FavoritePanel";
+import MoonIcon from "./icons/MoonIcon";
+import LogoIcon from "./icons/LogoIcon";
 
 export default function Chat() {
   const {
@@ -80,7 +82,6 @@ export default function Chat() {
         <div className={styles.headerButtons}>
           {/* --- 👇 [수정된 부분] --- */}
           <div className={styles.settingControl}>
-            <span className={styles.settingLabel}>Large text</span>
             <label className={styles.switch}>
               <input
                 type="checkbox"
@@ -91,29 +92,17 @@ export default function Chat() {
               />
               <span className={styles.slider}></span>
             </label>
+            <span className={styles.settingLabel}>Large text</span>
           </div>
 
-          <div className={styles.separator}></div>
-
-          <div className={styles.themeControl}>
+          <div>
             <button
-              className={`${styles.themeButton} ${
-                theme === "light" ? styles.active : ""
-              }`}
-              onClick={() => setTheme("light")}
+              className={styles.themeToggleButton}
+              onClick={() => setTheme(theme === "light" ? "dark" : "light")}
             >
-              {theme === "light" && "✓ "}Light
-            </button>
-            <button
-              className={`${styles.themeButton} ${
-                theme === "dark" ? styles.active : ""
-              }`}
-              onClick={() => setTheme("dark")}
-            >
-              {theme === "dark" && "✓ "}Dark
+              <MoonIcon />
             </button>
           </div>
-          {/* --- 👆 [여기까지] --- */}
         </div>
       </div>
 
@@ -147,74 +136,69 @@ export default function Chat() {
                       msg.sender === "user" ? styles.userRow : ""
                     }`}
                   >
-                    {msg.sender === "bot" && (
-                      <img
-                        src="/images/avatar.png"
-                        alt="Avatar"
-                        className={styles.avatar}
-                      />
-                    )}
                     <div
                       className={`${styles.message} ${
                         msg.sender === "bot"
                           ? styles.botMessage
                           : styles.userMessage
                       }`}
-                      onClick={() =>
-                        msg.sender === "bot" &&
-                        handleCopy(msg.text || msg.node?.data.content, msg.id)
-                      }
                     >
-                      {copiedMessageId === msg.id && (
-                        <div className={styles.copyFeedback}>{t("copied")}</div>
-                      )}
+                      <div className={styles.messageContent}>
+                        {msg.sender === "bot" && <LogoIcon />}
+                        {copiedMessageId === msg.id && (
+                          <div className={styles.copyFeedback}>
+                            {t("copied")}
+                          </div>
+                        )}
 
-                      {msg.type === "scenario_resume_prompt" ? (
-                        <button
-                          className={styles.optionButton}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openScenarioPanel(
-                              msg.scenarioId,
-                              msg.scenarioSessionId
-                            );
-                          }}
-                        >
-                          {t("scenarioResume")(msg.scenarioId)}
-                        </button>
-                      ) : msg.type === "scenario_end_notice" ? (
-                        <button
-                          className={styles.optionButton}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openScenarioPanel(
-                              msg.scenarioId,
-                              msg.scenarioSessionId
-                            );
-                          }}
-                        >
-                          {msg.text}
-                        </button>
-                      ) : (
-                        <p>{msg.text || msg.node?.data.content}</p>
-                      )}
+                        {msg.type === "scenario_resume_prompt" ? (
+                          <button
+                            className={styles.optionButton}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openScenarioPanel(
+                                msg.scenarioId,
+                                msg.scenarioSessionId
+                              );
+                            }}
+                          >
+                            {t("scenarioResume")(msg.scenarioId)}
+                          </button>
+                        ) : msg.type === "scenario_end_notice" ? (
+                          <button
+                            className={styles.optionButton}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openScenarioPanel(
+                                msg.scenarioId,
+                                msg.scenarioSessionId
+                              );
+                            }}
+                          >
+                            {msg.text}
+                          </button>
+                        ) : (
+                          <p>{msg.text || msg.node?.data.content}</p>
+                        )}
 
-                      {msg.sender === "bot" && msg.scenarios && (
-                        <div className={styles.scenarioList}>
-                          {msg.scenarios.map((name) => (
-                            <button
-                              key={name}
-                              className={styles.optionButton}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openScenarioPanel(name);
-                              }}
-                            >
-                              {name}
-                            </button>
-                          ))}
-                        </div>
-                      )}
+                        {msg.sender === "bot" && msg.scenarios && (
+                          <div className={styles.scenarioList}>
+                            {msg.scenarios.map((name) => (
+                              <button
+                                key={name}
+                                className={styles.optionButton}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openScenarioPanel(name);
+                                }}
+                              >
+                                {name}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className={styles.messageActionArea}>123123</div>
                     </div>
                   </div>
                 )
