@@ -3,7 +3,6 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 900px;
   margin: 0 auto;
   overflow: hidden;
   background-color: transparent;
@@ -67,96 +66,95 @@
   transition: background-color 0.2s;
 }
 
-
 .headerRestartButton:hover {
   background-color: var(--button-hover-bg); /* Themed */
 }
 
 .dangerButton {
-    background-color: #d32f2f;
-    color: white;
-    border-color: #d32f2f;
+  background-color: #d32f2f;
+  color: white;
+  border-color: #d32f2f;
 }
 .dangerButton:hover {
-    background-color: #b71c1c;
-    border-color: #b71c1c;
+  background-color: #b71c1c;
+  border-color: #b71c1c;
 }
 
 /* --- 👇 [추가된 부분] --- */
 .settingControl {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .settingLabel {
-    font-size: 0.8rem;
-    color: var(--text-color);
-    white-space: nowrap;
+  font-size: 0.8rem;
+  color: var(--text-color);
+  white-space: nowrap;
 }
 .switch {
-    position: relative;
-    display: inline-block;
-    width: 34px;
-    height: 20px;
+  position: relative;
+  display: inline-block;
+  width: 34px;
+  height: 20px;
 }
-.switch input { 
-    opacity: 0;
-    width: 0;
-    height: 0;
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
 }
 .slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #ccc;
-    transition: .4s;
-    border-radius: 34px;
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: 0.4s;
+  border-radius: 34px;
 }
 .slider:before {
-    position: absolute;
-    content: "";
-    height: 14px;
-    width: 14px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    transition: .4s;
-    border-radius: 50%;
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.4s;
+  border-radius: 50%;
 }
 input:checked + .slider {
-    background-color: var(--login-button-bg);
+  background-color: var(--login-button-bg);
 }
 input:checked + .slider:before {
-    transform: translateX(14px);
+  transform: translateX(14px);
 }
 .separator {
-    width: 1px;
-    height: 16px;
-    background-color: var(--panel-border-color);
+  width: 1px;
+  height: 16px;
+  background-color: var(--panel-border-color);
 }
 .themeControl {
-    display: flex;
-    align-items: center;
-    border: 1px solid var(--panel-border-color);
-    border-radius: 8px;
-    padding: 2px;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--panel-border-color);
+  border-radius: 8px;
+  padding: 2px;
 }
 .themeButton {
-    padding: 2px 8px;
-    font-size: 0.8rem;
-    background-color: transparent;
-    color: var(--text-color);
-    border: none;
-    cursor: pointer;
-    border-radius: 6px;
-    transition: background-color 0.2s;
+  padding: 2px 8px;
+  font-size: 0.8rem;
+  background-color: transparent;
+  color: var(--text-color);
+  border: none;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background-color 0.2s;
 }
 .themeButton.active {
-    background-color: var(--panel-bg-color);
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  background-color: var(--panel-bg-color);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 /* --- 👆 [여기까지] --- */
 
@@ -167,8 +165,38 @@ input:checked + .slider:before {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
+  margin-left: auto;
+  margin-right: auto;
   -webkit-mask-image: linear-gradient(to bottom, black 95%, transparent 100%);
   mask-image: linear-gradient(to bottom, black 95%, transparent 100%);
+}
+
+@media (min-width: 640px) {
+  .history {
+    max-width: 624px;
+  }
+}
+@media (min-width: 768px) {
+  .history {
+    max-width: 736px;
+  }
+}
+@media (min-width: 1024px) {
+  .history {
+    max-width: 896px;
+  }
+}
+@media (min-width: 1280px) {
+  .history {
+    max-width: 1008px;
+  }
+}
+@media (min-width: 1536px) {
+  .history {
+    max-width: 1046px;
+  }
 }
 
 .messageRow {
@@ -196,7 +224,7 @@ input:checked + .slider:before {
   line-height: 1.4;
   white-space: pre-wrap;
   text-align: left;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   position: relative;
 }
 
@@ -219,10 +247,22 @@ input:checked + .slider:before {
 }
 
 @keyframes fadeInOut {
-  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
-  20% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-  80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-  100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  80% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
 }
 
 .copyFeedback {
@@ -292,7 +332,8 @@ input:checked + .slider:before {
   color: var(--text-color); /* Themed */
 }
 
-.formInput, .formContainer select {
+.formInput,
+.formContainer select {
   width: 100%;
   padding: 8px 12px;
   border: 1px solid var(--panel-border-color); /* Themed */
@@ -304,7 +345,7 @@ input:checked + .slider:before {
 }
 
 .formInput[type="date"] {
-    color-scheme: var(--date-input-scheme);
+  color-scheme: var(--date-input-scheme);
 }
 
 .formSubmitButton {
@@ -320,7 +361,7 @@ input:checked + .slider:before {
 }
 
 .formSubmitButton:hover {
-    background-color: var(--login-button-hover-bg); /* Themed */
+  background-color: var(--login-button-hover-bg); /* Themed */
 }
 
 .formSubmitButton:disabled {
