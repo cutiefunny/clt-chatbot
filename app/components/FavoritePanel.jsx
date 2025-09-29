@@ -84,7 +84,7 @@ export default function FavoritePanel() {
                       <div
                         ref={provided.innerRef}
                         {...provided.draggableProps}
-                        className={`${styles.favoriteItem} ${
+                        className={`GlassEffect ${styles.favoriteItem} ${
                           snapshot.isDragging ? styles.dragging : ""
                         }`}
                       >

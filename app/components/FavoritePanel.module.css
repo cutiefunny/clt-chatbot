@@ -39,17 +39,13 @@
   padding: 1rem;
   padding-left: 20px;
   border-radius: 16px;
-  box-shadow: 0 6px 16px 0 #dfe2fe;
   cursor: pointer;
   transition: all 0.2s ease-in-out;
-  background: var(--White-Opacity-48, rgba(255, 255, 255, 0.48));
   text-align: left;
 }
 
 .favoriteItem:hover {
   border-style: solid;
-  background-color: var(--White, #fff);
-  box-shadow: 0 6px 16px 0 #dfe2fe;
   color: var(--text-color);
 }
 

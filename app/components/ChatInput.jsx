@@ -5,6 +5,7 @@ import { useChatStore } from "../store";
 import { useTranslations } from "../hooks/useTranslations";
 import styles from "./ChatInput.module.css";
 import StarIcon from "./icons/StarIcon";
+import ArrowDropDownIcon from "./icons/ArrowDropDownIcon";
 
 const ChevronDownIcon = ({ size = 16, style = {} }) => (
   <svg
@@ -145,8 +146,9 @@ export default function ChatInput() {
         {scenarioCategories.map((category) => (
           <div key={category.name} className={styles.categoryWrapper}>
             {/* --- 👇 [수정] 스토어 상태를 사용하도록 모두 변경 --- */}
+
             <button
-              className={`${styles.categoryButton} ${
+              className={`GlassEffect ${styles.categoryButton} ${
                 shortcutMenuOpen === category.name ? styles.active : ""
               }`}
               onClick={() =>
@@ -156,7 +158,7 @@ export default function ChatInput() {
               }
             >
               {category.name}{" "}
-              <ChevronDownIcon
+              <ArrowDropDownIcon
                 style={{
                   transform:
                     shortcutMenuOpen === category.name

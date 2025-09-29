@@ -20,8 +20,8 @@ export default function LogoIcon() {
           y2="12"
           gradientUnits="userSpaceOnUse"
         >
-          <stop stop-color="#8F9AFF" />
-          <stop offset="1" stop-color="#634CE2" />
+          <stop stopColor="#8F9AFF" />
+          <stop offset="1" stopColor="#634CE2" />
         </linearGradient>
       </defs>
     </svg>
