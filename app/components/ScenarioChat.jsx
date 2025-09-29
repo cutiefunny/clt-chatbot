@@ -112,7 +112,9 @@ export default function ScenarioChat() {
   const { t, language } = useTranslations();
 
   const activeScenario = activeScenarioSessionId ? scenarioStates[activeScenarioSessionId] : null;
-  const isCompleted = activeScenario?.status === 'completed';
+  // --- 👇 [수정된 부분] ---
+  const isCompleted = activeScenario?.status === 'completed' || activeScenario?.status === 'failed';
+  // --- 👆 [여기까지] ---
   const scenarioMessages = activeScenario?.messages || [];
   const isScenarioLoading = activeScenario?.isLoading || false;
   const currentScenarioNodeId = activeScenario?.state?.currentNodeId;

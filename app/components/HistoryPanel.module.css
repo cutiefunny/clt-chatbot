@@ -343,7 +343,6 @@
   background: white;
 }
 
-/* --- 👇 [수정/추가된 부분] --- */
 .conversationItem {
   display: flex;
   align-items: center;
@@ -491,7 +490,6 @@
   color: #fff;
   background-color: #e74c3c;
 }
-/* --- 👆 [여기까지] --- */
 
 .scenarioSubList {
   display: flex;
@@ -513,8 +511,10 @@
 .scenarioItem {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 8px 12px;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 0.85rem;
   transition: background-color 0.2s;
@@ -550,6 +550,27 @@
   text-align: center;
 }
 
+.scenarioBadge {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: white;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.scenarioBadge.done {
+  background-color: #3498db;
+}
+.scenarioBadge.incomplete {
+  background-color: #f39c12;
+}
+
+/* --- 👇 [추가된 부분] --- */
+.scenarioBadge.failed {
+  background-color: #e74c3c;
+}
+/* --- 👆 [여기까지] --- */
 .footer {
   padding: 0.75rem;
   display: flex;

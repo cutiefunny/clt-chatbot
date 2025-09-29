@@ -290,6 +290,7 @@ async function handleLinkNode(node, scenario, slots) {
 }
 
 
+// --- 👇 [수정된 부분] ---
 async function handleApiNode(node, scenario, slots) {
     const { method, url, headers, body, params, responseMapping } = node.data;
     let interpolatedUrl = interpolateMessage(url, slots);
@@ -335,12 +336,14 @@ async function handleApiNode(node, scenario, slots) {
     } catch (error) {
         console.error("API Node Error:", error);
         slots['apiError'] = error.message;
+        slots['apiFailed'] = true; // API 실패 플래그 설정
         isSuccess = false;
     }
 
     const nextNode = getNextNode(scenario, node.id, isSuccess ? 'onSuccess' : 'onError', slots);
     return { nextNode, slots, events: [] };
 }
+// --- 👆 [여기까지] ---
 
 async function handleLlmNode(node, scenario, slots, language) {
     const interpolatedPrompt = interpolateMessage(node.data.prompt, slots);
@@ -377,7 +380,7 @@ const nodeHandlers = {
   'toast': handleToastNode,
   'slotfilling': handleInteractiveNode,
   'message': handleInteractiveNode,
-  'branch': handleBranchNode, // branch 핸들러 교체
+  'branch': handleBranchNode,
   'form': handleInteractiveNode,
   'iframe': handleInteractiveNode,
   'link': handleLinkNode,
@@ -422,16 +425,13 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
             newSlots = result.slots || newSlots;
             if (result.events) allEvents.push(...result.events);
 
-            // 핸들러가 자기 자신을 반환하면, 대화형 노드이므로 루프를 중단
             if (result.nextNode && result.nextNode.id === currentNode.id) {
                 currentNode = result.nextNode;
                 break;
             }
             
-            // 핸들러가 다음 노드를 반환하면, 자동 노드이므로 루프 계속
             currentNode = result.nextNode;
         } else {
-            // 핸들러가 없는 노드(예: end)이면 루프 중단
             break;
         }
     }

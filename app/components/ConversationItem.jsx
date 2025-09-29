@@ -74,6 +74,38 @@ const TrashIcon = () => (
   </svg>
 );
 
+// --- 👇 [수정된 부분] ---
+const ScenarioStatusBadge = ({ status }) => {
+  if (!status) return null;
+
+  let text;
+  let statusClass;
+
+  switch (status) {
+    case "completed":
+      text = "Done";
+      statusClass = "done";
+      break;
+    case "active":
+      text = "Incomplete";
+      statusClass = "incomplete";
+      break;
+    case "failed":
+      text = "Failed";
+      statusClass = "failed";
+      break;
+    default:
+      return null;
+  }
+
+  return (
+    <span className={`${styles.scenarioBadge} ${styles[statusClass]}`}>
+      {text}
+    </span>
+  );
+};
+// --- 👆 [여기까지] ---
+
 export default function ConversationItem({
   convo,
   isActive,
