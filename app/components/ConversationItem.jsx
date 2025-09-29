@@ -2,9 +2,9 @@
 import { useState, useRef, useEffect } from "react";
 import { useTranslations } from "../hooks/useTranslations";
 import styles from "./HistoryPanel.module.css";
-import ChevronDownIcon from "./icons/ChevronDownIcon";
 import KebabMenuIcon from "./icons/KebabMenuIcon";
 import PinIcon from "./icons/PinIcon";
+import ArrowDropDownIcon from "./icons/ArrowDropDownIcon";
 
 const CheckIcon = () => (
   <svg
@@ -147,7 +147,7 @@ export default function ConversationItem({
   };
 
   return (
-    <>
+    <div className={styles.conversationItemWrapper}>
       <div
         className={`${styles.conversationItem}`}
         onClick={() => {
@@ -161,13 +161,6 @@ export default function ConversationItem({
               <PinIcon />
             </span>
           )}
-          <div className={styles.expandButton} aria-hidden="true">
-            <ChevronDownIcon
-              style={{
-                transform: isActive ? "rotate(180deg)" : "rotate(0deg)",
-              }}
-            />
-          </div>
 
           {isEditing ? (
             <input
@@ -186,6 +179,11 @@ export default function ConversationItem({
             </span>
           )}
         </div>
+        <ArrowDropDownIcon
+          style={{
+            transform: isActive ? "rotate(180deg)" : "rotate(0deg)",
+          }}
+        />
 
         {isEditing ? (
           <div className={styles.editConfirmButton}>
@@ -236,13 +234,13 @@ export default function ConversationItem({
                     onScenarioClick(scenario.scenarioId, scenario.sessionId)
                   }
                 >
+                  <span className={styles.scenarioTitle}>
+                    {scenario.scenarioId}
+                  </span>
                   <span
                     className={styles.scenarioStatusDot}
                     data-status={scenario.status}
                   ></span>
-                  <span className={styles.scenarioTitle}>
-                    {scenario.scenarioId}
-                  </span>
                 </div>
               ))
             ) : (
@@ -253,6 +251,6 @@ export default function ConversationItem({
           )}
         </div>
       )}
-    </>
+    </div>
   );
 }

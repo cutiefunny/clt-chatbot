@@ -93,6 +93,8 @@ export default function HistoryPanel() {
             <button
               className={styles.sidePanelButton}
               onClick={createNewConversation}
+              disabled={currentConversationId === null}
+              aria-disabled={currentConversationId === null}
             >
               <NewChatIcon />
               <span>{t("newChat")}</span>

@@ -168,11 +168,10 @@
   gap: 8px;
   padding: 10px 20px 10px 16px;
   margin-left: 4px;
-  color: var(--Gray-04, #babcd1);
+  color: var(--text-color);
   line-height: 1.1;
   border-radius: 40px;
   border: 1px solid var(--Gray-03, #d8e0eb);
-  background: var(--Gray-01, #f4f5fb);
   border-radius: 24px;
   cursor: pointer;
   transition: all 0.2s;
@@ -191,6 +190,21 @@
 .sidePanelButton:hover {
   background-color: var(--button-hover-bg);
   color: var(--text-color);
+}
+
+/* 비활성화 상태 스타일 */
+.sidePanelButton:disabled,
+.sidePanelButton[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.6;
+  background-color: var(--option-button-bg);
+  border-color: var(--option-button-border);
+  color: var(--Gray-04, #babcd1);
+}
+
+.sidePanelButton:disabled:hover,
+.sidePanelButton[aria-disabled="true"]:hover {
+  background-color: var(--option-button-bg);
 }
 
 .historyPanel.closed .sidePanelButton {
@@ -266,36 +280,35 @@
   flex-grow: 1;
   overflow-y: auto;
   padding: 0 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .historyPanel.closed .conversationList {
   visibility: hidden;
 }
 
+.conversationItemWrapper {
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  border: 1px solid var(--Gray-03, #d8e0eb);
+  overflow: hidden;
+}
 /* --- 👇 [수정/추가된 부분] --- */
 .conversationItem {
   display: flex;
   align-items: center;
-  margin-bottom: 0.5rem;
   color: var(--text-color);
   position: relative;
-  border-radius: 12px;
-  border: 1px solid var(--Gray-03, #d8e0eb);
-  background: var(--Gray-01, #f4f5fb);
-}
-.conversationItem:hover {
-  background-color: var(--button-hover-bg);
-}
-.conversationItem.active {
-  background-color: var(--convo-item-active-bg);
-  font-weight: bold;
 }
 .convoMain {
   display: flex;
   align-items: center;
   flex-grow: 1;
   cursor: pointer;
-  padding: 0.75rem;
+  padding: 10px 12px;
   gap: 4px;
   min-width: 0;
 }
@@ -304,14 +317,17 @@
   color: var(--text-color);
   display: flex;
   align-items: center;
-  margin-right: 4px;
 }
 .convoTitle {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   flex-grow: 1;
-  padding-right: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  letter-spacing: -0.21px;
+  margin-left: 4px;
 }
 .titleInput {
   width: 100%;
@@ -374,13 +390,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0;
   transition: opacity 0.2s, color 0.2s, background-color 0.2s;
 }
-.conversationItem:hover .menuButton,
-.menuButton[data-open="true"] {
-  opacity: 1;
-}
+
 .menuButton:hover,
 .menuButton:focus {
   color: var(--action-button-hover-color);
@@ -422,28 +434,9 @@
 }
 /* --- 👆 [여기까지] --- */
 
-.expandButton {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--action-button-color);
-  padding: 4px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.2s;
-  flex-shrink: 0;
-}
-.expandButton:hover {
-  background-color: var(--button-hover-bg);
-}
 .scenarioSubList {
-  padding-left: 32px;
-  margin: -4px 0 8px 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
   animation: fadeIn 0.3s ease-in-out;
 }
 @keyframes fadeIn {
@@ -459,12 +452,12 @@
 .scenarioItem {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px;
-  border-radius: 6px;
+  gap: 4px;
+  padding: 8px 12px;
   cursor: pointer;
   font-size: 0.85rem;
   transition: background-color 0.2s;
+  background: var(--Gray-01, #f4f5fb);
 }
 .scenarioItem:hover {
   background-color: var(--button-hover-bg);
@@ -486,6 +479,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  padding: 2px 4px;
 }
 
 .noScenarios {
