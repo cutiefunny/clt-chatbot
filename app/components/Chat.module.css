@@ -82,7 +82,7 @@
     border-color: #b71c1c;
 }
 
-/* --- 👇 [추가된 부분] --- */
+/* --- 👇 [수정/추가된 부분] --- */
 .settingControl {
     display: flex;
     align-items: center;
@@ -340,6 +340,21 @@ input:checked + .slider:before {
 .iframeContainer iframe {
   display: block;
 }
+
+/* --- 👇 [추가된 부분] --- */
+@keyframes wobble {
+  0%, 100% { transform: translateX(0%); }
+  15% { transform: translateX(-10px) rotate(-3deg); }
+  30% { transform: translateX(8px) rotate(2deg); }
+  45% { transform: translateX(-6px) rotate(-1deg); }
+  60% { transform: translateX(4px) rotate(0.5deg); }
+  75% { transform: translateX(-2px) rotate(0deg); }
+}
+
+.highlightedMessage {
+  animation: wobble 0.8s ease-in-out;
+}
+/* --- 👆 [여기까지] --- */
 
 /* Scrollbar Styles */
 .history {

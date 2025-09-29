@@ -17,6 +17,8 @@ export default function Chat() {
     setTheme,
     fontSize,
     setFontSize,
+    scrollToMessageId,
+    setScrollToMessageId,
   } = useChatStore();
   const [copiedMessageId, setCopiedMessageId] = useState(null);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
@@ -60,6 +62,29 @@ export default function Chat() {
     }
   }, [messages, handleScroll, isFetchingMore]);
   
+  // --- 👇 [수정된 부분] ---
+  useEffect(() => {
+    if (scrollToMessageId && historyRef.current) {
+      const element = historyRef.current.querySelector(`[data-message-id="${scrollToMessageId}"]`);
+      if (element) {
+        // 1. 해당 요소로 부드럽게 스크롤합니다.
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // 2. 애니메이션 클래스를 추가합니다.
+        element.classList.add(styles.highlightedMessage);
+
+        // 3. 애니메이션이 끝난 후 클래스를 제거하여, 다음에 다시 클릭했을 때도 애니메이션이 동작하도록 합니다.
+        setTimeout(() => {
+          element.classList.remove(styles.highlightedMessage);
+        }, 800); // CSS 애니메이션 지속 시간과 일치시킵니다.
+
+        // 4. 스크롤 상태를 초기화합니다.
+        setScrollToMessageId(null);
+      }
+    }
+  }, [scrollToMessageId, messages, setScrollToMessageId]);
+  // --- 👆 [여기까지] ---
+  
   const handleCopy = (text, id) => {
     if (!text || text.trim() === '') return;
     
@@ -80,7 +105,6 @@ export default function Chat() {
           </div>
         </div>
         <div className={styles.headerButtons}>
-            {/* --- 👇 [수정된 부분] --- */}
             <div className={styles.settingControl}>
                 <span className={styles.settingLabel}>Large text</span>
                 <label className={styles.switch}>
@@ -109,7 +133,6 @@ export default function Chat() {
                     {theme === 'dark' && '✓ '}Dark
                 </button>
             </div>
-            {/* --- 👆 [여기까지] --- */}
         </div>
       </div>
       
@@ -126,7 +149,11 @@ export default function Chat() {
             )}
             {messages.map((msg) => (
               msg.id !== 'initial' && (
-                <div key={msg.id} className={`${styles.messageRow} ${msg.sender === 'user' ? styles.userRow : ''}`}>
+                <div 
+                    key={msg.id} 
+                    className={`${styles.messageRow} ${msg.sender === 'user' ? styles.userRow : ''}`}
+                    data-message-id={msg.scenarioSessionId || msg.id}
+                >
                   {msg.sender === 'bot' && <img src="/images/avatar.png" alt="Avatar" className={styles.avatar} />}
                   <div 
                     className={`${styles.message} ${msg.sender === 'bot' ? styles.botMessage : styles.userMessage}`}

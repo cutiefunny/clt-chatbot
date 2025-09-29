@@ -25,15 +25,37 @@ export const useChatStore = create((set, get) => ({
   ...createScenarioSlice(set, get),
   ...createDevBoardSlice(set, get),
   ...createNotificationSlice(set, get),
+  
+  // --- 👇 [수정된 부분] ---
+  handleScenarioItemClick: (conversationId, scenario) => {
+    // 1. 현재 대화와 클릭된 시나리오의 대화가 다를 경우에만 대화를 새로 로드합니다.
+    if (get().currentConversationId !== conversationId) {
+      get().loadConversation(conversationId);
+    }
+    
+    // 2. 스크롤 및 하이라이트할 메시지(시나리오)의 고유 ID를 스토어에 저장합니다.
+    get().setScrollToMessageId(scenario.sessionId);
 
-  // --- 👇 [수정된 함수] ---
+    // 3. 우측 시나리오 패널을 열고, 활성화할 시나리오를 지정합니다. 메인 패널은 그대로 유지합니다.
+    set({
+      isScenarioPanelOpen: true,
+      activeScenarioSessionId: scenario.sessionId,
+      activePanel: 'main'
+    });
+
+    // 4. 해당 시나리오 세션의 실시간 업데이트를 구독합니다.
+    if (!get().scenarioStates[scenario.sessionId]) {
+      get().subscribeToScenarioSession(scenario.sessionId);
+    }
+  },
+  // --- 👆 [여기까지] ---
+
   initAuth: () => {
     get().loadScenarioCategories();
     onAuthStateChanged(get().auth, async (user) => {
       if (user) {
         set({ user });
         
-        // --- 👇 [마이그레이션 로직 추가] ---
         try {
             console.log("Checking for conversation migration...");
             const conversationsRef = collection(get().db, "chats", user.uid, "conversations");
@@ -55,7 +77,6 @@ export const useChatStore = create((set, get) => ({
         } catch (error) {
             console.error("Conversation migration failed:", error);
         }
-        // --- 👆 [마이그레이션 로직 종료] ---
 
         try {
           const userSettingsRef = doc(get().db, 'settings', user.uid);

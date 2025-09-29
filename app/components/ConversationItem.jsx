@@ -12,6 +12,28 @@ const CheckIcon = () => (
     </svg>
 );
 
+const ScenarioStatusBadge = ({ status }) => {
+    if (!status) return null;
+
+    let text;
+    let statusClass;
+
+    switch (status) {
+        case 'completed':
+            text = 'Done';
+            statusClass = 'done';
+            break;
+        case 'active':
+            text = 'Incomplete';
+            statusClass = 'incomplete';
+            break;
+        default:
+            return null;
+    }
+
+    return <span className={`${styles.scenarioBadge} ${styles[statusClass]}`}>{text}</span>;
+};
+
 export default function ConversationItem({
     convo,
     isActive,
@@ -86,13 +108,11 @@ export default function ConversationItem({
 
     return (
         <>
-            {/* --- 👇 [수정된 부분] --- */}
             <div 
                 className={`${styles.conversationItem} ${isActive ? styles.active : ''}`}
                 onClick={() => !isEditing && onClick(convo.id)}
             >
                 <div className={styles.convoMain}>
-            {/* --- 👆 [여기까지] --- */}
                     {convo.pinned && <span className={styles.pinIndicator}><PinIcon /></span>}
                     <button
                         className={styles.expandButton}
@@ -150,10 +170,11 @@ export default function ConversationItem({
                                 <div
                                     key={scenario.sessionId}
                                     className={styles.scenarioItem}
-                                    onClick={() => onScenarioClick(scenario.scenarioId, scenario.sessionId)}
+                                    // --- 👇 [수정된 부분] ---
+                                    onClick={() => onScenarioClick(convo.id, scenario)}
                                 >
-                                    <span className={styles.scenarioStatusDot} data-status={scenario.status}></span>
                                     <span className={styles.scenarioTitle}>{scenario.scenarioId}</span>
+                                    <ScenarioStatusBadge status={scenario.status} />
                                 </div>
                             ))
                         ) : (

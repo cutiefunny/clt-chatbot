@@ -352,9 +352,12 @@
     from { opacity: 0; transform: translateY(-5px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+/* --- 👇 [수정된 부분] --- */
 .scenarioItem {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 8px;
     padding: 8px;
     border-radius: 6px;
@@ -362,6 +365,8 @@
     font-size: 0.85rem;
     transition: background-color 0.2s;
 }
+/* --- 👆 [여기까지] --- */
+
 .scenarioItem:hover {
     background-color: var(--button-hover-bg);
 }
@@ -390,6 +395,24 @@
     color: #8a8a8e;
     text-align: center;
 }
+
+/* --- 👇 [추가된 부분] --- */
+.scenarioBadge {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: white;
+    text-transform: uppercase;
+    flex-shrink: 0;
+}
+.scenarioBadge.done {
+    background-color: #3498db;
+}
+.scenarioBadge.incomplete {
+    background-color: #f39c12;
+}
+/* --- 👆 [여기까지] --- */
 
 
 .footer {

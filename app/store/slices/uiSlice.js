@@ -34,8 +34,11 @@ export const createUISlice = (set, get) => ({
     message: '',
     type: 'info',
   },
+  scrollToMessageId: null, // --- 👈 [추가]
 
   // Actions
+  setScrollToMessageId: (id) => set({ scrollToMessageId: id }), // --- 👈 [추가]
+
   setShortcutMenuOpen: (menuName) => set({ shortcutMenuOpen: menuName }),
 
   showEphemeralToast: (message, type = 'info') => {
