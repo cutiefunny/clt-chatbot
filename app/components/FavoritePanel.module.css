@@ -1,95 +1,83 @@
 .panel {
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    align-items: flex-start;
-    width: 100%;
-    height: 100%;
-    padding: 1rem;
-    gap: 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  width: 100%;
+  height: 100%;
+  padding: 1rem;
+  gap: 1rem;
 }
 
 .welcomeMessage {
-    text-align: center;
-    color: var(--text-color);
+  text-align: center;
+  color: var(--text-color);
 }
 
 .welcomeMessage h2 {
-    font-size: 1.8rem;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
+  font-size: 1.8rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
 }
 
 .welcomeMessage p {
-    font-size: 1rem;
-    color: #8a8a8e;
+  font-size: 1rem;
+  color: #8a8a8e;
 }
 
 .favoritesGrid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 1rem;
-    width: 100%;
-    max-width: 800px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+  width: 100%;
+  max-width: 800px;
 }
 
 .favoriteItem {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 1rem;
-    border: 1px dashed var(--panel-border-color);
-    border-radius: 12px;
-    background-color: transparent;
-    cursor: pointer;
-    transition: all 0.2s ease-in-out;
-    text-align: left;
-    color: var(--text-color);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 16px;
+  box-shadow: 0 6px 16px 0 #dfe2fe;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  background: var(--White-Opacity-48, rgba(255, 255, 255, 0.48));
+  text-align: left;
 }
 
 .favoriteItem:hover {
-    border-style: solid;
-    border-color: var(--input-border-color);
-    background-color: var(--button-hover-bg);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  border-style: solid;
+  background-color: var(--White, #fff);
+  box-shadow: 0 6px 16px 0 #dfe2fe;
+  color: var(--text-color);
 }
 
 .itemIcon {
-    font-size: 1.5rem;
-    flex-shrink: 0;
-}
-
-.addIcon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background-color: var(--button-hover-bg);
-    color: var(--text-color);
+  font-size: 1.5rem;
+  flex-shrink: 0;
 }
 
 .itemText {
-    display: flex;
-    flex-direction: column;
+  display: flex;
+  flex-direction: column;
 }
 
 .itemTitle {
-    font-size: 1rem;
-    font-weight: 600;
+  font-size: 1rem;
+  font-weight: 600;
+  display: flex;
+  gap: 12px;
 }
 
 .itemDescription {
-    font-size: 0.85rem;
-    color: #8a8a8e;
+  font-size: 12px;
+  font-weight: 400;
+  margin-top: 8px;
+  color: var(--Gray-06, #868eba);
 }
 
 .addItem {
-    color: #8a8a8e;
-}
-
-.addItem .itemTitle {
-    color: var(--text-color);
+  min-width: 264px;
+  color: var(--Gray-06, #868eba);
 }

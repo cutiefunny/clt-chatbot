@@ -294,7 +294,6 @@
   flex-direction: column;
   border-radius: 12px;
   border: 1px solid var(--Gray-03, #d8e0eb);
-  overflow: hidden;
 }
 /* --- 👇 [수정/추가된 부분] --- */
 .conversationItem {
@@ -438,6 +437,8 @@
   display: flex;
   flex-direction: column;
   animation: fadeIn 0.3s ease-in-out;
+  border-radius: 0 0 12px 12px;
+  overflow: hidden;
 }
 @keyframes fadeIn {
   from {
