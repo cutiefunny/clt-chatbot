@@ -195,7 +195,6 @@
     visibility: hidden;
 }
 
-/* --- 👇 [수정/추가된 부분] --- */
 .conversationItem {
     display: flex;
     align-items: center;
@@ -322,7 +321,6 @@
     color: #fff;
     background-color: #e74c3c;
 }
-/* --- 👆 [여기까지] --- */
 
 .expandButton {
     background: none;
@@ -352,8 +350,6 @@
     from { opacity: 0; transform: translateY(-5px); }
     to { opacity: 1; transform: translateY(0); }
 }
-
-/* --- 👇 [수정된 부분] --- */
 .scenarioItem {
     display: flex;
     align-items: center;
@@ -365,8 +361,6 @@
     font-size: 0.85rem;
     transition: background-color 0.2s;
 }
-/* --- 👆 [여기까지] --- */
-
 .scenarioItem:hover {
     background-color: var(--button-hover-bg);
 }
@@ -396,7 +390,6 @@
     text-align: center;
 }
 
-/* --- 👇 [추가된 부분] --- */
 .scenarioBadge {
     padding: 2px 8px;
     border-radius: 12px;
@@ -411,6 +404,11 @@
 }
 .scenarioBadge.incomplete {
     background-color: #f39c12;
+}
+
+/* --- 👇 [추가된 부분] --- */
+.scenarioBadge.failed {
+    background-color: #e74c3c;
 }
 /* --- 👆 [여기까지] --- */
 

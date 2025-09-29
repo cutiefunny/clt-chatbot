@@ -171,7 +171,6 @@ export const createChatSlice = (set, get) => ({
     }
   },
 
-  // --- 👇 [수정된 함수] ---
   loadConversations: (userId) => {
     const q = query(collection(get().db, "chats", userId, "conversations"), orderBy("pinned", "desc"), orderBy("updatedAt", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -206,36 +205,30 @@ export const createChatSlice = (set, get) => ({
     const q = query(messagesRef, orderBy("createdAt", "desc"), limit(MESSAGE_LIMIT));
     
     const unsubscribe = onSnapshot(q, async (messagesSnapshot) => {
+        // --- 👇 [로그 추가] ---
+        console.log('[loadConversation] Firestore onSnapshot triggered. Fetched messages:', messagesSnapshot.docs.length);
         const newMessages = messagesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).reverse();
         const lastVisible = messagesSnapshot.docs[messagesSnapshot.docs.length - 1];
 
         const scenarioSessionsRef = collection(get().db, "chats", user.uid, "conversations", conversationId, "scenario_sessions");
         const scenarioQuery = query(scenarioSessionsRef, where("status", "==", "active"));
         const scenarioSnapshot = await getDocs(scenarioQuery);
-
-        const resumePrompts = [];
         const newScenarioStates = {};
-
         scenarioSnapshot.forEach(doc => {
-            const session = doc.data();
-            resumePrompts.push({
-                id: `resume-${doc.id}`,
-                sender: 'bot',
-                type: 'scenario_resume_prompt',
-                scenarioId: session.scenarioId,
-                scenarioSessionId: doc.id,
-                text: '',
-            });
-            newScenarioStates[doc.id] = session;
+            newScenarioStates[doc.id] = doc.data();
         });
         
-        set(state => ({
-            messages: [initialMessage, ...newMessages, ...resumePrompts],
-            lastVisibleMessage: lastVisible,
-            hasMoreMessages: messagesSnapshot.docs.length === MESSAGE_LIMIT,
-            isLoading: false,
-            scenarioStates: newScenarioStates,
-        }));
+        set(state => {
+            // --- 👇 [로그 추가] ---
+            console.log('[loadConversation] Updating state with new messages.');
+            return {
+                messages: [initialMessage, ...newMessages],
+                lastVisibleMessage: lastVisible,
+                hasMoreMessages: messagesSnapshot.docs.length === MESSAGE_LIMIT,
+                isLoading: false,
+                scenarioStates: { ...state.scenarioStates, ...newScenarioStates },
+            }
+        });
     });
     set({ unsubscribeMessages: unsubscribe });
   },
@@ -257,7 +250,7 @@ export const createChatSlice = (set, get) => ({
         const newLastVisible = snapshot.docs[snapshot.docs.length - 1];
 
         const initialMessage = messages[0];
-        const existingMessages = messages.slice(1).filter(m => m.type !== 'scenario_resume_prompt');
+        const existingMessages = messages.slice(1);
 
         set({
             messages: [initialMessage, ...newMessages, ...existingMessages],
@@ -320,7 +313,6 @@ export const createChatSlice = (set, get) => ({
     await updateDoc(conversationRef, { title: newTitle.trim() });
   },
 
-  // --- 👇 [새로운 함수] ---
   pinConversation: async (conversationId, pinned) => {
     const user = get().user;
     if (!user) return;
@@ -328,7 +320,6 @@ export const createChatSlice = (set, get) => ({
     await updateDoc(conversationRef, { pinned });
   },
 
-  // --- 👇 [수정된 함수] ---
   saveMessage: async (message) => {
     const user = get().user;
     if (!user) return;
@@ -339,7 +330,7 @@ export const createChatSlice = (set, get) => ({
         title: firstMessageContent.substring(0, 30),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        pinned: false, // Pinned 상태 초기화
+        pinned: false,
       });
       conversationId = conversationRef.id;
       get().unsubscribeMessages?.();
@@ -347,7 +338,6 @@ export const createChatSlice = (set, get) => ({
     }
     
     const { id, ...messageToSave } = message;
-    if (messageToSave.type === 'scenario_resume_prompt') return;
 
     Object.keys(messageToSave).forEach(key => (messageToSave[key] === undefined) && delete messageToSave[key]);
       if (messageToSave.node) {
@@ -360,6 +350,8 @@ export const createChatSlice = (set, get) => ({
   },
 
   addMessage: async (sender, messageData) => {
+    // --- 👇 [로그 추가] ---
+    console.log('[addMessage] Adding new message to state:', messageData);
     let newMessage;
     if (sender === 'user') {
       newMessage = { id: Date.now(), sender, text: messageData.text };

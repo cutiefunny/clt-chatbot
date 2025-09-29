@@ -6,6 +6,46 @@ import { useTranslations } from '../hooks/useTranslations';
 import styles from './Chat.module.css';
 import FavoritePanel from './FavoritePanel';
 
+const ScenarioStatusMessage = ({ msg }) => {
+  const { scenarioStates, openScenarioPanel } = useChatStore();
+  const { t } = useTranslations();
+  const scenario = scenarioStates[msg.scenarioSessionId];
+
+  const getStatusInfo = (status) => {
+    switch (status) {
+      case 'active':
+        return { text: t('statusActive'), className: styles.statusActive };
+      case 'completed':
+        return { text: t('statusCompleted'), className: styles.statusCompleted };
+      case 'failed':
+        return { text: t('statusFailed'), className: styles.statusFailed };
+      default:
+        return { text: t('loading'), className: '' };
+    }
+  };
+
+  const statusInfo = getStatusInfo(scenario?.status);
+
+  return (
+    <div className={styles.scenarioStatusMessage}>
+      <p>{msg.text}</p>
+      <div className={styles.statusContainer}>
+        <span>{t('scenarioStatus')}</span>
+        <span className={`${styles.statusBadge} ${statusInfo.className}`}>
+          {statusInfo.text}
+        </span>
+      </div>
+      <button 
+        className={styles.optionButton} 
+        onClick={(e) => { e.stopPropagation(); openScenarioPanel(msg.scenarioId, msg.scenarioSessionId); }}
+      >
+        {t('scenarioResume')(msg.scenarioId)}
+      </button>
+    </div>
+  );
+};
+
+
 export default function Chat() {
   const { 
     messages, 
@@ -24,6 +64,10 @@ export default function Chat() {
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const historyRef = useRef(null);
   const { t } = useTranslations();
+
+  // --- 👇 [로그 추가] ---
+  console.log('[Chat.jsx] Rendering with messages:', messages);
+
 
   const handleScroll = useCallback(async () => {
     if (historyRef.current?.scrollTop === 0 && hasMoreMessages && !isFetchingMore) {
@@ -62,28 +106,19 @@ export default function Chat() {
     }
   }, [messages, handleScroll, isFetchingMore]);
   
-  // --- 👇 [수정된 부분] ---
   useEffect(() => {
     if (scrollToMessageId && historyRef.current) {
       const element = historyRef.current.querySelector(`[data-message-id="${scrollToMessageId}"]`);
       if (element) {
-        // 1. 해당 요소로 부드럽게 스크롤합니다.
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        
-        // 2. 애니메이션 클래스를 추가합니다.
         element.classList.add(styles.highlightedMessage);
-
-        // 3. 애니메이션이 끝난 후 클래스를 제거하여, 다음에 다시 클릭했을 때도 애니메이션이 동작하도록 합니다.
         setTimeout(() => {
           element.classList.remove(styles.highlightedMessage);
-        }, 800); // CSS 애니메이션 지속 시간과 일치시킵니다.
-
-        // 4. 스크롤 상태를 초기화합니다.
+        }, 800);
         setScrollToMessageId(null);
       }
     }
   }, [scrollToMessageId, messages, setScrollToMessageId]);
-  // --- 👆 [여기까지] ---
   
   const handleCopy = (text, id) => {
     if (!text || text.trim() === '') return;
@@ -161,14 +196,8 @@ export default function Chat() {
                   >
                     {copiedMessageId === msg.id && <div className={styles.copyFeedback}>{t('copied')}</div>}
                     
-                    {msg.type === 'scenario_resume_prompt' ? (
-                      <button className={styles.optionButton} onClick={(e) => { e.stopPropagation(); openScenarioPanel(msg.scenarioId, msg.scenarioSessionId); }}>
-                        {t('scenarioResume')(msg.scenarioId)}
-                      </button>
-                    ) : msg.type === 'scenario_end_notice' ? (
-                      <button className={styles.optionButton} onClick={(e) => { e.stopPropagation(); openScenarioPanel(msg.scenarioId, msg.scenarioSessionId); }}>
-                        {msg.text}
-                      </button>
+                    {msg.type === 'scenario_start_notice' ? (
+                      <ScenarioStatusMessage msg={msg} />
                     ) : (
                       <p>{msg.text || msg.node?.data.content}</p>
                     )}

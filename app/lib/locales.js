@@ -66,6 +66,13 @@ export const locales = {
     askAboutService: '서비스에 대해 질문해주세요.',
     scenarioResume: (scenarioId) => `'${scenarioId}' 시나리오 이어하기`,
     scenarioEnded: (scenarioId) => `'${scenarioId}' 시나리오가 종료되었습니다.`,
+    // --- 👇 [추가된 부분] ---
+    scenarioStarted: (scenarioId) => `'${scenarioId}' 시나리오가 시작되었습니다.`,
+    scenarioStatus: '상태:',
+    statusActive: '진행 중',
+    statusCompleted: '완료',
+    statusFailed: '실패',
+    // --- 👆 [여기까지] ---
 
     // Chat Input
     enterResponse: '응답을 입력하세요...',
@@ -75,12 +82,10 @@ export const locales = {
     deleteConvoConfirm: '정말로 이 대화를 삭제하시겠습니까?',
     noScenariosFound: '실행된 시나리오가 없습니다.',
     loadingScenarios: '시나리오 로딩 중...',
-    // --- 👇 [추가된 부분] ---
     pin: '고정',
     unpin: '고정 해제',
     rename: '이름 변경',
     delete: '삭제',
-    // --- 👆 [여기까지] ---
 
     // Profile Modal
     greeting: (displayName) => `안녕하세요 ${displayName} 님`,
@@ -188,6 +193,13 @@ export const locales = {
     askAboutService: 'Ask about this Booking Master Page',
     scenarioResume: (scenarioId) => `Resume '${scenarioId}' scenario`,
     scenarioEnded: (scenarioId) => `Scenario '${scenarioId}' has ended.`,
+    // --- 👇 [추가된 부분] ---
+    scenarioStarted: (scenarioId) => `Scenario '${scenarioId}' has started.`,
+    scenarioStatus: 'Status:',
+    statusActive: 'In Progress',
+    statusCompleted: 'Completed',
+    statusFailed: 'Failed',
+    // --- 👆 [여기까지] ---
 
     // Chat Input
     enterResponse: 'Enter your response...',
@@ -197,12 +209,10 @@ export const locales = {
     deleteConvoConfirm: 'Are you sure you want to delete this conversation?',
     noScenariosFound: 'No scenarios were run.',
     loadingScenarios: 'Loading scenarios...',
-    // --- 👇 [추가된 부분] ---
     pin: 'Pin',
     unpin: 'Unpin',
     rename: 'Rename',
     delete: 'Delete',
-    // --- 👆 [여기까지] ---
 
     // Profile Modal
     greeting: (displayName) => `Hello, ${displayName}`,

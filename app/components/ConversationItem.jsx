@@ -12,6 +12,7 @@ const CheckIcon = () => (
     </svg>
 );
 
+// --- 👇 [수정된 부분] ---
 const ScenarioStatusBadge = ({ status }) => {
     if (!status) return null;
 
@@ -27,12 +28,17 @@ const ScenarioStatusBadge = ({ status }) => {
             text = 'Incomplete';
             statusClass = 'incomplete';
             break;
+        case 'failed':
+            text = 'Failed';
+            statusClass = 'failed';
+            break;
         default:
             return null;
     }
 
     return <span className={`${styles.scenarioBadge} ${styles[statusClass]}`}>{text}</span>;
 };
+// --- 👆 [여기까지] ---
 
 export default function ConversationItem({
     convo,
@@ -170,7 +176,6 @@ export default function ConversationItem({
                                 <div
                                     key={scenario.sessionId}
                                     className={styles.scenarioItem}
-                                    // --- 👇 [수정된 부분] ---
                                     onClick={() => onScenarioClick(convo.id, scenario)}
                                 >
                                     <span className={styles.scenarioTitle}>{scenario.scenarioId}</span>
