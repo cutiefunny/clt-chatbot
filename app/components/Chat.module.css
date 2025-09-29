@@ -239,15 +239,11 @@ input:checked + .slider:before {
   position: relative;
 }
 
-.messageContent {
+.botMessage .messageContent {
   padding: 16px 20px;
   display: flex;
   gap: 1rem;
   border-bottom: 1px solid var(--panel-border-color);
-}
-
-.messageActionArea {
-  padding: 12px 20px;
 }
 
 .botMessage {
@@ -260,6 +256,33 @@ input:checked + .slider:before {
   width: 24px;
   height: 24px;
   flex-shrink: 0;
+}
+
+.botMessage .messageActionArea {
+  padding: 8px 16px;
+  display: flex;
+  gap: 8px;
+}
+
+.messageActionArea .actionButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.messageActionArea .actionButton svg {
+  width: 16px;
+  height: 16px;
+}
+
+.messageActionArea .actionButton:hover {
+  background-color: var(--button-hover-bg);
 }
 
 .userMessage {

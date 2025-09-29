@@ -7,6 +7,8 @@ import styles from "./Chat.module.css";
 import FavoritePanel from "./FavoritePanel";
 import MoonIcon from "./icons/MoonIcon";
 import LogoIcon from "./icons/LogoIcon";
+import CopyIcon from "./icons/CopyIcon";
+import LikeIcon from "./icons/LikeIcon";
 
 export default function Chat() {
   const {
@@ -198,7 +200,30 @@ export default function Chat() {
                           </div>
                         )}
                       </div>
-                      <div className={styles.messageActionArea}>123123</div>
+                      {msg.sender === "bot" && (
+                        <div className={styles.messageActionArea}>
+                          <button
+                            className={styles.actionButton}
+                            onClick={() => handleCopy(msg.text, msg.id)}
+                            aria-label="Copy"
+                          >
+                            <CopyIcon />
+                          </button>
+                          <button
+                            className={styles.actionButton}
+                            aria-label="Like"
+                          >
+                            <LikeIcon />
+                          </button>
+                          <button
+                            className={styles.actionButton}
+                            aria-label="Dislike"
+                            style={{ transform: "rotate(180deg)" }}
+                          >
+                            <LikeIcon />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )
