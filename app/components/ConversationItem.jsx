@@ -5,6 +5,8 @@ import styles from "./HistoryPanel.module.css";
 import KebabMenuIcon from "./icons/KebabMenuIcon";
 import PinIcon from "./icons/PinIcon";
 import ArrowDropDownIcon from "./icons/ArrowDropDownIcon";
+import PinOutlinedIcon from "./icons/PinOutlinedIcon";
+import CloseIcon from "./icons/CloseIcon";
 
 const CheckIcon = () => (
   <svg
@@ -26,50 +28,30 @@ const CheckIcon = () => (
 
 const PencilIcon = () => (
   <svg
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
     xmlns="http://www.w3.org/2000/svg"
+    width="20"
+    height="20"
+    viewBox="0 0 20 20"
+    fill="none"
   >
     <path
-      d="M17 3C17.5304 3 18.0391 3.21071 18.4142 3.58579C18.7893 3.96086 19 4.46957 19 5V6L8 17H4V13L15 2H17Z"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M14 3L18 7"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      d="M11.7167 7.51667L12.4833 8.28333L4.93333 15.8333H4.16667V15.0667L11.7167 7.51667ZM14.7167 2.5C14.5083 2.5 14.2917 2.58333 14.1333 2.74167L12.6083 4.26667L15.7333 7.39167L17.2583 5.86667C17.5833 5.54167 17.5833 5.01667 17.2583 4.69167L15.3083 2.74167C15.1417 2.575 14.9333 2.5 14.7167 2.5ZM11.7167 5.15833L2.5 14.375V17.5H5.625L14.8417 8.28333L11.7167 5.15833Z"
+      fill="currentColor"
     />
   </svg>
 );
 
 const TrashIcon = () => (
   <svg
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
     xmlns="http://www.w3.org/2000/svg"
+    width="20"
+    height="20"
+    viewBox="0 0 20 20"
+    fill="none"
   >
     <path
-      d="M3 6H5H21"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M8 6V4C8 3.46957 8.21071 2.96086 8.58579 2.58579C8.96086 2.21071 9.46957 2 10 2H14C14.5304 2 15.0391 2.21071 15.4142 2.58579C15.7893 2.96086 16 3.46957 16 4V6M19 6V20C19 20.5304 18.7893 21.0391 18.4142 21.4142C18.0391 21.7893 17.5304 22 17 22H7C6.46957 22 5.96086 21.7893 5.58579 21.4142C5.21071 21.0391 5 20.5304 5 20V6H19Z"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      d="M13.3346 7.5V15.8333H6.66797V7.5H13.3346ZM12.0846 2.5H7.91797L7.08464 3.33333H4.16797V5H15.8346V3.33333H12.918L12.0846 2.5ZM15.0013 5.83333H5.0013V15.8333C5.0013 16.75 5.7513 17.5 6.66797 17.5H13.3346C14.2513 17.5 15.0013 16.75 15.0013 15.8333V5.83333Z"
+      fill="currentColor"
     />
   </svg>
 );
@@ -162,6 +144,7 @@ export default function ConversationItem({
 
   const handleRename = (e) => {
     e.stopPropagation();
+    setTitle(convo.title);
     setIsEditing(true);
     setIsMenuOpen(false);
   };
@@ -190,7 +173,7 @@ export default function ConversationItem({
         }}
       >
         <div className={styles.convoMain}>
-          {convo.pinned && (
+          {convo.pinned && !isEditing && (
             <span className={styles.pinIndicator}>
               <PinIcon />
             </span>
@@ -202,7 +185,6 @@ export default function ConversationItem({
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              onBlur={handleUpdate}
               onKeyDown={handleKeyDown}
               className={styles.titleInput}
               onClick={(e) => e.stopPropagation()}
@@ -213,16 +195,29 @@ export default function ConversationItem({
             </span>
           )}
         </div>
-        <ArrowDropDownIcon
-          style={{
-            transform: isActive ? "rotate(180deg)" : "rotate(0deg)",
-          }}
-        />
+        {!isEditing && (
+          <ArrowDropDownIcon
+            style={{
+              color: "#5e7599",
+              transform: isActive ? "rotate(180deg)" : "rotate(0deg)",
+            }}
+          />
+        )}
 
         {isEditing ? (
           <div className={styles.editConfirmButton}>
             <button
               className={styles.actionButton}
+              onClick={(e) => {
+                e.stopPropagation();
+                setTitle(convo.title);
+                setIsEditing(false);
+              }}
+            >
+              <CloseIcon />
+            </button>
+            <button
+              className={`${styles.actionButton} ${styles.confirm}`}
               style={{ opacity: 1 }}
               onClick={(e) => {
                 e.stopPropagation();
@@ -247,10 +242,17 @@ export default function ConversationItem({
             {isMenuOpen && (
               <div className={styles.dropdownMenu}>
                 <button onClick={handlePin}>
+                  <PinOutlinedIcon />
                   {convo.pinned ? t("unpin") : t("pin")}
                 </button>
-                <button onClick={handleRename}>{t("rename")}</button>
-                <button onClick={handleDelete}>{t("delete")}</button>
+                <button onClick={handleRename}>
+                  <PencilIcon />
+                  {t("rename")}
+                </button>
+                <button onClick={handleDelete}>
+                  <TrashIcon />
+                  {t("delete")}
+                </button>
               </div>
             )}
           </div>

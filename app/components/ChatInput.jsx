@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, Fragment } from "react";
 import { useChatStore } from "../store";
 import { useTranslations } from "../hooks/useTranslations";
 import styles from "./ChatInput.module.css";
@@ -154,11 +154,8 @@ export default function ChatInput() {
             {shortcutMenuOpen === category.name && (
               <div className={`${styles.dropdownMenu}`}>
                 {category.subCategories.map((subCategory, index) => (
-                  <>
-                    <div
-                      key={subCategory.title}
-                      className={styles.subCategorySection}
-                    >
+                  <Fragment key={subCategory.title}>
+                    <div className={styles.subCategorySection}>
                       <h4 className={styles.subCategoryTitle}>
                         {subCategory.title}
                       </h4>
@@ -207,7 +204,7 @@ export default function ChatInput() {
                     {index !== category.subCategories.length - 1 && (
                       <div className={styles.divider} />
                     )}
-                  </>
+                  </Fragment>
                 ))}
               </div>
             )}
