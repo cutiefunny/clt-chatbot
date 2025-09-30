@@ -48,14 +48,18 @@ export default function HistoryPanel() {
   const handleDeleteRequest = (e, convoId) => {
     e.stopPropagation();
     openConfirmModal({
-      title: "Alert",
-      message: t("deleteConvoConfirm"),
+      title: t("deleteConvoConfirm"),
+      message: getConvoTitle(convoId),
       confirmText: "Delete",
       cancelText: "Cancel",
       onConfirm: () => deleteConversation(convoId),
       confirmVariant: "danger",
     });
   };
+
+  function getConvoTitle(convoId) {
+    return conversations.find((convo) => convo.id === convoId)?.title;
+  }
 
   return (
     <>

@@ -1,50 +1,51 @@
 .modalOverlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.6);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
 }
 
 .modalContent {
-    background-color: var(--panel-bg-color);
-    border-radius: 12px;
-    width: 90%;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-    color: var(--text-color);
-    display: flex;
-    flex-direction: column;
-    max-height: 80vh;
+  background: var(--White, #fff);
+  border-radius: 16px;
+  width: 90%;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  color: var(--text-color);
+  display: flex;
+  flex-direction: column;
+  max-height: 80vh;
 }
 
 .modalHeader {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid var(--panel-border-color);
-    padding: 12px 20px;
-    flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--panel-border-color);
+  padding: 12px 20px;
+  flex-shrink: 0;
 }
 
 .modalHeader h2 {
-    margin: 0;
-    font-size: 1.2rem;
+  margin: 0;
+  font-size: 1.2rem;
 }
 
 .closeButton {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--text-color);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-color);
 }
 
 .modalBody {
-    flex-grow: 1;
-    overflow-y: auto;
-    padding: 16px;
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 20px;
+  padding-top: 16px;
 }

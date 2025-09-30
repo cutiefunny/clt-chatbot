@@ -212,7 +212,8 @@ export const locales = {
 
     // History Panel
     newChat: "New Chat",
-    deleteConvoConfirm: "Are you sure you want to delete this conversation?",
+    deleteConvoConfirm:
+      "Are you sure you want to delete the conversation details?",
     noScenariosFound: "No scenarios were run.",
     loadingScenarios: "Loading scenarios...",
     noHistory: "No chat history has been created.",

@@ -33,6 +33,7 @@
 }
 
 .favoriteItem {
+  position: relative;
   display: flex;
   align-items: flex-start;
   gap: 0.5rem;
@@ -71,27 +72,20 @@
 }
 
 .deleteButton {
-  position: absolute;
-  top: 8px;
-  right: 8px;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
   background: none;
   border: none;
-  color: #aaa;
   cursor: pointer;
   font-size: 1.2rem;
   line-height: 1;
-  padding: 4px;
   border-radius: 50%;
-  opacity: 0;
+  color: var(--Purple-02, #806bf5);
   transition: opacity 0.2s, color 0.2s, background-color 0.2s;
 }
 
-.favoriteItem:hover .deleteButton {
-  opacity: 1;
-}
-
 .deleteButton:hover {
-  color: #d32f2f;
   background-color: rgba(0, 0, 0, 0.05);
 }
 /* --- 👆 [여기까지] --- */
@@ -100,7 +94,6 @@
   width: 20px;
   height: 20px;
   flex-shrink: 0;
-  color: var(--Gray-06, #868eba);
   display: flex;
   align-items: center;
   justify-content: center;

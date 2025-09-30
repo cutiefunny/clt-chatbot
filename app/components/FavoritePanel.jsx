@@ -87,6 +87,7 @@ export default function FavoritePanel() {
                         className={`GlassEffect active ${styles.favoriteItem} ${
                           snapshot.isDragging ? styles.dragging : ""
                         }`}
+                        onClick={() => handleShortcutClick(fav)}
                       >
                         <div
                           {...provided.dragHandleProps}
@@ -94,10 +95,7 @@ export default function FavoritePanel() {
                         >
                           <DragIndicatorIcon />
                         </div>
-                        <div
-                          className={styles.itemContent}
-                          onClick={() => handleShortcutClick(fav)}
-                        >
+                        <div className={styles.itemContent}>
                           <div className={styles.itemText}>
                             <div className={styles.itemTitle}>{fav.title}</div>
                             <div className={styles.itemDescription}>
