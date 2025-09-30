@@ -45,6 +45,7 @@
     transition: all 0.2s ease-in-out;
     text-align: left;
     color: var(--text-color);
+    position: relative; /* For delete button positioning */
 }
 
 .favoriteItem:hover {
@@ -54,6 +55,53 @@
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }
+
+/* --- 👇 [추가된 부분] --- */
+.favoriteItem.dragging {
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    transform: translateY(-4px) scale(1.02);
+}
+
+.dragHandle {
+    cursor: grab;
+    color: #a0a0a0;
+    padding: 4px;
+    margin-left: -8px;
+    flex-shrink: 0;
+}
+
+.itemContent {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-grow: 1;
+}
+
+.deleteButton {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: none;
+    border: none;
+    color: #aaa;
+    cursor: pointer;
+    font-size: 1.2rem;
+    line-height: 1;
+    padding: 4px;
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 0.2s, color 0.2s, background-color 0.2s;
+}
+
+.favoriteItem:hover .deleteButton {
+    opacity: 1;
+}
+
+.deleteButton:hover {
+    color: #d32f2f;
+    background-color: rgba(0,0,0,0.05);
+}
+/* --- 👆 [여기까지] --- */
 
 .itemIcon {
     font-size: 1.5rem;

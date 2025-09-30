@@ -40,7 +40,7 @@ export const createChatSlice = (set, get) => ({
   slots: {},
   unsubscribeMessages: null,
   unsubscribeConversations: null,
-  unsubscribeScenarios: null, // --- 👈 [추가]
+  unsubscribeScenarios: null,
   lastVisibleMessage: null,
   hasMoreMessages: true,
   expandedConversationId: null,
@@ -69,36 +69,62 @@ export const createChatSlice = (set, get) => ({
     });
   },
 
-  updateFavoritesOrder: async (reorderedFavorites) => {
+  // --- 👇 [수정된 부분] ---
+  updateFavoritesOrder: async (newOrder) => {
     const user = get().user;
     if (!user) return;
-    
-    set({ favorites: reorderedFavorites });
+
+    const originalOrder = get().favorites; // 롤백을 위해 기존 순서 저장
+    set({ favorites: newOrder }); // UI 즉시 업데이트 (낙관적 업데이트)
 
     const batch = writeBatch(get().db);
-    reorderedFavorites.forEach((fav, index) => {
-      const favRef = doc(get().db, "users", user.uid, "favorites", fav.id);
-      batch.update(favRef, { order: index });
+    newOrder.forEach((fav, index) => {
+        const favRef = doc(get().db, "users", user.uid, "favorites", fav.id);
+        batch.update(favRef, { order: index });
     });
 
     try {
-      await batch.commit();
+        await batch.commit(); // Firestore에 변경사항 저장
     } catch (error) {
-      console.error("Error updating favorites order:", error);
-      get().showEphemeralToast("Failed to save new order.", "error");
-      get().loadFavorites(user.uid);
+        console.error("Error updating favorites order:", error);
+        get().showEphemeralToast("Failed to save new order.", "error");
+        set({ favorites: originalOrder }); // 에러 발생 시 원래 순서로 롤백
     }
   },
 
   deleteFavorite: async (favoriteId) => {
     const user = get().user;
     if (!user) return;
-    const favoriteRef = doc(get().db, "users", user.uid, "favorites", favoriteId);
-    await deleteDoc(favoriteRef);
-    const remainingFavorites = get().favorites.filter(fav => fav.id !== favoriteId)
-      .map((fav, index) => ({ ...fav, order: index }));
-    get().updateFavoritesOrder(remainingFavorites);
+
+    const originalFavorites = get().favorites;
+    const favoriteToDelete = originalFavorites.find(fav => fav.id === favoriteId);
+    if (!favoriteToDelete) return;
+
+    // 삭제 후의 새로운 리스트를 미리 계산
+    const newFavorites = originalFavorites
+        .filter(fav => fav.id !== favoriteId)
+        .map((fav, index) => ({ ...fav, order: index }));
+
+    set({ favorites: newFavorites }); // UI 즉시 업데이트 (낙관적 업데이트)
+
+    try {
+        const favoriteRef = doc(get().db, "users", user.uid, "favorites", favoriteId);
+        await deleteDoc(favoriteRef); // Firestore에서 문서 삭제
+
+        // Firestore에서 나머지 항목들의 순서 업데이트
+        const batch = writeBatch(get().db);
+        newFavorites.forEach((fav) => {
+            const favRef = doc(get().db, "users", user.uid, "favorites", fav.id);
+            batch.update(favRef, { order: fav.order });
+        });
+        await batch.commit();
+    } catch (error) {
+        console.error("Error deleting favorite:", error);
+        get().showEphemeralToast("Failed to delete favorite.", "error");
+        set({ favorites: originalFavorites }); // 에러 발생 시 원래 상태로 롤백
+    }
   },
+  // --- 👆 [여기까지] ---
 
   toggleFavorite: async (item) => {
     const { user, favorites, addFavorite, deleteFavorite, showEphemeralToast } = get();
@@ -141,6 +167,9 @@ export const createChatSlice = (set, get) => ({
       set({ expandedConversationId: null });
     } else {
       set({ expandedConversationId: conversationId });
+      if (!get().scenariosForConversation[conversationId]) {
+          get().loadScenariosForConversation(conversationId);
+      }
     }
   },
 
@@ -152,8 +181,25 @@ export const createChatSlice = (set, get) => ({
     });
     set({ unsubscribeConversations: unsubscribe });
   },
+  
+  loadScenariosForConversation: async (conversationId) => {
+      const user = get().user;
+      if (!user) return;
 
-  // --- 👇 [수정된 부분] ---
+      const scenariosRef = collection(get().db, "chats", user.uid, "conversations", conversationId, "scenario_sessions");
+      const scenariosQuery = query(scenariosRef, orderBy("createdAt", "desc"));
+      
+      const snapshot = await getDocs(scenariosQuery);
+      const scenarios = snapshot.docs.map(doc => ({ sessionId: doc.id, ...doc.data() }));
+      
+      set(state => ({
+          scenariosForConversation: {
+              ...state.scenariosForConversation,
+              [conversationId]: scenarios,
+          }
+      }));
+  },
+
   loadConversation: (conversationId) => {
     const user = get().user;
     if (!user || get().currentConversationId === conversationId) return;
@@ -218,7 +264,6 @@ export const createChatSlice = (set, get) => ({
         unsubscribeScenarios: unsubscribeScenarios
     });
   },
-  // --- 👆 [여기까지] ---
 
   loadMoreMessages: async () => {
     const user = get().user;
@@ -252,7 +297,6 @@ export const createChatSlice = (set, get) => ({
     }
   },
 
-  // --- 👇 [수정된 부분] ---
   createNewConversation: () => {
     if (get().currentConversationId === null) return;
     get().unsubscribeMessages?.();
@@ -271,7 +315,6 @@ export const createChatSlice = (set, get) => ({
         unsubscribeScenarios: null,
     });
   },
-  // --- 👆 [여기까지] ---
 
   deleteConversation: async (conversationId) => {
     const user = get().user;
@@ -341,7 +384,6 @@ export const createChatSlice = (set, get) => ({
   },
 
   addMessage: async (sender, messageData) => {
-    // --- 👇 [로그 추가] ---
     console.log('[addMessage] Adding new message to state:', messageData);
     let newMessage;
     if (sender === 'user') {
