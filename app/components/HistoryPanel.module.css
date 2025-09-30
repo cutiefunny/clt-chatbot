@@ -151,11 +151,50 @@
   color: var(--text-color);
 }
 
-.historyPanel.open .toggleButton {
+.historyPanel .toggleButton {
   position: absolute;
   top: 12px;
   left: 8px;
   z-index: 25; /* 아이콘 그룹보다 위에 위치 */
+}
+
+.historyPanel .newChatButton {
+  position: absolute;
+  top: 56px;
+  left: 8px;
+  padding: 0.5rem;
+  z-index: 25; /* 아이콘 그룹보다 위에 위치 */
+  cursor: pointer;
+}
+
+.historyPanel .historyButton {
+  position: absolute;
+  top: 100px;
+  left: 8px;
+  padding: 0.5rem;
+  z-index: 25; /* 아이콘 그룹보다 위에 위치 */
+  cursor: pointer;
+}
+
+.historyPanel .newChatButton:hover,
+.historyPanel .historyButton:hover {
+  background-color: var(--button-hover-bg);
+  border-radius: 50%;
+}
+
+.historyPanel .newChatButton:active,
+.historyPanel .historyButton:active {
+  background-color: var(--button-hover-bg);
+}
+
+.historyPanel.open .newChatButton {
+  display: none;
+  transition: 0.3s ease-in-out;
+}
+
+.historyPanel.open .historyButton {
+  display: none;
+  transition: 0.3s ease-in-out;
 }
 
 .toggleButton:hover {
@@ -590,7 +629,7 @@
 }
 /* --- 👇 [추가된 부분] --- */
 .scenarioBadge.generating {
-    background-color: #27ae60;
+  background-color: #27ae60;
 }
 /* --- 👆 [여기까지] --- */
 .footer {

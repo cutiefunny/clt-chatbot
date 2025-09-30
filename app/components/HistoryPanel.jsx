@@ -14,6 +14,7 @@ import SearchIcon from "./icons/SearchIcon";
 import ManualIcon from "./icons/ManualIcon";
 import NewChatIcon from "./icons/NewChatIcon";
 import NoHistoryIcon from "./icons/NoHistoryIcon";
+import HistoryIcon from "./icons/HistoryIcon";
 
 export default function HistoryPanel() {
   const {
@@ -75,6 +76,15 @@ export default function HistoryPanel() {
           onClick={toggleHistoryPanel}
         >
           <MenuIcon />
+        </button>
+        <button
+          className={styles.newChatButton}
+          onClick={createNewConversation}
+        >
+          <NewChatIcon />
+        </button>
+        <button className={styles.historyButton} onClick={toggleHistoryPanel}>
+          <HistoryIcon />
         </button>
 
         <div className={styles.panelContentWrapper}>
