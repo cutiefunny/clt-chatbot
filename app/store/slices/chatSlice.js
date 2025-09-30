@@ -40,6 +40,7 @@ export const createChatSlice = (set, get) => ({
   slots: {},
   unsubscribeMessages: null,
   unsubscribeConversations: null,
+  unsubscribeScenarios: null, // --- 👈 [추가]
   lastVisibleMessage: null,
   hasMoreMessages: true,
   expandedConversationId: null,
@@ -134,40 +135,12 @@ export const createChatSlice = (set, get) => ({
     }
   },
 
-  toggleConversationExpansion: async (conversationId) => {
-    const { expandedConversationId, scenariosForConversation, user } = get();
-
+  toggleConversationExpansion: (conversationId) => {
+    const { expandedConversationId } = get();
     if (expandedConversationId === conversationId) {
       set({ expandedConversationId: null });
     } else {
       set({ expandedConversationId: conversationId });
-      
-      if (!scenariosForConversation[conversationId] && user) {
-        try {
-          const scenariosRef = collection(get().db, "chats", user.uid, "conversations", conversationId, "scenario_sessions");
-          const q = query(scenariosRef, orderBy("createdAt", "desc"));
-          const snapshot = await getDocs(q);
-          const scenarios = snapshot.docs.map(doc => ({
-            sessionId: doc.id,
-            ...doc.data()
-          }));
-
-          set(state => ({
-            scenariosForConversation: {
-              ...state.scenariosForConversation,
-              [conversationId]: scenarios,
-            }
-          }));
-        } catch (error) {
-          console.error("Failed to load scenarios for conversation:", error);
-          set(state => ({
-            scenariosForConversation: {
-              ...state.scenariosForConversation,
-              [conversationId]: [],
-            }
-          }));
-        }
-      }
     }
   },
 
@@ -180,12 +153,14 @@ export const createChatSlice = (set, get) => ({
     set({ unsubscribeConversations: unsubscribe });
   },
 
+  // --- 👇 [수정된 부분] ---
   loadConversation: (conversationId) => {
     const user = get().user;
     if (!user || get().currentConversationId === conversationId) return;
 
     get().unsubscribeMessages?.();
     get().unsubscribeScenario?.();
+    get().unsubscribeScenarios?.();
 
     const { language } = get();
     const initialMessage = getInitialMessages(language)[0];
@@ -204,34 +179,46 @@ export const createChatSlice = (set, get) => ({
     const messagesRef = collection(get().db, "chats", user.uid, "conversations", conversationId, "messages");
     const q = query(messagesRef, orderBy("createdAt", "desc"), limit(MESSAGE_LIMIT));
     
-    const unsubscribe = onSnapshot(q, async (messagesSnapshot) => {
-        // --- 👇 [로그 추가] ---
-        console.log('[loadConversation] Firestore onSnapshot triggered. Fetched messages:', messagesSnapshot.docs.length);
+    const unsubscribeMessages = onSnapshot(q, (messagesSnapshot) => {
         const newMessages = messagesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).reverse();
         const lastVisible = messagesSnapshot.docs[messagesSnapshot.docs.length - 1];
-
-        const scenarioSessionsRef = collection(get().db, "chats", user.uid, "conversations", conversationId, "scenario_sessions");
-        const scenarioQuery = query(scenarioSessionsRef, where("status", "==", "active"));
-        const scenarioSnapshot = await getDocs(scenarioQuery);
-        const newScenarioStates = {};
-        scenarioSnapshot.forEach(doc => {
-            newScenarioStates[doc.id] = doc.data();
-        });
         
-        set(state => {
-            // --- 👇 [로그 추가] ---
-            console.log('[loadConversation] Updating state with new messages.');
-            return {
-                messages: [initialMessage, ...newMessages],
-                lastVisibleMessage: lastVisible,
-                hasMoreMessages: messagesSnapshot.docs.length === MESSAGE_LIMIT,
-                isLoading: false,
-                scenarioStates: { ...state.scenarioStates, ...newScenarioStates },
-            }
-        });
+        set(state => ({
+            messages: [initialMessage, ...newMessages],
+            lastVisibleMessage: lastVisible,
+            hasMoreMessages: messagesSnapshot.docs.length === MESSAGE_LIMIT,
+            isLoading: false,
+        }));
     });
-    set({ unsubscribeMessages: unsubscribe });
+
+    const scenariosRef = collection(get().db, "chats", user.uid, "conversations", conversationId, "scenario_sessions");
+    const scenariosQuery = query(scenariosRef, orderBy("createdAt", "desc"));
+    const unsubscribeScenarios = onSnapshot(scenariosQuery, (snapshot) => {
+        const scenarios = snapshot.docs.map(doc => ({ sessionId: doc.id, ...doc.data() }));
+        set(state => ({
+            scenariosForConversation: {
+                ...state.scenariosForConversation,
+                [conversationId]: scenarios,
+            }
+        }));
+
+        const activeScenarios = scenarios.filter(s => s.status === 'active' || s.status === 'generating');
+        const newScenarioStates = {};
+        activeScenarios.forEach(s => {
+            newScenarioStates[s.sessionId] = s;
+        });
+
+        set(state => ({
+            scenarioStates: { ...state.scenarioStates, ...newScenarioStates },
+        }));
+    });
+
+    set({ 
+        unsubscribeMessages: unsubscribeMessages,
+        unsubscribeScenarios: unsubscribeScenarios
+    });
   },
+  // --- 👆 [여기까지] ---
 
   loadMoreMessages: async () => {
     const user = get().user;
@@ -265,10 +252,12 @@ export const createChatSlice = (set, get) => ({
     }
   },
 
+  // --- 👇 [수정된 부분] ---
   createNewConversation: () => {
     if (get().currentConversationId === null) return;
     get().unsubscribeMessages?.();
     get().unsubscribeScenario?.();
+    get().unsubscribeScenarios?.();
     const { language } = get();
     set({ 
         messages: getInitialMessages(language), 
@@ -279,8 +268,10 @@ export const createChatSlice = (set, get) => ({
         lastVisibleMessage: null,
         hasMoreMessages: true,
         expandedConversationId: null,
+        unsubscribeScenarios: null,
     });
   },
+  // --- 👆 [여기까지] ---
 
   deleteConversation: async (conversationId) => {
     const user = get().user;

@@ -405,10 +405,12 @@
 .scenarioBadge.incomplete {
     background-color: #f39c12;
 }
-
-/* --- 👇 [추가된 부분] --- */
 .scenarioBadge.failed {
     background-color: #e74c3c;
+}
+/* --- 👇 [추가된 부분] --- */
+.scenarioBadge.generating {
+    background-color: #27ae60;
 }
 /* --- 👆 [여기까지] --- */
 

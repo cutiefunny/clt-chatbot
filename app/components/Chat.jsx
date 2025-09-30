@@ -11,6 +11,7 @@ const ScenarioStatusMessage = ({ msg }) => {
   const { t } = useTranslations();
   const scenario = scenarioStates[msg.scenarioSessionId];
 
+  // --- 👇 [수정된 부분] ---
   const getStatusInfo = (status) => {
     switch (status) {
       case 'active':
@@ -19,10 +20,13 @@ const ScenarioStatusMessage = ({ msg }) => {
         return { text: t('statusCompleted'), className: styles.statusCompleted };
       case 'failed':
         return { text: t('statusFailed'), className: styles.statusFailed };
+      case 'generating':
+        return { text: t('statusGenerating'), className: styles.statusGenerating };
       default:
         return { text: t('loading'), className: '' };
     }
   };
+  // --- 👆 [여기까지] ---
 
   const statusInfo = getStatusInfo(scenario?.status);
 

@@ -13,7 +13,7 @@ const CheckIcon = () => (
 );
 
 // --- 👇 [수정된 부분] ---
-const ScenarioStatusBadge = ({ status }) => {
+const ScenarioStatusBadge = ({ status, t }) => {
     if (!status) return null;
 
     let text;
@@ -21,16 +21,20 @@ const ScenarioStatusBadge = ({ status }) => {
 
     switch (status) {
         case 'completed':
-            text = 'Done';
+            text = t('statusCompleted');
             statusClass = 'done';
             break;
         case 'active':
-            text = 'Incomplete';
+            text = t('statusActive');
             statusClass = 'incomplete';
             break;
         case 'failed':
-            text = 'Failed';
+            text = t('statusFailed');
             statusClass = 'failed';
+            break;
+        case 'generating':
+            text = t('statusGenerating');
+            statusClass = 'generating';
             break;
         default:
             return null;
@@ -179,7 +183,7 @@ export default function ConversationItem({
                                     onClick={() => onScenarioClick(convo.id, scenario)}
                                 >
                                     <span className={styles.scenarioTitle}>{scenario.scenarioId}</span>
-                                    <ScenarioStatusBadge status={scenario.status} />
+                                    <ScenarioStatusBadge status={scenario.status} t={t} />
                                 </div>
                             ))
                         ) : (

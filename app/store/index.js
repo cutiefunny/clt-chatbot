@@ -26,7 +26,6 @@ export const useChatStore = create((set, get) => ({
   ...createDevBoardSlice(set, get),
   ...createNotificationSlice(set, get),
   
-  // --- 👇 [수정된 부분] ---
   handleScenarioItemClick: (conversationId, scenario) => {
     // 1. 현재 대화와 클릭된 시나리오의 대화가 다를 경우에만 대화를 새로 로드합니다.
     if (get().currentConversationId !== conversationId) {
@@ -48,7 +47,6 @@ export const useChatStore = create((set, get) => ({
       get().subscribeToScenarioSession(scenario.sessionId);
     }
   },
-  // --- 👆 [여기까지] ---
 
   initAuth: () => {
     get().loadScenarioCategories();
@@ -129,20 +127,24 @@ export const useChatStore = create((set, get) => ({
     });
   },
 
+  // --- 👇 [수정된 부분] ---
   unsubscribeAll: () => {
     get().unsubscribeConversations?.();
     get().unsubscribeMessages?.();
+    get().unsubscribeScenarios?.();
     get().unsubscribeDevMemos?.();
     get().unsubscribeNotifications?.();
     get().unsubscribeFavorites?.();
     set({ 
         unsubscribeConversations: null, 
         unsubscribeMessages: null, 
+        unsubscribeScenarios: null,
         unsubscribeDevMemos: null,
         unsubscribeNotifications: null,
         unsubscribeFavorites: null,
     });
   },
+  // --- 👆 [여기까지] ---
 }));
 
 useChatStore.getState().initAuth();
