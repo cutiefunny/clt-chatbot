@@ -202,6 +202,8 @@ export const createScenarioSlice = (set, get) => ({
     
     const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", scenarioSessionId);
     
+    await updateDoc(sessionRef, { status: 'generating' });
+
     let newMessages = [...existingMessages];
 
     if (payload.userInput) {
@@ -237,6 +239,7 @@ export const createScenarioSlice = (set, get) => ({
       
       if (data.type === 'scenario_validation_fail') {
           showToast(data.message, 'error');
+          await updateDoc(sessionRef, { status: 'active' });
       } else if (data.type === 'scenario_end') {
         const finalStatus = data.slots?.apiFailed ? 'failed' : 'completed';
         await updateDoc(sessionRef, { messages: newMessages, status: finalStatus });
@@ -247,6 +250,7 @@ export const createScenarioSlice = (set, get) => ({
             messages: newMessages,
             state: data.scenarioState,
             slots: data.slots,
+            status: 'active',
         });
         if (data.nextNode) {
             await get().continueScenarioIfNeeded(data.nextNode, scenarioSessionId);

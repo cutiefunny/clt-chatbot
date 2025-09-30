@@ -461,7 +461,6 @@ input:checked + .slider:before {
   animation: wobble 0.8s ease-in-out;
 }
 
-/* --- 👇 [추가된 부분] --- */
 .scenarioStatusMessage {
   display: flex;
   flex-direction: column;
@@ -493,6 +492,11 @@ input:checked + .slider:before {
 
 .statusFailed {
   background-color: #e74c3c; /* Failed */
+}
+
+/* --- 👇 [추가된 부분] --- */
+.statusGenerating {
+  background-color: #27ae60; /* Generating */
 }
 /* --- 👆 [여기까지] --- */
 

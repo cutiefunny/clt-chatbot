@@ -59,6 +59,7 @@ export const createChatSlice = (set, get) => ({
   slots: {},
   unsubscribeMessages: null,
   unsubscribeConversations: null,
+  unsubscribeScenarios: null, // --- 👈 [추가]
   lastVisibleMessage: null,
   hasMoreMessages: true,
   scenariosForConversation: {},
@@ -175,8 +176,6 @@ export const createChatSlice = (set, get) => ({
     }
   },
 
-  // removed: toggleConversationExpansion (expansion now follows isActive)
-
   // 활성화된 대화의 시나리오 세션 목록을 로드하여 캐싱
   loadScenariosForConversation: async (conversationId) => {
     const { user, scenariosForConversation } = get();
@@ -232,12 +231,14 @@ export const createChatSlice = (set, get) => ({
     set({ unsubscribeConversations: unsubscribe });
   },
 
+  // --- 👇 [수정된 부분] ---
   loadConversation: (conversationId) => {
     const user = get().user;
     if (!user || get().currentConversationId === conversationId) return;
 
     get().unsubscribeMessages?.();
     get().unsubscribeScenario?.();
+    get().unsubscribeScenarios?.();
 
     const { language } = get();
     const initialMessage = getInitialMessages(language)[0];
@@ -253,9 +254,6 @@ export const createChatSlice = (set, get) => ({
       hasMoreMessages: true,
     });
 
-    // 시나리오 세션 목록 로드 (확장 버튼 제거 이후 isActive로 확장되므로 필요)
-    get().loadScenariosForConversation(conversationId);
-
     const messagesRef = collection(
       get().db,
       "chats",
@@ -270,8 +268,7 @@ export const createChatSlice = (set, get) => ({
       limit(MESSAGE_LIMIT)
     );
 
-    const unsubscribe = onSnapshot(q, async (messagesSnapshot) => {
-      // --- 👇 [로그 추가] ---
+    const unsubscribeMessages = onSnapshot(q, (messagesSnapshot) => {
       console.log(
         "[loadConversation] Firestore onSnapshot triggered. Fetched messages:",
         messagesSnapshot.docs.length
@@ -282,38 +279,54 @@ export const createChatSlice = (set, get) => ({
       const lastVisible =
         messagesSnapshot.docs[messagesSnapshot.docs.length - 1];
 
-      const scenarioSessionsRef = collection(
-        get().db,
-        "chats",
-        user.uid,
-        "conversations",
-        conversationId,
-        "scenario_sessions"
+      set((state) => ({
+        messages: [initialMessage, ...newMessages],
+        lastVisibleMessage: lastVisible,
+        hasMoreMessages: messagesSnapshot.docs.length === MESSAGE_LIMIT,
+        isLoading: false,
+      }));
+    });
+
+    const scenariosRef = collection(
+      get().db,
+      "chats",
+      user.uid,
+      "conversations",
+      conversationId,
+      "scenario_sessions"
+    );
+    const scenariosQuery = query(scenariosRef, orderBy("createdAt", "desc"));
+    const unsubscribeScenarios = onSnapshot(scenariosQuery, (snapshot) => {
+      const scenarios = snapshot.docs.map((doc) => ({
+        sessionId: doc.id,
+        ...doc.data(),
+      }));
+      set((state) => ({
+        scenariosForConversation: {
+          ...state.scenariosForConversation,
+          [conversationId]: scenarios,
+        },
+      }));
+
+      const activeScenarios = scenarios.filter(
+        (s) => s.status === "active" || s.status === "generating"
       );
-      const scenarioQuery = query(
-        scenarioSessionsRef,
-        where("status", "==", "active")
-      );
-      const scenarioSnapshot = await getDocs(scenarioQuery);
       const newScenarioStates = {};
-      scenarioSnapshot.forEach((doc) => {
-        newScenarioStates[doc.id] = doc.data();
+      activeScenarios.forEach((s) => {
+        newScenarioStates[s.sessionId] = s;
       });
 
-      set((state) => {
-        // --- 👇 [로그 추가] ---
-        console.log("[loadConversation] Updating state with new messages.");
-        return {
-          messages: [initialMessage, ...newMessages],
-          lastVisibleMessage: lastVisible,
-          hasMoreMessages: messagesSnapshot.docs.length === MESSAGE_LIMIT,
-          isLoading: false,
-          scenarioStates: { ...state.scenarioStates, ...newScenarioStates },
-        };
-      });
+      set((state) => ({
+        scenarioStates: { ...state.scenarioStates, ...newScenarioStates },
+      }));
     });
-    set({ unsubscribeMessages: unsubscribe });
+
+    set({
+      unsubscribeMessages: unsubscribeMessages,
+      unsubscribeScenarios: unsubscribeScenarios,
+    });
   },
+  // --- 👆 [여기까지] ---
 
   loadMoreMessages: async () => {
     const user = get().user;
@@ -371,10 +384,12 @@ export const createChatSlice = (set, get) => ({
     }
   },
 
+  // --- 👇 [수정된 부분] ---
   createNewConversation: () => {
     if (get().currentConversationId === null) return;
     get().unsubscribeMessages?.();
     get().unsubscribeScenario?.();
+    get().unsubscribeScenarios?.();
     const { language } = get();
     set({
       messages: getInitialMessages(language),
@@ -386,6 +401,7 @@ export const createChatSlice = (set, get) => ({
       hasMoreMessages: true,
     });
   },
+  // --- 👆 [여기까지] ---
 
   deleteConversation: async (conversationId) => {
     const user = get().user;

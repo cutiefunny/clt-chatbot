@@ -57,7 +57,7 @@ const TrashIcon = () => (
 );
 
 // --- 👇 [수정된 부분] ---
-const ScenarioStatusBadge = ({ status }) => {
+const ScenarioStatusBadge = ({ status, t }) => {
   if (!status) return null;
 
   let text;
@@ -65,16 +65,20 @@ const ScenarioStatusBadge = ({ status }) => {
 
   switch (status) {
     case "completed":
-      text = "Done";
+      text = t("statusCompleted");
       statusClass = "done";
       break;
     case "active":
-      text = "Incomplete";
+      text = t("statusActive");
       statusClass = "incomplete";
       break;
     case "failed":
-      text = "Failed";
+      text = t("statusFailed");
       statusClass = "failed";
+      break;
+    case "generating":
+      text = t("statusGenerating");
+      statusClass = "generating";
       break;
     default:
       return null;
@@ -273,10 +277,7 @@ export default function ConversationItem({
                   <span className={styles.scenarioTitle}>
                     {scenario.scenarioId}
                   </span>
-                  <span
-                    className={styles.scenarioStatusDot}
-                    data-status={scenario.status}
-                  ></span>
+                  <ScenarioStatusBadge status={scenario.status} t={t} />
                 </div>
               ))
             ) : (
