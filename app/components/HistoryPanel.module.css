@@ -224,7 +224,6 @@
 .sidePanelButton:disabled:hover,
 .sidePanelButton[aria-disabled="true"]:hover {
   background-color: var(--option-button-bg);
-  /* hover 그라디언트 완전 비활성화 */
   background-image: none;
   background-clip: border-box;
   -webkit-background-clip: border-box;
@@ -514,7 +513,6 @@
   justify-content: space-between;
   gap: 8px;
   padding: 8px;
-  border-radius: 6px;
   cursor: pointer;
   font-size: 0.85rem;
   transition: background-color 0.2s;

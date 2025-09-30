@@ -6,6 +6,7 @@ import { useTranslations } from "../hooks/useTranslations";
 import styles from "./ChatInput.module.css";
 import StarIcon from "./icons/StarIcon";
 import ArrowDropDownIcon from "./icons/ArrowDropDownIcon";
+import AddIcon from "./icons/AddIcon";
 
 const useDraggableScroll = () => {
   const ref = useRef(null);
@@ -87,8 +88,8 @@ export default function ChatInput() {
   }, [isInputDisabled, focusRequest, activePanel]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    const input = e.target.elements.userInput.value;
+    e?.preventDefault?.();
+    const input = inputRef.current?.value ?? "";
     if (!input.trim() || isInputDisabled) return;
 
     if (activePanel === "scenario") {
@@ -100,7 +101,9 @@ export default function ChatInput() {
     } else {
       await handleResponse({ text: input });
     }
-    e.target.reset();
+    if (inputRef.current) {
+      inputRef.current.value = "";
+    }
   };
 
   const handleQuickReplyClick = async (reply) => {
@@ -149,57 +152,62 @@ export default function ChatInput() {
               />
             </button>
             {shortcutMenuOpen === category.name && (
-              <div className={styles.dropdownMenu}>
-                {category.subCategories.map((subCategory) => (
-                  <div
-                    key={subCategory.title}
-                    className={styles.subCategorySection}
-                  >
-                    <h4 className={styles.subCategoryTitle}>
-                      {subCategory.title}
-                    </h4>
-                    {subCategory.items.map((item) => {
-                      const isFavorited = favorites.some(
-                        (fav) =>
-                          fav.action.type === item.action.type &&
-                          fav.action.value === item.action.value
-                      );
-                      return (
-                        <div key={item.title} className={styles.dropdownItem}>
-                          <div
-                            className={styles.itemContentWrapper}
-                            onClick={() => handleItemClick(item)}
-                            role="button"
-                            tabIndex="0"
-                            onKeyDown={(e) =>
-                              (e.key === "Enter" || e.key === " ") &&
-                              handleItemClick(item)
-                            }
-                          >
-                            <button
-                              className={`${styles.favoriteButton} ${
-                                isFavorited ? styles.favorited : ""
-                              }`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleFavorite(item);
-                              }}
+              <div className={`${styles.dropdownMenu}`}>
+                {category.subCategories.map((subCategory, index) => (
+                  <>
+                    <div
+                      key={subCategory.title}
+                      className={styles.subCategorySection}
+                    >
+                      <h4 className={styles.subCategoryTitle}>
+                        {subCategory.title}
+                      </h4>
+                      {subCategory.items.map((item) => {
+                        const isFavorited = favorites.some(
+                          (fav) =>
+                            fav.action.type === item.action.type &&
+                            fav.action.value === item.action.value
+                        );
+                        return (
+                          <div key={item.title} className={styles.dropdownItem}>
+                            <div
+                              className={styles.itemContentWrapper}
+                              onClick={() => handleItemClick(item)}
+                              role="button"
+                              tabIndex="0"
+                              onKeyDown={(e) =>
+                                (e.key === "Enter" || e.key === " ") &&
+                                handleItemClick(item)
+                              }
                             >
-                              <StarIcon size={18} filled={isFavorited} />
-                            </button>
-                            <div className={styles.itemContent}>
-                              <span className={styles.itemTitle}>
-                                {item.title}
-                              </span>
-                              <span className={styles.itemDescription}>
-                                {item.description}
-                              </span>
+                              <button
+                                className={`${styles.favoriteButton} ${
+                                  isFavorited ? styles.favorited : ""
+                                }`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleFavorite(item);
+                                }}
+                              >
+                                <StarIcon size={18} filled={isFavorited} />
+                              </button>
+                              <div className={styles.itemContent}>
+                                <span className={styles.itemTitle}>
+                                  {item.title}
+                                </span>
+                                <span className={styles.itemDescription}>
+                                  {item.description}
+                                </span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                    {index !== category.subCategories.length - 1 && (
+                      <div className={styles.divider} />
+                    )}
+                  </>
                 ))}
               </div>
             )}
@@ -234,7 +242,7 @@ export default function ChatInput() {
       )}
 
       <form className={styles.inputForm} onSubmit={handleSubmit}>
-        <input
+        <textarea
           ref={inputRef}
           name="userInput"
           className={styles.textInput}
@@ -245,14 +253,23 @@ export default function ChatInput() {
           }
           autoComplete="off"
           disabled={isInputDisabled}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              handleSubmit(e);
+            }
+          }}
         />
-        <button
+        <button className={styles.addButton}>
+          <AddIcon />
+        </button>
+        {/* <button
           type="submit"
           className={styles.sendButton}
           disabled={isInputDisabled}
         >
           Send
-        </button>
+        </button> */}
       </form>
     </div>
   );

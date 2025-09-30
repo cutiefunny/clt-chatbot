@@ -216,55 +216,58 @@ export default function Chat() {
                       {copiedMessageId === msg.id && (
                         <div className={styles.copyFeedback}>{t("copied")}</div>
                       )}
-                      <div className={styles.messageContent}>
-                        {msg.type === "scenario_start_notice" ? (
-                          <ScenarioStatusMessage msg={msg} />
-                        ) : msg.type === "scenario_resume_prompt" ? (
-                          <button
-                            className={styles.optionButton}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openScenarioPanel(
-                                msg.scenarioId,
-                                msg.scenarioSessionId
-                              );
-                            }}
-                          >
-                            {t("scenarioResume")(msg.scenarioId)}
-                          </button>
-                        ) : msg.type === "scenario_end_notice" ? (
-                          <button
-                            className={styles.optionButton}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openScenarioPanel(
-                                msg.scenarioId,
-                                msg.scenarioSessionId
-                              );
-                            }}
-                          >
-                            {msg.text}
-                          </button>
-                        ) : (
-                          <p>{msg.text || msg.node?.data.content}</p>
-                        )}
+                      <div className={styles.messageContentWrapper}>
+                        {msg.sender === "bot" && <LogoIcon />}
+                        <div className={styles.messageContent}>
+                          {msg.type === "scenario_start_notice" ? (
+                            <ScenarioStatusMessage msg={msg} />
+                          ) : msg.type === "scenario_resume_prompt" ? (
+                            <button
+                              className={styles.optionButton}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openScenarioPanel(
+                                  msg.scenarioId,
+                                  msg.scenarioSessionId
+                                );
+                              }}
+                            >
+                              {t("scenarioResume")(msg.scenarioId)}
+                            </button>
+                          ) : msg.type === "scenario_end_notice" ? (
+                            <button
+                              className={styles.optionButton}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openScenarioPanel(
+                                  msg.scenarioId,
+                                  msg.scenarioSessionId
+                                );
+                              }}
+                            >
+                              {msg.text}
+                            </button>
+                          ) : (
+                            <p>{msg.text || msg.node?.data.content}</p>
+                          )}
 
-                        {msg.sender === "bot" && msg.scenarios && (
-                          <div className={styles.scenarioList}>
-                            {msg.scenarios.map((name) => (
-                              <button
-                                key={name}
-                                className={styles.optionButton}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openScenarioPanel(name);
-                                }}
-                              >
-                                {name}
-                              </button>
-                            ))}
-                          </div>
-                        )}
+                          {msg.sender === "bot" && msg.scenarios && (
+                            <div className={styles.scenarioList}>
+                              {msg.scenarios.map((name) => (
+                                <button
+                                  key={name}
+                                  className={styles.optionButton}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openScenarioPanel(name);
+                                  }}
+                                >
+                                  {name}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       {msg.sender === "bot" && (
