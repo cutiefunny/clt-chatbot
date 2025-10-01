@@ -5,11 +5,11 @@ import { getErrorKey } from '../../lib/errorHandler';
 export const createScenarioSlice = (set, get) => ({
   // State
   scenarioStates: {},
-  activeScenarioSessionId: null,
-  isScenarioPanelOpen: false, 
+  activeScenarioSessionId: null, // This now represents the "focused" scenario
+  activeScenarioSessions: [], // Holds IDs of all visible scenarios in a conversation
   scenarioCategories: [],
   availableScenarios: [],
-  unsubscribeScenario: null,
+  unsubscribeScenariosMap: {},
 
   // Actions
   loadAvailableScenarios: async () => {
@@ -55,36 +55,29 @@ export const createScenarioSlice = (set, get) => ({
     }
   },
 
-  openScenarioPanel: async (scenarioId, scenarioSessionId = null) => {
-    const { user, currentConversationId, handleEvents, language, activeScenarioSessionId } = get();
+  openScenarioPanel: async (scenarioId) => {
+    const { user, currentConversationId, handleEvents, language, setActivePanel } = get();
     if (!user) return;
     
-    const previousScenarioSessionId = activeScenarioSessionId;
-
     let conversationId = currentConversationId;
     if (!conversationId) {
         const newConversationId = await get().createNewConversation(true);
         if (!newConversationId) return;
+        // The loadConversation will be triggered which sets the ID.
+        // We need to wait for it to be set before proceeding.
+        await new Promise(resolve => {
+            const check = () => {
+                if (get().currentConversationId === newConversationId) {
+                    resolve();
+                } else {
+                    setTimeout(check, 50);
+                }
+            };
+            check();
+        });
         conversationId = newConversationId;
     }
-
-    if (scenarioSessionId) {
-      if (!get().scenarioStates[scenarioSessionId]) {
-        get().subscribeToScenarioSession(scenarioSessionId);
-      }
-      set({
-          isScenarioPanelOpen: true,
-          activeScenarioSessionId: scenarioSessionId,
-          activePanel: 'scenario'
-      });
-      if (previousScenarioSessionId && previousScenarioSessionId !== scenarioSessionId) {
-        const prevSessionRef = doc(get().db, "chats", user.uid, "conversations", conversationId, "scenario_sessions", previousScenarioSessionId);
-        await updateDoc(prevSessionRef, { status: 'cancelled' });
-      }
-      get().focusChatInput();
-      return;
-    }
-
+    
     const scenarioSessionsRef = collection(get().db, "chats", user.uid, "conversations", conversationId, "scenario_sessions");
     const newSessionDoc = await addDoc(scenarioSessionsRef, {
       scenarioId: scenarioId,
@@ -98,16 +91,8 @@ export const createScenarioSlice = (set, get) => ({
     const newScenarioSessionId = newSessionDoc.id;
     
     get().subscribeToScenarioSession(newScenarioSessionId);
-    set({
-        isScenarioPanelOpen: true,
-        activeScenarioSessionId: newScenarioSessionId,
-        activePanel: 'scenario',
-    });
     
-    if (previousScenarioSessionId) {
-        const prevSessionRef = doc(get().db, "chats", user.uid, "conversations", conversationId, "scenario_sessions", previousScenarioSessionId);
-        await updateDoc(prevSessionRef, { status: 'cancelled' });
-    }
+    setActivePanel('scenario', newScenarioSessionId);
 
     try {
       const response = await fetch('/api/chat', {
@@ -147,29 +132,52 @@ export const createScenarioSlice = (set, get) => ({
         messages: [{ id: 'error', sender: 'bot', text: errorMessage }],
         status: 'failed'
       });
-    } finally {
-      get().focusChatInput();
     }
   },
   
   subscribeToScenarioSession: (sessionId) => {
-    const { user, currentConversationId } = get();
-    if (!user || !currentConversationId) return;
-
-    get().unsubscribeScenario?.();
+    const { user, currentConversationId, unsubscribeScenariosMap } = get();
+    if (!user || !currentConversationId || unsubscribeScenariosMap[sessionId]) return;
 
     const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", sessionId);
     const unsubscribe = onSnapshot(sessionRef, (doc) => {
       if (doc.exists()) {
-        set(state => ({
-          scenarioStates: {
-            ...state.scenarioStates,
-            [sessionId]: { ...doc.data(), isLoading: false }
-          }
-        }));
+        const scenarioData = doc.data();
+        set(state => {
+            const newScenarioStates = {
+                ...state.scenarioStates,
+                [sessionId]: { ...scenarioData, isLoading: false }
+            };
+            const newActiveSessions = Object.keys(newScenarioStates);
+                
+            return {
+                scenarioStates: newScenarioStates,
+                activeScenarioSessions: newActiveSessions,
+            };
+        });
+      } else {
+        get().unsubscribeFromScenarioSession(sessionId);
       }
     });
-    set({ unsubscribeScenario: unsubscribe });
+    
+    set(state => ({
+        unsubscribeScenariosMap: {
+            ...state.unsubscribeScenariosMap,
+            [sessionId]: unsubscribe
+        }
+    }));
+  },
+
+  unsubscribeFromScenarioSession: (sessionId) => {
+      set(state => {
+          const newUnsubscribeMap = { ...state.unsubscribeScenariosMap };
+          newUnsubscribeMap[sessionId]?.();
+          delete newUnsubscribeMap[sessionId];
+          
+          return {
+              unsubscribeScenariosMap: newUnsubscribeMap,
+          }
+      });
   },
 
   endScenario: async (scenarioSessionId, status = 'completed') => {
@@ -179,23 +187,9 @@ export const createScenarioSlice = (set, get) => ({
     const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", scenarioSessionId);
     await updateDoc(sessionRef, { status });
     
+    // Do not unsubscribe, just update the panel state
     if (get().activeScenarioSessionId === scenarioSessionId) {
-        set({ activePanel: 'main' });
-    }
-  },
-
-  setScenarioPanelOpen: (isOpen) => {
-    const { activeScenarioSessionId, endScenario, focusChatInput } = get();
-    if (!isOpen && activeScenarioSessionId) {
-        endScenario(activeScenarioSessionId, 'cancelled');
-    }
-    set({
-        isScenarioPanelOpen: isOpen,
-        activeScenarioSessionId: isOpen ? activeScenarioSessionId : null,
-        activePanel: 'main',
-    });
-    if(!isOpen) {
-        focusChatInput();
+        get().setActivePanel('main');
     }
   },
 

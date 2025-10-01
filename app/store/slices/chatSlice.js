@@ -9,15 +9,6 @@ const getInitialMessages = (lang = 'ko') => {
 };
 
 const responseHandlers = {
-    'scenario_start': (data, get) => {
-      get().addMessage('bot', data.nextNode);
-    },
-    'scenario': (data, get) => {
-      responseHandlers['scenario_start'](data, get);
-    },
-    'scenario_end': (data, get) => {
-      get().addMessage('bot', { text: data.message });
-    },
     'scenario_list': (data, get) => {
       get().addMessage('bot', { text: data.message, scenarios: data.scenarios });
     },
@@ -40,7 +31,6 @@ export const createChatSlice = (set, get) => ({
   slots: {},
   unsubscribeMessages: null,
   unsubscribeConversations: null,
-  unsubscribeScenarios: null,
   lastVisibleMessage: null,
   hasMoreMessages: true,
   expandedConversationId: null,
@@ -48,7 +38,20 @@ export const createChatSlice = (set, get) => ({
   
   favorites: [],
   unsubscribeFavorites: null,
-  unsubscribeScenariosMap: {},
+
+  unsubscribeAllMessagesAndScenarios: () => {
+    get().unsubscribeMessages?.();
+    const scenariosMap = get().unsubscribeScenariosMap;
+    Object.values(scenariosMap).forEach(unsub => unsub());
+    set({
+      unsubscribeMessages: null,
+      unsubscribeScenariosMap: {},
+      scenarioStates: {},
+      activeScenarioSessions: [],
+      activeScenarioSessionId: null,
+      activePanel: 'main',
+    });
+  },
 
   loadFavorites: (userId) => {
     const q = query(collection(get().db, "users", userId, "favorites"), orderBy("order", "asc"));
@@ -162,14 +165,17 @@ export const createChatSlice = (set, get) => ({
     
     if (expandedConversationId === conversationId) {
       unsubscribeScenariosMap[conversationId]?.();
-      delete unsubscribeScenariosMap[conversationId];
-      set({ expandedConversationId: null, unsubscribeScenariosMap });
+      const newMap = { ...unsubscribeScenariosMap };
+      delete newMap[conversationId];
+      set({ expandedConversationId: null, unsubscribeScenariosMap: newMap });
       return;
     }
     
-    if (expandedConversationId) {
-        unsubscribeScenariosMap[expandedConversationId]?.();
-        delete unsubscribeScenariosMap[expandedConversationId];
+    if (expandedConversationId && unsubscribeScenariosMap[expandedConversationId]) {
+        unsubscribeScenariosMap[expandedConversationId]();
+        const newMap = { ...unsubscribeScenariosMap };
+        delete newMap[expandedConversationId];
+        set({ unsubscribeScenariosMap: newMap });
     }
     
     set({ expandedConversationId: conversationId });
@@ -205,14 +211,12 @@ export const createChatSlice = (set, get) => ({
     });
     set({ unsubscribeConversations: unsubscribe });
   },
-  
+
   loadConversation: async (conversationId) => {
     const user = get().user;
     if (!user || get().currentConversationId === conversationId) return;
 
-    get().unsubscribeMessages?.();
-    get().unsubscribeScenario?.();
-    get().toggleConversationExpansion(get().expandedConversationId);
+    get().unsubscribeAllMessagesAndScenarios();
 
     const { language } = get();
     const initialMessage = getInitialMessages(language)[0];
@@ -221,9 +225,6 @@ export const createChatSlice = (set, get) => ({
         currentConversationId: conversationId, 
         isLoading: true, 
         messages: [initialMessage], 
-        scenarioStates: {},
-        activeScenarioSessionId: null, 
-        isScenarioPanelOpen: false,
         lastVisibleMessage: null,
         hasMoreMessages: true,
         expandedConversationId: null,
@@ -244,29 +245,15 @@ export const createChatSlice = (set, get) => ({
         }));
     });
 
-    set({ 
-        unsubscribeMessages: unsubscribeMessages,
-    });
+    set({ unsubscribeMessages });
 
-    // --- 👇 [핵심 수정] 시나리오 상태 복원 로직 ---
     const scenariosRef = collection(get().db, "chats", user.uid, "conversations", conversationId, "scenario_sessions");
-    const scenariosQuery = query(scenariosRef, orderBy("createdAt", "desc"), limit(1));
+    const scenariosQuery = query(scenariosRef); // No "where" clause, load all
     const scenariosSnapshot = await getDocs(scenariosQuery);
 
-    if (!scenariosSnapshot.empty) {
-        const latestScenario = scenariosSnapshot.docs[0];
-        const scenarioData = latestScenario.data();
-
-        // 'cancelled' 상태가 아닌 경우에만 말풍선을 복원
-        if (scenarioData.status !== 'cancelled') {
-            set({
-                isScenarioPanelOpen: true,
-                activeScenarioSessionId: latestScenario.id,
-                activePanel: 'main'
-            });
-            get().subscribeToScenarioSession(latestScenario.id);
-        }
-    }
+    scenariosSnapshot.forEach(doc => {
+        get().subscribeToScenarioSession(doc.id);
+    });
   },
 
   loadMoreMessages: async () => {
@@ -304,9 +291,7 @@ export const createChatSlice = (set, get) => ({
   createNewConversation: async (returnId = false) => {
     if (get().currentConversationId === null && !returnId) return;
 
-    get().unsubscribeMessages?.();
-    get().unsubscribeScenario?.();
-    get().toggleConversationExpansion(get().expandedConversationId);
+    get().unsubscribeAllMessagesAndScenarios();
 
     const { language, user } = get();
 
@@ -323,9 +308,6 @@ export const createChatSlice = (set, get) => ({
         set({ 
             messages: getInitialMessages(language), 
             currentConversationId: null, 
-            scenarioStates: {}, 
-            activeScenarioSessionId: null,
-            isScenarioPanelOpen: false,
             lastVisibleMessage: null,
             hasMoreMessages: true,
             expandedConversationId: null,
@@ -346,7 +328,9 @@ export const createChatSlice = (set, get) => ({
     });
 
     const messagesRef = collection(conversationRef, "messages");
+    // --- 👇 [수정된 부분] ---
     const messagesSnapshot = await getDocs(messagesRef);
+    // --- 👆 [여기까지] ---
     messagesSnapshot.forEach(async (messageDoc) => {
       await deleteDoc(messageDoc.ref);
     });
@@ -377,7 +361,7 @@ export const createChatSlice = (set, get) => ({
     if (!user) return;
     let conversationId = get().currentConversationId;
     if (!conversationId) {
-      const firstMessageContent = message.text || message.node?.data?.content || 'New Conversation';
+      const firstMessageContent = message.text || 'New Conversation';
       const conversationRef = await addDoc(collection(get().db, "chats", user.uid, "conversations"), {
         title: firstMessageContent.substring(0, 30),
         createdAt: serverTimestamp(),
@@ -385,8 +369,9 @@ export const createChatSlice = (set, get) => ({
         pinned: false,
       });
       conversationId = conversationRef.id;
-      get().unsubscribeMessages?.();
       get().loadConversation(conversationId);
+      // Wait for the conversation to be loaded before proceeding
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
     
     const { id, ...messageToSave } = message;
@@ -396,31 +381,26 @@ export const createChatSlice = (set, get) => ({
         const { data, ...rest } = messageToSave.node;
         messageToSave.node = { ...rest, data: { content: data?.content, replies: data?.replies } };
       }
-    const messagesCollection = collection(get().db, "chats", user.uid, "conversations", conversationId, "messages");
+    const messagesCollection = collection(get().db, "chats", user.uid, "conversations", get().currentConversationId, "messages");
     await addDoc(messagesCollection, { ...messageToSave, createdAt: serverTimestamp() });
-    await updateDoc(doc(get().db, "chats", user.uid, "conversations", conversationId), { updatedAt: serverTimestamp() });
+    await updateDoc(doc(get().db, "chats", user.uid, "conversations", get().currentConversationId), { updatedAt: serverTimestamp() });
   },
 
   addMessage: async (sender, messageData) => {
-    console.log('[addMessage] Adding new message to state:', messageData);
     let newMessage;
     if (sender === 'user') {
       newMessage = { id: Date.now(), sender, text: messageData.text };
     } else {
-        if (messageData.data) {
-            newMessage = { id: messageData.id, sender: 'bot', node: messageData };
-        } else {
-            newMessage = {
-                id: messageData.id || Date.now(),
-                sender: 'bot',
-                text: messageData.text,
-                scenarios: messageData.scenarios,
-                isStreaming: messageData.isStreaming || false,
-                type: messageData.type,
-                scenarioId: messageData.scenarioId,
-                scenarioSessionId: messageData.scenarioSessionId,
-            };
-        }
+        newMessage = {
+            id: messageData.id || Date.now(),
+            sender: 'bot',
+            text: messageData.text,
+            scenarios: messageData.scenarios,
+            isStreaming: messageData.isStreaming || false,
+            type: messageData.type,
+            scenarioId: messageData.scenarioId,
+            scenarioSessionId: messageData.scenarioSessionId,
+        };
     }
     set(state => ({ messages: [...state.messages, newMessage] }));
     if (!newMessage.isStreaming) {
@@ -477,7 +457,9 @@ export const createChatSlice = (set, get) => ({
         if (handler) {
           handler(data, get);
         } else {
-          console.warn(`[ChatStore] Unhandled response type: ${data.type}`);
+            if(data.type !== 'scenario_start' && data.type !== 'scenario') {
+                 console.warn(`[ChatStore] Unhandled response type: ${data.type}`);
+            }
         }
       } else {
         const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
@@ -523,7 +505,7 @@ export const createChatSlice = (set, get) => ({
         const matchingMessages = [];
         messagesSnapshot.forEach(doc => {
             const message = doc.data();
-            const content = message.text || message.node?.data?.content || '';
+            const content = message.text || '';
             if (content.toLowerCase().includes(lowerCaseQuery)) {
                 foundInConvo = true;
                 const snippetIndex = content.toLowerCase().indexOf(lowerCaseQuery);

@@ -26,8 +26,7 @@ export const createUISlice = (set, get) => ({
     onConfirm: () => {},
     confirmVariant: 'default',
   },
-  activePanel: 'main', // 복원
-  isScenarioPanelOpen: false, // 복원
+  activePanel: 'main', 
   focusRequest: 0,
   shortcutMenuOpen: null,
   ephemeralToast: {
@@ -131,6 +130,15 @@ export const createUISlice = (set, get) => ({
   })),
 
   toggleHistoryPanel: () => set(state => ({ isHistoryPanelOpen: !state.isHistoryPanelOpen })),
-  setActivePanel: (panel) => set({ activePanel: panel }), // 복원
+  
+  setActivePanel: (panel, sessionId = null) => {
+      if (panel === 'scenario') {
+          set({ activePanel: panel, activeScenarioSessionId: sessionId });
+      } else {
+          set({ activePanel: 'main', activeScenarioSessionId: null });
+      }
+      get().focusChatInput();
+  },
+
   focusChatInput: () => set(state => ({ focusRequest: state.focusRequest + 1 })),
 });

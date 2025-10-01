@@ -30,12 +30,8 @@ export const useChatStore = create((set, get) => ({
     }
     
     get().setScrollToMessageId(scenario.sessionId);
-
-    set({
-      isScenarioPanelOpen: true,
-      activeScenarioSessionId: scenario.sessionId,
-      activePanel: 'main'
-    });
+    
+    get().setActivePanel('scenario', scenario.sessionId);
 
     if (!get().scenarioStates[scenario.sessionId]) {
       get().subscribeToScenarioSession(scenario.sessionId);
@@ -111,8 +107,8 @@ export const useChatStore = create((set, get) => ({
           conversations: [],
           currentConversationId: null,
           scenarioStates: {},
-          activeScenarioId: null,
-          isScenarioPanelOpen: false,
+          activeScenarioSessionId: null,
+          activeScenarioSessions: [],
           theme,
           fontSize,
           language,
@@ -123,23 +119,16 @@ export const useChatStore = create((set, get) => ({
 
   unsubscribeAll: () => {
     get().unsubscribeConversations?.();
-    get().unsubscribeMessages?.();
-    get().unsubscribeScenario?.();
+    get().unsubscribeAllMessagesAndScenarios();
     get().unsubscribeDevMemos?.();
     get().unsubscribeNotifications?.();
     get().unsubscribeFavorites?.();
 
-    const scenariosMap = get().unsubscribeScenariosMap;
-    Object.values(scenariosMap).forEach(unsub => unsub());
-
     set({ 
         unsubscribeConversations: null, 
-        unsubscribeMessages: null, 
-        unsubscribeScenario: null,
         unsubscribeDevMemos: null,
         unsubscribeNotifications: null,
         unsubscribeFavorites: null,
-        unsubscribeScenariosMap: {},
     });
   },
 }));

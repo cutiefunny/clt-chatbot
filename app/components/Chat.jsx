@@ -20,7 +20,7 @@ export default function Chat() {
     setFontSize,
     scrollToMessageId,
     setScrollToMessageId,
-    isScenarioPanelOpen,
+    activeScenarioSessions,
   } = useChatStore();
   const [copiedMessageId, setCopiedMessageId] = useState(null);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
@@ -39,30 +39,28 @@ export default function Chat() {
     const scrollContainer = historyRef.current;
     if (!scrollContainer) return;
 
-    if (messages.length > 1 || isScenarioPanelOpen) {
-        const scrollToBottom = () => {
-          scrollContainer.scrollTop = scrollContainer.scrollHeight;
-        };
-        const observer = new MutationObserver((mutations) => {
-            for (const mutation of mutations) {
-                if (mutation.type === 'childList' && !isFetchingMore) {
-                    scrollToBottom();
-                }
+    const scrollToBottom = () => {
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+    };
+    const observer = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+            if (mutation.type === 'childList' && !isFetchingMore) {
+                scrollToBottom();
             }
-        });
-        observer.observe(scrollContainer, { childList: true, subtree: true });
-        scrollContainer.addEventListener('scroll', handleScroll);
-        
-        if (!isFetchingMore) {
-            scrollToBottom();
         }
-
-        return () => {
-          observer.disconnect();
-          scrollContainer.removeEventListener('scroll', handleScroll);
-        };
+    });
+    observer.observe(scrollContainer, { childList: true, subtree: true });
+    scrollContainer.addEventListener('scroll', handleScroll);
+    
+    if (!isFetchingMore) {
+        scrollToBottom();
     }
-  }, [messages, handleScroll, isFetchingMore, isScenarioPanelOpen]);
+
+    return () => {
+      observer.disconnect();
+      scrollContainer.removeEventListener('scroll', handleScroll);
+    };
+  }, [messages, handleScroll, isFetchingMore, activeScenarioSessions]);
   
   useEffect(() => {
     if (scrollToMessageId && historyRef.current) {
@@ -86,6 +84,8 @@ export default function Chat() {
         setTimeout(() => setCopiedMessageId(null), 1500);
     });
   };
+
+  const hasActiveScenarios = activeScenarioSessions.length > 0;
 
   return (
     <div className={styles.chatContainer}>
@@ -130,7 +130,7 @@ export default function Chat() {
       </div>
       
       <div className={styles.history} ref={historyRef}>
-        {messages.length <= 1 && !isScenarioPanelOpen ? (
+        {messages.length <= 1 && !hasActiveScenarios ? (
           <FavoritePanel />
         ) : (
           <>
@@ -169,15 +169,17 @@ export default function Chat() {
                 </div>
               )
             ))}
-            {isLoading && !isScenarioPanelOpen && (
+            {isLoading && !hasActiveScenarios && (
                 <div className={styles.messageRow}>
                     <img src="/images/avatar-loading.png" alt="Avatar" className={styles.avatar} />
                     <div className={`${styles.message} ${styles.botMessage}`}><img src="/images/Loading.gif" alt={t('loading')} style={{ width: '40px', height: '30px' }} /></div>
                 </div>
             )}
+             {activeScenarioSessions.map(sessionId => (
+                <ScenarioBubble key={sessionId} scenarioSessionId={sessionId} />
+            ))}
           </>
         )}
-        {isScenarioPanelOpen && <ScenarioBubble />}
       </div>
     </div>
   );
