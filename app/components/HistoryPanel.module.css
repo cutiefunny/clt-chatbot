@@ -291,22 +291,32 @@
 }
 
 /* 아이콘 그라디언트는 두께 변화 방지 위해 fill만 변경 */
-.sidePanelButton:hover svg [fill="currentColor"],
-.sidePanelButton:hover svg path[fill="currentColor"] {
+.sidePanelButton:not(:disabled):not([aria-disabled="true"]):hover
+  svg
+  [fill="currentColor"],
+.sidePanelButton:not(:disabled):not([aria-disabled="true"]):hover
+  svg
+  path[fill="currentColor"] {
   fill: url(#spbIconGradient);
 }
 /* svg 자체에 fill 속성이 있는 경우도 적용 */
-.sidePanelButton:hover svg[fill="currentColor"] {
+.sidePanelButton:not(:disabled):not([aria-disabled="true"]):hover
+  svg[fill="currentColor"] {
   fill: url(#spbIconGradient);
 }
 
 /* stroke 사용 아이콘도 그라디언트 적용 */
-.sidePanelButton:hover svg [stroke="currentColor"],
-.sidePanelButton:hover svg path[stroke="currentColor"] {
+.sidePanelButton:not(:disabled):not([aria-disabled="true"]):hover
+  svg
+  [stroke="currentColor"],
+.sidePanelButton:not(:disabled):not([aria-disabled="true"]):hover
+  svg
+  path[stroke="currentColor"] {
   stroke: url(#spbIconGradient);
 }
 /* svg 자체에 stroke 속성이 있는 경우도 적용 */
-.sidePanelButton:hover svg[stroke="currentColor"] {
+.sidePanelButton:not(:disabled):not([aria-disabled="true"]):hover
+  svg[stroke="currentColor"] {
   stroke: url(#spbIconGradient);
 }
 
@@ -628,33 +638,36 @@
 }
 
 .scenarioBadge {
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: white;
-  text-transform: uppercase;
-  flex-shrink: 0;
   margin-left: auto;
-  padding: 2px 8px;
+  padding: 4px 8px;
   border-radius: 12px;
-  font-size: 0.7rem;
-  font-weight: 600;
   color: white;
-  text-transform: uppercase;
   flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 12px; /* 120% */
+  letter-spacing: -0.1px;
+}
+
+.scenarioBadge.inprogress {
+  background: var(--Blue-01, #b2ebf2);
+  color: var(--Blue-02, #005762);
 }
 .scenarioBadge.done {
-  background-color: #3498db;
+  background: var(--Gray-03, #d8e0eb);
+  color: var(--Gray-07, #5e7599);
 }
 .scenarioBadge.incomplete {
-  background-color: #f39c12;
+  background: var(--Yellow-01, #fff6aa);
+  color: var(--Yellow-02, #f57f17);
 }
 .scenarioBadge.failed {
-  background-color: #e74c3c;
+  background: var(--Error-01, #ffdbdb);
+  color: var(--Error-02, #ff4f4f);
 }
 .scenarioBadge.generating {
-  background-color: #27ae60;
+  background: var(--Green-01, #c6eec2);
+  color: var(--Green-02, #00770a);
 }
 
 /* --- 👆 [여기까지] --- */
