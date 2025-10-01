@@ -13,9 +13,6 @@ import ConfirmModal from "../app/components/ConfirmModal";
 export default function HomePage() {
   const {
     user,
-    isScenarioPanelOpen,
-    activePanel,
-    setActivePanel,
     isHistoryPanelOpen,
     isScenarioModalOpen,
     confirmModal,
@@ -33,24 +30,13 @@ export default function HomePage() {
     <main className={styles.main}>
       <Toast />
       {user ? (
-        <div
-          className={`${styles.chatLayout} ${
-            isScenarioPanelOpen ? styles.scenarioOpen : ""
-          }`}
-        >
+        <div className={styles.chatLayout}>
           <HistoryPanel />
           <div
             className={styles.contentAndInputWrapper}
             style={{ paddingLeft: isHistoryPanelOpen ? "320px" : "60px" }}
           >
-            <div className={styles.panelsWrapper}>
-              <div
-                className={styles.mainContent}
-                onClick={() => setActivePanel("main")}
-              >
-                <Chat />
-              </div>
-            </div>
+            <Chat />
             <ChatInput />
           </div>
           {isScenarioModalOpen && <ScenarioModal />}

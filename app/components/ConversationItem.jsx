@@ -276,9 +276,7 @@ export default function ConversationItem({
                   <div
                     key={scenario.sessionId}
                     className={styles.scenarioItem}
-                    onClick={() =>
-                      onScenarioClick(scenario.scenarioId, scenario.sessionId)
-                    }
+                    onClick={() => onScenarioClick(convo.id, scenario)}
                   >
                     {/* --- 👇 [수정] 빨간 점 조건부 렌더링 --- */}
                     {hasUnread && <div className={styles.unreadDot}></div>}

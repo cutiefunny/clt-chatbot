@@ -116,33 +116,32 @@ const ScenarioStatusBadge = ({ status, t }) => {
 };
 
 
-export default function ScenarioBubble() {
+export default function ScenarioBubble({ scenarioSessionId }) {
   const { 
-    isScenarioPanelOpen,
-    activeScenarioSessionId,
     scenarioStates,
     handleScenarioResponse,
     endScenario,
     setActivePanel,
+    activePanel,
+    activeScenarioSessionId: focusedSessionId,
   } = useChatStore();
   const { t, language } = useTranslations();
 
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  const activeScenario = activeScenarioSessionId ? scenarioStates[activeScenarioSessionId] : null;
+  const activeScenario = scenarioSessionId ? scenarioStates[scenarioSessionId] : null;
   const isCompleted = activeScenario?.status === 'completed' || activeScenario?.status === 'failed';
   const scenarioMessages = activeScenario?.messages || [];
   const isScenarioLoading = activeScenario?.isLoading || false;
   const currentScenarioNodeId = activeScenario?.state?.currentNodeId;
   const scenarioId = activeScenario?.scenarioId;
+  const isFocused = activePanel === 'scenario' && focusedSessionId === scenarioSessionId;
   
   const historyRef = useRef(null);
   
   useEffect(() => {
-    if (isScenarioPanelOpen) {
-      setIsCollapsed(false);
-    }
-  }, [isScenarioPanelOpen]);
+    setIsCollapsed(false);
+  }, []);
 
   useEffect(() => {
     const scrollContainer = historyRef.current;
@@ -158,30 +157,37 @@ export default function ScenarioBubble() {
     return () => observer.disconnect();
   }, [scenarioMessages, isCollapsed]);
 
-  if (!isScenarioPanelOpen || !activeScenario) {
+  if (!activeScenario) {
     return null;
   }
   
   const handleFormSubmit = (formData) => {
       handleScenarioResponse({
-          scenarioSessionId: activeScenarioSessionId,
+          scenarioSessionId: scenarioSessionId,
           currentNodeId: currentScenarioNodeId,
           formData: formData,
       });
   };
+
+  const handleBubbleClick = (e) => {
+    e.stopPropagation();
+    if (!isCompleted) {
+        setActivePanel('scenario', scenarioSessionId);
+    }
+  }
   
   return (
     <div 
       className={`${styles.messageRow} ${styles.userRow}`}
-      onClick={(e) => {
-        e.stopPropagation(); 
-        if(!isCompleted) setActivePanel('scenario');
-      }}
+      onClick={handleBubbleClick}
     >
-        <div className={`${styles.scenarioBubbleContainer} ${isCollapsed ? styles.collapsed : ''} ${isCompleted ? styles.dimmed : ''}`}>
+        <div className={`${styles.scenarioBubbleContainer} ${isCollapsed ? styles.collapsed : ''} ${!isFocused ? styles.dimmed : ''}`}>
           <div 
             className={styles.header}
-            onClick={() => setIsCollapsed(prev => !prev)}
+            onClick={(e) => {
+                e.stopPropagation();
+                setIsCollapsed(prev => !prev);
+            }}
             style={{ cursor: 'pointer' }}
           >
             <div className={styles.headerContent}>
@@ -190,7 +196,7 @@ export default function ScenarioBubble() {
             <div className={styles.headerButtons}>
                <ScenarioStatusBadge status={activeScenario?.status} t={t} />
               {!isCompleted && (
-                <button className={`${styles.headerRestartButton} ${styles.dangerButton}`} onClick={(e) => { e.stopPropagation(); endScenario(activeScenarioSessionId); }}>
+                <button className={`${styles.headerRestartButton} ${styles.dangerButton}`} onClick={(e) => { e.stopPropagation(); endScenario(scenarioSessionId); }}>
                   {t('end')}
                 </button>
               )}
@@ -229,7 +235,7 @@ export default function ScenarioBubble() {
                                key={reply.value} 
                                className={styles.optionButton} 
                                onClick={() => handleScenarioResponse({
-                                   scenarioSessionId: activeScenarioSessionId,
+                                   scenarioSessionId: scenarioSessionId,
                                    currentNodeId: msg.node.id,
                                    sourceHandle: reply.value,
                                    userInput: reply.display
