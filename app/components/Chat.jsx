@@ -7,6 +7,8 @@ import styles from "./Chat.module.css";
 import FavoritePanel from "./FavoritePanel";
 import ScenarioBubble from "./ScenarioBubble";
 import MoonIcon from "./icons/MoonIcon";
+import CopyIcon from "./icons/CopyIcon";
+import LikeIcon from "./icons/LikeIcon";
 
 export default function Chat() {
   const {
@@ -154,44 +156,53 @@ export default function Chat() {
                   }`}
                   data-message-id={msg.scenarioSessionId || msg.id}
                 >
-                  {msg.sender === "bot" && (
-                    <img
-                      src="/images/avatar.png"
-                      alt="Avatar"
-                      className={styles.avatar}
-                    />
-                  )}
                   <div
-                    className={`${styles.message} ${
+                    className={`${`GlassEffect ${styles.message} ${
                       msg.sender === "bot"
                         ? styles.botMessage
                         : styles.userMessage
-                    }`}
+                    }`}`}
                     onClick={() =>
                       msg.sender === "bot" &&
                       handleCopy(msg.text || msg.node?.data.content, msg.id)
                     }
                   >
-                    {copiedMessageId === msg.id && (
-                      <div className={styles.copyFeedback}>{t("copied")}</div>
-                    )}
+                    <div className={styles.messageContentWrapper}>
+                      <div className={styles.messageContent}>
+                        {copiedMessageId === msg.id && (
+                          <div className={styles.copyFeedback}>
+                            {t("copied")}
+                          </div>
+                        )}
 
-                    <p>{msg.text || msg.node?.data.content}</p>
+                        <p>{msg.text || msg.node?.data.content}</p>
 
-                    {msg.sender === "bot" && msg.scenarios && (
-                      <div className={styles.scenarioList}>
-                        {msg.scenarios.map((name) => (
-                          <button
-                            key={name}
-                            className={styles.optionButton}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openScenarioPanel(name);
-                            }}
-                          >
-                            {name}
-                          </button>
-                        ))}
+                        {msg.sender === "bot" && msg.scenarios && (
+                          <div className={styles.scenarioList}>
+                            {msg.scenarios.map((name) => (
+                              <button
+                                key={name}
+                                className={styles.optionButton}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openScenarioPanel(name);
+                                }}
+                              >
+                                {name}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {msg.sender === "bot" && (
+                      <div className={styles.messageActionArea}>
+                        <button className={styles.actionButton}>
+                          <CopyIcon />
+                        </button>
+                        <button className={styles.actionButton}>
+                          <LikeIcon />
+                        </button>
                       </div>
                     )}
                   </div>
