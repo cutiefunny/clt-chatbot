@@ -5,50 +5,7 @@ import { useChatStore } from '../store';
 import { useTranslations } from '../hooks/useTranslations';
 import styles from './Chat.module.css';
 import FavoritePanel from './FavoritePanel';
-
-const ScenarioStatusMessage = ({ msg }) => {
-  const { scenarioStates, openScenarioPanel } = useChatStore();
-  const { t } = useTranslations();
-  const scenario = scenarioStates[msg.scenarioSessionId];
-
-  // --- 👇 [수정된 부분] ---
-  const getStatusInfo = (status) => {
-    switch (status) {
-      case 'active':
-        return { text: t('statusActive'), className: styles.statusActive };
-      case 'completed':
-        return { text: t('statusCompleted'), className: styles.statusCompleted };
-      case 'failed':
-        return { text: t('statusFailed'), className: styles.statusFailed };
-      case 'generating':
-        return { text: t('statusGenerating'), className: styles.statusGenerating };
-      default:
-        return { text: t('loading'), className: '' };
-    }
-  };
-  // --- 👆 [여기까지] ---
-
-  const statusInfo = getStatusInfo(scenario?.status);
-
-  return (
-    <div className={styles.scenarioStatusMessage}>
-      <p>{msg.text}</p>
-      <div className={styles.statusContainer}>
-        <span>{t('scenarioStatus')}</span>
-        <span className={`${styles.statusBadge} ${statusInfo.className}`}>
-          {statusInfo.text}
-        </span>
-      </div>
-      <button 
-        className={styles.optionButton} 
-        onClick={(e) => { e.stopPropagation(); openScenarioPanel(msg.scenarioId, msg.scenarioSessionId); }}
-      >
-        {t('scenarioResume')(msg.scenarioId)}
-      </button>
-    </div>
-  );
-};
-
+import ScenarioBubble from './ScenarioBubble';
 
 export default function Chat() {
   const { 
@@ -63,15 +20,12 @@ export default function Chat() {
     setFontSize,
     scrollToMessageId,
     setScrollToMessageId,
+    isScenarioPanelOpen,
   } = useChatStore();
   const [copiedMessageId, setCopiedMessageId] = useState(null);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const historyRef = useRef(null);
   const { t } = useTranslations();
-
-  // --- 👇 [로그 추가] ---
-  console.log('[Chat.jsx] Rendering with messages:', messages);
-
 
   const handleScroll = useCallback(async () => {
     if (historyRef.current?.scrollTop === 0 && hasMoreMessages && !isFetchingMore) {
@@ -85,7 +39,7 @@ export default function Chat() {
     const scrollContainer = historyRef.current;
     if (!scrollContainer) return;
 
-    if (messages.length > 1) {
+    if (messages.length > 1 || isScenarioPanelOpen) {
         const scrollToBottom = () => {
           scrollContainer.scrollTop = scrollContainer.scrollHeight;
         };
@@ -108,7 +62,7 @@ export default function Chat() {
           scrollContainer.removeEventListener('scroll', handleScroll);
         };
     }
-  }, [messages, handleScroll, isFetchingMore]);
+  }, [messages, handleScroll, isFetchingMore, isScenarioPanelOpen]);
   
   useEffect(() => {
     if (scrollToMessageId && historyRef.current) {
@@ -176,7 +130,7 @@ export default function Chat() {
       </div>
       
       <div className={styles.history} ref={historyRef}>
-        {messages.length <= 1 ? (
+        {messages.length <= 1 && !isScenarioPanelOpen ? (
           <FavoritePanel />
         ) : (
           <>
@@ -200,11 +154,7 @@ export default function Chat() {
                   >
                     {copiedMessageId === msg.id && <div className={styles.copyFeedback}>{t('copied')}</div>}
                     
-                    {msg.type === 'scenario_start_notice' ? (
-                      <ScenarioStatusMessage msg={msg} />
-                    ) : (
-                      <p>{msg.text || msg.node?.data.content}</p>
-                    )}
+                    <p>{msg.text || msg.node?.data.content}</p>
 
                     {msg.sender === 'bot' && msg.scenarios && (
                       <div className={styles.scenarioList}>
@@ -219,7 +169,7 @@ export default function Chat() {
                 </div>
               )
             ))}
-            {messages[messages.length-1]?.sender === 'user' && (
+            {isLoading && !isScenarioPanelOpen && (
                 <div className={styles.messageRow}>
                     <img src="/images/avatar-loading.png" alt="Avatar" className={styles.avatar} />
                     <div className={`${styles.message} ${styles.botMessage}`}><img src="/images/Loading.gif" alt={t('loading')} style={{ width: '40px', height: '30px' }} /></div>
@@ -227,6 +177,7 @@ export default function Chat() {
             )}
           </>
         )}
+        {isScenarioPanelOpen && <ScenarioBubble />}
       </div>
     </div>
   );

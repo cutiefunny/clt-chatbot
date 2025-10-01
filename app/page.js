@@ -5,7 +5,6 @@ import Chat from '../app/components/Chat';
 import Login from '../app/components/Login';
 import HistoryPanel from '../app/components/HistoryPanel';
 import ChatInput from '../app/components/ChatInput';
-import ScenarioChat from '../app/components/ScenarioChat';
 import ScenarioModal from '../app/components/ScenarioModal';
 import Toast from '../app/components/Toast';
 import styles from './page.module.css';
@@ -33,16 +32,10 @@ export default function HomePage() {
           >
             <div className={styles.panelsWrapper}>
               <div
-                className={`${styles.mainContent} ${activePanel !== 'main' && isScenarioPanelOpen ? styles.inactivePanel : ''}`}
+                className={styles.mainContent}
                 onClick={() => setActivePanel('main')}
               >
                 <Chat />
-              </div>
-              <div
-                className={`${styles.scenarioContent} ${activePanel !== 'scenario' ? styles.inactivePanel : ''}`}
-                onClick={() => setActivePanel('scenario')}
-              >
-                <ScenarioChat />
               </div>
             </div>
             <ChatInput />

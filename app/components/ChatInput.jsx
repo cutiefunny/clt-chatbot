@@ -50,26 +50,23 @@ export default function ChatInput() {
         favorites,
         toggleFavorite,
         handleShortcutClick,
-        shortcutMenuOpen, // --- 👈 [수정] 스토어에서 상태 가져오기
-        setShortcutMenuOpen, // --- 👈 [수정] 스토어에서 함수 가져오기
+        shortcutMenuOpen,
+        setShortcutMenuOpen,
     } = useChatStore();
     
     const { t } = useTranslations();
     const inputRef = useRef(null);
     const quickRepliesSlider = useDraggableScroll();
-    const menuRef = useRef(null); // --- 👈 [수정] 로컬 상태 제거
+    const menuRef = useRef(null);
     
     const activeScenario = activeScenarioSessionId ? scenarioStates[activeScenarioSessionId] : null;
-    const mainMessages = useChatStore(state => state.messages);
-    const isInputDisabled = activePanel === 'scenario' ? activeScenario?.isLoading ?? false : isLoading;
-    const lastMessage = activePanel === 'main' ? mainMessages[mainMessages.length - 1] : activeScenario?.messages[activeScenario.messages.length - 1];
-    const currentBotMessageNode = lastMessage?.sender === 'bot' ? lastMessage.node : null;
+    const isInputDisabled = isLoading;
     const currentScenarioNodeId = activeScenario?.state?.currentNodeId;
 
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (menuRef.current && !menuRef.current.contains(event.target)) {
-                setShortcutMenuOpen(null); // --- 👈 [수정]
+                setShortcutMenuOpen(null);
             }
         };
         document.addEventListener("mousedown", handleClickOutside);
@@ -87,36 +84,26 @@ export default function ChatInput() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         const input = e.target.elements.userInput.value;
-        if (!input.trim() || isInputDisabled) return;
+        if (!input.trim() || isLoading) return;
 
-        if (activePanel === 'scenario') {
+        if (activePanel === 'scenario' && activeScenarioSessionId) {
+            // 시나리오 패널이 활성화 상태일 때 시나리오 응답 함수 호출
             await handleScenarioResponse({
                 scenarioSessionId: activeScenarioSessionId,
                 currentNodeId: currentScenarioNodeId,
                 userInput: input,
             });
         } else {
+            // 메인 패널이 활성화 상태일 때 일반 응답 함수 호출
             await handleResponse({ text: input });
         }
+        
         e.target.reset();
     };
     
-    const handleQuickReplyClick = async (reply) => {
-        if (activePanel === 'scenario') {
-            await handleScenarioResponse({ 
-                scenarioSessionId: activeScenarioSessionId,
-                currentNodeId: currentScenarioNodeId,
-                sourceHandle: reply.value,
-                userInput: reply.display
-            });
-        } else {
-            await handleResponse({ text: reply.display });
-        }
-    }
-    
     const handleItemClick = (item) => {
         handleShortcutClick(item);
-        setShortcutMenuOpen(null); // --- 👈 [수정]
+        setShortcutMenuOpen(null);
     }
 
     return (
@@ -124,7 +111,6 @@ export default function ChatInput() {
             <div className={styles.quickActionsContainer} ref={menuRef}>
                  {scenarioCategories.map(category => (
                     <div key={category.name} className={styles.categoryWrapper}>
-                        {/* --- 👇 [수정] 스토어 상태를 사용하도록 모두 변경 --- */}
                         <button 
                             className={`${styles.categoryButton} ${shortcutMenuOpen === category.name ? styles.active : ''}`}
                             onClick={() => setShortcutMenuOpen(shortcutMenuOpen === category.name ? null : category.name)}
@@ -171,26 +157,6 @@ export default function ChatInput() {
                     </div>
                 ))}
             </div>
-
-
-            {(currentBotMessageNode?.data?.replies) && (
-                <div className={styles.buttonRow}>
-                    <div
-                        ref={quickRepliesSlider.ref}
-                        className={`${styles.quickRepliesContainer} ${quickRepliesSlider.isDragging ? styles.dragging : ''}`}
-                        onMouseDown={quickRepliesSlider.onMouseDown}
-                        onMouseLeave={quickRepliesSlider.onMouseLeave}
-                        onMouseUp={quickRepliesSlider.onMouseUp}
-                        onMouseMove={quickRepliesSlider.onMouseMove}
-                    >
-                        {currentBotMessageNode.data.replies.map(reply => (
-                            <button key={reply.value} className={styles.optionButton} onClick={() => handleQuickReplyClick(reply)} disabled={isInputDisabled}>
-                                {reply.display}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            )}
             
             <form className={styles.inputForm} onSubmit={handleSubmit}>
                 <input

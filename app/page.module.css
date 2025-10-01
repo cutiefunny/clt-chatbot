@@ -5,7 +5,6 @@
   overflow: hidden;
   justify-content: center;
   align-items: center;
-  /* --- 👇 [수정] CSS 변수를 사용하여 테마 적용 --- */
   background: linear-gradient(to bottom, var(--background-gradient-start), var(--background-gradient-end));
 }
 
@@ -35,26 +34,6 @@
   display: flex;
   transition: width 0.3s ease-in-out, opacity 0.3s ease-in-out;
   flex-shrink: 0; 
-}
-
-.chatLayout.scenarioOpen .mainContent {
-  width: 60%;
-}
-
-.scenarioContent {
-  width: 0; 
-  display: flex;
-  margin : 20 20 20 0;
-  border-radius: 20px;
-  border: 1px solid var(--panel-border-color);
-  transition: width 0.3s ease-in-out; 
-  overflow: hidden;
-  /* 부드러운 구분을 위한 미세한 배경색 추가 */
-  background-color: var(--bot-message-bg);
-}
-
-.chatLayout.scenarioOpen .scenarioContent {
-  width: 50%;
 }
 
 .inactivePanel {
