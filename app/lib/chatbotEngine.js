@@ -254,12 +254,13 @@ export const validateInput = (value, validation, language = 'ko') => {
   }
 };
 
-async function handleToastNode(node, scenario, slots) {
+async function handleToastNode(node, scenario, slots, scenarioSessionId) {
   const interpolatedToastMessage = interpolateMessage(node.data.message, slots);
   const event = {
     type: 'toast',
     message: interpolatedToastMessage,
     toastType: node.data.toastType || 'info',
+    scenarioSessionId: scenarioSessionId, // --- 👈 [추가]
   };
   const nextNode = getNextNode(scenario, node.id, null, slots);
   return { nextNode, slots, events: [event] };
@@ -421,6 +422,7 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
         const handler = nodeHandlers[currentNode.type];
         
         if (handler) {
+            // --- 👇 [수정] scenarioSessionId를 핸들러에 전달 ---
             const result = await handler(currentNode, scenario, newSlots, scenarioSessionId, language);
             newSlots = result.slots || newSlots;
             if (result.events) allEvents.push(...result.events);

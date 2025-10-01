@@ -11,7 +11,7 @@ export const createNotificationSlice = (set, get) => ({
   toastHistory: [],
   unsubscribeNotifications: null,
   hasUnreadNotifications: false,
-  // lastCheckedNotifications는 더 이상 읽음 처리 용도로 사용하지 않습니다.
+  unreadScenarioSessions: new Set(), // --- 👈 [추가] 읽지 않은 시나리오 세션 ID를 저장하는 Set
 
   // Actions
   deleteNotification: async (notificationId) => {
@@ -27,17 +27,24 @@ export const createNotificationSlice = (set, get) => ({
     try {
         const notificationRef = doc(get().db, "users", user.uid, "notifications", notificationId);
         await deleteDoc(notificationRef);
+        // 상태 업데이트 로직은 onSnapshot이 처리하므로 별도 로직 불필요
     } catch (error) {
         console.error("Error deleting notification from Firestore:", error);
         get().showToast("Failed to delete notification.", "error");
     }
   },
   
-  showToast: (message, type = 'info') => {
+  // --- 👇 [수정] scenarioSessionId 파라미터 추가 ---
+  showToast: (message, type = 'info', scenarioSessionId = null) => {
     set({ toast: { id: Date.now(), message, type, visible: true } });
 
-    // Firestore에 저장 시 read: false 상태를 추가합니다.
-    const dataToSave = { message, type, createdAt: serverTimestamp(), read: false };
+    const dataToSave = { 
+        message, 
+        type, 
+        createdAt: serverTimestamp(), 
+        read: false,
+        scenarioSessionId, // scenarioSessionId 저장
+    };
     get().saveNotification(dataToSave); 
 
     setTimeout(() => set(state => ({ toast: { ...state.toast, visible: false } })), 3000);
@@ -58,16 +65,27 @@ export const createNotificationSlice = (set, get) => ({
     const q = query(collection(get().db, "users", userId, "notifications"), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const notifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      // read: false인 알림이 있는지 확인하여 unread 상태를 결정합니다.
       const hasUnread = notifications.some(n => !n.read);
-      set({ toastHistory: notifications, hasUnreadNotifications: hasUnread });
+      
+      // --- 👇 [추가] 읽지 않은 시나리오 세션 Set 업데이트 ---
+      const unreadSessions = new Set(
+        notifications
+          .filter(n => !n.read && n.scenarioSessionId)
+          .map(n => n.scenarioSessionId)
+      );
+      
+      set({ 
+          toastHistory: notifications, 
+          hasUnreadNotifications: hasUnread,
+          unreadScenarioSessions: unreadSessions,
+      });
+
     }, (error) => {
         console.error("Error listening to notification changes:", error);
     });
     set({ unsubscribeNotifications: unsubscribe });
   },
   
-  // --- 👇 [추가된 함수] ---
   markNotificationAsRead: async (notificationId) => {
     const user = get().user;
     if (!user) return;
@@ -80,17 +98,15 @@ export const createNotificationSlice = (set, get) => ({
     }
   },
 
-  handleEvents: (events) => {
+  handleEvents: (events, scenarioSessionId = null) => { // --- 👈 [수정] scenarioSessionId 파라미터 추가
       if (!events || !Array.isArray(events)) return;
       events.forEach(event => {
         if (event.type === 'toast') {
-          get().showToast(event.message, event.toastType);
+          get().showToast(event.message, event.toastType, scenarioSessionId); // --- 👈 [수정]
         }
       });
   },
   
-  // --- 👇 [수정된 함수] ---
-  // 모달을 닫을 때 더 이상 모든 알림을 읽음 처리하지 않습니다.
   closeNotificationModal: () => {
     set({ isNotificationModalOpen: false });
   },

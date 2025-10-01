@@ -113,7 +113,7 @@ export const createScenarioSlice = (set, get) => ({
       if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
       const data = await response.json();
       
-      handleEvents(data.events);
+      handleEvents(data.events, newScenarioSessionId);
 
       if (data.type === 'scenario_start' || data.type === 'scenario') {
         const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", newScenarioSessionId);
@@ -187,7 +187,6 @@ export const createScenarioSlice = (set, get) => ({
     get().focusChatInput();
   },
 
-  // --- 👇 [수정된 부분] ---
   handleScenarioResponse: async (payload) => {
     const { scenarioSessionId } = payload;
     const { handleEvents, showToast, user, currentConversationId, language, endScenario } = get();
@@ -229,7 +228,9 @@ export const createScenarioSlice = (set, get) => ({
       if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
       const data = await response.json();
 
-      handleEvents(data.events);
+      // --- 👇 [수정된 부분] ---
+      handleEvents(data.events, scenarioSessionId);
+      // --- 👆 [여기까지] ---
       
       if (data.nextNode) {
           newMessages.push({ id: data.nextNode.id, sender: 'bot', node: data.nextNode });
@@ -269,7 +270,6 @@ export const createScenarioSlice = (set, get) => ({
       }));
     }
   },
-  // --- 👆 [여기까지] ---
 
   continueScenarioIfNeeded: async (lastNode, scenarioSessionId) => {
     const isInteractive = lastNode.type === 'slotfilling' || lastNode.type === 'form' || (lastNode.data?.replies && lastNode.data.replies.length > 0);

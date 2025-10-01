@@ -12,7 +12,6 @@ const CheckIcon = () => (
     </svg>
 );
 
-// --- 👇 [수정된 부분] ---
 const ScenarioStatusBadge = ({ status, t }) => {
     if (!status) return null;
 
@@ -42,7 +41,6 @@ const ScenarioStatusBadge = ({ status, t }) => {
 
     return <span className={`${styles.scenarioBadge} ${styles[statusClass]}`}>{text}</span>;
 };
-// --- 👆 [여기까지] ---
 
 export default function ConversationItem({
     convo,
@@ -55,6 +53,7 @@ export default function ConversationItem({
     scenarios,
     onToggleExpand,
     onScenarioClick,
+    unreadScenarioSessions, // --- 👈 [추가]
 }) {
     const [isEditing, setIsEditing] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -176,16 +175,21 @@ export default function ConversationItem({
                 <div className={styles.scenarioSubList}>
                     {scenarios ? (
                         scenarios.length > 0 ? (
-                            scenarios.map(scenario => (
+                            scenarios.map(scenario => {
+                                // --- 👇 [수정] 읽지 않음 상태 확인 ---
+                                const hasUnread = unreadScenarioSessions?.has(scenario.sessionId);
+                                return (
                                 <div
                                     key={scenario.sessionId}
                                     className={styles.scenarioItem}
                                     onClick={() => onScenarioClick(convo.id, scenario)}
                                 >
+                                    {/* --- 👇 [수정] 빨간 점 조건부 렌더링 --- */}
+                                    {hasUnread && <div className={styles.unreadDot}></div>}
                                     <span className={styles.scenarioTitle}>{scenario.scenarioId}</span>
                                     <ScenarioStatusBadge status={scenario.status} t={t} />
                                 </div>
-                            ))
+                            )})
                         ) : (
                             <div className={styles.noScenarios}>{t('noScenariosFound')}</div>
                         )

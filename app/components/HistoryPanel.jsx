@@ -39,8 +39,9 @@ export default function HistoryPanel() {
     expandedConversationId,
     scenariosForConversation,
     toggleConversationExpansion,
-    handleScenarioItemClick, // --- 👈 [수정] openScenarioPanel 대신 handleScenarioItemClick 사용
+    handleScenarioItemClick,
     openConfirmModal,
+    unreadScenarioSessions, // --- 👈 [추가]
   } = useChatStore();
   const { t } = useTranslations();
 
@@ -102,7 +103,8 @@ export default function HistoryPanel() {
                         isExpanded={convo.id === expandedConversationId}
                         scenarios={scenariosForConversation[convo.id]}
                         onToggleExpand={toggleConversationExpansion}
-                        onScenarioClick={handleScenarioItemClick} // --- 👈 [수정]
+                        onScenarioClick={handleScenarioItemClick}
+                        unreadScenarioSessions={unreadScenarioSessions} // --- 👈 [추가]
                     />
                 ))}
             </div>
