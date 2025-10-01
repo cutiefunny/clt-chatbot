@@ -152,7 +152,7 @@ export default function ChatInput() {
               />
             </button>
             {shortcutMenuOpen === category.name && (
-              <div className={`${styles.dropdownMenu}`}>
+              <div className={`GlassEffect ${styles.dropdownMenu}`}>
                 {category.subCategories.map((subCategory, index) => (
                   <Fragment key={subCategory.title}>
                     <div className={styles.subCategorySection}>

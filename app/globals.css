@@ -108,11 +108,12 @@ body.font-small {
   --glass-contrast: 1.05;
   --glass-brightness: 1.05;
 
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate))
-    contrast(var(--glass-contrast)) brightness(var(--glass-brightness));
+  background: var(--White-Opacity-64, rgba(255, 255, 255, 0.64));
   -webkit-backdrop-filter: blur(var(--glass-blur))
     saturate(var(--glass-saturate)) contrast(var(--glass-contrast))
     brightness(var(--glass-brightness));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate))
+    contrast(var(--glass-contrast)) brightness(var(--glass-brightness));
   border: 1px solid rgba(255, 255, 255, 0.54);
   box-shadow: 0 6px 16px 0 #dfe2fe;
   transition: all 0.2s ease-in-out;

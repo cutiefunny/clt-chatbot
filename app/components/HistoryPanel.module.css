@@ -284,6 +284,21 @@
 .sidePanelButton[aria-disabled="true"]:hover svg [fill="currentColor"] {
   fill: currentColor;
 }
+/* svg 자체에 fill 속성이 있는 경우도 해제 */
+.sidePanelButton:disabled:hover svg[fill="currentColor"],
+.sidePanelButton[aria-disabled="true"]:hover svg[fill="currentColor"] {
+  fill: currentColor;
+}
+/* disabled + hover 시 stroke 그라디언트 해제 */
+.sidePanelButton:disabled:hover svg [stroke="currentColor"],
+.sidePanelButton[aria-disabled="true"]:hover svg [stroke="currentColor"] {
+  stroke: currentColor;
+}
+/* svg 자체에 stroke 속성이 있는 경우도 해제 */
+.sidePanelButton:disabled:hover svg[stroke="currentColor"],
+.sidePanelButton[aria-disabled="true"]:hover svg[stroke="currentColor"] {
+  stroke: currentColor;
+}
 
 .historyPanel.closed .sidePanelButton {
   background: none;
@@ -300,6 +315,20 @@
 .sidePanelButton:hover svg [fill="currentColor"],
 .sidePanelButton:hover svg path[fill="currentColor"] {
   fill: url(#spbIconGradient);
+}
+/* svg 자체에 fill 속성이 있는 경우도 적용 */
+.sidePanelButton:hover svg[fill="currentColor"] {
+  fill: url(#spbIconGradient);
+}
+
+/* stroke 사용 아이콘도 그라디언트 적용 */
+.sidePanelButton:hover svg [stroke="currentColor"],
+.sidePanelButton:hover svg path[stroke="currentColor"] {
+  stroke: url(#spbIconGradient);
+}
+/* svg 자체에 stroke 속성이 있는 경우도 적용 */
+.sidePanelButton:hover svg[stroke="currentColor"] {
+  stroke: url(#spbIconGradient);
 }
 
 .historyPanel.open .sidePanelButtonText {

@@ -80,7 +80,6 @@
   flex-direction: column;
   border-radius: 16px;
   padding: 12px 0px;
-  background: var(--White-Opacity-64, rgba(255, 255, 255, 0.64));
   box-shadow: 0 4px 8px 0 #c0c4e5;
 }
 
@@ -92,9 +91,7 @@
 
 .subCategoryTitle {
   color: var(--Gray-05, #8d9eba);
-  font-family: Pretendard;
   font-size: 12px;
-  font-style: normal;
   font-weight: 600;
   line-height: 12px; /* 100% */
   letter-spacing: -0.18px;
