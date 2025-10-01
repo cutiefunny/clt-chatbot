@@ -6,7 +6,7 @@ export const createScenarioSlice = (set, get) => ({
   // State
   scenarioStates: {},
   activeScenarioSessionId: null,
-  isScenarioPanelOpen: false,
+  isScenarioPanelOpen: false, 
   scenarioCategories: [],
   availableScenarios: [],
   unsubscribeScenario: null,
@@ -56,11 +56,20 @@ export const createScenarioSlice = (set, get) => ({
   },
 
   openScenarioPanel: async (scenarioId, scenarioSessionId = null) => {
-    const { user, currentConversationId, handleEvents, scenarioStates, language, saveMessage } = get();
-    if (!user || !currentConversationId) return;
+    const { user, currentConversationId, handleEvents, language, activeScenarioSessionId } = get();
+    if (!user) return;
+    
+    const previousScenarioSessionId = activeScenarioSessionId;
+
+    let conversationId = currentConversationId;
+    if (!conversationId) {
+        const newConversationId = await get().createNewConversation(true);
+        if (!newConversationId) return;
+        conversationId = newConversationId;
+    }
 
     if (scenarioSessionId) {
-      if (!scenarioStates[scenarioSessionId]) {
+      if (!get().scenarioStates[scenarioSessionId]) {
         get().subscribeToScenarioSession(scenarioSessionId);
       }
       set({
@@ -68,11 +77,15 @@ export const createScenarioSlice = (set, get) => ({
           activeScenarioSessionId: scenarioSessionId,
           activePanel: 'scenario'
       });
+      if (previousScenarioSessionId && previousScenarioSessionId !== scenarioSessionId) {
+        const prevSessionRef = doc(get().db, "chats", user.uid, "conversations", conversationId, "scenario_sessions", previousScenarioSessionId);
+        await updateDoc(prevSessionRef, { status: 'cancelled' });
+      }
       get().focusChatInput();
       return;
     }
 
-    const scenarioSessionsRef = collection(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions");
+    const scenarioSessionsRef = collection(get().db, "chats", user.uid, "conversations", conversationId, "scenario_sessions");
     const newSessionDoc = await addDoc(scenarioSessionsRef, {
       scenarioId: scenarioId,
       status: 'active',
@@ -83,16 +96,6 @@ export const createScenarioSlice = (set, get) => ({
     });
 
     const newScenarioSessionId = newSessionDoc.id;
-
-    const startMessage = {
-      id: Date.now(),
-      sender: 'bot',
-      type: 'scenario_start_notice',
-      scenarioId: scenarioId,
-      scenarioSessionId: newScenarioSessionId,
-      text: locales[language].scenarioStarted(scenarioId),
-    };
-    saveMessage(startMessage);
     
     get().subscribeToScenarioSession(newScenarioSessionId);
     set({
@@ -100,6 +103,11 @@ export const createScenarioSlice = (set, get) => ({
         activeScenarioSessionId: newScenarioSessionId,
         activePanel: 'scenario',
     });
+    
+    if (previousScenarioSessionId) {
+        const prevSessionRef = doc(get().db, "chats", user.uid, "conversations", conversationId, "scenario_sessions", previousScenarioSessionId);
+        await updateDoc(prevSessionRef, { status: 'cancelled' });
+    }
 
     try {
       const response = await fetch('/api/chat', {
@@ -116,26 +124,25 @@ export const createScenarioSlice = (set, get) => ({
       handleEvents(data.events, newScenarioSessionId);
 
       if (data.type === 'scenario_start' || data.type === 'scenario') {
-        const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", newScenarioSessionId);
+        const sessionRef = doc(get().db, "chats", user.uid, "conversations", conversationId, "scenario_sessions", newScenarioSessionId);
         await updateDoc(sessionRef, {
             messages: [{ id: data.nextNode.id, sender: 'bot', node: data.nextNode }],
             state: data.scenarioState,
             slots: data.slots || {},
         });
         await get().continueScenarioIfNeeded(data.nextNode, newScenarioSessionId);
-      } else if (data.type === 'scenario_end') {
-        const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", newScenarioSessionId);
+      } else {
+        const errorText = data.message || "Failed to start scenario properly";
+        const sessionRef = doc(get().db, "chats", user.uid, "conversations", conversationId, "scenario_sessions", newScenarioSessionId);
         await updateDoc(sessionRef, {
-            messages: [{ id: 'error-start', sender: 'bot', text: data.message }],
+            messages: [{ id: 'error-start', sender: 'bot', text: errorText }],
             status: 'failed',
         });
-      } else {
-        throw new Error("Failed to start scenario properly");
       }
     } catch (error) {
       const errorKey = getErrorKey(error);
       const errorMessage = locales[language][errorKey] || locales[language]['errorUnexpected'];
-      const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", newScenarioSessionId);
+      const sessionRef = doc(get().db, "chats", user.uid, "conversations", conversationId, "scenario_sessions", newScenarioSessionId);
       await updateDoc(sessionRef, {
         messages: [{ id: 'error', sender: 'bot', text: errorMessage }],
         status: 'failed'
@@ -172,19 +179,24 @@ export const createScenarioSlice = (set, get) => ({
     const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", scenarioSessionId);
     await updateDoc(sessionRef, { status });
     
-    get().unsubscribeScenario?.();
-    set({
-      activePanel: 'main',
-      unsubscribeScenario: null,
-    });
+    if (get().activeScenarioSessionId === scenarioSessionId) {
+        set({ activePanel: 'main' });
+    }
   },
 
   setScenarioPanelOpen: (isOpen) => {
+    const { activeScenarioSessionId, endScenario, focusChatInput } = get();
+    if (!isOpen && activeScenarioSessionId) {
+        endScenario(activeScenarioSessionId, 'cancelled');
+    }
     set({
         isScenarioPanelOpen: isOpen,
-        activePanel: isOpen ? 'scenario' : 'main',
+        activeScenarioSessionId: isOpen ? activeScenarioSessionId : null,
+        activePanel: 'main',
     });
-    get().focusChatInput();
+    if(!isOpen) {
+        focusChatInput();
+    }
   },
 
   handleScenarioResponse: async (payload) => {
@@ -228,9 +240,7 @@ export const createScenarioSlice = (set, get) => ({
       if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
       const data = await response.json();
 
-      // --- 👇 [수정된 부분] ---
       handleEvents(data.events, scenarioSessionId);
-      // --- 👆 [여기까지] ---
       
       if (data.nextNode) {
           newMessages.push({ id: data.nextNode.id, sender: 'bot', node: data.nextNode });
@@ -243,8 +253,8 @@ export const createScenarioSlice = (set, get) => ({
           await updateDoc(sessionRef, { status: 'active' });
       } else if (data.type === 'scenario_end') {
         const finalStatus = data.slots?.apiFailed ? 'failed' : 'completed';
-        await updateDoc(sessionRef, { messages: newMessages, status: finalStatus });
         endScenario(scenarioSessionId, finalStatus);
+        await updateDoc(sessionRef, { messages: newMessages, status: finalStatus });
       }
       else {
         await updateDoc(sessionRef, {

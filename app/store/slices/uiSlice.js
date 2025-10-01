@@ -26,7 +26,8 @@ export const createUISlice = (set, get) => ({
     onConfirm: () => {},
     confirmVariant: 'default',
   },
-  activePanel: 'main',
+  activePanel: 'main', // 복원
+  isScenarioPanelOpen: false, // 복원
   focusRequest: 0,
   shortcutMenuOpen: null,
   ephemeralToast: {
@@ -34,10 +35,10 @@ export const createUISlice = (set, get) => ({
     message: '',
     type: 'info',
   },
-  scrollToMessageId: null, // --- 👈 [추가]
+  scrollToMessageId: null, 
 
   // Actions
-  setScrollToMessageId: (id) => set({ scrollToMessageId: id }), // --- 👈 [추가]
+  setScrollToMessageId: (id) => set({ scrollToMessageId: id }), 
 
   setShortcutMenuOpen: (menuName) => set({ shortcutMenuOpen: menuName }),
 
@@ -130,6 +131,6 @@ export const createUISlice = (set, get) => ({
   })),
 
   toggleHistoryPanel: () => set(state => ({ isHistoryPanelOpen: !state.isHistoryPanelOpen })),
-  setActivePanel: (panel) => set({ activePanel: panel }),
+  setActivePanel: (panel) => set({ activePanel: panel }), // 복원
   focusChatInput: () => set(state => ({ focusRequest: state.focusRequest + 1 })),
 });

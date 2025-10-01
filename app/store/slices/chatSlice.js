@@ -66,6 +66,7 @@ export const createChatSlice = (set, get) => ({
 
   favorites: [],
   unsubscribeFavorites: null,
+  unsubscribeScenariosMap: {},
 
   loadFavorites: (userId) => {
     const q = query(
@@ -98,13 +99,12 @@ export const createChatSlice = (set, get) => ({
     });
   },
 
-  // --- 👇 [수정된 부분] ---
   updateFavoritesOrder: async (newOrder) => {
     const user = get().user;
     if (!user) return;
 
-    const originalOrder = get().favorites; // 롤백을 위해 기존 순서 저장
-    set({ favorites: newOrder }); // UI 즉시 업데이트 (낙관적 업데이트)
+    const originalOrder = get().favorites;
+    set({ favorites: newOrder });
 
     const batch = writeBatch(get().db);
     newOrder.forEach((fav, index) => {
@@ -113,11 +113,11 @@ export const createChatSlice = (set, get) => ({
     });
 
     try {
-      await batch.commit(); // Firestore에 변경사항 저장
+      await batch.commit();
     } catch (error) {
       console.error("Error updating favorites order:", error);
       get().showEphemeralToast("Failed to save new order.", "error");
-      set({ favorites: originalOrder }); // 에러 발생 시 원래 순서로 롤백
+      set({ favorites: originalOrder });
     }
   },
 
@@ -131,12 +131,11 @@ export const createChatSlice = (set, get) => ({
     );
     if (!favoriteToDelete) return;
 
-    // 삭제 후의 새로운 리스트를 미리 계산
     const newFavorites = originalFavorites
       .filter((fav) => fav.id !== favoriteId)
       .map((fav, index) => ({ ...fav, order: index }));
 
-    set({ favorites: newFavorites }); // UI 즉시 업데이트 (낙관적 업데이트)
+    set({ favorites: newFavorites });
 
     try {
       const favoriteRef = doc(
@@ -146,9 +145,8 @@ export const createChatSlice = (set, get) => ({
         "favorites",
         favoriteId
       );
-      await deleteDoc(favoriteRef); // Firestore에서 문서 삭제
+      await deleteDoc(favoriteRef);
 
-      // Firestore에서 나머지 항목들의 순서 업데이트
       const batch = writeBatch(get().db);
       newFavorites.forEach((fav) => {
         const favRef = doc(get().db, "users", user.uid, "favorites", fav.id);
@@ -158,10 +156,9 @@ export const createChatSlice = (set, get) => ({
     } catch (error) {
       console.error("Error deleting favorite:", error);
       get().showEphemeralToast("Failed to delete favorite.", "error");
-      set({ favorites: originalFavorites }); // 에러 발생 시 원래 상태로 롤백
+      set({ favorites: originalFavorites });
     }
   },
-  // --- 👆 [여기까지] ---
 
   toggleFavorite: async (item) => {
     const { user, favorites, addFavorite, deleteFavorite, showEphemeralToast } =
@@ -198,21 +195,58 @@ export const createChatSlice = (set, get) => ({
         displayText: item.title,
       });
     } else {
-      await get().addMessage("user", { text: item.title });
       get().openScenarioPanel(item.action.value);
     }
   },
 
   toggleConversationExpansion: (conversationId) => {
-    const { expandedConversationId } = get();
+    const { expandedConversationId, unsubscribeScenariosMap, user } = get();
+
     if (expandedConversationId === conversationId) {
-      set({ expandedConversationId: null });
-    } else {
-      set({ expandedConversationId: conversationId });
-      if (!get().scenariosForConversation[conversationId]) {
-        get().loadScenariosForConversation(conversationId);
-      }
+      unsubscribeScenariosMap[conversationId]?.();
+      delete unsubscribeScenariosMap[conversationId];
+      set({ expandedConversationId: null, unsubscribeScenariosMap });
+      return;
     }
+
+    if (expandedConversationId) {
+      unsubscribeScenariosMap[expandedConversationId]?.();
+      delete unsubscribeScenariosMap[expandedConversationId];
+    }
+
+    set({ expandedConversationId: conversationId });
+
+    if (!user) return;
+
+    const scenariosRef = collection(
+      get().db,
+      "chats",
+      user.uid,
+      "conversations",
+      conversationId,
+      "scenario_sessions"
+    );
+    const q = query(scenariosRef, orderBy("createdAt", "desc"));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const scenarios = snapshot.docs.map((doc) => ({
+        sessionId: doc.id,
+        ...doc.data(),
+      }));
+      set((state) => ({
+        scenariosForConversation: {
+          ...state.scenariosForConversation,
+          [conversationId]: scenarios,
+        },
+      }));
+    });
+
+    set((state) => ({
+      unsubscribeScenariosMap: {
+        ...state.unsubscribeScenariosMap,
+        [conversationId]: unsubscribe,
+      },
+    }));
   },
 
   loadConversations: (userId) => {
@@ -231,41 +265,13 @@ export const createChatSlice = (set, get) => ({
     set({ unsubscribeConversations: unsubscribe });
   },
 
-  loadScenariosForConversation: async (conversationId) => {
-    const user = get().user;
-    if (!user) return;
-
-    const scenariosRef = collection(
-      get().db,
-      "chats",
-      user.uid,
-      "conversations",
-      conversationId,
-      "scenario_sessions"
-    );
-    const scenariosQuery = query(scenariosRef, orderBy("createdAt", "desc"));
-
-    const snapshot = await getDocs(scenariosQuery);
-    const scenarios = snapshot.docs.map((doc) => ({
-      sessionId: doc.id,
-      ...doc.data(),
-    }));
-
-    set((state) => ({
-      scenariosForConversation: {
-        ...state.scenariosForConversation,
-        [conversationId]: scenarios,
-      },
-    }));
-  },
-
-  loadConversation: (conversationId) => {
+  loadConversation: async (conversationId) => {
     const user = get().user;
     if (!user || get().currentConversationId === conversationId) return;
 
     get().unsubscribeMessages?.();
     get().unsubscribeScenario?.();
-    get().unsubscribeScenarios?.();
+    get().toggleConversationExpansion(get().expandedConversationId);
 
     const { language } = get();
     const initialMessage = getInitialMessages(language)[0];
@@ -279,6 +285,7 @@ export const createChatSlice = (set, get) => ({
       isScenarioPanelOpen: false,
       lastVisibleMessage: null,
       hasMoreMessages: true,
+      expandedConversationId: null,
     });
 
     const messagesRef = collection(
@@ -314,6 +321,11 @@ export const createChatSlice = (set, get) => ({
       }));
     });
 
+    set({
+      unsubscribeMessages: unsubscribeMessages,
+    });
+
+    // --- 👇 [핵심 수정] 시나리오 상태 복원 로직 ---
     const scenariosRef = collection(
       get().db,
       "chats",
@@ -322,36 +334,27 @@ export const createChatSlice = (set, get) => ({
       conversationId,
       "scenario_sessions"
     );
-    const scenariosQuery = query(scenariosRef, orderBy("createdAt", "desc"));
-    const unsubscribeScenarios = onSnapshot(scenariosQuery, (snapshot) => {
-      const scenarios = snapshot.docs.map((doc) => ({
-        sessionId: doc.id,
-        ...doc.data(),
-      }));
-      set((state) => ({
-        scenariosForConversation: {
-          ...state.scenariosForConversation,
-          [conversationId]: scenarios,
-        },
-      }));
+    const scenariosQuery = query(
+      scenariosRef,
+      orderBy("createdAt", "desc"),
+      limit(1)
+    );
+    const scenariosSnapshot = await getDocs(scenariosQuery);
 
-      const activeScenarios = scenarios.filter(
-        (s) => s.status === "active" || s.status === "generating"
-      );
-      const newScenarioStates = {};
-      activeScenarios.forEach((s) => {
-        newScenarioStates[s.sessionId] = s;
-      });
+    if (!scenariosSnapshot.empty) {
+      const latestScenario = scenariosSnapshot.docs[0];
+      const scenarioData = latestScenario.data();
 
-      set((state) => ({
-        scenarioStates: { ...state.scenarioStates, ...newScenarioStates },
-      }));
-    });
-
-    set({
-      unsubscribeMessages: unsubscribeMessages,
-      unsubscribeScenarios: unsubscribeScenarios,
-    });
+      // 'cancelled' 상태가 아닌 경우에만 말풍선을 복원
+      if (scenarioData.status !== "cancelled") {
+        set({
+          isScenarioPanelOpen: true,
+          activeScenarioSessionId: latestScenario.id,
+          activePanel: "main",
+        });
+        get().subscribeToScenarioSession(latestScenario.id);
+      }
+    }
   },
 
   loadMoreMessages: async () => {
@@ -410,21 +413,40 @@ export const createChatSlice = (set, get) => ({
     }
   },
 
-  createNewConversation: () => {
-    if (get().currentConversationId === null) return;
+  createNewConversation: async (returnId = false) => {
+    if (get().currentConversationId === null && !returnId) return;
+
     get().unsubscribeMessages?.();
     get().unsubscribeScenario?.();
-    get().unsubscribeScenarios?.();
-    const { language } = get();
-    set({
-      messages: getInitialMessages(language),
-      currentConversationId: null,
-      scenarioStates: {},
-      activeScenarioSessionId: null,
-      isScenarioPanelOpen: false,
-      lastVisibleMessage: null,
-      hasMoreMessages: true,
-    });
+    get().toggleConversationExpansion(get().expandedConversationId);
+
+    const { language, user } = get();
+
+    if (returnId && user) {
+      const conversationRef = await addDoc(
+        collection(get().db, "chats", user.uid, "conversations"),
+        {
+          title: "New Conversation",
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          pinned: false,
+        }
+      );
+      get().loadConversation(conversationRef.id);
+      return conversationRef.id;
+    } else {
+      set({
+        messages: getInitialMessages(language),
+        currentConversationId: null,
+        scenarioStates: {},
+        activeScenarioSessionId: null,
+        isScenarioPanelOpen: false,
+        lastVisibleMessage: null,
+        hasMoreMessages: true,
+        expandedConversationId: null,
+      });
+      return null;
+    }
   },
 
   deleteConversation: async (conversationId) => {

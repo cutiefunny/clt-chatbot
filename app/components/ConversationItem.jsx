@@ -99,7 +99,8 @@ export default function ConversationItem({
   onPin,
   scenarios,
   onScenarioClick,
-  unreadScenarioSessions, // --- 👈 [추가]
+  unreadScenarioSessions,
+  onToggleExpand,
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -173,6 +174,7 @@ export default function ConversationItem({
         onClick={() => {
           if (isEditing) return;
           onClick(convo.id);
+          onToggleExpand?.(convo.id);
         }}
       >
         <div className={styles.convoMain}>

@@ -51,7 +51,8 @@
 .headerButtons {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
 .headerRestartButton {
@@ -359,7 +360,6 @@ input:checked + .slider:before {
   border-color: #aaa;
 }
 
-/* --- Form Styles --- */
 .formContainer {
   display: flex;
   flex-direction: column;
@@ -494,13 +494,10 @@ input:checked + .slider:before {
   background-color: #e74c3c; /* Failed */
 }
 
-/* --- 👇 [추가된 부분] --- */
 .statusGenerating {
   background-color: #27ae60; /* Generating */
 }
-/* --- 👆 [여기까지] --- */
 
-/* Scrollbar Styles */
 .history {
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
@@ -528,4 +525,73 @@ body.dark .history:hover {
 }
 body.dark .history:hover::-webkit-scrollbar-thumb {
   background-color: #555;
+}
+
+.scenarioBubbleContainer {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 70%;
+  height: 500px;
+  background-color: var(--user-message-bg);
+  border: 1px solid var(--panel-border-color);
+  border-radius: 18px;
+  border-top-right-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  transition: height 0.4s ease-out, opacity 0.4s ease-out;
+}
+
+.scenarioBubbleContainer .header {
+  flex-shrink: 0;
+  padding: 10px 15px;
+  background-color: var(--bot-message-bg);
+}
+
+.scenarioBubbleContainer .history {
+  flex-grow: 1;
+  background-color: var(--panel-bg-color);
+  mask-image: none;
+  transition: opacity 0.2s ease-out;
+}
+
+.scenarioBubbleContainer.collapsed {
+  height: 60px;
+  cursor: pointer;
+}
+
+.scenarioBubbleContainer.collapsed .history {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.scenarioBubbleContainer.dimmed {
+  opacity: 0.7;
+  pointer-events: none; /* 내부 클릭 방지 */
+}
+
+.scenarioBubbleContainer.dimmed .header {
+  pointer-events: auto; /* 헤더는 다시 클릭 가능하도록 설정 */
+}
+
+.scenarioBadge {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: white;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.scenarioBadge.done {
+  background-color: #3498db;
+}
+.scenarioBadge.incomplete {
+  background-color: #f39c12;
+}
+.scenarioBadge.failed {
+  background-color: #e74c3c;
+}
+.scenarioBadge.generating {
+  background-color: #27ae60;
 }

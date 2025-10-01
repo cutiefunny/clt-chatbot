@@ -46,33 +46,25 @@ export default function ChatInput() {
     favorites,
     toggleFavorite,
     handleShortcutClick,
-    shortcutMenuOpen, // --- 👈 [수정] 스토어에서 상태 가져오기
-    setShortcutMenuOpen, // --- 👈 [수정] 스토어에서 함수 가져오기
+    shortcutMenuOpen,
+    setShortcutMenuOpen,
   } = useChatStore();
 
   const { t } = useTranslations();
   const inputRef = useRef(null);
   const quickRepliesSlider = useDraggableScroll();
-  const menuRef = useRef(null); // --- 👈 [수정] 로컬 상태 제거
+  const menuRef = useRef(null);
 
   const activeScenario = activeScenarioSessionId
     ? scenarioStates[activeScenarioSessionId]
     : null;
-  const mainMessages = useChatStore((state) => state.messages);
-  const isInputDisabled =
-    activePanel === "scenario" ? activeScenario?.isLoading ?? false : isLoading;
-  const lastMessage =
-    activePanel === "main"
-      ? mainMessages[mainMessages.length - 1]
-      : activeScenario?.messages[activeScenario.messages.length - 1];
-  const currentBotMessageNode =
-    lastMessage?.sender === "bot" ? lastMessage.node : null;
+  const isInputDisabled = isLoading;
   const currentScenarioNodeId = activeScenario?.state?.currentNodeId;
 
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setShortcutMenuOpen(null); // --- 👈 [수정]
+        setShortcutMenuOpen(null);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -88,40 +80,28 @@ export default function ChatInput() {
   }, [isInputDisabled, focusRequest, activePanel]);
 
   const handleSubmit = async (e) => {
-    e?.preventDefault?.();
-    const input = inputRef.current?.value ?? "";
-    if (!input.trim() || isInputDisabled) return;
+    e.preventDefault();
+    const input = e.target.elements.userInput.value;
+    if (!input.trim() || isLoading) return;
 
-    if (activePanel === "scenario") {
+    if (activePanel === "scenario" && activeScenarioSessionId) {
+      // 시나리오 패널이 활성화 상태일 때 시나리오 응답 함수 호출
       await handleScenarioResponse({
         scenarioSessionId: activeScenarioSessionId,
         currentNodeId: currentScenarioNodeId,
         userInput: input,
       });
     } else {
+      // 메인 패널이 활성화 상태일 때 일반 응답 함수 호출
       await handleResponse({ text: input });
     }
-    if (inputRef.current) {
-      inputRef.current.value = "";
-    }
-  };
 
-  const handleQuickReplyClick = async (reply) => {
-    if (activePanel === "scenario") {
-      await handleScenarioResponse({
-        scenarioSessionId: activeScenarioSessionId,
-        currentNodeId: currentScenarioNodeId,
-        sourceHandle: reply.value,
-        userInput: reply.display,
-      });
-    } else {
-      await handleResponse({ text: reply.display });
-    }
+    e.target.reset();
   };
 
   const handleItemClick = (item) => {
     handleShortcutClick(item);
-    setShortcutMenuOpen(null); // --- 👈 [수정]
+    setShortcutMenuOpen(null);
   };
 
   return (
@@ -129,8 +109,6 @@ export default function ChatInput() {
       <div className={styles.quickActionsContainer} ref={menuRef}>
         {scenarioCategories.map((category) => (
           <div key={category.name} className={styles.categoryWrapper}>
-            {/* --- 👇 [수정] 스토어 상태를 사용하도록 모두 변경 --- */}
-
             <button
               className={`GlassEffect ${styles.categoryButton} ${
                 shortcutMenuOpen === category.name ? styles.active : ""
@@ -153,58 +131,56 @@ export default function ChatInput() {
             </button>
             {shortcutMenuOpen === category.name && (
               <div className={`GlassEffect ${styles.dropdownMenu}`}>
-                {category.subCategories.map((subCategory, index) => (
-                  <Fragment key={subCategory.title}>
-                    <div className={styles.subCategorySection}>
-                      <h4 className={styles.subCategoryTitle}>
-                        {subCategory.title}
-                      </h4>
-                      {subCategory.items.map((item) => {
-                        const isFavorited = favorites.some(
-                          (fav) =>
-                            fav.action.type === item.action.type &&
-                            fav.action.value === item.action.value
-                        );
-                        return (
-                          <div key={item.title} className={styles.dropdownItem}>
-                            <div
-                              className={styles.itemContentWrapper}
-                              onClick={() => handleItemClick(item)}
-                              role="button"
-                              tabIndex="0"
-                              onKeyDown={(e) =>
-                                (e.key === "Enter" || e.key === " ") &&
-                                handleItemClick(item)
-                              }
+                {category.subCategories.map((subCategory) => (
+                  <div
+                    key={subCategory.title}
+                    className={styles.subCategorySection}
+                  >
+                    <h4 className={styles.subCategoryTitle}>
+                      {subCategory.title}
+                    </h4>
+                    {subCategory.items.map((item) => {
+                      const isFavorited = favorites.some(
+                        (fav) =>
+                          fav.action.type === item.action.type &&
+                          fav.action.value === item.action.value
+                      );
+                      return (
+                        <div key={item.title} className={styles.dropdownItem}>
+                          <div
+                            className={styles.itemContentWrapper}
+                            onClick={() => handleItemClick(item)}
+                            role="button"
+                            tabIndex="0"
+                            onKeyDown={(e) =>
+                              (e.key === "Enter" || e.key === " ") &&
+                              handleItemClick(item)
+                            }
+                          >
+                            <button
+                              className={`${styles.favoriteButton} ${
+                                isFavorited ? styles.favorited : ""
+                              }`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleFavorite(item);
+                              }}
                             >
-                              <button
-                                className={`${styles.favoriteButton} ${
-                                  isFavorited ? styles.favorited : ""
-                                }`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleFavorite(item);
-                                }}
-                              >
-                                <StarIcon size={18} filled={isFavorited} />
-                              </button>
-                              <div className={styles.itemContent}>
-                                <span className={styles.itemTitle}>
-                                  {item.title}
-                                </span>
-                                <span className={styles.itemDescription}>
-                                  {item.description}
-                                </span>
-                              </div>
+                              <StarIcon size={18} filled={isFavorited} />
+                            </button>
+                            <div className={styles.itemContent}>
+                              <span className={styles.itemTitle}>
+                                {item.title}
+                              </span>
+                              <span className={styles.itemDescription}>
+                                {item.description}
+                              </span>
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
-                    {index !== category.subCategories.length - 1 && (
-                      <div className={styles.divider} />
-                    )}
-                  </Fragment>
+                        </div>
+                      );
+                    })}
+                  </div>
                 ))}
               </div>
             )}
@@ -212,34 +188,8 @@ export default function ChatInput() {
         ))}
       </div>
 
-      {currentBotMessageNode?.data?.replies && (
-        <div className={styles.buttonRow}>
-          <div
-            ref={quickRepliesSlider.ref}
-            className={`${styles.quickRepliesContainer} ${
-              quickRepliesSlider.isDragging ? styles.dragging : ""
-            }`}
-            onMouseDown={quickRepliesSlider.onMouseDown}
-            onMouseLeave={quickRepliesSlider.onMouseLeave}
-            onMouseUp={quickRepliesSlider.onMouseUp}
-            onMouseMove={quickRepliesSlider.onMouseMove}
-          >
-            {currentBotMessageNode.data.replies.map((reply) => (
-              <button
-                key={reply.value}
-                className={styles.optionButton}
-                onClick={() => handleQuickReplyClick(reply)}
-                disabled={isInputDisabled}
-              >
-                {reply.display}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       <form className={styles.inputForm} onSubmit={handleSubmit}>
-        <textarea
+        <input
           ref={inputRef}
           name="userInput"
           className={styles.textInput}
@@ -250,23 +200,14 @@ export default function ChatInput() {
           }
           autoComplete="off"
           disabled={isInputDisabled}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              handleSubmit(e);
-            }
-          }}
         />
-        <button className={styles.addButton}>
-          <AddIcon />
-        </button>
-        {/* <button
+        <button
           type="submit"
           className={styles.sendButton}
           disabled={isInputDisabled}
         >
           Send
-        </button> */}
+        </button>
       </form>
     </div>
   );

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { db, auth, onAuthStateChanged, doc, getDoc, collection, getDocs, writeBatch } from '../lib/firebase'; // Firestore import 추가
+import { db, auth, onAuthStateChanged, doc, getDoc, collection, getDocs, writeBatch, serverTimestamp, addDoc } from '../lib/firebase';
 import { locales } from '../lib/locales';
 
 import { createAuthSlice } from './slices/authSlice';
@@ -14,11 +14,9 @@ const getInitialMessages = (lang = 'ko') => {
 };
 
 export const useChatStore = create((set, get) => ({
-  // Firebase instances
   db,
   auth,
 
-  // Slices
   ...createAuthSlice(set, get),
   ...createUISlice(set, get),
   ...createChatSlice(set, get),
@@ -27,22 +25,18 @@ export const useChatStore = create((set, get) => ({
   ...createNotificationSlice(set, get),
   
   handleScenarioItemClick: (conversationId, scenario) => {
-    // 1. 현재 대화와 클릭된 시나리오의 대화가 다를 경우에만 대화를 새로 로드합니다.
     if (get().currentConversationId !== conversationId) {
       get().loadConversation(conversationId);
     }
     
-    // 2. 스크롤 및 하이라이트할 메시지(시나리오)의 고유 ID를 스토어에 저장합니다.
     get().setScrollToMessageId(scenario.sessionId);
 
-    // 3. 우측 시나리오 패널을 열고, 활성화할 시나리오를 지정합니다. 메인 패널은 그대로 유지합니다.
     set({
       isScenarioPanelOpen: true,
       activeScenarioSessionId: scenario.sessionId,
       activePanel: 'main'
     });
 
-    // 4. 해당 시나리오 세션의 실시간 업데이트를 구독합니다.
     if (!get().scenarioStates[scenario.sessionId]) {
       get().subscribeToScenarioSession(scenario.sessionId);
     }
@@ -127,24 +121,27 @@ export const useChatStore = create((set, get) => ({
     });
   },
 
-  // --- 👇 [수정된 부분] ---
   unsubscribeAll: () => {
     get().unsubscribeConversations?.();
     get().unsubscribeMessages?.();
-    get().unsubscribeScenarios?.();
+    get().unsubscribeScenario?.();
     get().unsubscribeDevMemos?.();
     get().unsubscribeNotifications?.();
     get().unsubscribeFavorites?.();
+
+    const scenariosMap = get().unsubscribeScenariosMap;
+    Object.values(scenariosMap).forEach(unsub => unsub());
+
     set({ 
         unsubscribeConversations: null, 
         unsubscribeMessages: null, 
-        unsubscribeScenarios: null,
+        unsubscribeScenario: null,
         unsubscribeDevMemos: null,
         unsubscribeNotifications: null,
         unsubscribeFavorites: null,
+        unsubscribeScenariosMap: {},
     });
   },
-  // --- 👆 [여기까지] ---
 }));
 
 useChatStore.getState().initAuth();
