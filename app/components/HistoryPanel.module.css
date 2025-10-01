@@ -610,6 +610,16 @@
   padding: 2px 4px;
 }
 
+/* --- 👇 [추가된 부분] --- */
+.unreadDot {
+  width: 8px;
+  height: 8px;
+  background-color: #d32f2f;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+/* --- 👆 [여기까지] --- */
+
 .noScenarios {
   padding: 8px;
   font-size: 0.85rem;
@@ -618,6 +628,14 @@
 }
 
 .scenarioBadge {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: white;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  margin-left: auto;
   padding: 2px 8px;
   border-radius: 12px;
   font-size: 0.7rem;
@@ -635,10 +653,10 @@
 .scenarioBadge.failed {
   background-color: #e74c3c;
 }
-/* --- 👇 [추가된 부분] --- */
 .scenarioBadge.generating {
   background-color: #27ae60;
 }
+
 /* --- 👆 [여기까지] --- */
 .footer {
   padding: 0.75rem;

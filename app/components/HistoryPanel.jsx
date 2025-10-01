@@ -39,8 +39,10 @@ export default function HistoryPanel() {
     isManualModalOpen,
     openManualModal,
     scenariosForConversation,
-    openScenarioPanel,
+    toggleConversationExpansion,
+    handleScenarioItemClick,
     openConfirmModal,
+    unreadScenarioSessions, // --- 👈 [추가]
   } = useChatStore();
   const { t } = useTranslations();
 
@@ -139,28 +141,21 @@ export default function HistoryPanel() {
           <div className={styles.panelContent}>
             <span className={styles.commonText}>{t("History")}</span>
             <div className={styles.conversationList}>
-              {conversations.length > 0 ? (
-                conversations.map((convo) => (
-                  <ConversationItem
-                    key={convo.id}
-                    convo={convo}
-                    isActive={convo.id === currentConversationId}
-                    onClick={loadConversation}
-                    onDelete={handleDeleteRequest}
-                    onUpdateTitle={updateConversationTitle}
-                    onPin={pinConversation}
-                    scenarios={scenariosForConversation[convo.id]}
-                    onScenarioClick={openScenarioPanel}
-                  />
-                ))
-              ) : (
-                <div className={styles.historyTileWrapper}>
-                  <div className={styles.noHistoryBox}>
-                    <NoHistoryIcon />
-                    {t("noHistory")}
-                  </div>
-                </div>
-              )}
+              {conversations.map((convo) => (
+                <ConversationItem
+                  key={convo.id}
+                  convo={convo}
+                  isActive={convo.id === currentConversationId}
+                  onClick={loadConversation}
+                  onDelete={handleDeleteRequest}
+                  onUpdateTitle={updateConversationTitle}
+                  onPin={pinConversation}
+                  scenarios={scenariosForConversation[convo.id]}
+                  onToggleExpand={toggleConversationExpansion}
+                  onScenarioClick={handleScenarioItemClick}
+                  unreadScenarioSessions={unreadScenarioSessions} // --- 👈 [추가]
+                />
+              ))}
             </div>
             <div className={styles.footer}>
               <div className={styles.avatarWrapper} onClick={openProfileModal}>
