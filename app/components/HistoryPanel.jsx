@@ -64,6 +64,27 @@ export default function HistoryPanel() {
 
   return (
     <>
+      {/* Global SVG gradient defs for hover fills */}
+      <svg
+        width="0"
+        height="0"
+        style={{ position: "absolute", width: 0, height: 0 }}
+        aria-hidden="true"
+        focusable="false"
+      >
+        <defs>
+          <linearGradient
+            id="spbIconGradient"
+            x1="0%"
+            y1="0%"
+            x2="100%"
+            y2="100%"
+          >
+            <stop offset="0%" stopColor="#3051ea" />
+            <stop offset="100%" stopColor="#7f30c5" />
+          </linearGradient>
+        </defs>
+      </svg>
       <div
         className={`${styles.historyPanel} ${
           isHistoryPanelOpen ? styles.open : styles.closed
