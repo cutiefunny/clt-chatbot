@@ -11,7 +11,6 @@ const PlusIcon = () => (
 );
 
 export default function FavoritePanel() {
-    // --- 👇 [수정] 필요한 상태와 함수를 스토어에서 가져옵니다. ---
     const { 
         favorites, 
         isLoading, 
@@ -20,6 +19,7 @@ export default function FavoritePanel() {
         setShortcutMenuOpen, 
         scenarioCategories,
         deleteFavorite,
+        maxFavorites,
     } = useChatStore();
     
     const onDragEnd = (result) => {
@@ -32,7 +32,6 @@ export default function FavoritePanel() {
         updateFavoritesOrder(items);
     };
 
-    // --- 👇 [추가] 'Add Favorite' 버튼 클릭 핸들러 ---
     const handleAddFavoriteClick = () => {
         if (scenarioCategories && scenarioCategories.length > 0) {
             setShortcutMenuOpen(scenarioCategories[0].name);
@@ -101,13 +100,22 @@ export default function FavoritePanel() {
                             ))}
                             {provided.placeholder}
                             
-                            <button className={`${styles.favoriteItem} ${styles.addItem}`} onClick={handleAddFavoriteClick}>
-                                <div className={styles.addIcon}><PlusIcon/></div>
-                                <div className={styles.itemText}>
-                                    <div className={styles.itemTitle}>Add Favorite</div>
-                                    <div className={styles.itemDescription}>Customize via Shortcuts menu</div>
+                            {favorites.length < maxFavorites ? (
+                                <button className={`${styles.favoriteItem} ${styles.addItem}`} onClick={handleAddFavoriteClick}>
+                                    <div className={styles.addIcon}><PlusIcon/></div>
+                                    <div className={styles.itemText}>
+                                        <div className={styles.itemTitle}>Add Favorite</div>
+                                        <div className={styles.itemDescription}>Customize via Shortcuts menu</div>
+                                    </div>
+                                </button>
+                            ) : (
+                                <div className={`${styles.favoriteItem} ${styles.limitReached}`}>
+                                    <div className={styles.itemText}>
+                                        <div className={styles.itemTitle}>Favorite Limit Reached</div>
+                                        <div className={styles.itemDescription}>You can add up to {maxFavorites} items.</div>
+                                    </div>
                                 </div>
-                            </button>
+                            )}
                         </div>
                     )}
                 </Droppable>

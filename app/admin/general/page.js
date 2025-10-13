@@ -1,0 +1,77 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useChatStore } from '../../store';
+import styles from './page.module.css';
+import Link from 'next/link';
+
+export default function GeneralSettingsPage() {
+    const { 
+        maxFavorites, 
+        loadGeneralConfig, 
+        saveGeneralConfig, 
+        showEphemeralToast 
+    } = useChatStore();
+    
+    const [limit, setLimit] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        loadGeneralConfig();
+    }, [loadGeneralConfig]);
+
+    useEffect(() => {
+        if (maxFavorites !== null) {
+            setLimit(String(maxFavorites));
+        }
+    }, [maxFavorites]);
+
+    const handleSave = async () => {
+        setIsLoading(true);
+        const newLimit = parseInt(limit, 10);
+        if (isNaN(newLimit) || newLimit < 0) {
+            showEphemeralToast('유효한 숫자를 입력해주세요.', 'error');
+            setIsLoading(false);
+            return;
+        }
+
+        const success = await saveGeneralConfig({ maxFavorites: newLimit });
+        if (success) {
+            showEphemeralToast('설정이 성공적으로 저장되었습니다.', 'success');
+        } else {
+            showEphemeralToast('저장에 실패했습니다.', 'error');
+        }
+        setIsLoading(false);
+    };
+
+    return (
+        <div className={styles.container}>
+            <header className={styles.header}>
+                <h1>General Settings</h1>
+                <p>챗봇의 전반적인 설정을 관리합니다.</p>
+                <Link href="/" className={styles.backLink}>← 챗봇으로 돌아가기</Link>
+            </header>
+
+            <main className={styles.editorContainer}>
+                <div className={styles.settingItem}>
+                    <label htmlFor="max-favorites" className={styles.settingLabel}>
+                        <h3>최대 즐겨찾기 개수</h3>
+                        <p>사용자가 등록할 수 있는 즐겨찾기 버튼의 최대 개수를 설정합니다.</p>
+                    </label>
+                    <input
+                        id="max-favorites"
+                        type="number"
+                        value={limit}
+                        onChange={(e) => setLimit(e.target.value)}
+                        className={styles.settingInput}
+                        min="0"
+                    />
+                </div>
+
+                <button className={styles.saveButton} onClick={handleSave} disabled={isLoading}>
+                    {isLoading ? '저장 중...' : '설정 저장하기'}
+                </button>
+            </main>
+        </div>
+    );
+}

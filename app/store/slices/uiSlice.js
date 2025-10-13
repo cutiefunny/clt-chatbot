@@ -1,4 +1,4 @@
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore'; // getDoc 추가
 import { locales } from '../../lib/locales';
 
 const getInitialMessages = (lang = 'ko') => {
@@ -10,6 +10,7 @@ export const createUISlice = (set, get) => ({
   theme: 'light',
   fontSize: 'default',
   language: 'ko',
+  maxFavorites: 10, // 기본값 설정
   isProfileModalOpen: false,
   isSearchModalOpen: false,
   isScenarioModalOpen: false,
@@ -37,6 +38,36 @@ export const createUISlice = (set, get) => ({
   scrollToMessageId: null, 
 
   // Actions
+  loadGeneralConfig: async () => {
+    try {
+      const configRef = doc(get().db, 'config', 'general');
+      const docSnap = await getDoc(configRef);
+      if (docSnap.exists()) {
+        const config = docSnap.data();
+        if (typeof config.maxFavorites === 'number') {
+          set({ maxFavorites: config.maxFavorites });
+        }
+      }
+    } catch (error) {
+      console.error("Error loading general config from Firestore:", error);
+    }
+  },
+
+  saveGeneralConfig: async (settings) => {
+    try {
+      const configRef = doc(get().db, 'config', 'general');
+      await setDoc(configRef, settings, { merge: true });
+      // 성공 시 상태 업데이트
+      if (typeof settings.maxFavorites === 'number') {
+        set({ maxFavorites: settings.maxFavorites });
+      }
+      return true;
+    } catch (error) {
+      console.error("Error saving general config to Firestore:", error);
+      return false;
+    }
+  },
+
   setScrollToMessageId: (id) => set({ scrollToMessageId: id }), 
 
   setShortcutMenuOpen: (menuName) => set({ shortcutMenuOpen: menuName }),

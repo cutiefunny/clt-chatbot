@@ -102,6 +102,7 @@ export const useChatStore = create((set, get) => ({
 
   initAuth: () => {
     get().loadScenarioCategories();
+    get().loadGeneralConfig(); // <-- 추가
     onAuthStateChanged(get().auth, async (user) => {
       if (user) {
         get().setUserAndLoadData(user);

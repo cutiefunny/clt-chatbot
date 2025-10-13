@@ -101,7 +101,16 @@ export default function ProfileModal() {
               className={styles.logoutButton}
               style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}
             >
-              시나리오 메뉴 편집 (임시)
+              시나리오 메뉴 편집
+            </Link>
+
+            <Link
+              href="/admin/general"
+              onClick={closeProfileModal}
+              className={styles.logoutButton}
+              style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}
+            >
+              일반 설정
             </Link>
 
             <button onClick={handleLogoutRequest} className={styles.logoutButton}>

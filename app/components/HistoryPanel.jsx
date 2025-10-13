@@ -41,7 +41,7 @@ export default function HistoryPanel() {
     toggleConversationExpansion,
     handleScenarioItemClick,
     openConfirmModal,
-    unreadScenarioSessions, // --- 👈 [추가]
+    unreadScenarioSessions, // --- 争 [ｶ緋ｰ ]
   } = useChatStore();
   const { t } = useTranslations();
 
@@ -83,10 +83,12 @@ export default function HistoryPanel() {
                         </button>
                     </div>
                 </div>
-                <button className={styles.newChatButton} onClick={createNewConversation}>
-                    <EditIcon />
-                    <span className={styles.newChatText}>{t('newChat')}</span>
-                </button>
+                {currentConversationId && (
+                  <button className={styles.newChatButton} onClick={createNewConversation}>
+                      <EditIcon />
+                      <span className={styles.newChatText}>{t('newChat')}</span>
+                  </button>
+                )}
             </div>
 
             <div className={styles.panelContent}>
@@ -104,7 +106,7 @@ export default function HistoryPanel() {
                         scenarios={scenariosForConversation[convo.id]}
                         onToggleExpand={toggleConversationExpansion}
                         onScenarioClick={handleScenarioItemClick}
-                        unreadScenarioSessions={unreadScenarioSessions} // --- 👈 [추가]
+                        unreadScenarioSessions={unreadScenarioSessions} // --- 争 [ｶ緋ｰ ]
                     />
                 ))}
             </div>
