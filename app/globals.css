@@ -1,6 +1,10 @@
 @import "tailwindcss";
 
 :root {
+  /* Font size variables will be set dynamically via JS */
+  --font-size-default: 16px;
+  --font-size-small: 14px;
+  
   --background-gradient-start: #ffffff;
   --background-gradient-end: #b2c7d9;
   --text-color: #1c1c1e;
@@ -57,10 +61,9 @@ body.dark {
 body {
     background: linear-gradient(to bottom, var(--background-gradient-start), var(--background-gradient-end));
     color: var(--text-color);
-    font-size: 16px; /* 기본 폰트 크기 */
+    font-size: var(--font-size-default); /* CSS 변수 사용 */
     transition: font-size 0.2s ease-in-out;
 }
 
 body.font-small {
-    font-size: 14px;
-}
+    font-size: var(--font-size-small); /* CSS 변수 사용 */}

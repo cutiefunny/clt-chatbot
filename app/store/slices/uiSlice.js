@@ -8,11 +8,13 @@ const getInitialMessages = (lang = 'ko') => {
 export const createUISlice = (set, get) => ({
   // State
   theme: 'light',
-  fontSize: 'default',
+  fontSize: 'default', // 'default' or 'small'
   language: 'ko',
   maxFavorites: 10,
   hideCompletedScenarios: false,
-  hideDelayInHours: 0, // <-- 추가
+  hideDelayInHours: 0,
+  fontSizeDefault: '16px', // 기본값
+  fontSizeSmall: '14px',   // 기본값
   isProfileModalOpen: false,
   isSearchModalOpen: false,
   isScenarioModalOpen: false,
@@ -49,7 +51,9 @@ export const createUISlice = (set, get) => ({
         set({ 
             maxFavorites: typeof config.maxFavorites === 'number' ? config.maxFavorites : 10,
             hideCompletedScenarios: typeof config.hideCompletedScenarios === 'boolean' ? config.hideCompletedScenarios : false,
-            hideDelayInHours: typeof config.hideDelayInHours === 'number' ? config.hideDelayInHours : 0
+            hideDelayInHours: typeof config.hideDelayInHours === 'number' ? config.hideDelayInHours : 0,
+            fontSizeDefault: config.fontSizeDefault || '16px',
+            fontSizeSmall: config.fontSizeSmall || '14px',
         });
       }
     } catch (error) {

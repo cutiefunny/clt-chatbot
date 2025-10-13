@@ -10,6 +10,8 @@ export default function GeneralSettingsPage() {
         maxFavorites,
         hideCompletedScenarios,
         hideDelayInHours,
+        fontSizeDefault,
+        fontSizeSmall,
         loadGeneralConfig, 
         saveGeneralConfig, 
         showEphemeralToast 
@@ -18,6 +20,8 @@ export default function GeneralSettingsPage() {
     const [limit, setLimit] = useState('');
     const [hideCompleted, setHideCompleted] = useState(false);
     const [delayHours, setDelayHours] = useState('0');
+    const [defaultSize, setDefaultSize] = useState('');
+    const [smallSize, setSmallSize] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
@@ -25,14 +29,12 @@ export default function GeneralSettingsPage() {
     }, [loadGeneralConfig]);
 
     useEffect(() => {
-        if (maxFavorites !== null) {
-            setLimit(String(maxFavorites));
-        }
+        if (maxFavorites !== null) setLimit(String(maxFavorites));
         setHideCompleted(hideCompletedScenarios);
-        if (hideDelayInHours !== null) {
-            setDelayHours(String(hideDelayInHours));
-        }
-    }, [maxFavorites, hideCompletedScenarios, hideDelayInHours]);
+        if (hideDelayInHours !== null) setDelayHours(String(hideDelayInHours));
+        if (fontSizeDefault) setDefaultSize(fontSizeDefault);
+        if (fontSizeSmall) setSmallSize(fontSizeSmall);
+    }, [maxFavorites, hideCompletedScenarios, hideDelayInHours, fontSizeDefault, fontSizeSmall]);
 
     const handleSave = async () => {
         setIsLoading(true);
@@ -48,7 +50,9 @@ export default function GeneralSettingsPage() {
         const settings = {
             maxFavorites: newLimit,
             hideCompletedScenarios: hideCompleted,
-            hideDelayInHours: newDelayHours
+            hideDelayInHours: newDelayHours,
+            fontSizeDefault: defaultSize,
+            fontSizeSmall: smallSize,
         };
 
         const success = await saveGeneralConfig(settings);
@@ -117,6 +121,34 @@ export default function GeneralSettingsPage() {
                     )}
                 </div>
 
+                <div className={styles.settingGroup}>
+                    <div className={styles.settingItem}>
+                        <label htmlFor="font-size-default" className={styles.settingLabel}>
+                            <h3>기본 폰트 크기</h3>
+                            <p>'Large text' 모드가 ON일 때 적용될 폰트 크기입니다. (예: 16px, 1rem)</p>
+                        </label>
+                        <input
+                            id="font-size-default"
+                            type="text"
+                            value={defaultSize}
+                            onChange={(e) => setDefaultSize(e.target.value)}
+                            className={styles.settingInput}
+                        />
+                    </div>
+                    <div className={styles.settingItem}>
+                        <label htmlFor="font-size-small" className={styles.settingLabel}>
+                            <h3>축소 폰트 크기</h3>
+                            <p>'Large text' 모드가 OFF일 때 적용될 폰트 크기입니다. (예: 14px, 0.9rem)</p>
+                        </label>
+                        <input
+                            id="font-size-small"
+                            type="text"
+                            value={smallSize}
+                            onChange={(e) => setSmallSize(e.target.value)}
+                            className={styles.settingInput}
+                        />
+                    </div>
+                </div>
 
                 <button className={styles.saveButton} onClick={handleSave} disabled={isLoading}>
                     {isLoading ? '저장 중...' : '설정 저장하기'}
