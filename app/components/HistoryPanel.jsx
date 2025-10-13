@@ -15,6 +15,7 @@ import ManualIcon from "./icons/ManualIcon";
 import NewChatIcon from "./icons/NewChatIcon";
 import NoHistoryIcon from "./icons/NoHistoryIcon";
 import HistoryIcon from "./icons/HistoryIcon";
+import EditIcon from "./icons/EditIcon";
 
 export default function HistoryPanel() {
   const {
@@ -39,6 +40,7 @@ export default function HistoryPanel() {
     isManualModalOpen,
     openManualModal,
     scenariosForConversation,
+    expandedConversationId,
     toggleConversationExpansion,
     handleScenarioItemClick,
     openConfirmModal,

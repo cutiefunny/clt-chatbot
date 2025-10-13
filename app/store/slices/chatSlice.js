@@ -529,6 +529,8 @@ export const createChatSlice = (set, get) => ({
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
+    const messageToSave = { ...message };
+
     Object.keys(messageToSave).forEach(
       (key) => messageToSave[key] === undefined && delete messageToSave[key]
     );
@@ -539,12 +541,15 @@ export const createChatSlice = (set, get) => ({
         data: { content: data?.content, replies: data?.replies },
       };
     }
+
+    const activeConversationId = get().currentConversationId || conversationId;
+
     const messagesCollection = collection(
       get().db,
       "chats",
       user.uid,
       "conversations",
-      get().currentConversationId,
+      activeConversationId,
       "messages"
     );
     await addDoc(messagesCollection, {
@@ -552,13 +557,7 @@ export const createChatSlice = (set, get) => ({
       createdAt: serverTimestamp(),
     });
     await updateDoc(
-      doc(
-        get().db,
-        "chats",
-        user.uid,
-        "conversations",
-        get().currentConversationId
-      ),
+      doc(get().db, "chats", user.uid, "conversations", activeConversationId),
       { updatedAt: serverTimestamp() }
     );
   },

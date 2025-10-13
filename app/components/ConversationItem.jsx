@@ -7,7 +7,7 @@ import PinIcon from "./icons/PinIcon";
 import ArrowDropDownIcon from "./icons/ArrowDropDownIcon";
 import PinOutlinedIcon from "./icons/PinOutlinedIcon";
 import CloseIcon from "./icons/CloseIcon";
-import { useChatStore } from '../store';
+import { useChatStore } from "../store";
 
 const CheckIcon = () => (
   <svg
@@ -92,17 +92,17 @@ const ScenarioStatusBadge = ({ status, t }) => {
 };
 
 export default function ConversationItem({
-    convo,
-    isActive,
-    onClick,
-    onDelete,
-    onUpdateTitle,
-    onPin,
-    isExpanded,
-    scenarios,
-    onToggleExpand,
-    onScenarioClick,
-    unreadScenarioSessions,
+  convo,
+  isActive,
+  onClick,
+  onDelete,
+  onUpdateTitle,
+  onPin,
+  isExpanded,
+  scenarios,
+  onToggleExpand,
+  onScenarioClick,
+  unreadScenarioSessions,
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -110,7 +110,7 @@ export default function ConversationItem({
   const inputRef = useRef(null);
   const menuRef = useRef(null);
   const { t } = useTranslations();
-    const { hideCompletedScenarios, hideDelayInHours } = useChatStore();
+  const { hideCompletedScenarios, hideDelayInHours } = useChatStore();
 
   useEffect(() => {
     if (isEditing) {
@@ -162,26 +162,26 @@ export default function ConversationItem({
     setIsMenuOpen(false);
   };
 
-    const handlePin = (e) => {
-        e.stopPropagation();
-        onPin(convo.id, !convo.pinned);
-        setIsMenuOpen(false);
-    };
-    
-    const filteredScenarios = scenarios 
-        ? scenarios.filter(s => {
-            if (hideCompletedScenarios && s.status === 'completed') {
-                const completedTime = s.updatedAt?.toDate();
-                if (!completedTime) return false; // updatedAt이 없으면 바로 숨김
+  const handlePin = (e) => {
+    e.stopPropagation();
+    onPin(convo.id, !convo.pinned);
+    setIsMenuOpen(false);
+  };
 
-                const now = new Date();
-                const hoursPassed = (now - completedTime) / (1000 * 60 * 60);
-                
-                return hoursPassed < hideDelayInHours;
-            }
-            return true;
-          })
-        : null;
+  const filteredScenarios = scenarios
+    ? scenarios.filter((s) => {
+        if (hideCompletedScenarios && s.status === "completed") {
+          const completedTime = s.updatedAt?.toDate();
+          if (!completedTime) return false; // updatedAt이 없으면 바로 숨김
+
+          const now = new Date();
+          const hoursPassed = (now - completedTime) / (1000 * 60 * 60);
+
+          return hoursPassed < hideDelayInHours;
+        }
+        return true;
+      })
+    : null;
 
   return (
     <div className={styles.conversationItemWrapper}>
@@ -202,72 +202,91 @@ export default function ConversationItem({
             </span>
           )}
 
-                    {isEditing ? (
-                         <input
-                            ref={inputRef}
-                            type="text"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            onBlur={handleUpdate}
-                            onKeyDown={handleKeyDown}
-                            className={styles.titleInput}
-                            onClick={(e) => e.stopPropagation()}
-                        />
-                    ) : (
-                        <span className={styles.convoTitle}>{convo.title || t('newChat')}</span>
-                    )}
-                </div>
-                
-                {isEditing ? (
-                    <div className={styles.editConfirmButton}>
-                        <button className={styles.actionButton} style={{opacity: 1}} onClick={(e) => { e.stopPropagation(); handleUpdate(); }}>
-                            <CheckIcon />
-                        </button>
-                    </div>
-                ) : (
-                    <div className={styles.menuContainer} ref={menuRef}>
-                        <button 
-                            className={styles.menuButton} 
-                            onClick={(e) => { e.stopPropagation(); setIsMenuOpen(!isMenuOpen); }}
-                            data-open={isMenuOpen}
-                        >
-                            <KebabMenuIcon />
-                        </button>
-                        {isMenuOpen && (
-                            <div className={styles.dropdownMenu}>
-                                <button onClick={handlePin}>{convo.pinned ? t('unpin') : t('pin')}</button>
-                                <button onClick={handleRename}>{t('rename')}</button>
-                                <button onClick={handleDelete}>{t('delete')}</button>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
-            {isExpanded && (
-                <div className={styles.scenarioSubList}>
-                    {filteredScenarios ? (
-                        filteredScenarios.length > 0 ? (
-                            filteredScenarios.map(scenario => {
-                                const hasUnread = unreadScenarioSessions?.has(scenario.sessionId);
-                                return (
-                                <div
-                                    key={scenario.sessionId}
-                                    className={styles.scenarioItem}
-                                    onClick={() => onScenarioClick(convo.id, scenario)}
-                                >
-                                    {hasUnread && <div className={styles.unreadDot}></div>}
-                                    <span className={styles.scenarioTitle}>{scenario.scenarioId}</span>
-                                    <ScenarioStatusBadge status={scenario.status} t={t} />
-                                </div>
-                            )})
-                        ) : (
-                            <div className={styles.noScenarios}>{t('noScenariosFound')}</div>
-                        )
-                    ) : (
-                        <div className={styles.noScenarios}>{t('loadingScenarios')}</div>
-                    )}
-                </div>
+          {isEditing ? (
+            <input
+              ref={inputRef}
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onBlur={handleUpdate}
+              onKeyDown={handleKeyDown}
+              className={styles.titleInput}
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <span className={styles.convoTitle}>
+              {convo.title || t("newChat")}
+            </span>
+          )}
+        </div>
+
+        {isEditing ? (
+          <div className={styles.editConfirmButton}>
+            <button
+              className={styles.actionButton}
+              style={{ opacity: 1 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleUpdate();
+              }}
+            >
+              <CheckIcon />
+            </button>
+          </div>
+        ) : (
+          <div className={styles.menuContainer} ref={menuRef}>
+            <button
+              className={styles.menuButton}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsMenuOpen(!isMenuOpen);
+              }}
+              data-open={isMenuOpen}
+            >
+              <KebabMenuIcon />
+            </button>
+            {isMenuOpen && (
+              <div className={styles.dropdownMenu}>
+                <button onClick={handlePin}>
+                  {convo.pinned ? t("unpin") : t("pin")}
+                </button>
+                <button onClick={handleRename}>{t("rename")}</button>
+                <button onClick={handleDelete}>{t("delete")}</button>
+              </div>
             )}
-        </>
-    );
-};
+          </div>
+        )}
+      </div>
+      {isExpanded && (
+        <div className={styles.scenarioSubList}>
+          {filteredScenarios ? (
+            filteredScenarios.length > 0 ? (
+              filteredScenarios.map((scenario) => {
+                const hasUnread = unreadScenarioSessions?.has(
+                  scenario.sessionId
+                );
+                return (
+                  <div
+                    key={scenario.sessionId}
+                    className={styles.scenarioItem}
+                    onClick={() => onScenarioClick(convo.id, scenario)}
+                  >
+                    {hasUnread && <div className={styles.unreadDot}></div>}
+                    <span className={styles.scenarioTitle}>
+                      {scenario.scenarioId}
+                    </span>
+                    <ScenarioStatusBadge status={scenario.status} t={t} />
+                  </div>
+                );
+              })
+            ) : (
+              <div className={styles.noScenarios}>{t("noScenariosFound")}</div>
+            )
+          ) : (
+            <div className={styles.noScenarios}>{t("loadingScenarios")}</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
