@@ -83,6 +83,7 @@ export const createScenarioSlice = (set, get) => ({
       scenarioId: scenarioId,
       status: 'active',
       createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(), // updatedAt 추가
       messages: [],
       state: null,
       slots: {},
@@ -114,6 +115,7 @@ export const createScenarioSlice = (set, get) => ({
             messages: [{ id: data.nextNode.id, sender: 'bot', node: data.nextNode }],
             state: data.scenarioState,
             slots: data.slots || {},
+            updatedAt: serverTimestamp(),
         });
         await get().continueScenarioIfNeeded(data.nextNode, newScenarioSessionId);
       } else {
@@ -122,6 +124,7 @@ export const createScenarioSlice = (set, get) => ({
         await updateDoc(sessionRef, {
             messages: [{ id: 'error-start', sender: 'bot', text: errorText }],
             status: 'failed',
+            updatedAt: serverTimestamp(),
         });
       }
     } catch (error) {
@@ -130,7 +133,8 @@ export const createScenarioSlice = (set, get) => ({
       const sessionRef = doc(get().db, "chats", user.uid, "conversations", conversationId, "scenario_sessions", newScenarioSessionId);
       await updateDoc(sessionRef, {
         messages: [{ id: 'error', sender: 'bot', text: errorMessage }],
-        status: 'failed'
+        status: 'failed',
+        updatedAt: serverTimestamp(),
       });
     }
   },
@@ -185,9 +189,8 @@ export const createScenarioSlice = (set, get) => ({
     if (!user || !currentConversationId || !scenarioSessionId) return;
     
     const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", scenarioSessionId);
-    await updateDoc(sessionRef, { status });
+    await updateDoc(sessionRef, { status, updatedAt: serverTimestamp() }); // updatedAt 추가
     
-    // Do not unsubscribe, just update the panel state
     if (get().activeScenarioSessionId === scenarioSessionId) {
         get().setActivePanel('main');
     }
@@ -207,7 +210,7 @@ export const createScenarioSlice = (set, get) => ({
     
     const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", scenarioSessionId);
     
-    await updateDoc(sessionRef, { status: 'generating' });
+    await updateDoc(sessionRef, { status: 'generating', updatedAt: serverTimestamp() });
 
     let newMessages = [...existingMessages];
 
@@ -244,11 +247,11 @@ export const createScenarioSlice = (set, get) => ({
       
       if (data.type === 'scenario_validation_fail') {
           showToast(data.message, 'error');
-          await updateDoc(sessionRef, { status: 'active' });
+          await updateDoc(sessionRef, { status: 'active', updatedAt: serverTimestamp() });
       } else if (data.type === 'scenario_end') {
         const finalStatus = data.slots?.apiFailed ? 'failed' : 'completed';
         endScenario(scenarioSessionId, finalStatus);
-        await updateDoc(sessionRef, { messages: newMessages, status: finalStatus });
+        await updateDoc(sessionRef, { messages: newMessages, status: finalStatus, updatedAt: serverTimestamp() });
       }
       else {
         await updateDoc(sessionRef, {
@@ -256,6 +259,7 @@ export const createScenarioSlice = (set, get) => ({
             state: data.scenarioState,
             slots: data.slots,
             status: 'active',
+            updatedAt: serverTimestamp(),
         });
         if (data.nextNode) {
             await get().continueScenarioIfNeeded(data.nextNode, scenarioSessionId);
@@ -266,7 +270,7 @@ export const createScenarioSlice = (set, get) => ({
         const errorMessage = locales[language][errorKey] || locales[language]['errorUnexpected'];
         
         const errorMessages = [...existingMessages, { id: 'error', sender: 'bot', text: errorMessage }];
-        await updateDoc(sessionRef, { messages: errorMessages, status: 'failed' });
+        await updateDoc(sessionRef, { messages: errorMessages, status: 'failed', updatedAt: serverTimestamp() });
         endScenario(scenarioSessionId, 'failed');
     } finally {
       set(state => ({

@@ -1,5 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import ThemeApplier from './components/ThemeApplier';
+import Toast from "./components/Toast"; // Toast 컴포넌트 import
 import "./globals.css";
 
 const geistSans = Geist({
@@ -22,6 +23,7 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <ThemeApplier>
+          <Toast />
           {children}
         </ThemeApplier>
       </body>

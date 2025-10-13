@@ -7,13 +7,17 @@ import Link from 'next/link';
 
 export default function GeneralSettingsPage() {
     const { 
-        maxFavorites, 
+        maxFavorites,
+        hideCompletedScenarios,
+        hideDelayInHours,
         loadGeneralConfig, 
         saveGeneralConfig, 
         showEphemeralToast 
     } = useChatStore();
     
     const [limit, setLimit] = useState('');
+    const [hideCompleted, setHideCompleted] = useState(false);
+    const [delayHours, setDelayHours] = useState('0');
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
@@ -24,18 +28,30 @@ export default function GeneralSettingsPage() {
         if (maxFavorites !== null) {
             setLimit(String(maxFavorites));
         }
-    }, [maxFavorites]);
+        setHideCompleted(hideCompletedScenarios);
+        if (hideDelayInHours !== null) {
+            setDelayHours(String(hideDelayInHours));
+        }
+    }, [maxFavorites, hideCompletedScenarios, hideDelayInHours]);
 
     const handleSave = async () => {
         setIsLoading(true);
         const newLimit = parseInt(limit, 10);
-        if (isNaN(newLimit) || newLimit < 0) {
+        const newDelayHours = parseInt(delayHours, 10);
+
+        if (isNaN(newLimit) || newLimit < 0 || isNaN(newDelayHours) || newDelayHours < 0) {
             showEphemeralToast('유효한 숫자를 입력해주세요.', 'error');
             setIsLoading(false);
             return;
         }
 
-        const success = await saveGeneralConfig({ maxFavorites: newLimit });
+        const settings = {
+            maxFavorites: newLimit,
+            hideCompletedScenarios: hideCompleted,
+            hideDelayInHours: newDelayHours
+        };
+
+        const success = await saveGeneralConfig(settings);
         if (success) {
             showEphemeralToast('설정이 성공적으로 저장되었습니다.', 'success');
         } else {
@@ -67,6 +83,40 @@ export default function GeneralSettingsPage() {
                         min="0"
                     />
                 </div>
+
+                <div className={`${styles.settingGroup} ${hideCompleted ? styles.active : ''}`}>
+                    <div className={styles.settingItem}>
+                        <label className={styles.settingLabel}>
+                            <h3>완료된 시나리오 숨김</h3>
+                            <p>대화 목록의 하위 메뉴에서 '완료' 상태인 시나리오를 숨깁니다.</p>
+                        </label>
+                        <label className={styles.switch}>
+                            <input
+                                type="checkbox"
+                                checked={hideCompleted}
+                                onChange={(e) => setHideCompleted(e.target.checked)}
+                            />
+                            <span className={styles.slider}></span>
+                        </label>
+                    </div>
+                    {hideCompleted && (
+                        <div className={`${styles.settingItem} ${styles.subSettingItem}`}>
+                             <label htmlFor="hide-delay" className={styles.settingLabel}>
+                                <h4>숨김 지연 시간 (시간)</h4>
+                                <p>완료된 시점을 기준으로, 설정된 시간 이후에 목록에서 숨깁니다. (0으로 설정 시 즉시 숨김)</p>
+                            </label>
+                            <input
+                                id="hide-delay"
+                                type="number"
+                                value={delayHours}
+                                onChange={(e) => setDelayHours(e.target.value)}
+                                className={styles.settingInput}
+                                min="0"
+                            />
+                        </div>
+                    )}
+                </div>
+
 
                 <button className={styles.saveButton} onClick={handleSave} disabled={isLoading}>
                     {isLoading ? '저장 중...' : '설정 저장하기'}

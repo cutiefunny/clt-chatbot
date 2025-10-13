@@ -5,6 +5,7 @@ import styles from './HistoryPanel.module.css';
 import ChevronDownIcon from './icons/ChevronDownIcon';
 import KebabMenuIcon from './icons/KebabMenuIcon';
 import PinIcon from './icons/PinIcon';
+import { useChatStore } from '../store';
 
 const CheckIcon = () => (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -53,7 +54,7 @@ export default function ConversationItem({
     scenarios,
     onToggleExpand,
     onScenarioClick,
-    unreadScenarioSessions, // --- 👈 [추가]
+    unreadScenarioSessions,
 }) {
     const [isEditing, setIsEditing] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -61,6 +62,7 @@ export default function ConversationItem({
     const inputRef = useRef(null);
     const menuRef = useRef(null);
     const { t } = useTranslations();
+    const { hideCompletedScenarios, hideDelayInHours } = useChatStore();
 
     useEffect(() => {
         if (isEditing) {
@@ -114,6 +116,21 @@ export default function ConversationItem({
         onPin(convo.id, !convo.pinned);
         setIsMenuOpen(false);
     };
+    
+    const filteredScenarios = scenarios 
+        ? scenarios.filter(s => {
+            if (hideCompletedScenarios && s.status === 'completed') {
+                const completedTime = s.updatedAt?.toDate();
+                if (!completedTime) return false; // updatedAt이 없으면 바로 숨김
+
+                const now = new Date();
+                const hoursPassed = (now - completedTime) / (1000 * 60 * 60);
+                
+                return hoursPassed < hideDelayInHours;
+            }
+            return true;
+          })
+        : null;
 
     return (
         <>
@@ -173,10 +190,9 @@ export default function ConversationItem({
             </div>
             {isExpanded && (
                 <div className={styles.scenarioSubList}>
-                    {scenarios ? (
-                        scenarios.length > 0 ? (
-                            scenarios.map(scenario => {
-                                // --- 👇 [수정] 읽지 않음 상태 확인 ---
+                    {filteredScenarios ? (
+                        filteredScenarios.length > 0 ? (
+                            filteredScenarios.map(scenario => {
                                 const hasUnread = unreadScenarioSessions?.has(scenario.sessionId);
                                 return (
                                 <div
@@ -184,7 +200,6 @@ export default function ConversationItem({
                                     className={styles.scenarioItem}
                                     onClick={() => onScenarioClick(convo.id, scenario)}
                                 >
-                                    {/* --- 👇 [수정] 빨간 점 조건부 렌더링 --- */}
                                     {hasUnread && <div className={styles.unreadDot}></div>}
                                     <span className={styles.scenarioTitle}>{scenario.scenarioId}</span>
                                     <ScenarioStatusBadge status={scenario.status} t={t} />
