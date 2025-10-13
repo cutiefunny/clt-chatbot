@@ -176,6 +176,14 @@ export default function ScenarioBubble({ scenarioSessionId }) {
     }
   }
   
+  const handleToggleCollapse = (e) => {
+    e.stopPropagation();
+    if (!isCollapsed && (activeScenario?.status === 'active' || activeScenario?.status === 'generating')) {
+        setActivePanel('main');
+    }
+    setIsCollapsed(prev => !prev);
+  };
+
   return (
     <div 
       className={`${styles.messageRow} ${styles.userRow}`}
@@ -184,10 +192,7 @@ export default function ScenarioBubble({ scenarioSessionId }) {
         <div className={`${styles.scenarioBubbleContainer} ${isCollapsed ? styles.collapsed : ''} ${!isFocused ? styles.dimmed : ''}`}>
           <div 
             className={styles.header}
-            onClick={(e) => {
-                e.stopPropagation();
-                setIsCollapsed(prev => !prev);
-            }}
+            onClick={handleToggleCollapse}
             style={{ cursor: 'pointer' }}
           >
             <div className={styles.headerContent}>

@@ -20,7 +20,7 @@ export default function Chat() {
     setFontSize,
     scrollToMessageId,
     setScrollToMessageId,
-    activeScenarioSessions,
+    activePanel, // activePanel 상태 추가
   } = useChatStore();
   const [copiedMessageId, setCopiedMessageId] = useState(null);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
@@ -42,17 +42,22 @@ export default function Chat() {
     const scrollToBottom = () => {
       scrollContainer.scrollTop = scrollContainer.scrollHeight;
     };
+
     const observer = new MutationObserver((mutations) => {
-        for (const mutation of mutations) {
-            if (mutation.type === 'childList' && !isFetchingMore) {
-                scrollToBottom();
+        // activePanel이 'main'일 때만 자동 스크롤 실행
+        if (activePanel === 'main') {
+            for (const mutation of mutations) {
+                if (mutation.type === 'childList' && !isFetchingMore) {
+                    scrollToBottom();
+                }
             }
         }
     });
+
     observer.observe(scrollContainer, { childList: true, subtree: true });
     scrollContainer.addEventListener('scroll', handleScroll);
     
-    if (!isFetchingMore) {
+    if (!isFetchingMore && activePanel === 'main') {
         scrollToBottom();
     }
 
@@ -60,7 +65,7 @@ export default function Chat() {
       observer.disconnect();
       scrollContainer.removeEventListener('scroll', handleScroll);
     };
-  }, [messages, handleScroll, isFetchingMore, activeScenarioSessions]);
+  }, [messages, handleScroll, isFetchingMore, activePanel]); // 의존성 배열에 activePanel 추가
   
   useEffect(() => {
     if (scrollToMessageId && historyRef.current) {
@@ -85,7 +90,7 @@ export default function Chat() {
     });
   };
 
-  const hasActiveScenarios = activeScenarioSessions.length > 0;
+  const hasMessages = messages.some(m => m.id !== 'initial');
 
   return (
     <div className={styles.chatContainer}>
@@ -130,7 +135,7 @@ export default function Chat() {
       </div>
       
       <div className={styles.history} ref={historyRef}>
-        {messages.length <= 1 && !hasActiveScenarios ? (
+        {!hasMessages ? (
           <FavoritePanel />
         ) : (
           <>
@@ -140,12 +145,18 @@ export default function Chat() {
                     <div className={`${styles.message} ${styles.botMessage}`}><img src="/images/Loading.gif" alt={t('loading')} style={{ width: '40px', height: '30px' }} /></div>
                 </div>
             )}
-            {messages.map((msg) => (
-              msg.id !== 'initial' && (
+            {messages.map((msg) => {
+              if (msg.id === 'initial') return null;
+
+              if (msg.type === 'scenario_bubble') {
+                return <ScenarioBubble key={msg.id} scenarioSessionId={msg.scenarioSessionId} />;
+              }
+              
+              return (
                 <div 
                     key={msg.id} 
                     className={`${styles.messageRow} ${msg.sender === 'user' ? styles.userRow : ''}`}
-                    data-message-id={msg.scenarioSessionId || msg.id}
+                    data-message-id={msg.id}
                 >
                   {msg.sender === 'bot' && <img src="/images/avatar.png" alt="Avatar" className={styles.avatar} />}
                   <div 
@@ -154,7 +165,7 @@ export default function Chat() {
                   >
                     {copiedMessageId === msg.id && <div className={styles.copyFeedback}>{t('copied')}</div>}
                     
-                    <p>{msg.text || msg.node?.data.content}</p>
+                    {msg.text && <p>{msg.text}</p>}
 
                     {msg.sender === 'bot' && msg.scenarios && (
                       <div className={styles.scenarioList}>
@@ -167,17 +178,14 @@ export default function Chat() {
                     )}
                   </div>
                 </div>
-              )
-            ))}
-            {isLoading && !hasActiveScenarios && (
+              );
+            })}
+            {isLoading && (
                 <div className={styles.messageRow}>
                     <img src="/images/avatar-loading.png" alt="Avatar" className={styles.avatar} />
                     <div className={`${styles.message} ${styles.botMessage}`}><img src="/images/Loading.gif" alt={t('loading')} style={{ width: '40px', height: '30px' }} /></div>
                 </div>
             )}
-             {activeScenarioSessions.map(sessionId => (
-                <ScenarioBubble key={sessionId} scenarioSessionId={sessionId} />
-            ))}
           </>
         )}
       </div>

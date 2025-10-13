@@ -56,15 +56,14 @@ export const createScenarioSlice = (set, get) => ({
   },
 
   openScenarioPanel: async (scenarioId) => {
-    const { user, currentConversationId, handleEvents, language, setActivePanel } = get();
+    const { user, currentConversationId, handleEvents, language, setActivePanel, addMessage } = get();
     if (!user) return;
     
     let conversationId = currentConversationId;
     if (!conversationId) {
         const newConversationId = await get().createNewConversation(true);
         if (!newConversationId) return;
-        // The loadConversation will be triggered which sets the ID.
-        // We need to wait for it to be set before proceeding.
+        
         await new Promise(resolve => {
             const check = () => {
                 if (get().currentConversationId === newConversationId) {
@@ -83,13 +82,18 @@ export const createScenarioSlice = (set, get) => ({
       scenarioId: scenarioId,
       status: 'active',
       createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(), // updatedAt 추가
+      updatedAt: serverTimestamp(),
       messages: [],
       state: null,
       slots: {},
     });
 
     const newScenarioSessionId = newSessionDoc.id;
+    
+    addMessage('user', {
+        type: 'scenario_bubble',
+        scenarioSessionId: newScenarioSessionId,
+    });
     
     get().subscribeToScenarioSession(newScenarioSessionId);
     
@@ -189,7 +193,7 @@ export const createScenarioSlice = (set, get) => ({
     if (!user || !currentConversationId || !scenarioSessionId) return;
     
     const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", scenarioSessionId);
-    await updateDoc(sessionRef, { status, updatedAt: serverTimestamp() }); // updatedAt 추가
+    await updateDoc(sessionRef, { status, updatedAt: serverTimestamp() });
     
     if (get().activeScenarioSessionId === scenarioSessionId) {
         get().setActivePanel('main');

@@ -405,7 +405,7 @@ export const createChatSlice = (set, get) => ({
   addMessage: async (sender, messageData) => {
     let newMessage;
     if (sender === 'user') {
-      newMessage = { id: Date.now(), sender, text: messageData.text };
+      newMessage = { id: Date.now(), sender, ...messageData };
     } else {
         newMessage = {
             id: messageData.id || Date.now(),
