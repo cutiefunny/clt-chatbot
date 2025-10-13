@@ -1,4 +1,4 @@
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { locales } from '../../lib/locales';
 
 const getInitialMessages = (lang = 'ko') => {
@@ -8,8 +8,13 @@ const getInitialMessages = (lang = 'ko') => {
 export const createUISlice = (set, get) => ({
   // State
   theme: 'light',
-  fontSize: 'default',
+  fontSize: 'default', // 'default' or 'small'
   language: 'ko',
+  maxFavorites: 10,
+  hideCompletedScenarios: false,
+  hideDelayInHours: 0,
+  fontSizeDefault: '16px', // 기본값
+  fontSizeSmall: '14px',   // 기본값
   isProfileModalOpen: false,
   isSearchModalOpen: false,
   isScenarioModalOpen: false,
@@ -37,6 +42,38 @@ export const createUISlice = (set, get) => ({
   scrollToMessageId: null, 
 
   // Actions
+  loadGeneralConfig: async () => {
+    try {
+      const configRef = doc(get().db, 'config', 'general');
+      const docSnap = await getDoc(configRef);
+      if (docSnap.exists()) {
+        const config = docSnap.data();
+        set({ 
+            maxFavorites: typeof config.maxFavorites === 'number' ? config.maxFavorites : 10,
+            hideCompletedScenarios: typeof config.hideCompletedScenarios === 'boolean' ? config.hideCompletedScenarios : false,
+            hideDelayInHours: typeof config.hideDelayInHours === 'number' ? config.hideDelayInHours : 0,
+            fontSizeDefault: config.fontSizeDefault || '16px',
+            fontSizeSmall: config.fontSizeSmall || '14px',
+        });
+      }
+    } catch (error) {
+      console.error("Error loading general config from Firestore:", error);
+    }
+  },
+
+  saveGeneralConfig: async (settings) => {
+    try {
+      const configRef = doc(get().db, 'config', 'general');
+      await setDoc(configRef, settings, { merge: true });
+      set(settings);
+      return true;
+    } catch (error)
+    {
+      console.error("Error saving general config to Firestore:", error);
+      return false;
+    }
+  },
+
   setScrollToMessageId: (id) => set({ scrollToMessageId: id }), 
 
   setShortcutMenuOpen: (menuName) => set({ shortcutMenuOpen: menuName }),

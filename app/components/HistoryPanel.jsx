@@ -42,7 +42,7 @@ export default function HistoryPanel() {
     toggleConversationExpansion,
     handleScenarioItemClick,
     openConfirmModal,
-    unreadScenarioSessions, // --- 👈 [추가]
+    unreadScenarioSessions, // --- 争 [ｶ緋ｰ ]
   } = useChatStore();
   const { t } = useTranslations();
 
@@ -127,44 +127,36 @@ export default function HistoryPanel() {
                 </button>
               </div>
             </div>
-            <button
-              className={styles.sidePanelButton}
-              onClick={createNewConversation}
-              disabled={currentConversationId === null}
-              aria-disabled={currentConversationId === null}
-            >
-              <NewChatIcon />
-              <span>{t("newChat")}</span>
-            </button>
+            {currentConversationId && (
+              <button
+                className={styles.newChatButton}
+                onClick={createNewConversation}
+              >
+                <EditIcon />
+                <span className={styles.newChatText}>{t("newChat")}</span>
+              </button>
+            )}
           </div>
 
           <div className={styles.panelContent}>
             <span className={styles.commonText}>{t("History")}</span>
             <div className={styles.conversationList}>
-              {conversations.length > 0 ? (
-                conversations.map((convo) => (
-                  <ConversationItem
-                    key={convo.id}
-                    convo={convo}
-                    isActive={convo.id === currentConversationId}
-                    onClick={loadConversation}
-                    onDelete={handleDeleteRequest}
-                    onUpdateTitle={updateConversationTitle}
-                    onPin={pinConversation}
-                    scenarios={scenariosForConversation[convo.id]}
-                    onToggleExpand={toggleConversationExpansion}
-                    onScenarioClick={handleScenarioItemClick}
-                    unreadScenarioSessions={unreadScenarioSessions} // --- 👈 [추가]
-                  />
-                ))
-              ) : (
-                <div className={styles.historyTileWrapper}>
-                  <div className={styles.noHistoryBox}>
-                    <NoHistoryIcon />
-                    {t("noHistory")}
-                  </div>
-                </div>
-              )}
+              {conversations.map((convo) => (
+                <ConversationItem
+                  key={convo.id}
+                  convo={convo}
+                  isActive={convo.id === currentConversationId}
+                  onClick={loadConversation}
+                  onDelete={handleDeleteRequest}
+                  onUpdateTitle={updateConversationTitle}
+                  onPin={pinConversation}
+                  isExpanded={convo.id === expandedConversationId}
+                  scenarios={scenariosForConversation[convo.id]}
+                  onToggleExpand={toggleConversationExpansion}
+                  onScenarioClick={handleScenarioItemClick}
+                  unreadScenarioSessions={unreadScenarioSessions} // --- 争 [ｶ緋ｰ ]
+                />
+              ))}
             </div>
             <div className={styles.footer}>
               <div className={styles.avatarWrapper} onClick={openProfileModal}>

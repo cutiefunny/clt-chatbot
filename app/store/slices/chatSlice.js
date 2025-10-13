@@ -89,6 +89,12 @@ export const createChatSlice = (set, get) => ({
   addFavorite: async (favoriteData) => {
     const user = get().user;
     if (!user) return;
+
+    if (get().favorites.length >= get().maxFavorites) {
+      get().showEphemeralToast("최대 즐겨찾기 개수에 도달했습니다.", "error");
+      return;
+    }
+
     const favoritesCollection = collection(
       get().db,
       "users",
@@ -164,8 +170,14 @@ export const createChatSlice = (set, get) => ({
   },
 
   toggleFavorite: async (item) => {
-    const { user, favorites, addFavorite, deleteFavorite, showEphemeralToast } =
-      get();
+    const {
+      user,
+      favorites,
+      addFavorite,
+      deleteFavorite,
+      showEphemeralToast,
+      maxFavorites,
+    } = get();
     if (!user || !item?.action?.value) return;
 
     const favoriteToDelete = favorites.find(
@@ -178,6 +190,10 @@ export const createChatSlice = (set, get) => ({
       await deleteFavorite(favoriteToDelete.id);
       showEphemeralToast("즐겨찾기에서 삭제되었습니다.", "info");
     } else {
+      if (favorites.length >= maxFavorites) {
+        showEphemeralToast("최대 즐겨찾기 개수에 도달했습니다.", "error");
+        return;
+      }
       const newFavorite = {
         icon: "🌟",
         title: item.title,
@@ -431,6 +447,7 @@ export const createChatSlice = (set, get) => ({
   deleteConversation: async (conversationId) => {
     const user = get().user;
     if (!user) return;
+
     const conversationRef = doc(
       get().db,
       "chats",
@@ -438,22 +455,27 @@ export const createChatSlice = (set, get) => ({
       "conversations",
       conversationId
     );
+    const batch = writeBatch(get().db);
 
+    // 시나리오 세션 삭제를 배치에 추가
     const scenariosRef = collection(conversationRef, "scenario_sessions");
     const scenariosSnapshot = await getDocs(scenariosRef);
-    scenariosSnapshot.forEach(async (scenarioDoc) => {
-      await deleteDoc(scenarioDoc.ref);
+    scenariosSnapshot.forEach((doc) => {
+      batch.delete(doc.ref);
     });
 
+    // 메시지 삭제를 배치에 추가
     const messagesRef = collection(conversationRef, "messages");
-    // --- 👇 [수정된 부분] ---
     const messagesSnapshot = await getDocs(messagesRef);
-    // --- 👆 [여기까지] ---
-    messagesSnapshot.forEach(async (messageDoc) => {
-      await deleteDoc(messageDoc.ref);
+    messagesSnapshot.forEach((doc) => {
+      batch.delete(doc.ref);
     });
 
-    await deleteDoc(conversationRef);
+    // 대화 자체 삭제를 배치에 추가
+    batch.delete(conversationRef);
+
+    // 배치 실행
+    await batch.commit();
 
     if (get().currentConversationId === conversationId) {
       get().createNewConversation();
@@ -544,7 +566,7 @@ export const createChatSlice = (set, get) => ({
   addMessage: async (sender, messageData) => {
     let newMessage;
     if (sender === "user") {
-      newMessage = { id: Date.now(), sender, text: messageData.text };
+      newMessage = { id: Date.now(), sender, ...messageData };
     } else {
       newMessage = {
         id: messageData.id || Date.now(),

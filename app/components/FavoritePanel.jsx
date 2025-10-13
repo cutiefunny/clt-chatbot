@@ -25,7 +25,6 @@ const PlusIcon = () => (
 );
 
 export default function FavoritePanel() {
-  // --- 👇 [수정] 필요한 상태와 함수를 스토어에서 가져옵니다. ---
   const {
     favorites,
     isLoading,
@@ -34,6 +33,7 @@ export default function FavoritePanel() {
     setShortcutMenuOpen,
     scenarioCategories,
     deleteFavorite,
+    maxFavorites,
   } = useChatStore();
 
   const onDragEnd = (result) => {
@@ -46,7 +46,6 @@ export default function FavoritePanel() {
     updateFavoritesOrder(items);
   };
 
-  // --- 👇 [추가] 'Add Favorite' 버튼 클릭 핸들러 ---
   const handleAddFavoriteClick = () => {
     if (scenarioCategories && scenarioCategories.length > 0) {
       setShortcutMenuOpen(scenarioCategories[0].name);
@@ -68,75 +67,95 @@ export default function FavoritePanel() {
     <div className={styles.panel}>
       <div className={styles.welcomeMessage}>
         <h2>Welcome to AI Chatbot</h2>
+        <p>You can customize your own action buttons below.</p>
       </div>
-      {favorites.length > 0 ? (
-        <DragDropContext onDragEnd={onDragEnd}>
-          <Droppable droppableId="favorites">
-            {(provided) => (
-              <div
-                className={styles.favoritesGrid}
-                {...provided.droppableProps}
-                ref={provided.innerRef}
-              >
-                {favorites.map((fav, index) => (
-                  <Draggable key={fav.id} draggableId={fav.id} index={index}>
-                    {(provided, snapshot) => (
+
+      <DragDropContext onDragEnd={onDragEnd}>
+        <Droppable droppableId="favorites">
+          {(provided) => (
+            <div
+              className={styles.favoritesGrid}
+              {...provided.droppableProps}
+              ref={provided.innerRef}
+            >
+              {favorites.map((fav, index) => (
+                <Draggable key={fav.id} draggableId={fav.id} index={index}>
+                  {(provided, snapshot) => (
+                    <div
+                      ref={provided.innerRef}
+                      {...provided.draggableProps}
+                      className={`${styles.favoriteItem} ${
+                        snapshot.isDragging ? styles.dragging : ""
+                      }`}
+                    >
                       <div
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        className={`GlassEffect active ${styles.favoriteItem} ${
-                          snapshot.isDragging ? styles.dragging : ""
-                        }`}
+                        {...provided.dragHandleProps}
+                        className={styles.dragHandle}
+                      >
+                        ⠿
+                      </div>
+                      <div
+                        className={styles.itemContent}
                         onClick={() => handleShortcutClick(fav)}
                       >
-                        <div
-                          {...provided.dragHandleProps}
-                          className={`${styles.dragHandle} ${styles.itemIcon}`}
-                        >
-                          <DragIndicatorIcon />
+                        <div className={styles.itemIcon}>
+                          {fav.icon || "🌟"}
                         </div>
-                        <div className={styles.itemContent}>
-                          <div className={styles.itemText}>
-                            <div className={styles.itemTitle}>{fav.title}</div>
-                            <div className={styles.itemDescription}>
-                              {fav.description}
-                            </div>
+                        <div className={styles.itemText}>
+                          <div className={styles.itemTitle}>{fav.title}</div>
+                          <div className={styles.itemDescription}>
+                            {fav.description}
                           </div>
                         </div>
-                        <button
-                          className={`${styles.deleteButton} ${styles.itemIcon}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteFavorite(fav.id);
-                          }}
-                        >
-                          <StarIcon filled={true} />
-                        </button>
                       </div>
-                    )}
-                  </Draggable>
-                ))}
-                {provided.placeholder}
-              </div>
-            )}
-          </Droppable>
-        </DragDropContext>
-      ) : (
-        <button
-          className={`GlassEffect ${styles.favoriteItem} ${styles.addItem}`}
-          onClick={handleAddFavoriteClick}
-        >
-          <div className={styles.itemText}>
-            <div className={styles.itemTitle}>
-              <PlusIcon />
-              Favorite
+                      <button
+                        className={styles.deleteButton}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteFavorite(fav.id);
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
+                </Draggable>
+              ))}
+              {provided.placeholder}
+
+              {favorites.length < maxFavorites ? (
+                <button
+                  className={`${styles.favoriteItem} ${styles.addItem}`}
+                  onClick={handleAddFavoriteClick}
+                >
+                  <div className={styles.addIcon}>
+                    <PlusIcon />
+                  </div>
+                  <div className={styles.itemText}>
+                    <div className={styles.itemTitle}>Add Favorite</div>
+                    <div className={styles.itemDescription}>
+                      Customize via Shortcuts menu
+                    </div>
+                  </div>
+                </button>
+              ) : (
+                <div
+                  className={`${styles.favoriteItem} ${styles.limitReached}`}
+                >
+                  <div className={styles.itemText}>
+                    <div className={styles.itemTitle}>
+                      Favorite Limit Reached
+                    </div>
+                    <div className={styles.itemDescription}>
+                      You can add up to {maxFavorites} items.
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-            <div className={styles.itemDescription}>
-              Customize your action Button
-            </div>
-          </div>
-        </button>
-      )}
+          )}
+        </Droppable>
+      </DragDropContext>
     </div>
   );
 }

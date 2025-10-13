@@ -59,6 +59,9 @@ export const locales = {
     // Login
     loginPrompt: "계속하려면 로그인해주세요.",
     signInWithGoogle: "Google 계정으로 로그인",
+    signInWithTestId: "테스트 ID로 로그인",
+    testIdPlaceholder: "테스트 ID 입력",
+    loginMethodToggle: "또는",
 
     // Logout Modal
     logoutConfirm: "정말로 로그아웃하시겠습니까?",
@@ -191,6 +194,9 @@ export const locales = {
     // Login
     loginPrompt: "Please log in to continue.",
     signInWithGoogle: "Sign in with Google",
+    signInWithTestId: "Sign in with Test ID",
+    testIdPlaceholder: "Enter Test ID",
+    loginMethodToggle: "OR",
 
     // Logout Modal
     logoutConfirm: "Are you sure you want to log out?",

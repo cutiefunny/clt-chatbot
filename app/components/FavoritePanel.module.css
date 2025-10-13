@@ -50,7 +50,6 @@
   color: var(--text-color);
 }
 
-/* --- 👇 [추가된 부분] --- */
 .favoriteItem.dragging {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
   transform: translateY(-4px) scale(1.02);
@@ -88,7 +87,6 @@
 .deleteButton:hover {
   background-color: rgba(0, 0, 0, 0.05);
 }
-/* --- 👆 [여기까지] --- */
 
 .itemIcon {
   width: 20px;
@@ -131,4 +129,19 @@
 
 .addItem:hover {
   background: var(--White-Opacity-64, rgba(255, 255, 255, 0.64));
+}
+
+.limitReached {
+  border-style: dashed;
+  justify-content: center;
+  text-align: center;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.limitReached:hover {
+  transform: none;
+  box-shadow: none;
+  background-color: transparent;
+  border-color: var(--panel-border-color);
 }
