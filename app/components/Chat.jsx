@@ -103,17 +103,6 @@ export default function Chat() {
   return (
     <div className={styles.chatContainer}>
       <div className={styles.header}>
-        <div className={styles.headerContent}>
-          <img
-            src="/images/icon.png"
-            alt="Chatbot Icon"
-            className={styles.headerIcon}
-          />
-          <div className={styles.headerTextContainer}>
-            <span className={styles.headerTitle}>AI ChatBot</span>
-            <span className={styles.headerSubtitle}>Hybrid Assistant</span>
-          </div>
-        </div>
         <div className={styles.headerButtons}>
           <div className={styles.settingControl}>
             <span className={styles.settingLabel}>Large text</span>

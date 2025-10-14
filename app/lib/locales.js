@@ -83,6 +83,7 @@ export const locales = {
     enterResponse: "응답을 입력하세요...",
 
     // History Panel
+    history: "대화 내역",
     newChat: "새로운 대화",
     deleteConvoConfirm: "정말로 이 대화를 삭제하시겠습니까?",
     noScenariosFound: "실행된 시나리오가 없습니다.",
@@ -217,6 +218,7 @@ export const locales = {
     enterResponse: "Enter your response...",
 
     // History Panel
+    history: "History",
     newChat: "New Chat",
     deleteConvoConfirm:
       "Are you sure you want to delete the conversation details?",
