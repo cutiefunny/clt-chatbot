@@ -7,7 +7,9 @@ import styles from "./Chat.module.css";
 import { validateInput } from "../lib/chatbotEngine";
 import LogoIcon from "./icons/LogoIcon";
 import ChevronDownIcon from "./icons/ChevronDownIcon";
+import ArrowDropDownIcon from "./icons/ArrowDropDownIcon";
 import CheckCircle from "./icons/CheckCircle";
+import OpenInNewIcon from "./icons/OpenInNew";
 
 const FormRenderer = ({ node, onFormSubmit, disabled, language }) => {
   const [formData, setFormData] = useState({});
@@ -58,6 +60,7 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language }) => {
   return (
     <form onSubmit={handleSubmit} className={styles.formContainer}>
       <h3>{node.data.title}</h3>
+      <div className={styles.formContainerSeparator} />
       {node.data.elements?.map((el) => {
         const dateProps = {};
         if (el.type === "date" && el.validation) {
@@ -99,20 +102,25 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language }) => {
             )}
 
             {el.type === "dropbox" && (
-              <select
-                value={formData[el.name] || ""}
-                onChange={(e) => handleInputChange(el.name, e.target.value)}
-                disabled={disabled}
-              >
-                <option value="" disabled>
-                  {t("select")}
-                </option>
-                {el.options?.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
+              <div className={styles.selectWrapper}>
+                <select
+                  value={formData[el.name] || ""}
+                  onChange={(e) => handleInputChange(el.name, e.target.value)}
+                  disabled={disabled}
+                >
+                  <option value="" disabled>
+                    {t("select")}
                   </option>
-                ))}
-              </select>
+                  {el.options?.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+                <ArrowDropDownIcon
+                  style={{ color: "var(--Gray-07, #5E7599)" }}
+                />
+              </div>
             )}
             {el.type === "checkbox" &&
               el.options?.map((opt) => (
@@ -301,7 +309,9 @@ export default function ScenarioBubble({ scenarioSessionId }) {
                 }`}
               >
                 <div className={styles.scenarioMessageContentWrapper}>
-                  {msg.sender === "bot" && <LogoIcon />}
+                  {msg.sender === "bot" && msg.node?.type !== "form" && (
+                    <LogoIcon />
+                  )}
                   <div className={styles.messageContent}>
                     {msg.node?.type === "form" ? (
                       <FormRenderer
@@ -340,20 +350,25 @@ export default function ScenarioBubble({ scenarioSessionId }) {
                           <button
                             key={reply.value}
                             className={styles.optionButton}
-                            onClick={() =>
+                            onClick={() => {
                               handleScenarioResponse({
                                 scenarioSessionId: scenarioSessionId,
                                 currentNodeId: msg.node.id,
                                 sourceHandle: reply.value,
                                 userInput: reply.display,
-                              })
-                            }
+                              });
+                              console.log(reply);
+                            }}
                             disabled={isCompleted}
                           >
                             <span className={styles.optionButtonText}>
                               {reply.display}
                             </span>
-                            <CheckCircle />
+                            {reply.display.toLowerCase().includes("link") ? (
+                              <OpenInNewIcon />
+                            ) : (
+                              <CheckCircle />
+                            )}
                           </button>
                         ))}
                       </div>

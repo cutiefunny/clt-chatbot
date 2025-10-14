@@ -358,7 +358,7 @@ input:checked + .slider:before {
 .optionButton {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
   flex-shrink: 0;
   padding: 12px 16px 12px 24px;
   border-radius: 12px;
@@ -373,6 +373,11 @@ input:checked + .slider:before {
   transition: background-color 0.2s, border-color 0.2s;
   white-space: nowrap;
   text-align: center; /* 버튼 텍스트 중앙 정렬 */
+}
+
+.optionButton svg {
+  width: 20px;
+  height: 20px;
 }
 
 .optionButtonText {
@@ -396,10 +401,16 @@ input:checked + .slider:before {
 }
 
 .formContainer h3 {
-  margin: 0;
-  font-size: 1.1rem;
-  border-bottom: 1px solid var(--panel-border-color); /* Themed */
-  padding-bottom: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 20px; /* 125% */
+  letter-spacing: -0.24px;
+}
+
+.formContainerSeparator {
+  height: 1px;
+  background-color: var(--panel-border-color);
+  scale: 1.2;
 }
 
 .formElement {
@@ -409,21 +420,45 @@ input:checked + .slider:before {
 }
 
 .formLabel {
-  font-size: 0.9rem;
-  font-weight: bold;
-  color: var(--text-color); /* Themed */
+  color: var(--Gray-05, #8d9eba);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 14px; /* 116.667% */
+  letter-spacing: -0.18px;
 }
 
 .formInput,
 .formContainer select {
   width: 100%;
-  padding: 8px 12px;
+  padding: 8px 12px 8px 16px;
   border: 1px solid var(--panel-border-color); /* Themed */
-  background-color: var(--panel-bg-color); /* Themed */
   color: var(--text-color); /* Themed */
   border-radius: 6px;
-  font-size: 0.9rem;
   box-sizing: border-box;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px; /* 142.857% */
+  letter-spacing: -0.21px;
+}
+
+.selectWrapper {
+  position: relative;
+}
+
+.selectWrapper select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 100%;
+  padding-right: 36px;
+}
+
+.selectWrapper svg {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
 }
 
 .formInput[type="date"] {
@@ -560,7 +595,7 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 70%;
+  max-width: 75%;
   height: 500px;
   border: 1px solid var(--panel-border-color);
   border-radius: 18px;
