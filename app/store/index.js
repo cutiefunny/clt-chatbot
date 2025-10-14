@@ -151,7 +151,15 @@ export const useChatStore = create((set, get) => ({
 
     get().setScrollToMessageId(scenario.sessionId);
 
-    get().setActivePanel("scenario", scenario.sessionId);
+    // --- 👇 [수정된 부분] ---
+    if (scenario.status === 'completed' || scenario.status === 'failed') {
+      // 완료/실패 시나리오는 메인챗에 포커스를 둡니다.
+      get().setActivePanel('main');
+    } else {
+      // 진행 중인 시나리오는 해당 시나리오에 포커스를 둡니다.
+      get().setActivePanel('scenario', scenario.sessionId);
+    }
+    // --- 👆 [여기까지] ---
 
     if (!get().scenarioStates[scenario.sessionId]) {
       get().subscribeToScenarioSession(scenario.sessionId);

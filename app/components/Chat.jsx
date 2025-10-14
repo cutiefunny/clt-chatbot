@@ -89,7 +89,6 @@ export default function Chat() {
       }
     }
   }, [scrollToMessageId, messages, setScrollToMessageId]);
-
   const handleCopy = (text, id) => {
     if (!text || text.trim() === "") return;
 
@@ -131,7 +130,12 @@ export default function Chat() {
         </div>
       </div>
 
-      <div className={styles.history} ref={historyRef}>
+      <div
+        className={`${styles.history} ${
+          activePanel === "scenario" ? styles.mainChatDimmed : ""
+        }`}
+        ref={historyRef}
+      >
         {!hasMessages ? (
           <FavoritePanel />
         ) : (
