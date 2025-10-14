@@ -30,3 +30,5 @@ export default function RootLayout({ children }) {
     </html>
   );
 }
+
+//디자인 merge 후 새롭게 push
