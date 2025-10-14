@@ -27,39 +27,39 @@ export default function Chat() {
     (state) => state.setScrollToMessageId
   );
   const activePanel = useChatStore((state) => state.activePanel);
+  const setActivePanel = useChatStore((state) => state.setActivePanel);
 
   const [copiedMessageId, setCopiedMessageId] = useState(null);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const historyRef = useRef(null);
   const { t } = useTranslations();
 
-  const handleScroll = useCallback(async () => {
-    if (
-      historyRef.current?.scrollTop === 0 &&
-      hasMoreMessages &&
-      !isFetchingMore
-    ) {
-      setIsFetchingMore(true);
-      await loadMoreMessages();
-      setIsFetchingMore(false);
+  const handleContainerClick = () => {
+    if (activePanel !== "main") {
+      setActivePanel("main");
     }
-  }, [hasMoreMessages, isFetchingMore, loadMoreMessages]);
+  };
 
   useEffect(() => {
     const scrollContainer = historyRef.current;
     if (!scrollContainer) return;
 
-    const scrollToBottom = () => {
-      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+    const handleScroll = async () => {
+      if (
+        scrollContainer.scrollTop === 0 &&
+        hasMoreMessages &&
+        !isFetchingMore
+      ) {
+        setIsFetchingMore(true);
+        await loadMoreMessages();
+        setIsFetchingMore(false);
+      }
     };
 
     const observer = new MutationObserver((mutations) => {
-      // activePanel이 'main'일 때만 자동 스크롤 실행
-      if (activePanel === "main") {
-        for (const mutation of mutations) {
-          if (mutation.type === "childList" && !isFetchingMore) {
-            scrollToBottom();
-          }
+      for (const mutation of mutations) {
+        if (mutation.type === "childList" && !isFetchingMore) {
+          scrollContainer.scrollTop = scrollContainer.scrollHeight;
         }
       }
     });
@@ -67,15 +67,15 @@ export default function Chat() {
     observer.observe(scrollContainer, { childList: true, subtree: true });
     scrollContainer.addEventListener("scroll", handleScroll);
 
-    if (!isFetchingMore && activePanel === "main") {
-      scrollToBottom();
+    if (!isFetchingMore) {
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
     }
 
     return () => {
       observer.disconnect();
       scrollContainer.removeEventListener("scroll", handleScroll);
     };
-  }, [messages, handleScroll, isFetchingMore, activePanel]); // 의존성 배열에 activePanel 추가
+  }, [hasMoreMessages, isFetchingMore, loadMoreMessages, messages]);
 
   useEffect(() => {
     if (scrollToMessageId && historyRef.current) {
@@ -105,7 +105,7 @@ export default function Chat() {
   const hasMessages = messages.some((m) => m.id !== "initial");
 
   return (
-    <div className={styles.chatContainer}>
+    <div className={styles.chatContainer} onClick={handleContainerClick}>
       <div className={styles.header}>
         <div className={styles.headerButtons}>
           <div className={styles.settingControl}>
@@ -167,12 +167,14 @@ export default function Chat() {
                 );
               }
 
+              const isMainChatDimmed = activePanel === "scenario";
+
               return (
                 <div
                   key={msg.id}
                   className={`${styles.messageRow} ${
                     msg.sender === "user" ? styles.userRow : ""
-                  }`}
+                  } ${isMainChatDimmed ? styles.dimmedMessage : ""}`}
                   data-message-id={msg.id}
                 >
                   <div
@@ -185,6 +187,7 @@ export default function Chat() {
                     {copiedMessageId === msg.id && (
                       <div className={styles.copyFeedback}>{t("copied")}</div>
                     )}
+
                     <div className={styles.messageContentWrapper}>
                       {msg.sender === "bot" && <LogoIcon />}
                       <div className={styles.messageContent}>

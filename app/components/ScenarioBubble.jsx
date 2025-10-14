@@ -261,7 +261,7 @@ export default function ScenarioBubble({ scenarioSessionId }) {
   return (
     <div
       className={`${styles.messageRow} ${styles.userRow}`}
-      onClick={handleBubbleClick}
+      data-message-id={scenarioSessionId}
     >
       <div
         className={`GlassEffect ${styles.scenarioBubbleContainer} ${
@@ -283,7 +283,7 @@ export default function ScenarioBubble({ scenarioSessionId }) {
             <ScenarioStatusBadge status={activeScenario?.status} t={t} />
             {!isCompleted && (
               <button
-                className={`${styles.headerRestartButton} `}
+                className={`${styles.headerRestartButton}`}
                 onClick={(e) => {
                   e.stopPropagation();
                   endScenario(scenarioSessionId);

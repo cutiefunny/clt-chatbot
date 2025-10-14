@@ -148,11 +148,16 @@ export const useChatStore = create((set, get) => ({
     if (get().currentConversationId !== conversationId) {
       get().loadConversation(conversationId);
     }
-
+  
     get().setScrollToMessageId(scenario.sessionId);
-
-    get().setActivePanel("scenario", scenario.sessionId);
-
+  
+    // 시나리오 상태가 'completed' 또는 'failed'가 아닐 경우에만 포커스를 변경합니다.
+    if (scenario.status !== 'completed' && scenario.status !== 'failed') {
+      setTimeout(() => {
+          get().setActivePanel('scenario', scenario.sessionId);
+      }, 1000);
+    }
+  
     if (!get().scenarioStates[scenario.sessionId]) {
       get().subscribeToScenarioSession(scenario.sessionId);
     }
