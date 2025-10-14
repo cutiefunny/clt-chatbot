@@ -126,3 +126,7 @@ body.font-small {
 .GlassEffect.active {
   background: rgba(255, 255, 255, 0.48);
 }
+
+.GlassEffect.noOpacity {
+  background: var(--White-Opacity-100, rgba(255, 255, 255, 1));
+}

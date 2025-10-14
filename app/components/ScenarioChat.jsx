@@ -249,8 +249,8 @@ export default function ScenarioChat() {
                 msg.sender === "bot" ? styles.botMessage : styles.userMessage
               }`}
             >
-              <div className={styles.messageContentWrapper}>
-                <div className={styles.messageContent}>
+              <div className={`${styles.messageContentWrapper}`}>
+                <div className={`${styles.messageContent}`}>
                   {msg.node?.type === "form" ? (
                     <FormRenderer
                       node={msg.node}

@@ -243,12 +243,22 @@ input:checked + .slider:before {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  border-bottom: 1px solid var(--panel-border-color);
+}
+
+.botMessage .scenarioMessageContentWrapper {
+  padding: 12px 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
 }
 
 .botMessage .messageContent {
   display: flex;
   flex-direction: column;
+  font-size: 14px;
+  margin: 2px 0px;
+  line-height: 20px; /* 142.857% */
+  letter-spacing: -0.14px;
 }
 
 .botMessage {
@@ -263,6 +273,7 @@ input:checked + .slider:before {
 }
 
 .botMessage .messageActionArea {
+  border-top: 1px solid var(--panel-border-color);
   padding: 8px 16px;
   display: flex;
   gap: 8px;
@@ -533,7 +544,6 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
   width: 100%;
   max-width: 70%;
   height: 500px;
-  background-color: var(--user-message-bg);
   border: 1px solid var(--panel-border-color);
   border-radius: 18px;
   border-top-right-radius: 4px;
@@ -544,15 +554,15 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
 
 .scenarioBubbleContainer .header {
   flex-shrink: 0;
-  padding: 10px 15px;
-  background-color: var(--bot-message-bg);
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--panel-border-color);
 }
 
 .scenarioBubbleContainer .history {
   flex-grow: 1;
-  background-color: var(--panel-bg-color);
   mask-image: none;
   transition: opacity 0.2s ease-out;
+  padding: 16px 20px;
 }
 
 .scenarioBubbleContainer.collapsed {
