@@ -44,7 +44,7 @@ export default function HistoryPanel() {
     toggleConversationExpansion,
     handleScenarioItemClick,
     openConfirmModal,
-    unreadScenarioSessions, // --- 争 [ｶ緋ｰ ]
+    unreadScenarioSessions,
   } = useChatStore();
   const { t } = useTranslations();
 
@@ -102,12 +102,14 @@ export default function HistoryPanel() {
         >
           <MenuIcon />
         </button>
-        <button
-          className={styles.newChatButton}
-          onClick={createNewConversation}
-        >
-          <NewChatIcon />
-        </button>
+        {currentConversationId && (
+          <button
+            className={styles.newChatButton}
+            onClick={createNewConversation}
+          >
+            <NewChatIcon />
+          </button>
+        )}
         <button className={styles.historyButton} onClick={toggleHistoryPanel}>
           <HistoryIcon />
         </button>
@@ -141,13 +143,15 @@ export default function HistoryPanel() {
           </div>
 
           <div className={styles.panelContent}>
-            <button
-              className={styles.sidePanelButton}
-              onClick={createNewConversation}
-            >
-              <EditIcon />
-              <span className={styles.newChatText}>{t("newChat")}</span>
-            </button>
+            {currentConversationId && (
+              <button
+                className={styles.sidePanelButton}
+                onClick={createNewConversation}
+              >
+                <EditIcon />
+                <span className={styles.newChatText}>{t("newChat")}</span>
+              </button>
+            )}
             <span className={styles.commonText}>{t("History")}</span>
             <div className={styles.conversationList}>
               {conversations.length > 0 &&
@@ -164,7 +168,7 @@ export default function HistoryPanel() {
                     scenarios={scenariosForConversation[convo.id]}
                     onToggleExpand={toggleConversationExpansion}
                     onScenarioClick={handleScenarioItemClick}
-                    unreadScenarioSessions={unreadScenarioSessions} // --- 争 [ｶ緋ｰ ]
+                    unreadScenarioSessions={unreadScenarioSessions}
                   />
                 ))}
               {conversations.length === 0 && (
