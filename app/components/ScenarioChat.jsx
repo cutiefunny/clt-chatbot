@@ -245,7 +245,7 @@ export default function ScenarioChat() {
               />
             )}
             <div
-              className={`${styles.message} ${
+              className={`GlassEffect ${styles.message} ${
                 msg.sender === "bot" ? styles.botMessage : styles.userMessage
               }`}
             >

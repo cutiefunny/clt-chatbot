@@ -187,6 +187,22 @@ export default function Chat() {
                       {msg.sender === "bot" && <LogoIcon />}
                       <div className={styles.messageContent}>
                         {msg.text && <p>{msg.text}</p>}
+                        {msg.sender === "bot" && msg.scenarios && (
+                          <div className={styles.scenarioList}>
+                            {msg.scenarios.map((name) => (
+                              <button
+                                key={name}
+                                className={styles.optionButton}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openScenarioPanel(name);
+                                }}
+                              >
+                                {name}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                     {msg.sender === "bot" && (
@@ -208,23 +224,6 @@ export default function Chat() {
                         >
                           <LikeIcon />
                         </button>
-                      </div>
-                    )}
-
-                    {msg.sender === "bot" && msg.scenarios && (
-                      <div className={styles.scenarioList}>
-                        {msg.scenarios.map((name) => (
-                          <button
-                            key={name}
-                            className={styles.optionButton}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openScenarioPanel(name);
-                            }}
-                          >
-                            {name}
-                          </button>
-                        ))}
                       </div>
                     )}
                   </div>

@@ -247,6 +247,7 @@ export const locales = {
     scenarioTitle: (scenarioId) => `Scenario: ${scenarioId}`,
     hide: "Hide",
     end: "End",
+    cancel: "Cancel",
     select: "Select...",
 
     // Scenario Modal

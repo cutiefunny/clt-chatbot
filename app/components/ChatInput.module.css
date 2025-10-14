@@ -293,6 +293,7 @@
 }
 
 .sendButton {
+  visibility: hidden;
   background-color: #8a2be2;
   color: white;
   border: none;

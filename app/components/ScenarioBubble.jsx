@@ -272,13 +272,13 @@ export default function ScenarioBubble({ scenarioSessionId }) {
             <ScenarioStatusBadge status={activeScenario?.status} t={t} />
             {!isCompleted && (
               <button
-                className={`${styles.headerRestartButton} ${styles.dangerButton}`}
+                className={`${styles.headerRestartButton} `}
                 onClick={(e) => {
                   e.stopPropagation();
                   endScenario(scenarioSessionId);
                 }}
               >
-                {t("end")}
+                {t("cancel")}
               </button>
             )}
           </div>
