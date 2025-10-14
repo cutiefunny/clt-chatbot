@@ -24,7 +24,7 @@ export default function Chat() {
     setFontSize,
     scrollToMessageId,
     setScrollToMessageId,
-    activePanel, // activePanel 상태 추가
+    activePanel,
   } = useChatStore();
   const [copiedMessageId, setCopiedMessageId] = useState(null);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
@@ -52,7 +52,6 @@ export default function Chat() {
     };
 
     const observer = new MutationObserver((mutations) => {
-      // activePanel이 'main'일 때만 자동 스크롤 실행
       if (activePanel === "main") {
         for (const mutation of mutations) {
           if (mutation.type === "childList" && !isFetchingMore) {
@@ -73,7 +72,7 @@ export default function Chat() {
       observer.disconnect();
       scrollContainer.removeEventListener("scroll", handleScroll);
     };
-  }, [messages, handleScroll, isFetchingMore, activePanel]); // 의존성 배열에 activePanel 추가
+  }, [messages, handleScroll, isFetchingMore, activePanel]);
 
   useEffect(() => {
     if (scrollToMessageId && historyRef.current) {
@@ -90,6 +89,7 @@ export default function Chat() {
       }
     }
   }, [scrollToMessageId, messages, setScrollToMessageId]);
+
   const handleCopy = (text, id) => {
     if (!text || text.trim() === "") return;
 
@@ -106,7 +106,6 @@ export default function Chat() {
       <div className={styles.header}>
         <div className={styles.headerContent}></div>
         <div className={styles.headerButtons}>
-          {/* --- 👇 [수정된 부분] --- */}
           <div className={styles.settingControl}>
             <label className={styles.switch}>
               <input
@@ -158,10 +157,11 @@ export default function Chat() {
 
               if (msg.type === "scenario_bubble") {
                 return (
-                  <ScenarioBubble
-                    key={msg.id}
-                    scenarioSessionId={msg.scenarioSessionId}
-                  />
+                  <div key={msg.id} data-message-id={msg.scenarioSessionId}>
+                    <ScenarioBubble
+                      scenarioSessionId={msg.scenarioSessionId}
+                    />
+                  </div>
                 );
               }
 

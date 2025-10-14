@@ -620,3 +620,29 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
   background: var(--Green-01, #c6eec2);
   color: var(--Green-02, #00770a);
 }
+
+@keyframes wobble {
+  0%,
+  100% {
+    transform: translateX(0%);
+  }
+  15% {
+    transform: translateX(-10px) rotate(-3deg);
+  }
+  30% {
+    transform: translateX(8px) rotate(2deg);
+  }
+  45% {
+    transform: translateX(-6px) rotate(-1deg);
+  }
+  60% {
+    transform: translateX(4px) rotate(0.5deg);
+  }
+  75% {
+    transform: translateX(-2px) rotate(0deg);
+  }
+}
+
+.highlightedMessage {
+  animation: wobble 0.8s ease-in-out;
+}
