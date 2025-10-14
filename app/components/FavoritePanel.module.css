@@ -10,7 +10,6 @@
 }
 
 .welcomeMessage {
-  text-align: center;
   color: var(--text-color);
 }
 
@@ -71,6 +70,9 @@
 }
 
 .deleteButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 24px;
   height: 24px;
   flex-shrink: 0;
@@ -107,9 +109,10 @@
 }
 
 .itemTitle {
-  font-size: 1rem;
+  font-size: 16px;
   font-weight: 600;
   display: flex;
+  align-items: center;
   gap: 12px;
   line-height: 20px;
   letter-spacing: -0.24px;
@@ -120,6 +123,9 @@
   font-weight: 400;
   margin-top: 8px;
   color: var(--Gray-06, #868eba);
+  font-weight: 400;
+  line-height: 14px; /* 116.667% */
+  letter-spacing: -0.18px;
 }
 
 .addItem {

@@ -55,16 +55,27 @@
 }
 
 .title {
-  font-size: 2.5rem;
+  font-size: 42px;
   font-weight: 600;
-  color: var(--text-color);
-  margin-bottom: 8px;
+  background: var(
+    --Color-Light-Gradation-02,
+    linear-gradient(90deg, #ba9bff 0%, #0e4dec 71.21%)
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .prompt {
-  font-size: 1.1rem;
-  color: #8a8a8e;
-  margin-bottom: 32px;
+  color: var(--Gray-08, #282166);
+  text-align: center;
+  font-family: Pretendard;
+  font-size: 42px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 50px; /* 119.048% */
+  letter-spacing: -0.84px;
+  margin-bottom: 40px;
 }
 
 .loginOptions {

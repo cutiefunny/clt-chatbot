@@ -136,7 +136,7 @@ export const locales = {
   },
   en: {
     // General
-    welcome: "Welcome!",
+    welcome: "Welcome to",
     hello: "Hello",
     submit: "Submit",
     cancel: "Cancel",
@@ -192,7 +192,7 @@ export const locales = {
     },
 
     // Login
-    loginPrompt: "Please log in to continue.",
+    loginPrompt: "NX AI Chatbot",
     signInWithGoogle: "Sign in with Google",
     signInWithTestId: "Sign in with Test ID",
     testIdPlaceholder: "Enter Test ID",

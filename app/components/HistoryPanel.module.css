@@ -206,25 +206,37 @@
   align-items: center;
   gap: 8px;
   padding: 10px 20px 10px 16px;
-  margin-left: 4px;
+  margin-left: 12px;
   color: var(--text-color);
   line-height: 1.1;
-  border-radius: 40px;
   border: 1px solid var(--Gray-03, #d8e0eb);
   border-radius: 24px;
   cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
+  width: fit-content;
   font-size: 14px;
   font-weight: 600;
+  white-space: nowrap;
+  transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s,
+    border-color 0.2s;
+  opacity: 1;
+  transform: none;
 }
 
 .sidePanelButton svg {
   flex-shrink: 0; /* 아이콘 우그러짐 방지 */
 }
 
+.newChatText {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  transition: opacity 0.2s ease;
+}
+
 .historyPanel.open .sidePanelButton {
-  width: fit-content;
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
 }
 .sidePanelButton:hover {
   /* 라운드가 유지되는 그라디언트 보더 */
@@ -281,10 +293,17 @@
 
 .historyPanel.closed .sidePanelButton {
   background: none;
-  padding: 0.5rem;
-  border-radius: 50%;
-  width: auto;
-  gap: 0;
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+}
+
+.historyPanel.closed .newChatText {
+  opacity: 0;
+}
+
+.historyPanel.open .newChatText {
+  opacity: 1;
 }
 .historyPanel.closed .sidePanelButton:hover {
   background-color: var(--button-hover-bg);
@@ -320,12 +339,23 @@
   stroke: url(#spbIconGradient);
 }
 
-.historyPanel.open .sidePanelButtonText {
-  max-width: 100%; /* 열림 시 전체 가용 폭 사용 */
-}
-.historyPanel.closed .sidePanelButtonText {
-  max-width: 0;
+.newChatText {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
   opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.18s ease;
+}
+
+.historyPanel.open .newChatText {
+  opacity: 1;
+  visibility: visible;
+}
+
+.historyPanel.closed .newChatText {
+  opacity: 0;
+  visibility: hidden;
 }
 
 .historyPanel .commonText {

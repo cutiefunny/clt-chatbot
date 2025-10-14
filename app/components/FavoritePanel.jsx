@@ -84,7 +84,7 @@ export default function FavoritePanel() {
                     <div
                       ref={provided.innerRef}
                       {...provided.draggableProps}
-                      className={`${styles.favoriteItem} ${
+                      className={`GlassEffect ${styles.favoriteItem} ${
                         snapshot.isDragging ? styles.dragging : ""
                       }`}
                     >
@@ -98,9 +98,6 @@ export default function FavoritePanel() {
                         className={styles.itemContent}
                         onClick={() => handleShortcutClick(fav)}
                       >
-                        <div className={styles.itemIcon}>
-                          {fav.icon || "🌟"}
-                        </div>
                         <div className={styles.itemText}>
                           <div className={styles.itemTitle}>{fav.title}</div>
                           <div className={styles.itemDescription}>
@@ -115,7 +112,7 @@ export default function FavoritePanel() {
                           deleteFavorite(fav.id);
                         }}
                       >
-                        ✕
+                        <StarIcon filled />
                       </button>
                     </div>
                   )}
@@ -125,14 +122,14 @@ export default function FavoritePanel() {
 
               {favorites.length < maxFavorites ? (
                 <button
-                  className={`${styles.favoriteItem} ${styles.addItem}`}
+                  className={`GlassEffect ${styles.favoriteItem} ${styles.addItem}`}
                   onClick={handleAddFavoriteClick}
                 >
-                  <div className={styles.addIcon}>
-                    <PlusIcon />
-                  </div>
                   <div className={styles.itemText}>
-                    <div className={styles.itemTitle}>Add Favorite</div>
+                    <div className={styles.itemTitle}>
+                      <PlusIcon />
+                      Favorite
+                    </div>
                     <div className={styles.itemDescription}>
                       Customize via Shortcuts menu
                     </div>

@@ -141,24 +141,42 @@ export default function HistoryPanel() {
           </div>
 
           <div className={styles.panelContent}>
+            <button
+              className={styles.sidePanelButton}
+              onClick={createNewConversation}
+            >
+              <EditIcon />
+              <span className={styles.newChatText}>{t("newChat")}</span>
+            </button>
             <span className={styles.commonText}>{t("History")}</span>
             <div className={styles.conversationList}>
-              {conversations.map((convo) => (
-                <ConversationItem
-                  key={convo.id}
-                  convo={convo}
-                  isActive={convo.id === currentConversationId}
-                  onClick={loadConversation}
-                  onDelete={handleDeleteRequest}
-                  onUpdateTitle={updateConversationTitle}
-                  onPin={pinConversation}
-                  isExpanded={convo.id === expandedConversationId}
-                  scenarios={scenariosForConversation[convo.id]}
-                  onToggleExpand={toggleConversationExpansion}
-                  onScenarioClick={handleScenarioItemClick}
-                  unreadScenarioSessions={unreadScenarioSessions} // --- 争 [ｶ緋ｰ ]
-                />
-              ))}
+              {conversations.length > 0 &&
+                conversations.map((convo) => (
+                  <ConversationItem
+                    key={convo.id}
+                    convo={convo}
+                    isActive={convo.id === currentConversationId}
+                    onClick={loadConversation}
+                    onDelete={handleDeleteRequest}
+                    onUpdateTitle={updateConversationTitle}
+                    onPin={pinConversation}
+                    isExpanded={convo.id === expandedConversationId}
+                    scenarios={scenariosForConversation[convo.id]}
+                    onToggleExpand={toggleConversationExpansion}
+                    onScenarioClick={handleScenarioItemClick}
+                    unreadScenarioSessions={unreadScenarioSessions} // --- 争 [ｶ緋ｰ ]
+                  />
+                ))}
+              {conversations.length === 0 && (
+                <div className={styles.historyTileWrapper}>
+                  <div className={styles.noHistoryBox}>
+                    <NoHistoryIcon />
+                    <span className={styles.noHistoryText}>
+                      {t("noHistory")}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
             <div className={styles.footer}>
               <div className={styles.avatarWrapper} onClick={openProfileModal}>
