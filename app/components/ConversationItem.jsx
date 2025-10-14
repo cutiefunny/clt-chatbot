@@ -232,6 +232,16 @@ export default function ConversationItem({
             >
               <CheckIcon />
             </button>
+            <button
+              className={styles.actionButton}
+              style={{ opacity: 1 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsEditing(false);
+              }}
+            >
+              <CloseIcon />
+            </button>
           </div>
         ) : (
           <div className={styles.menuContainer} ref={menuRef}>

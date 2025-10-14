@@ -617,11 +617,12 @@
   }
 }
 .scenarioItem {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 8px;
+  padding: 8px 12px;
   cursor: pointer;
   font-size: 0.85rem;
   transition: background-color 0.2s;
@@ -652,11 +653,14 @@
 
 /* --- 👇 [추가된 부분] --- */
 .unreadDot {
-  width: 8px;
-  height: 8px;
+  width: 5px;
+  height: 5px;
   background-color: #d32f2f;
   border-radius: 50%;
   flex-shrink: 0;
+  position: absolute;
+  left: 8px;
+  top: 8px;
 }
 /* --- 👆 [여기까지] --- */
 

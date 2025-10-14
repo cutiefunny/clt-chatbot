@@ -6,6 +6,7 @@ import { useTranslations } from "../hooks/useTranslations";
 import styles from "./Chat.module.css";
 import { validateInput } from "../lib/chatbotEngine";
 import LogoIcon from "./icons/LogoIcon";
+import ChevronDownIcon from "./icons/ChevronDownIcon";
 
 const FormRenderer = ({ node, onFormSubmit, disabled, language }) => {
   const [formData, setFormData] = useState({});
@@ -264,6 +265,7 @@ export default function ScenarioBubble({ scenarioSessionId }) {
           style={{ cursor: "pointer" }}
         >
           <div className={styles.headerContent}>
+            <ChevronDownIcon isRotated={isCollapsed} />
             <span className={styles.headerTitle}>
               {t("scenarioTitle")(scenarioId)}
             </span>
