@@ -1,205 +1,143 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState } from "react";
-import { useChatStore } from "../store";
-import { useTranslations } from "../hooks/useTranslations";
-import styles from "./Chat.module.css";
-import { validateInput } from "../lib/chatbotEngine";
-import LogoIcon from "./icons/LogoIcon";
-import ChevronDownIcon from "./icons/ChevronDownIcon";
+import { useEffect, useRef, useState } from 'react';
+import { useChatStore } from '../store';
+import { useTranslations } from '../hooks/useTranslations';
+import styles from './Chat.module.css';
+import { validateInput } from '../lib/chatbotEngine';
 
 const FormRenderer = ({ node, onFormSubmit, disabled, language }) => {
-  const [formData, setFormData] = useState({});
-  const dateInputRef = useRef(null);
-  const { t } = useTranslations();
+    const [formData, setFormData] = useState({});
+    const dateInputRef = useRef(null);
+    const { t } = useTranslations();
 
-  const handleInputChange = (name, value) => {
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+    const handleInputChange = (name, value) => {
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
 
-  const handleMultiInputChange = (name, value, checked) => {
-    setFormData((prev) => {
-      const existing = prev[name] || [];
-      const newValues = checked
-        ? [...existing, value]
-        : existing.filter((v) => v !== value);
-      return { ...prev, [name]: newValues };
-    });
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    for (const element of node.data.elements) {
-      if (element.type === "input" || element.type === "date") {
-        const value = formData[element.name] || "";
-        const { isValid, message } = validateInput(
-          value,
-          element.validation,
-          language
-        );
-        if (!isValid) {
-          alert(message);
-          return;
+    const handleMultiInputChange = (name, value, checked) => {
+        setFormData(prev => {
+            const existing = prev[name] || [];
+            const newValues = checked ? [...existing, value] : existing.filter(v => v !== value);
+            return { ...prev, [name]: newValues };
+        });
+    };
+    
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        for (const element of node.data.elements) {
+            if (element.type === 'input' || element.type === 'date') {
+                const value = formData[element.name] || '';
+                const { isValid, message } = validateInput(value, element.validation, language);
+                if (!isValid) {
+                    alert(message);
+                    return;
+                }
+            }
         }
-      }
-    }
-    onFormSubmit(formData);
-  };
+        onFormSubmit(formData);
+    };
 
-  const handleDateInputClick = () => {
-    try {
-      dateInputRef.current?.showPicker();
-    } catch (error) {
-      console.error("Failed to show date picker:", error);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className={styles.formContainer}>
-      <h3>{node.data.title}</h3>
-      {node.data.elements?.map((el) => {
-        const dateProps = {};
-        if (el.type === "date" && el.validation) {
-          if (el.validation.type === "today after") {
-            dateProps.min = new Date().toISOString().split("T")[0];
-          } else if (el.validation.type === "today before") {
-            dateProps.max = new Date().toISOString().split("T")[0];
-          } else if (el.validation.type === "custom") {
-            if (el.validation.startDate)
-              dateProps.min = el.validation.startDate;
-            if (el.validation.endDate) dateProps.max = el.validation.endDate;
-          }
+    const handleDateInputClick = () => {
+        try {
+            dateInputRef.current?.showPicker();
+        } catch (error) {
+            console.error("Failed to show date picker:", error);
         }
-        return (
-          <div key={el.id} className={styles.formElement}>
-            <label className={styles.formLabel}>{el.label}</label>
-            {el.type === "input" && (
-              <input
-                className={styles.formInput}
-                type="text"
-                placeholder={el.placeholder}
-                value={formData[el.name] || ""}
-                onChange={(e) => handleInputChange(el.name, e.target.value)}
-                disabled={disabled}
-              />
-            )}
+    };
 
-            {el.type === "date" && (
-              <input
-                ref={dateInputRef}
-                className={styles.formInput}
-                type="date"
-                value={formData[el.name] || ""}
-                onChange={(e) => handleInputChange(el.name, e.target.value)}
-                onClick={handleDateInputClick}
-                disabled={disabled}
-                {...dateProps}
-              />
-            )}
-
-            {el.type === "dropbox" && (
-              <select
-                value={formData[el.name] || ""}
-                onChange={(e) => handleInputChange(el.name, e.target.value)}
-                disabled={disabled}
-              >
-                <option value="" disabled>
-                  {t("select")}
-                </option>
-                {el.options?.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
-            )}
-            {el.type === "checkbox" &&
-              el.options?.map((opt) => (
-                <div key={opt}>
-                  <input
-                    type="checkbox"
-                    id={`${el.id}-${opt}`}
-                    value={opt}
-                    onChange={(e) =>
-                      handleMultiInputChange(el.name, opt, e.target.checked)
+    return (
+        <form onSubmit={handleSubmit} className={styles.formContainer}>
+            <h3>{node.data.title}</h3>
+            {node.data.elements?.map(el => {
+                const dateProps = {};
+                if (el.type === 'date' && el.validation) {
+                    if (el.validation.type === 'today after') {
+                        dateProps.min = new Date().toISOString().split('T')[0];
+                    } else if (el.validation.type === 'today before') {
+                        dateProps.max = new Date().toISOString().split('T')[0];
+                    } else if (el.validation.type === 'custom') {
+                        if(el.validation.startDate) dateProps.min = el.validation.startDate;
+                        if(el.validation.endDate) dateProps.max = el.validation.endDate;
                     }
-                    disabled={disabled}
-                  />
-                  <label htmlFor={`${el.id}-${opt}`}>{opt}</label>
+                }
+                return(
+                <div key={el.id} className={styles.formElement}>
+                    <label className={styles.formLabel}>{el.label}</label>
+                    {el.type === 'input' && <input className={styles.formInput} type="text" placeholder={el.placeholder} value={formData[el.name] || ''} onChange={e => handleInputChange(el.name, e.target.value)} disabled={disabled} />}
+                    
+                    {el.type === 'date' && (
+                        <input 
+                            ref={dateInputRef}
+                            className={styles.formInput} 
+                            type="date" 
+                            value={formData[el.name] || ''} 
+                            onChange={e => handleInputChange(el.name, e.target.value)}
+                            onClick={handleDateInputClick}
+                            disabled={disabled}
+                            {...dateProps}
+                        />
+                    )}
+
+                    {el.type === 'dropbox' && (
+                        <select value={formData[el.name] || ''} onChange={e => handleInputChange(el.name, e.target.value)} disabled={disabled}>
+                            <option value="" disabled>{t('select')}</option>
+                            {el.options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                        </select>
+                    )}
+                    {el.type === 'checkbox' && el.options?.map(opt => (
+                        <div key={opt}>
+                            <input type="checkbox" id={`${el.id}-${opt}`} value={opt} onChange={e => handleMultiInputChange(el.name, opt, e.target.checked)} disabled={disabled} />
+                            <label htmlFor={`${el.id}-${opt}`}>{opt}</label>
+                        </div>
+                    ))}
                 </div>
-              ))}
-          </div>
-        );
-      })}
-      {!disabled && (
-        <button type="submit" className={styles.formSubmitButton}>
-          {t("submit")}
-        </button>
-      )}
-    </form>
-  );
+            )})}
+            {!disabled && (
+              <button type="submit" className={styles.formSubmitButton}>{t('submit')}</button>
+            )}
+        </form>
+    );
 };
 
 const ScenarioStatusBadge = ({ status, t }) => {
-  if (!status) return null;
-  let text;
-  let statusClass;
+    if (!status) return null;
+    let text;
+    let statusClass;
 
-  switch (status) {
-    case "completed":
-      text = t("statusCompleted");
-      statusClass = "done";
-      break;
-    case "active":
-      text = t("statusActive");
-      statusClass = "incomplete";
-      break;
-    case "failed":
-      text = t("statusFailed");
-      statusClass = "failed";
-      break;
-    case "generating":
-      text = t("statusGenerating");
-      statusClass = "generating";
-      break;
-    default:
-      return null;
-  }
-  return (
-    <span className={`${styles.scenarioBadge} ${styles[statusClass]}`}>
-      {text}
-    </span>
-  );
+    switch (status) {
+        case 'completed': text = t('statusCompleted'); statusClass = 'done'; break;
+        case 'active': text = t('statusActive'); statusClass = 'incomplete'; break;
+        case 'failed': text = t('statusFailed'); statusClass = 'failed'; break;
+        case 'generating': text = t('statusGenerating'); statusClass = 'generating'; break;
+        default: return null;
+    }
+    return <span className={`${styles.scenarioBadge} ${styles[statusClass]}`}>{text}</span>;
 };
 
+
 export default function ScenarioBubble({ scenarioSessionId }) {
-  const {
-    scenarioStates,
-    handleScenarioResponse,
-    endScenario,
-    setActivePanel,
-    activePanel,
-    activeScenarioSessionId: focusedSessionId,
-  } = useChatStore();
+  const scenarioStates = useChatStore((state) => state.scenarioStates);
+  const handleScenarioResponse = useChatStore((state) => state.handleScenarioResponse);
+  const endScenario = useChatStore((state) => state.endScenario);
+  const setActivePanel = useChatStore((state) => state.setActivePanel);
+  const activePanel = useChatStore((state) => state.activePanel);
+  const focusedSessionId = useChatStore((state) => state.activeScenarioSessionId);
+  
   const { t, language } = useTranslations();
 
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  const activeScenario = scenarioSessionId
-    ? scenarioStates[scenarioSessionId]
-    : null;
-  const isCompleted =
-    activeScenario?.status === "completed" ||
-    activeScenario?.status === "failed";
+  const activeScenario = scenarioSessionId ? scenarioStates[scenarioSessionId] : null;
+  const isCompleted = activeScenario?.status === 'completed' || activeScenario?.status === 'failed';
   const scenarioMessages = activeScenario?.messages || [];
   const isScenarioLoading = activeScenario?.isLoading || false;
   const currentScenarioNodeId = activeScenario?.state?.currentNodeId;
   const scenarioId = activeScenario?.scenarioId;
-  const isFocused =
-    activePanel === "scenario" && focusedSessionId === scenarioSessionId;
-
+  const isFocused = activePanel === 'scenario' && focusedSessionId === scenarioSessionId;
+  
   const historyRef = useRef(null);
-
+  
   useEffect(() => {
     setIsCollapsed(false);
   }, []);
@@ -221,162 +159,107 @@ export default function ScenarioBubble({ scenarioSessionId }) {
   if (!activeScenario) {
     return null;
   }
-
+  
   const handleFormSubmit = (formData) => {
-    handleScenarioResponse({
-      scenarioSessionId: scenarioSessionId,
-      currentNodeId: currentScenarioNodeId,
-      formData: formData,
-    });
+      handleScenarioResponse({
+          scenarioSessionId: scenarioSessionId,
+          currentNodeId: currentScenarioNodeId,
+          formData: formData,
+      });
   };
 
   const handleBubbleClick = (e) => {
     e.stopPropagation();
     if (!isCompleted) {
-      setActivePanel("scenario", scenarioSessionId);
+        setActivePanel('scenario', scenarioSessionId);
     }
-  };
-
+  }
+  
   const handleToggleCollapse = (e) => {
     e.stopPropagation();
-    if (
-      !isCollapsed &&
-      (activeScenario?.status === "active" ||
-        activeScenario?.status === "generating")
-    ) {
-      setActivePanel("main");
+    if (!isCollapsed && (activeScenario?.status === 'active' || activeScenario?.status === 'generating')) {
+        setActivePanel('main');
     }
-    setIsCollapsed((prev) => !prev);
+    setIsCollapsed(prev => !prev);
   };
 
   return (
-    <div
+    <div 
       className={`${styles.messageRow} ${styles.userRow}`}
       onClick={handleBubbleClick}
     >
-      <div
-        className={`GlassEffect ${styles.scenarioBubbleContainer} ${
-          isCollapsed ? styles.collapsed : ""
-        } ${!isFocused ? styles.dimmed : ""}`}
-      >
-        <div
-          className={styles.header}
-          onClick={handleToggleCollapse}
-          style={{ cursor: "pointer" }}
-        >
-          <div className={styles.headerContent}>
-            <ChevronDownIcon isRotated={isCollapsed} />
-            <span className={styles.headerTitle}>
-              {t("scenarioTitle")(scenarioId)}
-            </span>
+        <div className={`${styles.scenarioBubbleContainer} ${isCollapsed ? styles.collapsed : ''} ${!isFocused ? styles.dimmed : ''}`}>
+          <div 
+            className={styles.header}
+            onClick={handleToggleCollapse}
+            style={{ cursor: 'pointer' }}
+          >
+            <div className={styles.headerContent}>
+              <span className={styles.headerTitle}>{t('scenarioTitle')(scenarioId)}</span>
+            </div>
+            <div className={styles.headerButtons}>
+               <ScenarioStatusBadge status={activeScenario?.status} t={t} />
+              {!isCompleted && (
+                <button className={`${styles.headerRestartButton} ${styles.dangerButton}`} onClick={(e) => { e.stopPropagation(); endScenario(scenarioSessionId); }}>
+                  {t('end')}
+                </button>
+              )}
+            </div>
           </div>
-          <div className={styles.headerButtons}>
-            <ScenarioStatusBadge status={activeScenario?.status} t={t} />
-            {!isCompleted && (
-              <button
-                className={`${styles.headerRestartButton} `}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  endScenario(scenarioSessionId);
-                }}
-              >
-                {t("cancel")}
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className={styles.history} ref={historyRef}>
-          {scenarioMessages.map((msg, index) => (
-            <div
-              key={`${msg.id}-${index}`}
-              className={`${styles.messageRow} ${
-                msg.sender === "user" ? styles.userRow : ""
-              }`}
-            >
-              <div
-                className={`GlassEffect ${styles.message} ${
-                  msg.sender === "bot" ? styles.botMessage : styles.userMessage
-                }`}
-              >
-                <div className={styles.scenarioMessageContentWrapper}>
-                  {msg.sender === "bot" && <LogoIcon />}
-                  <div className={styles.messageContent}>
-                    {msg.node?.type === "form" ? (
-                      <FormRenderer
-                        node={msg.node}
-                        onFormSubmit={handleFormSubmit}
-                        disabled={isCompleted}
-                        language={language}
-                      />
-                    ) : msg.node?.type === "iframe" ? (
+          
+          <div className={styles.history} ref={historyRef} style={{padding: '10px'}}>
+            {scenarioMessages.map((msg, index) => (
+              <div key={`${msg.id}-${index}`} className={`${styles.messageRow} ${msg.sender === 'user' ? styles.userRow : ''}`}>
+                 {msg.sender === 'bot' && <img src="/images/avatar.png" alt="Avatar" className={styles.avatar} />}
+                 <div className={`${styles.message} ${msg.sender === 'bot' ? styles.botMessage : styles.userMessage}`}>
+                   {msg.node?.type === 'form' ? (
+                     <FormRenderer node={msg.node} onFormSubmit={handleFormSubmit} disabled={isCompleted} language={language} />
+                   ) : msg.node?.type === 'iframe' ? (
                       <div className={styles.iframeContainer}>
                         <iframe
                           src={msg.node.data.url}
-                          width={msg.node.data.width || "100%"}
-                          height={msg.node.data.height || "250"}
-                          style={{ border: "none", borderRadius: "18px" }}
+                          width={msg.node.data.width || '100%'}
+                          height={msg.node.data.height || '250'}
+                          style={{ border: 'none', borderRadius: '18px' }}
                           title="chatbot-iframe"
                         ></iframe>
                       </div>
-                    ) : msg.node?.type === "link" ? (
-                      <div>
+                   ) : msg.node?.type === 'link' ? (
+                     <div>
                         <span>Opening link in a new tab: </span>
-                        <a
-                          href={msg.node.data.content}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {msg.node.data.display || msg.node.data.content}
-                        </a>
-                      </div>
-                    ) : (
-                      <p>{msg.text || msg.node?.data.content}</p>
-                    )}
-                    {msg.node?.type === "branch" && msg.node.data.replies && (
-                      <div className={styles.scenarioList}>
-                        {msg.node.data.replies.map((reply) => (
-                          <button
-                            key={reply.value}
-                            className={styles.optionButton}
-                            onClick={() =>
-                              handleScenarioResponse({
-                                scenarioSessionId: scenarioSessionId,
-                                currentNodeId: msg.node.id,
-                                sourceHandle: reply.value,
-                                userInput: reply.display,
-                              })
-                            }
-                            disabled={isCompleted}
-                          >
-                            {reply.display}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                        <a href={msg.node.data.content} target="_blank" rel="noopener noreferrer">{msg.node.data.display || msg.node.data.content}</a>
+                     </div>
+                   ) : (
+                     <p>{msg.text || msg.node?.data.content}</p>
+                   )}
+                   {msg.node?.type === 'branch' && msg.node.data.replies && (
+                     <div className={styles.scenarioList}>
+                         {msg.node.data.replies.map(reply => (
+                             <button 
+                               key={reply.value} 
+                               className={styles.optionButton} 
+                               onClick={() => handleScenarioResponse({
+                                   scenarioSessionId: scenarioSessionId,
+                                   currentNodeId: msg.node.id,
+                                   sourceHandle: reply.value,
+                                   userInput: reply.display
+                               })}
+                               disabled={isCompleted}
+                             >
+                                 {reply.display}
+                             </button>
+                         ))}
+                     </div>
+                   )}
+                 </div>
               </div>
-            </div>
-          ))}
-          {isScenarioLoading && (
-            <div className={styles.messageRow}>
-              <img
-                src="/images/avatar-loading.png"
-                alt="Avatar"
-                className={styles.avatar}
-              />
-              <div className={`${styles.message} ${styles.botMessage}`}>
-                <img
-                  src="/images/Loading.gif"
-                  alt={t("loading")}
-                  style={{ width: "40px", height: "30px" }}
-                />
-              </div>
-            </div>
-          )}
+            ))}
+            {isScenarioLoading && <div className={styles.messageRow}>
+                    <img src="/images/avatar-loading.png" alt="Avatar" className={styles.avatar} />
+                    <div className={`${styles.message} ${styles.botMessage}`}><img src="/images/Loading.gif" alt={t('loading')} style={{ width: '40px', height: '30px' }} /></div>
+                </div>}
+          </div>
         </div>
-      </div>
     </div>
   );
 }

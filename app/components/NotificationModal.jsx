@@ -13,13 +13,11 @@ const TrashIcon = () => (
 );
 
 const NotificationModal = () => {
-    const { 
-        toastHistory, 
-        isNotificationModalOpen, 
-        closeNotificationModal, 
-        deleteNotification,
-        markNotificationAsRead
-    } = useChatStore();
+    const toastHistory = useChatStore((state) => state.toastHistory);
+    const isNotificationModalOpen = useChatStore((state) => state.isNotificationModalOpen);
+    const closeNotificationModal = useChatStore((state) => state.closeNotificationModal);
+    const deleteNotification = useChatStore((state) => state.deleteNotification);
+    const markNotificationAsRead = useChatStore((state) => state.markNotificationAsRead);
     const { t, language } = useTranslations();
 
     if (!isNotificationModalOpen) {
