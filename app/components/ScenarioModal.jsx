@@ -6,12 +6,10 @@ import styles from './ScenarioModal.module.css';
 import Modal from './Modal'; // Modal import
 
 export default function ScenarioModal() {
-    const { 
-        scenarioTriggers, 
-        closeScenarioModal,
-        openScenarioPanel,
-        handleResponse 
-    } = useChatStore();
+    const scenarioTriggers = useChatStore((state) => state.scenarioTriggers);
+    const closeScenarioModal = useChatStore((state) => state.closeScenarioModal);
+    const openScenarioPanel = useChatStore((state) => state.openScenarioPanel);
+    const handleResponse = useChatStore((state) => state.handleResponse);
     const { t } = useTranslations();
 
     const handleScenarioClick = (trigger) => {

@@ -6,27 +6,24 @@ import { useTranslations } from "../hooks/useTranslations";
 import styles from "./Chat.module.css";
 import FavoritePanel from "./FavoritePanel";
 import ScenarioBubble from "./ScenarioBubble";
-import MoonIcon from "./icons/MoonIcon";
-import CopyIcon from "./icons/CopyIcon";
-import LikeIcon from "./icons/LikeIcon";
-import LogoIcon from "./icons/LogoIcon";
 import CheckCircle from "./icons/CheckCircle";
 
 export default function Chat() {
-  const {
-    messages,
-    isLoading,
-    openScenarioPanel,
-    loadMoreMessages,
-    hasMoreMessages,
-    theme,
-    setTheme,
-    fontSize,
-    setFontSize,
-    scrollToMessageId,
-    setScrollToMessageId,
-    activePanel, // activePanel 상태 추가
-  } = useChatStore();
+  const messages = useChatStore((state) => state.messages);
+  const isLoading = useChatStore((state) => state.isLoading);
+  const openScenarioPanel = useChatStore((state) => state.openScenarioPanel);
+  const loadMoreMessages = useChatStore((state) => state.loadMoreMessages);
+  const hasMoreMessages = useChatStore((state) => state.hasMoreMessages);
+  const theme = useChatStore((state) => state.theme);
+  const setTheme = useChatStore((state) => state.setTheme);
+  const fontSize = useChatStore((state) => state.fontSize);
+  const setFontSize = useChatStore((state) => state.setFontSize);
+  const scrollToMessageId = useChatStore((state) => state.scrollToMessageId);
+  const setScrollToMessageId = useChatStore(
+    (state) => state.setScrollToMessageId
+  );
+  const activePanel = useChatStore((state) => state.activePanel);
+
   const [copiedMessageId, setCopiedMessageId] = useState(null);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const historyRef = useRef(null);
@@ -91,6 +88,7 @@ export default function Chat() {
       }
     }
   }, [scrollToMessageId, messages, setScrollToMessageId]);
+
   const handleCopy = (text, id) => {
     if (!text || text.trim() === "") return;
 
@@ -105,10 +103,20 @@ export default function Chat() {
   return (
     <div className={styles.chatContainer}>
       <div className={styles.header}>
-        <div className={styles.headerContent}></div>
+        <div className={styles.headerContent}>
+          <img
+            src="/images/icon.png"
+            alt="Chatbot Icon"
+            className={styles.headerIcon}
+          />
+          <div className={styles.headerTextContainer}>
+            <span className={styles.headerTitle}>AI ChatBot</span>
+            <span className={styles.headerSubtitle}>Hybrid Assistant</span>
+          </div>
+        </div>
         <div className={styles.headerButtons}>
-          {/* --- 👇 [수정된 부분] --- */}
           <div className={styles.settingControl}>
+            <span className={styles.settingLabel}>Large text</span>
             <label className={styles.switch}>
               <input
                 type="checkbox"
@@ -119,15 +127,26 @@ export default function Chat() {
               />
               <span className={styles.slider}></span>
             </label>
-            <span className={styles.settingLabel}>Large text</span>
           </div>
 
-          <div>
+          <div className={styles.separator}></div>
+
+          <div className={styles.themeControl}>
             <button
-              className={styles.themeToggleButton}
-              onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+              className={`${styles.themeButton} ${
+                theme === "light" ? styles.active : ""
+              }`}
+              onClick={() => setTheme("light")}
             >
-              <MoonIcon />
+              {theme === "light" && "✓ "}Light
+            </button>
+            <button
+              className={`${styles.themeButton} ${
+                theme === "dark" ? styles.active : ""
+              }`}
+              onClick={() => setTheme("dark")}
+            >
+              {theme === "dark" && "✓ "}Dark
             </button>
           </div>
         </div>
@@ -174,60 +193,47 @@ export default function Chat() {
                   }`}
                   data-message-id={msg.id}
                 >
+                  {msg.sender === "bot" && (
+                    <img
+                      src="/images/avatar.png"
+                      alt="Avatar"
+                      className={styles.avatar}
+                    />
+                  )}
                   <div
-                    className={`GlassEffect ${styles.message} ${
+                    className={`${styles.message} ${
                       msg.sender === "bot"
                         ? styles.botMessage
                         : styles.userMessage
                     }`}
+                    onClick={() =>
+                      msg.sender === "bot" &&
+                      handleCopy(msg.text || msg.node?.data.content, msg.id)
+                    }
                   >
                     {copiedMessageId === msg.id && (
                       <div className={styles.copyFeedback}>{t("copied")}</div>
                     )}
-                    <div className={styles.messageContentWrapper}>
-                      {msg.sender === "bot" && <LogoIcon />}
-                      <div className={styles.messageContent}>
-                        {msg.text && <p>{msg.text}</p>}
-                        {msg.sender === "bot" && msg.scenarios && (
-                          <div className={styles.scenarioList}>
-                            {msg.scenarios.map((name) => (
-                              <button
-                                key={name}
-                                className={styles.optionButton}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openScenarioPanel(name);
-                                }}
-                              >
-                                <span className={styles.optionButtonText}>
-                                  {name}
-                                </span>
-                                <CheckCircle />
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    {msg.sender === "bot" && (
-                      <div className={styles.messageActionArea}>
-                        <button
-                          className={styles.actionButton}
-                          onClick={() =>
-                            handleCopy(
-                              msg.text || msg.node?.data.content,
-                              msg.id
-                            )
-                          }
-                        >
-                          <CopyIcon />
-                        </button>
-                        <button
-                          className={styles.actionButton}
-                          onClick={() => handleLike(msg.id)}
-                        >
-                          <LikeIcon />
-                        </button>
+
+                    {msg.text && <p>{msg.text}</p>}
+
+                    {msg.sender === "bot" && msg.scenarios && (
+                      <div className={styles.scenarioList}>
+                        {msg.scenarios.map((name) => (
+                          <button
+                            key={name}
+                            className={styles.optionButton}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openScenarioPanel(name);
+                            }}
+                          >
+                            <span className={styles.optionButtonText}>
+                              {name}
+                            </span>
+                            <CheckCircle />
+                          </button>
+                        ))}
                       </div>
                     )}
                   </div>

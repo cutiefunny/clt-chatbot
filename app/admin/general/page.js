@@ -6,16 +6,14 @@ import styles from './page.module.css';
 import Link from 'next/link';
 
 export default function GeneralSettingsPage() {
-    const { 
-        maxFavorites,
-        hideCompletedScenarios,
-        hideDelayInHours,
-        fontSizeDefault,
-        fontSizeSmall,
-        loadGeneralConfig, 
-        saveGeneralConfig, 
-        showEphemeralToast 
-    } = useChatStore();
+    const maxFavorites = useChatStore((state) => state.maxFavorites);
+    const hideCompletedScenarios = useChatStore((state) => state.hideCompletedScenarios);
+    const hideDelayInHours = useChatStore((state) => state.hideDelayInHours);
+    const fontSizeDefault = useChatStore((state) => state.fontSizeDefault);
+    const fontSizeSmall = useChatStore((state) => state.fontSizeSmall);
+    const loadGeneralConfig = useChatStore((state) => state.loadGeneralConfig);
+    const saveGeneralConfig = useChatStore((state) => state.saveGeneralConfig);
+    const showEphemeralToast = useChatStore((state) => state.showEphemeralToast);
     
     const [limit, setLimit] = useState('');
     const [hideCompleted, setHideCompleted] = useState(false);

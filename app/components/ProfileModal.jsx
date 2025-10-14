@@ -14,18 +14,15 @@ const CheckIcon = () => (
 );
 
 export default function ProfileModal() {
-  const {
-    user,
-    logout,
-    closeProfileModal,
-    openDevBoardModal,
-    language,
-    setLanguage,
-    openConfirmModal, // --- 👈 [추가]
-  } = useChatStore();
+  const user = useChatStore((state) => state.user);
+  const logout = useChatStore((state) => state.logout);
+  const closeProfileModal = useChatStore((state) => state.closeProfileModal);
+  const openDevBoardModal = useChatStore((state) => state.openDevBoardModal);
+  const language = useChatStore((state) => state.language);
+  const setLanguage = useChatStore((state) => state.setLanguage);
+  const openConfirmModal = useChatStore((state) => state.openConfirmModal);
   const { t } = useTranslations();
 
-  // --- 👇 [수정된 부분] ---
   const handleLogoutRequest = () => {
     openConfirmModal({
       title: 'Log Out',
@@ -39,7 +36,6 @@ export default function ProfileModal() {
       confirmVariant: 'danger',
     });
   };
-  // --- 👆 [여기까지] ---
   
   const handleDevBoardClick = () => {
     openDevBoardModal();

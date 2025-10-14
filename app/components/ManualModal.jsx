@@ -7,7 +7,7 @@ import styles from './ManualModal.module.css';
 import Modal from './Modal';
 
 export default function ManualModal() {
-    const { closeManualModal } = useChatStore();
+    const closeManualModal = useChatStore((state) => state.closeManualModal);
     const { t, language } = useTranslations();
     const [manualLang, setManualLang] = useState(language);
 

@@ -14,13 +14,12 @@ const TrashIcon = () => (
 );
 
 export default function DevBoardModal() {
-    const {
-        user,
-        devMemos,
-        closeDevBoardModal,
-        addDevMemo,
-        deleteDevMemo,
-    } = useChatStore();
+    const user = useChatStore((state) => state.user);
+    const devMemos = useChatStore((state) => state.devMemos);
+    const closeDevBoardModal = useChatStore((state) => state.closeDevBoardModal);
+    const addDevMemo = useChatStore((state) => state.addDevMemo);
+    const deleteDevMemo = useChatStore((state) => state.deleteDevMemo);
+    
     const [newMemo, setNewMemo] = useState('');
     const memoListRef = useRef(null);
     const { t, language } = useTranslations();
