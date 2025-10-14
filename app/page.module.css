@@ -5,7 +5,6 @@
   overflow: hidden;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(to bottom, var(--background-gradient-start), var(--background-gradient-end));
 }
 
 .chatLayout {
@@ -20,7 +19,7 @@
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-  transition: padding-left 0.3s ease-in-out; 
+  transition: padding-left 0.3s ease-in-out;
 }
 
 .panelsWrapper {
@@ -30,10 +29,10 @@
 }
 
 .mainContent {
-  width: 100%; 
+  width: 100%;
   display: flex;
   transition: width 0.3s ease-in-out, opacity 0.3s ease-in-out;
-  flex-shrink: 0; 
+  flex-shrink: 0;
 }
 
 .inactivePanel {

@@ -4,106 +4,125 @@
   top: 0;
   height: 100vh;
   z-index: 10;
-  background-color: var(--panel-bg-color);
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--panel-border-color);
   transition: width 0.3s ease-in-out;
   overflow: visible;
   color: var(--text-color);
+  background-color: var(--panel-bg-color);
+  background: rgba(255, 255, 255, 0.48);
+  box-shadow: 0 8px 20px 0 #d5d9fe;
 }
 
 .historyPanel.closed {
-  width: 0;
-  border-right: none;
+  width: 56px;
   background-color: transparent;
 }
 .historyPanel.open {
-  width: 260px;
+  width: 320px;
 }
 
 .floatingToggleButton {
-    position: fixed;
-    top: 0.75rem;
-    left: 0.75rem;
-    z-index: 20;
+  position: fixed;
+  top: 12px;
+  left: 8px;
+  z-index: 20;
 }
 
 .panelContentWrapper {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    overflow: hidden;
-    opacity: 1;
-    transition: opacity 0.2s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  opacity: 1;
+  transition: opacity 0.2s ease-in-out;
 }
 
 .historyPanel.closed .panelContentWrapper {
-    opacity: 0;
-    pointer-events: none;
+  opacity: 0;
+  pointer-events: none;
 }
-
+/* --- 👆 [여기까지] --- */
 
 .header {
-  padding: 0.75rem;
+  padding: 0.75rem 0.75rem 0.75rem 8px;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   align-items: flex-start;
+  position: relative; /* 아이콘 그룹 절대배치 기준 */
 }
 
 .headerTopRow {
-    display: flex;
-    justify-content: flex-end;
-    width: 100%;
-    align-items: center;
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  align-items: center;
+  /* 아이콘이 숨겨지는 닫힘 상태에서도 동일한 상단 여백 확보 */
+  min-height: 40px;
 }
 
 .historyPanel.closed .headerTopRow {
-    justify-content: flex-start;
+  justify-content: flex-start;
 }
 
 .headerIconGroup {
-    display: flex;
-    align-items: center;
+  display: flex;
+  align-items: center;
+  position: absolute;
+  top: 12px;
+  right: 8px; /* 패널 우측 상단 고정 */
+  /* 자연스러운 등장 애니메이션 */
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 0.2s 0.1s ease,
+    transform 0.25s 0.1s cubic-bezier(0.22, 1, 0.36, 1);
+  z-index: 22;
 }
 
 .historyPanel.closed .headerIconGroup {
-    display: none;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.historyPanel.open .headerIconGroup {
+  visibility: visible;
+  opacity: 1;
+  transform: none;
 }
 
 .iconButton {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0.5rem;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.2s;
-    color: var(--text-color);
-    position: relative;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+  color: var(--text-color);
+  position: relative;
 }
 
 .iconButton.unread::after {
-    content: '';
-    position: absolute;
-    top: 6px;
-    right: 6px;
-    width: 8px;
-    height: 8px;
-    background-color: #d32f2f;
-    border-radius: 50%;
-    border: 2px solid var(--panel-bg-color);
+  content: "";
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  background-color: #d32f2f;
+  border-radius: 50%;
+  border: 2px solid var(--panel-bg-color);
 }
 
 .iconButton:hover {
-    background-color: var(--button-hover-bg);
+  background-color: var(--button-hover-bg);
 }
 
 .historyPanel.open .iconButton {
-    display: flex;
+  display: flex;
 }
 
 .panelContent {
@@ -132,298 +151,560 @@
   color: var(--text-color);
 }
 
-.historyPanel.open .toggleButton {
-    position: absolute;
-    top: 0.75rem;
-    left: 0.75rem;
+.historyPanel .toggleButton {
+  position: absolute;
+  top: 12px;
+  left: 8px;
+  z-index: 25; /* 아이콘 그룹보다 위에 위치 */
+}
+
+.historyPanel .newChatButton {
+  position: absolute;
+  top: 56px;
+  left: 8px;
+  padding: 0.5rem;
+  z-index: 25; /* 아이콘 그룹보다 위에 위치 */
+  cursor: pointer;
+}
+
+.historyPanel .historyButton {
+  position: absolute;
+  top: 100px;
+  left: 8px;
+  padding: 0.5rem;
+  z-index: 25; /* 아이콘 그룹보다 위에 위치 */
+  cursor: pointer;
+}
+
+.historyPanel .newChatButton:hover,
+.historyPanel .historyButton:hover {
+  background-color: var(--button-hover-bg);
+  border-radius: 50%;
+}
+
+.historyPanel .newChatButton:active,
+.historyPanel .historyButton:active {
+  background-color: var(--button-hover-bg);
+}
+
+.historyPanel.open .newChatButton {
+  display: none;
+  transition: 0.3s ease-in-out;
+}
+
+.historyPanel.open .historyButton {
+  display: none;
+  transition: 0.3s ease-in-out;
 }
 
 .toggleButton:hover {
   background-color: var(--button-hover-bg);
 }
 
-.newChatButton {
+.sidePanelButton {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem;
-  font-size: 0.9rem;
+  gap: 8px;
+  padding: 10px 20px 10px 16px;
+  margin-left: 12px;
   color: var(--text-color);
-  border: none;
+  line-height: 1.1;
+  border: 1px solid var(--Gray-03, #d8e0eb);
   border-radius: 24px;
   cursor: pointer;
-  transition: all 0.2s;
+  width: fit-content;
+  font-size: 14px;
+  font-weight: 600;
   white-space: nowrap;
-  margin-top: 3rem;
+  transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s,
+    border-color 0.2s;
+  opacity: 1;
+  transform: none;
 }
-.historyPanel.open .newChatButton {
-  width: 100%;
-}
-.newChatButton:hover {
-  background-color: var(--button-hover-bg);
-}
-.historyPanel.closed .newChatButton {
-  background: none;
-  padding: 0.5rem;
-  border-radius: 50%;
-  width: auto;
-  gap: 0;
-}
-.historyPanel.closed .newChatButton:hover {
-  background-color: var(--button-hover-bg);
+
+.sidePanelButton svg {
+  flex-shrink: 0; /* 아이콘 우그러짐 방지 */
 }
 
 .newChatText {
-  transition: opacity 0.2s 0.1s, max-width 0.3s ease-in-out;
-  max-width: 100px;
-  opacity: 1;
-  overflow: hidden;
-  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  transition: opacity 0.2s ease;
 }
-.historyPanel.closed .newChatText {
-  max-width: 0;
+
+.historyPanel.open .sidePanelButton {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+.sidePanelButton:hover {
+  /* 라운드가 유지되는 그라디언트 보더 */
+  border: 1px solid transparent;
+  background-image: linear-gradient(
+      var(--Gray-01, #f4f5fb),
+      var(--Gray-01, #f4f5fb)
+    ),
+    linear-gradient(135deg, #3051ea 0%, #7f30c5 100%);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  border-radius: 24px;
+}
+
+/* 텍스트는 별도로 그라디언트 적용 (선명한 텍스트 유지) */
+.sidePanelButton:hover span {
+  background: var(
+    --Color-Light-Gradation-03,
+    linear-gradient(135deg, #3051ea 0%, #7f30c5 100%)
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* 비활성화 상태 스타일 */
+.sidePanelButton:disabled,
+.sidePanelButton[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.6;
+  background-color: var(--option-button-bg);
+  border-color: var(--option-button-border);
+  color: var(--Gray-04, #babcd1);
+}
+
+.sidePanelButton:disabled:hover,
+.sidePanelButton[aria-disabled="true"]:hover {
+  background-color: var(--option-button-bg);
+  background-image: none;
+  background-clip: border-box;
+  -webkit-background-clip: border-box;
+  -webkit-text-fill-color: inherit;
+  border: 1px solid var(--option-button-border);
+}
+
+/* disabled + hover 시 텍스트 그라디언트 해제 */
+.sidePanelButton:disabled:hover span,
+.sidePanelButton[aria-disabled="true"]:hover span {
+  background: none;
+  background-clip: border-box;
+  -webkit-background-clip: border-box;
+  -webkit-text-fill-color: currentColor;
+}
+
+.historyPanel.closed .sidePanelButton {
+  background: none;
   opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+}
+
+.historyPanel.closed .newChatText {
+  opacity: 0;
+}
+
+.historyPanel.open .newChatText {
+  opacity: 1;
+}
+.historyPanel.closed .sidePanelButton:hover {
+  background-color: var(--button-hover-bg);
+}
+
+/* 아이콘 그라디언트는 두께 변화 방지 위해 fill만 변경 */
+.sidePanelButton:not(:disabled):not([aria-disabled="true"]):hover
+  svg
+  [fill="currentColor"],
+.sidePanelButton:not(:disabled):not([aria-disabled="true"]):hover
+  svg
+  path[fill="currentColor"] {
+  fill: url(#spbIconGradient);
+}
+/* svg 자체에 fill 속성이 있는 경우도 적용 */
+.sidePanelButton:not(:disabled):not([aria-disabled="true"]):hover
+  svg[fill="currentColor"] {
+  fill: url(#spbIconGradient);
+}
+
+/* stroke 사용 아이콘도 그라디언트 적용 */
+.sidePanelButton:not(:disabled):not([aria-disabled="true"]):hover
+  svg
+  [stroke="currentColor"],
+.sidePanelButton:not(:disabled):not([aria-disabled="true"]):hover
+  svg
+  path[stroke="currentColor"] {
+  stroke: url(#spbIconGradient);
+}
+/* svg 자체에 stroke 속성이 있는 경우도 적용 */
+.sidePanelButton:not(:disabled):not([aria-disabled="true"]):hover
+  svg[stroke="currentColor"] {
+  stroke: url(#spbIconGradient);
+}
+
+.newChatText {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.18s ease;
+}
+
+.historyPanel.open .newChatText {
+  opacity: 1;
+  visibility: visible;
+}
+
+.historyPanel.closed .newChatText {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.historyPanel .commonText {
+  color: var(--Gray-07, #5e7599);
+
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  letter-spacing: -0.21px;
+  margin: 0.5rem 1rem;
+}
+
+.historyPanel .historyTileWrapper {
+  border-radius: 12px;
+  border: 1px solid var(--Gray-03, #d8e0eb);
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.historyTileWrapper .noHistoryBox {
+  display: flex;
+  height: 160px;
+  padding: 1rem;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  letter-spacing: -0.21px;
+  color: var(--Gray-04, #babcd1);
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  white-space: nowrap;
+}
+
+/* ExpandIcon 등장 애니메이션 */
+@keyframes expandIconFadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.expandIconWrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  animation: expandIconFadeInUp 220ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .conversationList {
   flex-grow: 1;
   overflow-y: auto;
   padding: 0 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .historyPanel.closed .conversationList {
-    visibility: hidden;
+  visibility: hidden;
+}
+
+.conversationItemWrapper {
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  border: 1px solid var(--Gray-03, #d8e0eb);
+  background: white;
 }
 
 .conversationItem {
-    display: flex;
-    align-items: center;
-    margin-bottom: 0.5rem;
-    border-radius: 8px;
-    color: var(--text-color);
-    position: relative;
-}
-.conversationItem:hover {
-    background-color: var(--button-hover-bg);
-}
-.conversationItem.active {
-    background-color: var(--convo-item-active-bg);
-    font-weight: bold;
-}
-.convoMain {
-    display: flex;
-    align-items: center;
-    flex-grow: 1;
-    cursor: pointer;
-    padding: 0.75rem;
-    gap: 4px;
-    min-width: 0;
-}
-.pinIndicator {
-    flex-shrink: 0;
-    color: var(--text-color);
-    display: flex;
-    align-items: center;
-    margin-right: 4px;
-}
-.convoTitle {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    flex-grow: 1;
-    padding-right: 8px;
-}
-.titleInput {
-    width: 100%;
-    background-color: var(--input-bg);
-    border: 1px solid var(--input-border);
-    border-radius: 4px;
-    padding: 4px 6px;
-    font-size: 0.9rem;
-    color: var(--text-color);
-    flex-grow: 1;
-}
-.editConfirmButton {
-    padding-right: 8px;
-}
-.actionButton {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--action-button-color);
-    padding: 4px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: opacity 0.2s, color 0.2s, background-color 0.2s;
-}
-.actionButton:hover {
-    color: var(--action-button-hover-color);
-    background-color: var(--button-hover-bg);
-}
-.menuContainer {
-    position: relative;
-    padding-right: 4px;
-}
-.menuButton {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--action-button-color);
-    padding: 4px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    transition: opacity 0.2s, color 0.2s, background-color 0.2s;
-}
-.conversationItem:hover .menuButton,
-.menuButton[data-open="true"] {
-    opacity: 1;
-}
-.menuButton:hover, .menuButton:focus {
-    color: var(--action-button-hover-color);
-    background-color: var(--button-hover-bg);
-}
-.dropdownMenu {
-    position: absolute;
-    right: 8px;
-    top: calc(100% - 4px);
-    background-color: var(--panel-bg-color);
-    border: 1px solid var(--panel-border-color);
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    z-index: 20;
-    width: 120px;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    padding: 4px;
-}
-.dropdownMenu button {
-    background: none;
-    border: none;
-    padding: 8px 10px;
-    text-align: left;
-    width: 100%;
-    cursor: pointer;
-    font-size: 0.9rem;
-    color: var(--text-color);
-    transition: background-color 0.2s;
-    border-radius: 6px;
-}
-.dropdownMenu button:hover {
-    background-color: var(--button-hover-bg);
-}
-.dropdownMenu button:last-child:hover {
-    color: #fff;
-    background-color: #e74c3c;
+  display: flex;
+  align-items: center;
+  position: relative;
+  border-radius: 12px 12px 0 0;
 }
 
-.expandButton {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--action-button-color);
-    padding: 4px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.2s;
-    flex-shrink: 0;
+.conversationItem:hover {
+  background: var(--Gray-01, #f4f5fb);
+  border-radius: 12px;
 }
-.expandButton:hover {
-    background-color: var(--button-hover-bg);
+
+.conversationItem.active {
+  border-radius: 12px 12px 0 0;
 }
+
+.convoMain {
+  display: flex;
+  align-items: center;
+  flex-grow: 1;
+  cursor: pointer;
+  padding: 10px 12px;
+  gap: 4px;
+  min-width: 0;
+  color: #5e7599;
+}
+
+.pinIndicator {
+  flex-shrink: 0;
+  color: #806bf5;
+  display: flex;
+  align-items: center;
+}
+.convoTitle {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-grow: 1;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  letter-spacing: -0.21px;
+  margin-left: 4px;
+  color: var(--text-color);
+}
+.titleInput {
+  background-color: var(--input-bg);
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 16px;
+  letter-spacing: -0.21px;
+  color: var(--text-color);
+  flex-grow: 1;
+  outline: 2px solid var(--Purple-02, #806bf5);
+}
+
+.editConfirmButton {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-right: 8px;
+}
+
+.buttonGroup {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.actionButton {
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  color: var(--action-button-color);
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--Gray-Opacity-40, rgba(163, 186, 220, 0.4));
+  background: var(--White-Opacity-48, rgba(255, 255, 255, 0.48));
+  transition: opacity 0.2s, color 0.2s, background-color 0.2s;
+}
+
+.actionButton.confirm {
+  border: 1px solid var(--Purple-02, #806bf5);
+  background: var(--Purple-02, #806bf5);
+  color: var(--White-Opacity-100, #fff);
+}
+
+.actionButton.confirm:hover {
+  background-color: var(--Purple-02-Hover, #634ce2);
+  color: var(--White-Opacity-100, #fff);
+}
+
+.actionButton:hover {
+  color: var(--action-button-hover-color);
+  background-color: var(--button-hover-bg);
+}
+
+.menuContainer {
+  position: relative;
+  padding-right: 4px;
+}
+.menuButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #5e7599;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s, color 0.2s, background-color 0.2s;
+}
+
+.menuButton:hover,
+.menuButton:focus {
+  color: var(--action-button-hover-color);
+  background-color: var(--button-hover-bg);
+}
+.dropdownMenu {
+  position: absolute;
+  right: 8px;
+  top: calc(100% - 4px);
+  background-color: var(--panel-bg-color);
+  border: 1px solid var(--panel-border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+  z-index: 20;
+  width: 144px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.dropdownMenu button {
+  background: none;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  color: var(--Gray-08, #282166);
+  font-family: Pretendard;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 20px; /* 142.857% */
+  letter-spacing: -0.21px;
+}
+.dropdownMenu button:hover {
+  background-color: var(--button-hover-bg);
+}
+.dropdownMenu button:last-child:hover {
+  color: #fff;
+  background-color: #e74c3c;
+}
+
 .scenarioSubList {
-    padding-left: 32px;
-    margin: -4px 0 8px 0;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    animation: fadeIn 0.3s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 0.3s ease-in-out;
+  border-radius: 0 0 12px 12px;
+  overflow: hidden;
 }
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-5px); }
-    to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 .scenarioItem {
-    display: flex;
-    align-items: center;
-    /* justify-content: space-between; */
-    gap: 8px;
-    padding: 8px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.85rem;
-    transition: background-color 0.2s;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background-color 0.2s;
+  background: var(--Gray-01, #f4f5fb);
 }
 .scenarioItem:hover {
-    background-color: var(--button-hover-bg);
+  background-color: var(--Gray-02, #e1e4f2);
 }
 .scenarioStatusDot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 .scenarioStatusDot[data-status="completed"] {
-    background-color: #8a8a8e;
+  background-color: #8a8a8e;
 }
 .scenarioStatusDot[data-status="active"] {
-    background-color: #2ecc71;
+  background-color: #2ecc71;
 }
 .scenarioTitle {
-    flex-grow: 1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  flex-grow: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 2px 4px;
 }
 
 /* --- 👇 [추가된 부분] --- */
 .unreadDot {
-    width: 8px;
-    height: 8px;
-    background-color: #d32f2f;
-    border-radius: 50%;
-    flex-shrink: 0;
+  width: 5px;
+  height: 5px;
+  background-color: #d32f2f;
+  border-radius: 50%;
+  flex-shrink: 0;
+  position: absolute;
+  left: 8px;
+  top: 8px;
 }
 /* --- 👆 [여기까지] --- */
 
 .noScenarios {
-    padding: 8px;
-    font-size: 0.85rem;
-    color: #8a8a8e;
-    text-align: center;
+  padding: 8px;
+  font-size: 0.85rem;
+  color: #8a8a8e;
+  text-align: center;
 }
 
 .scenarioBadge {
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: white;
-    text-transform: uppercase;
-    flex-shrink: 0;
-    margin-left: auto;
+  margin-left: auto;
+  padding: 4px 8px;
+  border-radius: 12px;
+  color: white;
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 12px; /* 120% */
+  letter-spacing: -0.1px;
+}
+
+.scenarioBadge.inprogress {
+  background: var(--Blue-01, #b2ebf2);
+  color: var(--Blue-02, #005762);
 }
 .scenarioBadge.done {
-    background-color: #3498db;
+  background: var(--Gray-03, #d8e0eb);
+  color: var(--Gray-07, #5e7599);
 }
 .scenarioBadge.incomplete {
-    background-color: #f39c12;
+  background: var(--Yellow-01, #fff6aa);
+  color: var(--Yellow-02, #f57f17);
 }
 .scenarioBadge.failed {
-    background-color: #e74c3c;
+  background: var(--Error-01, #ffdbdb);
+  color: var(--Error-02, #ff4f4f);
 }
 .scenarioBadge.generating {
-    background-color: #27ae60;
+  background: var(--Green-01, #c6eec2);
+  color: var(--Green-02, #00770a);
 }
 
-
+/* --- 👆 [여기까지] --- */
 .footer {
   padding: 0.75rem;
   display: flex;
@@ -433,26 +714,26 @@
 }
 
 .historyPanel.closed .footer {
-    justify-content: flex-start;
+  justify-content: flex-start;
 }
 
 .historyPanel.closed .footer .iconButton {
-    display: none;
+  display: none;
 }
 
 .avatarWrapper {
-    position: relative;
-    display: flex;
-    cursor: pointer;
-    padding: 8px;
-    border-radius: 50%;
-    transition: background-color 0.2s;
-    flex-shrink: 0;
-    margin-left: -6px;
+  position: relative;
+  display: flex;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+  flex-shrink: 0;
+  margin-left: -6px;
 }
 
 .avatarWrapper:hover {
-    background-color: var(--button-hover-bg);
+  background-color: var(--button-hover-bg);
 }
 
 .userAvatar {

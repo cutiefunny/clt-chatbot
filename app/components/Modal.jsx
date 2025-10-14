@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import styles from './Modal.module.css';
-import CloseIcon from './icons/CloseIcon';
+import styles from "./Modal.module.css";
+import CloseIcon from "./icons/CloseIcon";
 
 export default function Modal({ title, onClose, children, contentStyle }) {
   const handleOverlayClick = (e) => {
@@ -21,9 +21,7 @@ export default function Modal({ title, onClose, children, contentStyle }) {
             </button>
           </div>
         )}
-        <div className={styles.modalBody}>
-          {children}
-        </div>
+        <div className={styles.modalBody}>{children}</div>
       </div>
     </div>
   );

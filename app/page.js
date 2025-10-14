@@ -1,17 +1,23 @@
-'use client';
+"use client";
 
-import { useChatStore } from '../app/store';
-import Chat from '../app/components/Chat';
-import Login from '../app/components/Login';
-import HistoryPanel from '../app/components/HistoryPanel';
-import ChatInput from '../app/components/ChatInput';
-import ScenarioModal from '../app/components/ScenarioModal';
-import Toast from '../app/components/Toast';
-import styles from './page.module.css';
-import ConfirmModal from '../app/components/ConfirmModal';
+import { useChatStore } from "../app/store";
+import Chat from "../app/components/Chat";
+import Login from "../app/components/Login";
+import HistoryPanel from "../app/components/HistoryPanel";
+import ChatInput from "../app/components/ChatInput";
+import ScenarioModal from "../app/components/ScenarioModal";
+import Toast from "../app/components/Toast";
+import styles from "./page.module.css";
+import ConfirmModal from "../app/components/ConfirmModal";
 
 export default function HomePage() {
-  const { user, isHistoryPanelOpen, isScenarioModalOpen, confirmModal, closeConfirmModal } = useChatStore();
+  const {
+    user,
+    isHistoryPanelOpen,
+    isScenarioModalOpen,
+    confirmModal,
+    closeConfirmModal,
+  } = useChatStore();
 
   const handleConfirm = () => {
     if (confirmModal.onConfirm) {
@@ -28,7 +34,7 @@ export default function HomePage() {
           <HistoryPanel />
           <div
             className={styles.contentAndInputWrapper}
-            style={{ paddingLeft: isHistoryPanelOpen ? '260px' : '60px' }} 
+            style={{ paddingLeft: isHistoryPanelOpen ? "320px" : "60px" }}
           >
             <Chat />
             <ChatInput />

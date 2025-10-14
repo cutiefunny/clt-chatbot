@@ -1,23 +1,24 @@
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
 @import "tailwindcss";
 
 :root {
   /* Font size variables will be set dynamically via JS */
   --font-size-default: 16px;
   --font-size-small: 14px;
-  
+
   --background-gradient-start: #ffffff;
   --background-gradient-end: #b2c7d9;
-  --text-color: #1c1c1e;
+  --text-color: #282166;
   --panel-bg-color: #f0f2f5;
   --panel-border-color: #e0e0e0;
   --button-hover-bg: #e9e9e9;
   --bot-message-bg: #f0f2f5;
   --user-message-bg: #dadada;
-  --input-border-color: #87B4FF;
+  --input-border-color: #87b4ff;
   --input-placeholder-color: #8a8a8e;
   --action-button-color: #888;
   --action-button-hover-color: #333;
-  --login-button-bg: #4285F4;
+  --login-button-bg: #4285f4;
   --login-button-hover-bg: #357ae8;
   --convo-item-active-bg: #dcdcdc;
   --input-bg: #fff;
@@ -29,6 +30,10 @@
   --chat-input-bg: transparent;
   --chat-input-text-color: #333;
   --date-input-scheme: light;
+
+  /* Addition-Colors on Publishing */
+  --login-gradient: linear-gradient(90deg, #ba9bff 0%, #0e4dec 71.21%);
+  --login-text-color: #282166;
 }
 
 body.dark {
@@ -44,7 +49,7 @@ body.dark {
   --input-placeholder-color: #888;
   --action-button-color: #999;
   --action-button-hover-color: #eee;
-  --login-button-bg: #4285F4;
+  --login-button-bg: #4285f4;
   --login-button-hover-bg: #5a95f8;
   --convo-item-active-bg: #4a4a4a;
   --input-bg: var(--button-hover-bg);
@@ -59,11 +64,69 @@ body.dark {
 }
 
 body {
-    background: linear-gradient(to bottom, var(--background-gradient-start), var(--background-gradient-end));
-    color: var(--text-color);
-    font-size: var(--font-size-default); /* CSS 변수 사용 */
-    transition: font-size 0.2s ease-in-out;
+  /* background: linear-gradient(to bottom, var(--background-gradient-start), var(--background-gradient-end)); */
+  color: var(--text-color);
+  font-size: var(--font-size-default); /* CSS 변수 사용 */
+  font-family: "Pretendard", sans-serif;
+  transition: font-size 0.2s ease-in-out;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: url("/images/background.png") lightgray 50% / cover no-repeat;
+  filter: blur(28px);
+  opacity: 0.2;
+  pointer-events: none;
+}
+
+body > * {
+  position: relative;
+  z-index: 1;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: url("/images/background.png") lightgray 50% / cover no-repeat;
+  filter: blur(28px);
+  opacity: 0.2;
+  pointer-events: none;
+}
+
+body > * {
+  position: relative;
+  z-index: 1;
 }
 
 body.font-small {
-    font-size: var(--font-size-small); /* CSS 변수 사용 */}
+  font-size: var(--font-size-small); /* CSS 변수 사용 */
+}
+/* --- 👆 [여기까지] --- */
+
+.GlassEffect {
+  --glass-blur: 12px;
+  --glass-saturate: 1.2;
+  --glass-contrast: 1.05;
+  --glass-brightness: 1.05;
+
+  background: var(--White-Opacity-64, rgba(255, 255, 255, 0.64));
+  -webkit-backdrop-filter: blur(var(--glass-blur))
+    saturate(var(--glass-saturate)) contrast(var(--glass-contrast))
+    brightness(var(--glass-brightness));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate))
+    contrast(var(--glass-contrast)) brightness(var(--glass-brightness));
+  border: 1px solid rgba(255, 255, 255, 0.54);
+  box-shadow: 0 6px 16px 0 #dfe2fe;
+  transition: all 0.2s ease-in-out;
+}
+
+.GlassEffect.active {
+  background: rgba(255, 255, 255, 0.48);
+}
+
+.GlassEffect.noOpacity {
+  background: var(--White-Opacity-100, rgba(255, 255, 255, 1));
+}
