@@ -2,9 +2,11 @@
 import { useState, useRef, useEffect } from "react";
 import { useTranslations } from "../hooks/useTranslations";
 import styles from "./HistoryPanel.module.css";
-import ChevronDownIcon from "./icons/ChevronDownIcon";
 import KebabMenuIcon from "./icons/KebabMenuIcon";
 import PinIcon from "./icons/PinIcon";
+import ArrowDropDownIcon from "./icons/ArrowDropDownIcon";
+import PinOutlinedIcon from "./icons/PinOutlinedIcon";
+import CloseIcon from "./icons/CloseIcon";
 import { useChatStore } from "../store";
 
 const CheckIcon = () => (
@@ -21,6 +23,36 @@ const CheckIcon = () => (
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
+    />
+  </svg>
+);
+
+const PencilIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="20"
+    height="20"
+    viewBox="0 0 20 20"
+    fill="none"
+  >
+    <path
+      d="M11.7167 7.51667L12.4833 8.28333L4.93333 15.8333H4.16667V15.0667L11.7167 7.51667ZM14.7167 2.5C14.5083 2.5 14.2917 2.58333 14.1333 2.74167L12.6083 4.26667L15.7333 7.39167L17.2583 5.86667C17.5833 5.54167 17.5833 5.01667 17.2583 4.69167L15.3083 2.74167C15.1417 2.575 14.9333 2.5 14.7167 2.5ZM11.7167 5.15833L2.5 14.375V17.5H5.625L14.8417 8.28333L11.7167 5.15833Z"
+      fill="currentColor"
+    />
+  </svg>
+);
+
+const TrashIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="20"
+    height="20"
+    viewBox="0 0 20 20"
+    fill="none"
+  >
+    <path
+      d="M13.3346 7.5V15.8333H6.66797V7.5H13.3346ZM12.0846 2.5H7.91797L7.08464 3.33333H4.16797V5H15.8346V3.33333H12.918L12.0846 2.5ZM15.0013 5.83333H5.0013V15.8333C5.0013 16.75 5.7513 17.5 6.66797 17.5H13.3346C14.2513 17.5 15.0013 16.75 15.0013 15.8333V5.83333Z"
+      fill="currentColor"
     />
   </svg>
 );
@@ -78,10 +110,7 @@ export default function ConversationItem({
   const inputRef = useRef(null);
   const menuRef = useRef(null);
   const { t } = useTranslations();
-  const hideCompletedScenarios = useChatStore(
-    (state) => state.hideCompletedScenarios
-  );
-  const hideDelayInHours = useChatStore((state) => state.hideDelayInHours);
+  const { hideCompletedScenarios, hideDelayInHours } = useChatStore();
 
   useEffect(() => {
     if (isEditing) {
@@ -102,6 +131,8 @@ export default function ConversationItem({
     };
   }, []);
 
+  // 확장 상태는 isActive로만 결정
+
   const handleUpdate = () => {
     if (title.trim() && title.trim() !== convo.title) {
       onUpdateTitle(convo.id, title.trim());
@@ -120,6 +151,7 @@ export default function ConversationItem({
 
   const handleRename = (e) => {
     e.stopPropagation();
+    setTitle(convo.title);
     setIsEditing(true);
     setIsMenuOpen(false);
   };
@@ -157,27 +189,18 @@ export default function ConversationItem({
         className={`${styles.conversationItem} ${
           isActive ? styles.active : ""
         }`}
-        onClick={() => !isEditing && onClick(convo.id)}
+        onClick={() => {
+          if (isEditing) return;
+          onClick(convo.id);
+          onToggleExpand?.(convo.id);
+        }}
       >
         <div className={styles.convoMain}>
-          {convo.pinned && (
+          {convo.pinned && !isEditing && (
             <span className={styles.pinIndicator}>
               <PinIcon />
             </span>
           )}
-          <button
-            className={styles.expandButton}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleExpand(convo.id);
-            }}
-          >
-            <ChevronDownIcon
-              style={{
-                transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
-              }}
-            />
-          </button>
 
           {isEditing ? (
             <input
@@ -208,6 +231,16 @@ export default function ConversationItem({
               }}
             >
               <CheckIcon />
+            </button>
+            <button
+              className={styles.actionButton}
+              style={{ opacity: 1 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsEditing(false);
+              }}
+            >
+              <CloseIcon />
             </button>
           </div>
         ) : (
