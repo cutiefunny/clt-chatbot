@@ -7,6 +7,7 @@ import styles from "./Chat.module.css";
 import { validateInput } from "../lib/chatbotEngine";
 import LogoIcon from "./icons/LogoIcon";
 import ChevronDownIcon from "./icons/ChevronDownIcon";
+import CheckCircle from "./icons/CheckCircle";
 
 const FormRenderer = ({ node, onFormSubmit, disabled, language }) => {
   const [formData, setFormData] = useState({});
@@ -349,7 +350,10 @@ export default function ScenarioBubble({ scenarioSessionId }) {
                             }
                             disabled={isCompleted}
                           >
-                            {reply.display}
+                            <span className={styles.optionButtonText}>
+                              {reply.display}
+                            </span>
+                            <CheckCircle />
                           </button>
                         ))}
                       </div>

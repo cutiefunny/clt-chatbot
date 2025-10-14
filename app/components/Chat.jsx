@@ -10,6 +10,7 @@ import MoonIcon from "./icons/MoonIcon";
 import CopyIcon from "./icons/CopyIcon";
 import LikeIcon from "./icons/LikeIcon";
 import LogoIcon from "./icons/LogoIcon";
+import CheckCircle from "./icons/CheckCircle";
 
 export default function Chat() {
   const {
@@ -198,7 +199,10 @@ export default function Chat() {
                                   openScenarioPanel(name);
                                 }}
                               >
-                                {name}
+                                <span className={styles.optionButtonText}>
+                                  {name}
+                                </span>
+                                <CheckCircle />
                               </button>
                             ))}
                           </div>

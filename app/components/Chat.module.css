@@ -356,22 +356,37 @@ input:checked + .slider:before {
 }
 
 .optionButton {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   flex-shrink: 0;
-  padding: 8px 16px;
+  padding: 12px 16px 12px 24px;
+  border-radius: 12px;
   border: 1px solid var(--panel-border-color); /* Themed */
   background-color: rgba(255, 255, 255, 0.1); /* Adjusted for dark mode */
   color: var(--text-color); /* Themed */
-  border-radius: 20px;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 14px; /* 116.667% */
+  letter-spacing: -0.12px;
   transition: background-color 0.2s, border-color 0.2s;
   white-space: nowrap;
   text-align: center; /* 버튼 텍스트 중앙 정렬 */
 }
 
+.optionButtonText {
+  flex-grow: 1;
+  text-align: left;
+}
+
 .optionButton:hover {
   background-color: var(--button-hover-bg); /* Themed */
   border-color: #aaa;
+}
+
+.optionButton:checked {
+  /* TODO: Add checked style */
 }
 
 .formContainer {
