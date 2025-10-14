@@ -9,6 +9,7 @@ import ScenarioBubble from "./ScenarioBubble";
 import MoonIcon from "./icons/MoonIcon";
 import CopyIcon from "./icons/CopyIcon";
 import LikeIcon from "./icons/LikeIcon";
+import LogoIcon from "./icons/LogoIcon";
 
 export default function Chat() {
   const {
@@ -178,16 +179,37 @@ export default function Chat() {
                         ? styles.botMessage
                         : styles.userMessage
                     }`}
-                    onClick={() =>
-                      msg.sender === "bot" &&
-                      handleCopy(msg.text || msg.node?.data.content, msg.id)
-                    }
                   >
                     {copiedMessageId === msg.id && (
                       <div className={styles.copyFeedback}>{t("copied")}</div>
                     )}
-
-                    {msg.text && <p>{msg.text}</p>}
+                    <div className={styles.messageContentWrapper}>
+                      {msg.sender === "bot" && <LogoIcon />}
+                      <div className={styles.messageContent}>
+                        {msg.text && <p>{msg.text}</p>}
+                      </div>
+                    </div>
+                    {msg.sender === "bot" && (
+                      <div className={styles.messageActionArea}>
+                        <button
+                          className={styles.actionButton}
+                          onClick={() =>
+                            handleCopy(
+                              msg.text || msg.node?.data.content,
+                              msg.id
+                            )
+                          }
+                        >
+                          <CopyIcon />
+                        </button>
+                        <button
+                          className={styles.actionButton}
+                          onClick={() => handleLike(msg.id)}
+                        >
+                          <LikeIcon />
+                        </button>
+                      </div>
+                    )}
 
                     {msg.sender === "bot" && msg.scenarios && (
                       <div className={styles.scenarioList}>
@@ -206,16 +228,6 @@ export default function Chat() {
                       </div>
                     )}
                   </div>
-                  {msg.sender === "bot" && (
-                    <div className={styles.messageActionArea}>
-                      <button className={styles.actionButton}>
-                        <CopyIcon />
-                      </button>
-                      <button className={styles.actionButton}>
-                        <LikeIcon />
-                      </button>
-                    </div>
-                  )}
                 </div>
               );
             })}
