@@ -33,45 +33,38 @@ export default function Chat() {
     }
   };
 
-  const handleScroll = useCallback(async () => {
-    if (historyRef.current?.scrollTop === 0 && hasMoreMessages && !isFetchingMore) {
-        setIsFetchingMore(true);
-        await loadMoreMessages();
-        setIsFetchingMore(false);
-    }
-  }, [hasMoreMessages, isFetchingMore, loadMoreMessages]);
-
   useEffect(() => {
     const scrollContainer = historyRef.current;
     if (!scrollContainer) return;
 
-    const scrollToBottom = () => {
-      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+    const handleScroll = async () => {
+      if (scrollContainer.scrollTop === 0 && hasMoreMessages && !isFetchingMore) {
+        setIsFetchingMore(true);
+        await loadMoreMessages();
+        setIsFetchingMore(false);
+      }
     };
 
     const observer = new MutationObserver((mutations) => {
-        // activePanel이 'main'일 때만 자동 스크롤 실행
-        if (activePanel === 'main') {
-            for (const mutation of mutations) {
-                if (mutation.type === 'childList' && !isFetchingMore) {
-                    scrollToBottom();
-                }
-            }
+      for (const mutation of mutations) {
+        if (mutation.type === 'childList' && !isFetchingMore) {
+          scrollContainer.scrollTop = scrollContainer.scrollHeight;
         }
+      }
     });
 
     observer.observe(scrollContainer, { childList: true, subtree: true });
     scrollContainer.addEventListener('scroll', handleScroll);
     
-    if (!isFetchingMore && activePanel === 'main') {
-        scrollToBottom();
+    if (!isFetchingMore) {
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
     }
 
     return () => {
       observer.disconnect();
       scrollContainer.removeEventListener('scroll', handleScroll);
     };
-  }, [messages, handleScroll, isFetchingMore, activePanel]); // 의존성 배열에 activePanel 추가
+  }, [hasMoreMessages, isFetchingMore, loadMoreMessages, messages]);
   
   useEffect(() => {
     if (scrollToMessageId && historyRef.current) {
