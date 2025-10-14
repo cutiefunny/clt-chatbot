@@ -5,6 +5,8 @@ import { useChatStore } from "../store";
 import { useTranslations } from "../hooks/useTranslations";
 import styles from "./Chat.module.css";
 import { validateInput } from "../lib/chatbotEngine";
+import LogoIcon from "./icons/LogoIcon";
+import ChevronDownIcon from "./icons/ChevronDownIcon";
 import ArrowDropDownIcon from "./icons/ArrowDropDownIcon";
 import CheckCircle from "./icons/CheckCircle";
 import OpenInNewIcon from "./icons/OpenInNew";
@@ -180,17 +182,14 @@ const ScenarioStatusBadge = ({ status, t }) => {
 };
 
 export default function ScenarioBubble({ scenarioSessionId }) {
-  const scenarioStates = useChatStore((state) => state.scenarioStates);
-  const handleScenarioResponse = useChatStore(
-    (state) => state.handleScenarioResponse
-  );
-  const endScenario = useChatStore((state) => state.endScenario);
-  const setActivePanel = useChatStore((state) => state.setActivePanel);
-  const activePanel = useChatStore((state) => state.activePanel);
-  const focusedSessionId = useChatStore(
-    (state) => state.activeScenarioSessionId
-  );
-
+  const {
+    scenarioStates,
+    handleScenarioResponse,
+    endScenario,
+    setActivePanel,
+    activePanel,
+    activeScenarioSessionId: focusedSessionId,
+  } = useChatStore();
   const { t, language } = useTranslations();
 
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -265,7 +264,7 @@ export default function ScenarioBubble({ scenarioSessionId }) {
       onClick={handleBubbleClick}
     >
       <div
-        className={`${styles.scenarioBubbleContainer} ${
+        className={`GlassEffect ${styles.scenarioBubbleContainer} ${
           isCollapsed ? styles.collapsed : ""
         } ${!isFocused ? styles.dimmed : ""}`}
       >
@@ -275,6 +274,7 @@ export default function ScenarioBubble({ scenarioSessionId }) {
           style={{ cursor: "pointer" }}
         >
           <div className={styles.headerContent}>
+            <ChevronDownIcon isRotated={isCollapsed} />
             <span className={styles.headerTitle}>
               {t("scenarioTitle")(scenarioId)}
             </span>
@@ -283,23 +283,19 @@ export default function ScenarioBubble({ scenarioSessionId }) {
             <ScenarioStatusBadge status={activeScenario?.status} t={t} />
             {!isCompleted && (
               <button
-                className={`${styles.headerRestartButton} ${styles.dangerButton}`}
+                className={`${styles.headerRestartButton} `}
                 onClick={(e) => {
                   e.stopPropagation();
                   endScenario(scenarioSessionId);
                 }}
               >
-                {t("end")}
+                {t("cancel")}
               </button>
             )}
           </div>
         </div>
 
-        <div
-          className={styles.history}
-          ref={historyRef}
-          style={{ padding: "10px" }}
-        >
+        <div className={styles.history} ref={historyRef}>
           {scenarioMessages.map((msg, index) => (
             <div
               key={`${msg.id}-${index}`}
@@ -307,78 +303,78 @@ export default function ScenarioBubble({ scenarioSessionId }) {
                 msg.sender === "user" ? styles.userRow : ""
               }`}
             >
-              {msg.sender === "bot" && (
-                <img
-                  src="/images/avatar.png"
-                  alt="Avatar"
-                  className={styles.avatar}
-                />
-              )}
               <div
-                className={`${styles.message} ${
+                className={`GlassEffect ${styles.message} ${
                   msg.sender === "bot" ? styles.botMessage : styles.userMessage
                 }`}
               >
-                {msg.node?.type === "form" ? (
-                  <FormRenderer
-                    node={msg.node}
-                    onFormSubmit={handleFormSubmit}
-                    disabled={isCompleted}
-                    language={language}
-                  />
-                ) : msg.node?.type === "iframe" ? (
-                  <div className={styles.iframeContainer}>
-                    <iframe
-                      src={msg.node.data.url}
-                      width={msg.node.data.width || "100%"}
-                      height={msg.node.data.height || "250"}
-                      style={{ border: "none", borderRadius: "18px" }}
-                      title="chatbot-iframe"
-                    ></iframe>
-                  </div>
-                ) : msg.node?.type === "link" ? (
-                  <div>
-                    <span>Opening link in a new tab: </span>
-                    <a
-                      href={msg.node.data.content}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {msg.node.data.display || msg.node.data.content}
-                    </a>
-                  </div>
-                ) : (
-                  <p>{msg.text || msg.node?.data.content}</p>
-                )}
-                {msg.node?.type === "branch" && msg.node.data.replies && (
-                  <div className={styles.scenarioList}>
-                    {msg.node.data.replies.map((reply) => (
-                      <button
-                        key={reply.value}
-                        className={styles.optionButton}
-                        onClick={() => {
-                          handleScenarioResponse({
-                            scenarioSessionId: scenarioSessionId,
-                            currentNodeId: msg.node.id,
-                            sourceHandle: reply.value,
-                            userInput: reply.display,
-                          });
-                          console.log(reply);
-                        }}
+                <div className={styles.scenarioMessageContentWrapper}>
+                  {msg.sender === "bot" && msg.node?.type !== "form" && (
+                    <LogoIcon />
+                  )}
+                  <div className={styles.messageContent}>
+                    {msg.node?.type === "form" ? (
+                      <FormRenderer
+                        node={msg.node}
+                        onFormSubmit={handleFormSubmit}
                         disabled={isCompleted}
-                      >
-                        <span className={styles.optionButtonText}>
-                          {reply.display}
-                        </span>
-                        {reply.display.toLowerCase().includes("link") ? (
-                          <OpenInNewIcon />
-                        ) : (
-                          <CheckCircle />
-                        )}
-                      </button>
-                    ))}
+                        language={language}
+                      />
+                    ) : msg.node?.type === "iframe" ? (
+                      <div className={styles.iframeContainer}>
+                        <iframe
+                          src={msg.node.data.url}
+                          width={msg.node.data.width || "100%"}
+                          height={msg.node.data.height || "250"}
+                          style={{ border: "none", borderRadius: "18px" }}
+                          title="chatbot-iframe"
+                        ></iframe>
+                      </div>
+                    ) : msg.node?.type === "link" ? (
+                      <div>
+                        <span>Opening link in a new tab: </span>
+                        <a
+                          href={msg.node.data.content}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {msg.node.data.display || msg.node.data.content}
+                        </a>
+                      </div>
+                    ) : (
+                      <p>{msg.text || msg.node?.data.content}</p>
+                    )}
+                    {msg.node?.type === "branch" && msg.node.data.replies && (
+                      <div className={styles.scenarioList}>
+                        {msg.node.data.replies.map((reply) => (
+                          <button
+                            key={reply.value}
+                            className={styles.optionButton}
+                            onClick={() => {
+                              handleScenarioResponse({
+                                scenarioSessionId: scenarioSessionId,
+                                currentNodeId: msg.node.id,
+                                sourceHandle: reply.value,
+                                userInput: reply.display,
+                              });
+                              console.log(reply);
+                            }}
+                            disabled={isCompleted}
+                          >
+                            <span className={styles.optionButtonText}>
+                              {reply.display}
+                            </span>
+                            {reply.display.toLowerCase().includes("link") ? (
+                              <OpenInNewIcon />
+                            ) : (
+                              <CheckCircle />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
             </div>
           ))}

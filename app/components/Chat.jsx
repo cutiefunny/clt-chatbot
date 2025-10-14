@@ -7,6 +7,10 @@ import styles from "./Chat.module.css";
 import FavoritePanel from "./FavoritePanel";
 import ScenarioBubble from "./ScenarioBubble";
 import CheckCircle from "./icons/CheckCircle";
+import MoonIcon from "./icons/MoonIcon";
+import LogoIcon from "./icons/LogoIcon";
+import CopyIcon from "./icons/CopyIcon";
+import LikeIcon from "./icons/LikeIcon";
 
 export default function Chat() {
   const messages = useChatStore((state) => state.messages);
@@ -119,23 +123,12 @@ export default function Chat() {
           </div>
 
           <div className={styles.separator}></div>
-
-          <div className={styles.themeControl}>
+          <div>
             <button
-              className={`${styles.themeButton} ${
-                theme === "light" ? styles.active : ""
-              }`}
-              onClick={() => setTheme("light")}
+              className={styles.themeToggleButton}
+              onClick={() => setTheme(theme === "light" ? "dark" : "light")}
             >
-              {theme === "light" && "✓ "}Light
-            </button>
-            <button
-              className={`${styles.themeButton} ${
-                theme === "dark" ? styles.active : ""
-              }`}
-              onClick={() => setTheme("dark")}
-            >
-              {theme === "dark" && "✓ "}Dark
+              <MoonIcon />
             </button>
           </div>
         </div>
@@ -182,47 +175,54 @@ export default function Chat() {
                   }`}
                   data-message-id={msg.id}
                 >
-                  {msg.sender === "bot" && (
-                    <img
-                      src="/images/avatar.png"
-                      alt="Avatar"
-                      className={styles.avatar}
-                    />
-                  )}
                   <div
-                    className={`${styles.message} ${
+                    className={`GlassEffect ${styles.message} ${
                       msg.sender === "bot"
                         ? styles.botMessage
                         : styles.userMessage
                     }`}
-                    onClick={() =>
-                      msg.sender === "bot" &&
-                      handleCopy(msg.text || msg.node?.data.content, msg.id)
-                    }
                   >
                     {copiedMessageId === msg.id && (
                       <div className={styles.copyFeedback}>{t("copied")}</div>
                     )}
-
-                    {msg.text && <p>{msg.text}</p>}
-
-                    {msg.sender === "bot" && msg.scenarios && (
-                      <div className={styles.scenarioList}>
-                        {msg.scenarios.map((name) => (
-                          <button
-                            key={name}
-                            className={styles.optionButton}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openScenarioPanel(name);
-                            }}
-                          >
-                            <span className={styles.optionButtonText}>
-                              {name}
-                            </span>
-                            <CheckCircle />
-                          </button>
-                        ))}
+                    <div className={styles.messageContentWrapper}>
+                      {msg.sender === "bot" && <LogoIcon />}
+                      <div className={styles.messageContent}>
+                        {msg.text && <p>{msg.text}</p>}
+                        {msg.sender === "bot" && msg.scenarios && (
+                          <div className={styles.scenarioList}>
+                            {msg.scenarios.map((name) => (
+                              <button
+                                key={name}
+                                className={styles.optionButton}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openScenarioPanel(name);
+                                }}
+                              >
+                                <span className={styles.optionButtonText}>
+                                  {name}
+                                </span>
+                                <CheckCircle />
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {msg.sender === "bot" && (
+                      <div className={styles.messageActionArea}>
+                        <button
+                          className={styles.actionButton}
+                          onClick={() =>
+                            handleCopy(
+                              msg.text || msg.node?.data.content,
+                              msg.id
+                            )
+                          }
+                        >
+                          <CopyIcon />
+                        </button>
                       </div>
                     )}
                   </div>
