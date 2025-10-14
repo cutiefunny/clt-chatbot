@@ -186,9 +186,12 @@ export default function ScenarioBubble({ scenarioSessionId }) {
   return (
     <div 
       className={`${styles.messageRow} ${styles.userRow}`}
-      onClick={handleBubbleClick}
+      data-message-id={scenarioSessionId}
     >
-        <div className={`${styles.scenarioBubbleContainer} ${isCollapsed ? styles.collapsed : ''} ${!isFocused ? styles.dimmed : ''}`}>
+        <div 
+          className={`${styles.scenarioBubbleContainer} ${isCollapsed ? styles.collapsed : ''} ${!isFocused ? styles.dimmed : ''}`}
+          onClick={handleBubbleClick}
+        >
           <div 
             className={styles.header}
             onClick={handleToggleCollapse}

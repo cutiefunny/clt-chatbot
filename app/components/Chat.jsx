@@ -20,11 +20,18 @@ export default function Chat() {
   const scrollToMessageId = useChatStore((state) => state.scrollToMessageId);
   const setScrollToMessageId = useChatStore((state) => state.setScrollToMessageId);
   const activePanel = useChatStore((state) => state.activePanel);
+  const setActivePanel = useChatStore((state) => state.setActivePanel);
   
   const [copiedMessageId, setCopiedMessageId] = useState(null);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const historyRef = useRef(null);
   const { t } = useTranslations();
+
+  const handleContainerClick = () => {
+    if (activePanel !== 'main') {
+      setActivePanel('main');
+    }
+  };
 
   const handleScroll = useCallback(async () => {
     if (historyRef.current?.scrollTop === 0 && hasMoreMessages && !isFetchingMore) {
@@ -92,7 +99,7 @@ export default function Chat() {
   const hasMessages = messages.some(m => m.id !== 'initial');
 
   return (
-    <div className={styles.chatContainer}>
+    <div className={styles.chatContainer} onClick={handleContainerClick}>
       <div className={styles.header}>
         <div className={styles.headerContent}>
           <img src="/images/icon.png" alt="Chatbot Icon" className={styles.headerIcon} />
@@ -151,10 +158,12 @@ export default function Chat() {
                 return <ScenarioBubble key={msg.id} scenarioSessionId={msg.scenarioSessionId} />;
               }
               
+              const isMainChatDimmed = activePanel === 'scenario';
+
               return (
                 <div 
                     key={msg.id} 
-                    className={`${styles.messageRow} ${msg.sender === 'user' ? styles.userRow : ''}`}
+                    className={`${styles.messageRow} ${msg.sender === 'user' ? styles.userRow : ''} ${isMainChatDimmed ? styles.dimmedMessage : ''}`}
                     data-message-id={msg.id}
                 >
                   {msg.sender === 'bot' && <img src="/images/avatar.png" alt="Avatar" className={styles.avatar} />}

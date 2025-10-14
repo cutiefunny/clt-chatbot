@@ -580,12 +580,7 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
 }
 
 .scenarioBubbleContainer.dimmed {
-  opacity: 0.7;
-  pointer-events: none; /* 내부 클릭 방지 */
-}
-
-.scenarioBubbleContainer.dimmed .header {
-  pointer-events: auto; /* 헤더는 다시 클릭 가능하도록 설정 */
+  opacity: 0.4;
 }
 
 .scenarioBadge {
@@ -619,4 +614,9 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
 .scenarioBadge.generating {
   background: var(--Green-01, #c6eec2);
   color: var(--Green-02, #00770a);
+}
+
+.dimmedMessage {
+  opacity: 0.4;
+  transition: opacity 0.3s ease-in-out;
 }
