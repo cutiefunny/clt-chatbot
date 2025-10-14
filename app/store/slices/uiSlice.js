@@ -39,9 +39,10 @@ export const createUISlice = (set, get) => ({
     message: '',
     type: 'info',
   },
-  scrollToMessageId: null, 
+  scrollToMessageId: null, // --- 👈 [추가] 스크롤할 메시지 ID 상태
 
   // Actions
+  // ... (기존 loadGeneralConfig, saveGeneralConfig, setShortcutMenuOpen 등 액션)
   loadGeneralConfig: async () => {
     try {
       const configRef = doc(get().db, 'config', 'general');
@@ -74,7 +75,7 @@ export const createUISlice = (set, get) => ({
     }
   },
 
-  setScrollToMessageId: (id) => set({ scrollToMessageId: id }), 
+  setScrollToMessageId: (id) => set({ scrollToMessageId: id }), // --- 👈 [추가] 스크롤 ID 설정 액션
 
   setShortcutMenuOpen: (menuName) => set({ shortcutMenuOpen: menuName }),
 

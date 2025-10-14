@@ -13,22 +13,20 @@ import CopyIcon from "./icons/CopyIcon";
 import LikeIcon from "./icons/LikeIcon";
 
 export default function Chat() {
-  const messages = useChatStore((state) => state.messages);
-  const isLoading = useChatStore((state) => state.isLoading);
-  const openScenarioPanel = useChatStore((state) => state.openScenarioPanel);
-  const loadMoreMessages = useChatStore((state) => state.loadMoreMessages);
-  const hasMoreMessages = useChatStore((state) => state.hasMoreMessages);
-  const theme = useChatStore((state) => state.theme);
-  const setTheme = useChatStore((state) => state.setTheme);
-  const fontSize = useChatStore((state) => state.fontSize);
-  const setFontSize = useChatStore((state) => state.setFontSize);
-  const scrollToMessageId = useChatStore((state) => state.scrollToMessageId);
-  const setScrollToMessageId = useChatStore(
-    (state) => state.setScrollToMessageId
-  );
-  const activePanel = useChatStore((state) => state.activePanel);
-  const setActivePanel = useChatStore((state) => state.setActivePanel);
-
+  const {
+    messages,
+    isLoading,
+    openScenarioPanel,
+    loadMoreMessages,
+    hasMoreMessages,
+    theme,
+    setTheme,
+    fontSize,
+    setFontSize,
+    scrollToMessageId,
+    setScrollToMessageId,
+    activePanel,
+  } = useChatStore();
   const [copiedMessageId, setCopiedMessageId] = useState(null);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const historyRef = useRef(null);
@@ -57,9 +55,11 @@ export default function Chat() {
     };
 
     const observer = new MutationObserver((mutations) => {
-      for (const mutation of mutations) {
-        if (mutation.type === "childList" && !isFetchingMore) {
-          scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      if (activePanel === "main") {
+        for (const mutation of mutations) {
+          if (mutation.type === "childList" && !isFetchingMore) {
+            scrollToBottom();
+          }
         }
       }
     });
@@ -75,7 +75,7 @@ export default function Chat() {
       observer.disconnect();
       scrollContainer.removeEventListener("scroll", handleScroll);
     };
-  }, [hasMoreMessages, isFetchingMore, loadMoreMessages, messages]);
+  }, [messages, handleScroll, isFetchingMore, activePanel]);
 
   useEffect(() => {
     if (scrollToMessageId && historyRef.current) {
@@ -134,7 +134,12 @@ export default function Chat() {
         </div>
       </div>
 
-      <div className={styles.history} ref={historyRef}>
+      <div
+        className={`${styles.history} ${
+          activePanel === "scenario" ? styles.mainChatDimmed : ""
+        }`}
+        ref={historyRef}
+      >
         {!hasMessages ? (
           <FavoritePanel />
         ) : (
@@ -160,10 +165,9 @@ export default function Chat() {
 
               if (msg.type === "scenario_bubble") {
                 return (
-                  <ScenarioBubble
-                    key={msg.id}
-                    scenarioSessionId={msg.scenarioSessionId}
-                  />
+                  <div key={msg.id} data-message-id={msg.scenarioSessionId}>
+                    <ScenarioBubble scenarioSessionId={msg.scenarioSessionId} />
+                  </div>
                 );
               }
 

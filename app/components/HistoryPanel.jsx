@@ -18,56 +18,34 @@ const NotificationModal = dynamic(() => import("./NotificationModal"));
 const ManualModal = dynamic(() => import("./ManualModal"));
 
 export default function HistoryPanel() {
-  const user = useChatStore((state) => state.user);
-  const conversations = useChatStore((state) => state.conversations);
-  const loadConversation = useChatStore((state) => state.loadConversation);
-  const createNewConversation = useChatStore(
-    (state) => state.createNewConversation
-  );
-  const currentConversationId = useChatStore(
-    (state) => state.currentConversationId
-  );
-  const deleteConversation = useChatStore((state) => state.deleteConversation);
-  const updateConversationTitle = useChatStore(
-    (state) => state.updateConversationTitle
-  );
-  const pinConversation = useChatStore((state) => state.pinConversation);
-  const isHistoryPanelOpen = useChatStore((state) => state.isHistoryPanelOpen);
-  const toggleHistoryPanel = useChatStore((state) => state.toggleHistoryPanel);
-  const isSearchModalOpen = useChatStore((state) => state.isSearchModalOpen);
-  const openSearchModal = useChatStore((state) => state.openSearchModal);
-  const isProfileModalOpen = useChatStore((state) => state.isProfileModalOpen);
-  const openProfileModal = useChatStore((state) => state.openProfileModal);
-  const isDevBoardModalOpen = useChatStore(
-    (state) => state.isDevBoardModalOpen
-  );
-  const isNotificationModalOpen = useChatStore(
-    (state) => state.isNotificationModalOpen
-  );
-  const openNotificationModal = useChatStore(
-    (state) => state.openNotificationModal
-  );
-  const hasUnreadNotifications = useChatStore(
-    (state) => state.hasUnreadNotifications
-  );
-  const isManualModalOpen = useChatStore((state) => state.isManualModalOpen);
-  const openManualModal = useChatStore((state) => state.openManualModal);
-  const expandedConversationId = useChatStore(
-    (state) => state.expandedConversationId
-  );
-  const scenariosForConversation = useChatStore(
-    (state) => state.scenariosForConversation
-  );
-  const toggleConversationExpansion = useChatStore(
-    (state) => state.toggleConversationExpansion
-  );
-  const handleScenarioItemClick = useChatStore(
-    (state) => state.handleScenarioItemClick
-  );
-  const openConfirmModal = useChatStore((state) => state.openConfirmModal);
-  const unreadScenarioSessions = useChatStore(
-    (state) => state.unreadScenarioSessions
-  );
+  const {
+    user,
+    conversations,
+    loadConversation,
+    createNewConversation,
+    currentConversationId,
+    deleteConversation,
+    updateConversationTitle,
+    pinConversation,
+    isHistoryPanelOpen,
+    toggleHistoryPanel,
+    isSearchModalOpen,
+    openSearchModal,
+    isProfileModalOpen,
+    openProfileModal,
+    isDevBoardModalOpen,
+    isNotificationModalOpen,
+    openNotificationModal,
+    hasUnreadNotifications,
+    isManualModalOpen,
+    openManualModal,
+    scenariosForConversation,
+    expandedConversationId,
+    toggleConversationExpansion,
+    handleScenarioItemClick,
+    openConfirmModal,
+    unreadScenarioSessions,
+  } = useChatStore();
   const { t } = useTranslations();
 
   if (!user) return null;
@@ -120,6 +98,18 @@ export default function HistoryPanel() {
         >
           <MenuIcon />
         </button>
+        {currentConversationId && (
+          <button
+            className={styles.newChatButton}
+            onClick={createNewConversation}
+          >
+            <NewChatIcon />
+          </button>
+        )}
+        <button className={styles.historyButton} onClick={toggleHistoryPanel}>
+          <HistoryIcon />
+        </button>
+
         <div className={styles.panelContentWrapper}>
           <div className={styles.header}>
             <div className={styles.headerTopRow}>
@@ -149,14 +139,16 @@ export default function HistoryPanel() {
           </div>
 
           <div className={styles.panelContent}>
-            <button
-              className={styles.sidePanelButton}
-              onClick={createNewConversation}
-            >
-              <EditIcon />
-              <span className={styles.newChatText}>{t("newChat")}</span>
-            </button>
-            <div className={styles.commonText}>{t("history")}</div>
+            {currentConversationId && (
+              <button
+                className={styles.sidePanelButton}
+                onClick={createNewConversation}
+              >
+                <EditIcon />
+                <span className={styles.newChatText}>{t("newChat")}</span>
+              </button>
+            )}
+            <span className={styles.commonText}>{t("History")}</span>
             <div className={styles.conversationList}>
               {conversations.length > 0 &&
                 conversations.map((convo) => (
@@ -172,7 +164,7 @@ export default function HistoryPanel() {
                     scenarios={scenariosForConversation[convo.id]}
                     onToggleExpand={toggleConversationExpansion}
                     onScenarioClick={handleScenarioItemClick}
-                    unreadScenarioSessions={unreadScenarioSessions} // --- 争 [ｶ緋ｰ ]
+                    unreadScenarioSessions={unreadScenarioSessions}
                   />
                 ))}
               {conversations.length === 0 && (

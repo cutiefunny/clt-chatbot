@@ -148,16 +148,19 @@ export const useChatStore = create((set, get) => ({
     if (get().currentConversationId !== conversationId) {
       get().loadConversation(conversationId);
     }
-  
+
     get().setScrollToMessageId(scenario.sessionId);
-  
-    // 시나리오 상태가 'completed' 또는 'failed'가 아닐 경우에만 포커스를 변경합니다.
-    if (scenario.status !== 'completed' && scenario.status !== 'failed') {
-      setTimeout(() => {
-          get().setActivePanel('scenario', scenario.sessionId);
-      }, 1000);
+
+    // --- 👇 [수정된 부분] ---
+    if (scenario.status === "completed" || scenario.status === "failed") {
+      // 완료/실패 시나리오는 메인챗에 포커스를 둡니다.
+      get().setActivePanel("main");
+    } else {
+      // 진행 중인 시나리오는 해당 시나리오에 포커스를 둡니다.
+      get().setActivePanel("scenario", scenario.sessionId);
     }
-  
+    // --- 👆 [여기까지] ---
+
     if (!get().scenarioStates[scenario.sessionId]) {
       get().subscribeToScenarioSession(scenario.sessionId);
     }
