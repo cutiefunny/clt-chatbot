@@ -57,6 +57,7 @@ const TrashIcon = () => (
   </svg>
 );
 
+// --- 👇 [수정된 부분] ---
 const ScenarioStatusBadge = ({ status, t }) => {
   if (!status) return null;
 
@@ -80,6 +81,10 @@ const ScenarioStatusBadge = ({ status, t }) => {
       text = t("statusGenerating");
       statusClass = "generating";
       break;
+    case "canceled":
+      text = t("statusCanceled");
+      statusClass = "canceled";
+      break;
     default:
       return null;
   }
@@ -90,6 +95,7 @@ const ScenarioStatusBadge = ({ status, t }) => {
     </span>
   );
 };
+// --- 👆 [여기까지] ---
 
 export default function ConversationItem({
   convo,

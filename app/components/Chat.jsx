@@ -12,8 +12,10 @@ import LogoIcon from "./icons/LogoIcon";
 import CopyIcon from "./icons/CopyIcon";
 import LikeIcon from "./icons/LikeIcon";
 
-const MessageWithButtons = ({ text }) => {
-  const { handleShortcutClick, scenarioCategories } = useChatStore();
+const MessageWithButtons = ({ text, messageId }) => {
+  const { handleShortcutClick, scenarioCategories, selectedOptions } =
+    useChatStore();
+  const selectedOption = selectedOptions[messageId];
 
   const findShortcutByTitle = useCallback(
     (title) => {
@@ -36,7 +38,6 @@ const MessageWithButtons = ({ text }) => {
   let lastIndex = 0;
   let match;
 
-  // 1. 텍스트를 순회하며 일반 텍스트와 버튼 태그를 파싱하여 배열에 저장
   while ((match = regex.exec(text)) !== null) {
     if (match.index > lastIndex) {
       parts.push({
@@ -52,12 +53,10 @@ const MessageWithButtons = ({ text }) => {
     parts.push({ type: "text", content: text.substring(lastIndex) });
   }
 
-  // 2. 파싱된 배열이 비어있으면 원본 텍스트를 그대로 반환
   if (parts.length === 0) {
     return <p>{text}</p>;
   }
 
-  // 3. 파싱된 배열을 기반으로 UI 렌더링
   return (
     <div>
       {parts.map((part, index) => {
@@ -66,26 +65,31 @@ const MessageWithButtons = ({ text }) => {
         } else if (part.type === "button") {
           const buttonText = part.content;
           const shortcutItem = findShortcutByTitle(buttonText);
+          const isSelected = selectedOption === buttonText;
+          const isDimmed = selectedOption && !isSelected;
+
           if (shortcutItem) {
             return (
               <button
                 key={index}
-                className={styles.optionButton}
-                style={{ margin: "4px 4px 4px 0", display: "block" }} // block으로 변경하여 버튼이 세로로 쌓이도록 함
-                onClick={() => handleShortcutClick(shortcutItem)}
+                className={`${styles.optionButton} ${
+                  isSelected ? styles.selected : ""
+                } ${isDimmed ? styles.dimmed : ""}`}
+                style={{ margin: "4px 4px 4px 0", display: "block" }}
+                onClick={() => handleShortcutClick(shortcutItem, messageId)}
+                disabled={!!selectedOption}
               >
                 {buttonText}
               </button>
             );
           }
-          return `[BUTTON:${part.content}]`; // 숏컷을 찾지 못한 경우 텍스트로 표시
+          return `[BUTTON:${part.content}]`;
         }
         return null;
       })}
     </div>
   );
 };
-
 
 export default function Chat() {
   const {
@@ -105,6 +109,9 @@ export default function Chat() {
     setForceScrollToBottom,
     scrollAmount,
     resetScroll,
+    // --- 👇 [추가] ---
+    selectedOptions,
+    setSelectedOption,
   } = useChatStore();
   const [copiedMessageId, setCopiedMessageId] = useState(null);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
@@ -143,37 +150,32 @@ export default function Chat() {
     }
   }, [scrollAmount, resetScroll]);
 
-  // --- 👇 [수정된 부분] ---
   useEffect(() => {
     const scrollContainer = historyRef.current;
     if (!scrollContainer) return;
 
     const handleScrollEvent = () => handleScroll();
 
-    // 새 메시지가 추가될 때마다 스크롤 로직 실행
     const lastMessage = messages[messages.length - 1];
     const isUserMessage = lastMessage?.sender === "user";
 
-    // 스크롤 위치가 맨 아래에서 100px 이내에 있는지 확인
     const isScrolledNearBottom =
       scrollContainer.scrollHeight -
         scrollContainer.clientHeight -
         scrollContainer.scrollTop <
       100;
 
-    // 사용자가 직접 메시지를 보냈거나, 이미 맨 아래에 스크롤되어 있을 때만 자동 스크롤
     if (isUserMessage || isScrolledNearBottom) {
       setTimeout(() => {
         scrollContainer.scrollTop = scrollContainer.scrollHeight;
-      }, 0); // DOM 업데이트 후 스크롤 실행
+      }, 0);
     }
-    
+
     scrollContainer.addEventListener("scroll", handleScrollEvent);
     return () => {
       scrollContainer.removeEventListener("scroll", handleScrollEvent);
     };
   }, [messages, handleScroll]);
-  // --- 👆 [여기까지] ---
 
   useEffect(() => {
     if (scrollToMessageId && historyRef.current) {
@@ -269,7 +271,8 @@ export default function Chat() {
                 );
               }
 
-              const isMainChatDimmed = activePanel === "scenario";
+              // --- 👇 [추가] ---
+              const selectedOption = selectedOptions[msg.id];
 
               return (
                 <div
@@ -293,26 +296,41 @@ export default function Chat() {
                     <div className={styles.messageContentWrapper}>
                       {msg.sender === "bot" && <LogoIcon />}
                       <div className={styles.messageContent}>
-                        {msg.text && <MessageWithButtons text={msg.text} />}
+                        {msg.text && (
+                          <MessageWithButtons
+                            text={msg.text}
+                            messageId={msg.id}
+                          />
+                        )}
+                        {/* --- 👇 [수정된 부분] --- */}
                         {msg.sender === "bot" && msg.scenarios && (
                           <div className={styles.scenarioList}>
-                            {msg.scenarios.map((name) => (
-                              <button
-                                key={name}
-                                className={styles.optionButton}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openScenarioPanel(name);
-                                }}
-                              >
-                                <span className={styles.optionButtonText}>
-                                  {name}
-                                </span>
-                                <CheckCircle />
-                              </button>
-                            ))}
+                            {msg.scenarios.map((name) => {
+                              const isSelected = selectedOption === name;
+                              const isDimmed = selectedOption && !isSelected;
+                              return (
+                                <button
+                                  key={name}
+                                  className={`${styles.optionButton} ${
+                                    isSelected ? styles.selected : ""
+                                  } ${isDimmed ? styles.dimmed : ""}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedOption(msg.id, name);
+                                    openScenarioPanel(name);
+                                  }}
+                                  disabled={!!selectedOption}
+                                >
+                                  <span className={styles.optionButtonText}>
+                                    {name}
+                                  </span>
+                                  <CheckCircle />
+                                </button>
+                              );
+                            })}
                           </div>
                         )}
+                        {/* --- 👆 [여기까지] --- */}
                       </div>
                     </div>
                     {msg.sender === "bot" && (

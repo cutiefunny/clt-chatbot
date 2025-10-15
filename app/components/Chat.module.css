@@ -396,9 +396,30 @@ input:checked + .slider:before {
   border-color: #aaa;
 }
 
-.optionButton:checked {
-  /* TODO: Add checked style */
+/* --- 👇 [추가된 부분] --- */
+.optionButton:disabled {
+  cursor: not-allowed;
+  background-color: var(--button-hover-bg);
+  border-color: var(--panel-border-color);
 }
+.optionButton.selected {
+  background-color: var(--login-button-bg);
+  color: white;
+  border-color: var(--login-button-bg);
+}
+.optionButton.dimmed {
+  opacity: 0.5;
+  background-color: transparent;
+}
+.optionButton:disabled:hover {
+  background-color: var(--button-hover-bg);
+  border-color: var(--panel-border-color);
+}
+.optionButton.selected:disabled:hover {
+  background-color: var(--login-button-bg);
+  border-color: var(--login-button-bg);
+}
+/* --- 👆 [여기까지] --- */
 
 .formContainer {
   display: flex;
@@ -675,4 +696,8 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
 .scenarioBadge.generating {
   background: var(--Green-01, #c6eec2);
   color: var(--Green-02, #00770a);
+}
+.scenarioBadge.canceled {
+  background: var(--Error-01, #ffdbdb);
+  color: var(--Error-02, #ff4f4f);
 }

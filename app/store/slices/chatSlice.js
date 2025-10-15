@@ -38,7 +38,6 @@ const responseHandlers = {
   toast: (data, get) => {
     get().showToast(data.message, data.toastType);
   },
-  // --- 👇 [추가] 슬롯과 함께 LLM 응답을 처리하는 핸들러 ---
   llm_response_with_slots: (data, get) => {
     get().addMessage("bot", { text: data.message });
     if (data.slots && Object.keys(data.slots).length > 0) {
@@ -55,8 +54,9 @@ export const createChatSlice = (set, get) => ({
   isSearching: false,
   searchResults: [],
   slots: {},
-  // --- 👇 [추가] 추출된 슬롯을 저장할 상태 ---
   extractedSlots: {},
+  // --- 👇 [추가] 선택된 옵션을 기록하기 위한 상태 ---
+  selectedOptions: {},
   unsubscribeMessages: null,
   unsubscribeConversations: null,
   lastVisibleMessage: null,
@@ -66,14 +66,22 @@ export const createChatSlice = (set, get) => ({
   favorites: [],
   unsubscribeFavorites: null,
 
-  // --- 👇 [추가] 슬롯을 업데이트하고 기존 슬롯과 병합하는 액션 ---
+  // --- 👇 [추가] 선택된 옵션을 상태에 저장하는 액션 ---
+  setSelectedOption: (messageId, optionValue) => {
+    set((state) => ({
+      selectedOptions: {
+        ...state.selectedOptions,
+        [messageId]: optionValue,
+      },
+    }));
+  },
+
   setExtractedSlots: (newSlots) => {
     set((state) => ({
       extractedSlots: { ...state.extractedSlots, ...newSlots },
     }));
   },
 
-  // --- 👇 [추가] 슬롯을 초기화하는 액션 ---
   clearExtractedSlots: () => {
     set({ extractedSlots: {} });
   },
@@ -226,10 +234,14 @@ export const createChatSlice = (set, get) => ({
     }
   },
 
-  // --- 👇 [수정] 숏컷 클릭 시 저장된 슬롯을 함께 전달 ---
-  handleShortcutClick: async (item) => {
+  handleShortcutClick: async (item, messageId) => {
     if (!item || !item.action) return;
-    const { extractedSlots, clearExtractedSlots } = get();
+    const { extractedSlots, clearExtractedSlots, setSelectedOption } = get();
+
+    // --- 👇 [추가] 버튼 클릭 시 상태 업데이트 ---
+    if (messageId) {
+      setSelectedOption(messageId, item.title);
+    }
 
     if (item.action.type === "custom") {
       await get().handleResponse({
@@ -237,13 +249,10 @@ export const createChatSlice = (set, get) => ({
         displayText: item.title,
       });
     } else {
-      // openScenarioPanel에 추출된 슬롯을 두 번째 인자로 전달
       get().openScenarioPanel(item.action.value, extractedSlots);
     }
-    // 슬롯을 사용한 후에는 초기화
     clearExtractedSlots();
   },
-  // --- 👆 [여기까지] ---
 
   toggleConversationExpansion: (conversationId) => {
     const { expandedConversationId, unsubscribeScenariosMap, user } = get();
@@ -353,6 +362,7 @@ export const createChatSlice = (set, get) => ({
       lastVisibleMessage: null,
       hasMoreMessages: true,
       expandedConversationId: null,
+      selectedOptions: {}, // ---  [추가] 대화방 변경 시 선택 상태 초기화
     });
 
     const messagesRef = collection(
@@ -596,7 +606,7 @@ export const createChatSlice = (set, get) => ({
       activeConversationId,
       "messages"
     );
-    await addDoc(messagesCollection, {
+    const messageRef = await addDoc(messagesCollection, {
       ...messageToSave,
       createdAt: serverTimestamp(),
     });
@@ -604,6 +614,8 @@ export const createChatSlice = (set, get) => ({
       doc(get().db, "chats", user.uid, "conversations", activeConversationId),
       { updatedAt: serverTimestamp() }
     );
+    // --- 👇 [수정] 저장된 메시지 ID를 반환하도록 수정 ---
+    return messageRef.id;
   },
 
   addMessage: async (sender, messageData) => {
@@ -624,13 +636,16 @@ export const createChatSlice = (set, get) => ({
     }
     set((state) => ({ messages: [...state.messages, newMessage] }));
     if (!newMessage.isStreaming) {
-      await get().saveMessage(newMessage);
+      // --- 👇 [수정] Firestore에 저장 후 반환된 ID로 메시지 ID 업데이트 ---
+      const savedMessageId = await get().saveMessage(newMessage);
+      set((state) => ({
+        messages: state.messages.map((msg) =>
+          msg.id === newMessage.id ? { ...msg, id: savedMessageId } : msg
+        ),
+      }));
     }
   },
 
-  // Streaming 관련 함수들은 제거됩니다.
-  
-  // --- 👇 [수정] handleResponse가 JSON 응답을 처리하도록 변경 ---
   handleResponse: async (messagePayload) => {
     set({ isLoading: true });
 
@@ -646,7 +661,7 @@ export const createChatSlice = (set, get) => ({
         body: JSON.stringify({
           message: { text: messagePayload.text },
           scenarioState: null,
-          slots: get().slots, // 기존 slots도 전달 (확장성)
+          slots: get().slots,
           language: get().language,
         }),
       });
@@ -658,7 +673,6 @@ export const createChatSlice = (set, get) => ({
       if (handler) {
         handler(data, get);
       } else {
-        // 기본 JSON 응답 처리 (예: 시나리오 시작)
         if (data.type !== "scenario_start" && data.type !== "scenario") {
           console.warn(`[ChatStore] Unhandled response type: ${data.type}`);
         }
@@ -668,12 +682,11 @@ export const createChatSlice = (set, get) => ({
       const { language } = get();
       const errorMessage =
         locales[language][errorKey] || locales[language]["errorUnexpected"];
-      get().addMessage("bot", { text: errorMessage }); // 에러 메시지를 채팅에 표시
+      get().addMessage("bot", { text: errorMessage });
     } finally {
       set({ isLoading: false });
     }
   },
-  // --- 👆 [여기까지] ---
 
   searchConversations: async (searchQuery) => {
     if (!searchQuery.trim()) {
