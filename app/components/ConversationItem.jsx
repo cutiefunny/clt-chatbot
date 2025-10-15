@@ -103,6 +103,7 @@ export default function ConversationItem({
   onToggleExpand,
   onScenarioClick,
   unreadScenarioSessions,
+  hasUnreadScenarios,
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -130,8 +131,6 @@ export default function ConversationItem({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-
-  // 확장 상태는 isActive로만 결정
 
   const handleUpdate = () => {
     if (title.trim() && title.trim() !== convo.title) {
@@ -172,7 +171,7 @@ export default function ConversationItem({
     ? scenarios.filter((s) => {
         if (hideCompletedScenarios && s.status === "completed") {
           const completedTime = s.updatedAt?.toDate();
-          if (!completedTime) return false; // updatedAt이 없으면 바로 숨김
+          if (!completedTime) return false;
 
           const now = new Date();
           const hoursPassed = (now - completedTime) / (1000 * 60 * 60);
@@ -196,6 +195,9 @@ export default function ConversationItem({
         }}
       >
         <div className={styles.convoMain}>
+          {hasUnreadScenarios && !isEditing && (
+            <div className={styles.unreadDot} style={{position: 'relative', left: 0, top: 0}}></div>
+          )}
           {convo.pinned && !isEditing && (
             <span className={styles.pinIndicator}>
               <PinIcon />

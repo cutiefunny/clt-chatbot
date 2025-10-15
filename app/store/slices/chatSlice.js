@@ -273,21 +273,46 @@ export const createChatSlice = (set, get) => ({
     }));
   },
 
+  // --- 👇 [수정된 부분] ---
   loadConversations: (userId) => {
     const q = query(
       collection(get().db, "chats", userId, "conversations"),
       orderBy("pinned", "desc"),
       orderBy("updatedAt", "desc")
     );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
       const conversations = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
       set({ conversations });
+
+      // 대화 목록이 로드되면, 모든 대화의 시나리오 정보를 가져옵니다.
+      const allScenarios = {};
+      for (const convo of conversations) {
+        const scenariosRef = collection(
+          get().db,
+          "chats",
+          userId,
+          "conversations",
+          convo.id,
+          "scenario_sessions"
+        );
+        const scenariosSnapshot = await getDocs(
+          query(scenariosRef, orderBy("createdAt", "desc"))
+        );
+        allScenarios[convo.id] = scenariosSnapshot.docs.map((doc) => ({
+          sessionId: doc.id,
+          ...doc.data(),
+        }));
+      }
+      set({ scenariosForConversation: allScenarios });
     });
+
     set({ unsubscribeConversations: unsubscribe });
   },
+  // --- 👆 [여기까지] ---
 
   loadConversation: async (conversationId) => {
     const user = get().user;
