@@ -129,7 +129,7 @@ export default function HistoryPanel() {
             </div>
             {currentConversationId && (
               <button
-                className={styles.newChatButton}
+                className={styles.sidePanelButton}
                 onClick={createNewConversation}
               >
                 <EditIcon />
@@ -139,7 +139,7 @@ export default function HistoryPanel() {
           </div>
 
           <div className={styles.panelContent}>
-            {currentConversationId && (
+            {currentConversationId === null && (
               <button
                 className={styles.sidePanelButton}
                 onClick={createNewConversation}
@@ -151,22 +151,30 @@ export default function HistoryPanel() {
             <span className={styles.commonText}>{t("History")}</span>
             <div className={styles.conversationList}>
               {conversations.length > 0 &&
-                conversations.map((convo) => (
-                  <ConversationItem
-                    key={convo.id}
-                    convo={convo}
-                    isActive={convo.id === currentConversationId}
-                    onClick={loadConversation}
-                    onDelete={handleDeleteRequest}
-                    onUpdateTitle={updateConversationTitle}
-                    onPin={pinConversation}
-                    isExpanded={convo.id === expandedConversationId}
-                    scenarios={scenariosForConversation[convo.id]}
-                    onToggleExpand={toggleConversationExpansion}
-                    onScenarioClick={handleScenarioItemClick}
-                    unreadScenarioSessions={unreadScenarioSessions}
-                  />
-                ))}
+                conversations.map((convo) => {
+                  const scenarios = scenariosForConversation[convo.id] || [];
+                  const hasUnread = scenarios.some((scenario) =>
+                    unreadScenarioSessions.has(scenario.sessionId)
+                  );
+
+                  return (
+                    <ConversationItem
+                      key={convo.id}
+                      convo={convo}
+                      isActive={convo.id === currentConversationId}
+                      onClick={loadConversation}
+                      onDelete={handleDeleteRequest}
+                      onUpdateTitle={updateConversationTitle}
+                      onPin={pinConversation}
+                      isExpanded={convo.id === expandedConversationId}
+                      scenarios={scenarios}
+                      onToggleExpand={toggleConversationExpansion}
+                      onScenarioClick={handleScenarioItemClick}
+                      unreadScenarioSessions={unreadScenarioSessions}
+                      hasUnreadScenarios={hasUnread}
+                    />
+                  );
+                })}
               {conversations.length === 0 && (
                 <div className={styles.historyTileWrapper}>
                   <div className={styles.noHistoryBox}>

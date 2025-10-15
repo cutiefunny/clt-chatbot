@@ -56,7 +56,7 @@ export const createScenarioSlice = (set, get) => ({
   },
 
   openScenarioPanel: async (scenarioId) => {
-    const { user, currentConversationId, handleEvents, language, setActivePanel, addMessage } = get();
+    const { user, currentConversationId, handleEvents, language, setActivePanel, addMessage, setForceScrollToBottom } = get();
     if (!user) return;
     
     let conversationId = currentConversationId;
@@ -90,6 +90,12 @@ export const createScenarioSlice = (set, get) => ({
 
     const newScenarioSessionId = newSessionDoc.id;
     
+    // --- 👇 [수정된 부분] ---
+    // 1. 메인챗으로 포커스 이동
+    setActivePanel('main');
+    // 2. 스크롤 맨 아래로 내리기 명령
+    setForceScrollToBottom(true);
+    // 3. 시나리오 버블 생성
     addMessage('user', {
         type: 'scenario_bubble',
         scenarioSessionId: newScenarioSessionId,
@@ -97,7 +103,11 @@ export const createScenarioSlice = (set, get) => ({
     
     get().subscribeToScenarioSession(newScenarioSessionId);
     
-    setActivePanel('scenario', newScenarioSessionId);
+    // 4. 잠시 후 (렌더링 및 스크롤 이후) 시나리오 버블로 다시 포커스 이동
+    setTimeout(() => {
+        setActivePanel('scenario', newScenarioSessionId);
+    }, 50);
+    // --- 👆 [여기까지] ---
 
     try {
       const response = await fetch('/api/chat', {

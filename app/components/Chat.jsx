@@ -26,49 +26,69 @@ export default function Chat() {
     scrollToMessageId,
     setScrollToMessageId,
     activePanel,
+    forceScrollToBottom,
+    setForceScrollToBottom,
+    scrollAmount,
+    resetScroll,
   } = useChatStore();
   const [copiedMessageId, setCopiedMessageId] = useState(null);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const historyRef = useRef(null);
   const { t } = useTranslations();
 
-  const handleContainerClick = () => {
-    if (activePanel !== "main") {
-      setActivePanel("main");
+  const handleScroll = useCallback(async () => {
+    if (
+      historyRef.current?.scrollTop === 0 &&
+      hasMoreMessages &&
+      !isFetchingMore
+    ) {
+      setIsFetchingMore(true);
+      await loadMoreMessages();
+      setIsFetchingMore(false);
     }
-  };
+  }, [hasMoreMessages, isFetchingMore, loadMoreMessages]);
+
+  useEffect(() => {
+    if (forceScrollToBottom && historyRef.current) {
+      const scrollContainer = historyRef.current;
+      setTimeout(() => {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+        setForceScrollToBottom(false);
+      }, 0);
+    }
+  }, [forceScrollToBottom, setForceScrollToBottom]);
+
+  // --- 👇 [추가] ---
+  useEffect(() => {
+    if (scrollAmount && historyRef.current) {
+      historyRef.current.scrollBy({
+        top: scrollAmount,
+        behavior: "smooth",
+      });
+      resetScroll();
+    }
+  }, [scrollAmount, resetScroll]);
+  // --- 👆 [여기까지] ---
 
   useEffect(() => {
     const scrollContainer = historyRef.current;
     if (!scrollContainer) return;
 
-    const handleScroll = async () => {
-      if (
-        scrollContainer.scrollTop === 0 &&
-        hasMoreMessages &&
-        !isFetchingMore
-      ) {
-        setIsFetchingMore(true);
-        await loadMoreMessages();
-        setIsFetchingMore(false);
-      }
+    const scrollToBottom = () => {
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
     };
 
-    const observer = new MutationObserver((mutations) => {
-      if (activePanel === "main") {
-        for (const mutation of mutations) {
-          if (mutation.type === "childList" && !isFetchingMore) {
-            scrollToBottom();
-          }
-        }
+    const observer = new MutationObserver(() => {
+      if (activePanel === "main" && !isFetchingMore) {
+        scrollToBottom();
       }
     });
 
     observer.observe(scrollContainer, { childList: true, subtree: true });
     scrollContainer.addEventListener("scroll", handleScroll);
 
-    if (!isFetchingMore) {
-      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+    if (activePanel === "main" && !isFetchingMore) {
+      scrollToBottom();
     }
 
     return () => {
