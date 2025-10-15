@@ -174,6 +174,7 @@ const ScenarioStatusBadge = ({ status, t }) => {
 
 export default function ScenarioBubble({ scenarioSessionId }) {
   const {
+    messages,
     scenarioStates,
     handleScenarioResponse,
     endScenario,
@@ -249,32 +250,38 @@ export default function ScenarioBubble({ scenarioSessionId }) {
 
       // 2. 버블이 다 펼쳐진 후 (CSS transition 0.4s)
       setTimeout(() => {
-        // 3. 메인챗으로 포커스 이동
-        setActivePanel("main");
+        const isLastMessage =
+          messages.length > 0 &&
+          messages[messages.length - 1].scenarioSessionId ===
+            scenarioSessionId;
 
-        if (bubbleRef.current) {
-          // 4. 시나리오 버블의 높이만큼 스크롤
-          const contentHeight = bubbleRef.current.scrollHeight - 60; // 헤더 높이 제외
-          scrollBy(contentHeight);
-        }
+        // --- 👇 [수정] 마지막 메시지일 경우에만 스크롤 및 포커스 이동 ---
+        if (isLastMessage) {
+          // 3. 메인챗으로 포커스 이동
+          setActivePanel("main");
 
-        // 5. 시나리오가 진행중 상태인 경우 시나리오 버블로 포커스 이동
-        if (
-          activeScenario?.status === "active" ||
-          activeScenario?.status === "generating"
-        ) {
-          // 스크롤 애니메이션(smooth) 시간 고려하여 약간의 딜레이 후 포커스
-          setTimeout(() => {
-            setActivePanel("scenario", scenarioSessionId);
-          }, 350);
+          if (bubbleRef.current) {
+            // 4. 시나리오 버블의 높이만큼 스크롤
+            const contentHeight = bubbleRef.current.scrollHeight - 60; // 헤더 높이 제외
+            scrollBy(contentHeight);
+          }
+
+          // 5. 시나리오가 진행중 상태인 경우 시나리오 버블로 포커스 이동
+          if (
+            activeScenario?.status === "active" ||
+            activeScenario?.status === "generating"
+          ) {
+            // 스크롤 애니메이션(smooth) 시간 고려하여 약간의 딜레이 후 포커스
+            setTimeout(() => {
+              setActivePanel("scenario", scenarioSessionId);
+            }, 350);
+          }
         }
+        // --- 👆 [여기까지] ---
       }, 400); // CSS transition 시간과 맞춤
     }
     // 펼쳐진 것을 접을 때
     else {
-      if (isFocused) {
-        setActivePanel("main");
-      }
       setIsCollapsed(true);
     }
   };
