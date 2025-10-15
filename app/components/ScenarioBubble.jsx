@@ -255,33 +255,38 @@ export default function ScenarioBubble({ scenarioSessionId }) {
           messages[messages.length - 1].scenarioSessionId ===
             scenarioSessionId;
 
-        // --- 👇 [수정] 마지막 메시지일 경우에만 스크롤 및 포커스 이동 ---
+        // 마지막 메시지일 경우에만 스크롤 로직 실행
         if (isLastMessage) {
-          // 3. 메인챗으로 포커스 이동
           setActivePanel("main");
-
           if (bubbleRef.current) {
-            // 4. 시나리오 버블의 높이만큼 스크롤
             const contentHeight = bubbleRef.current.scrollHeight - 60; // 헤더 높이 제외
             scrollBy(contentHeight);
           }
-
-          // 5. 시나리오가 진행중 상태인 경우 시나리오 버블로 포커스 이동
-          if (
-            activeScenario?.status === "active" ||
-            activeScenario?.status === "generating"
-          ) {
-            // 스크롤 애니메이션(smooth) 시간 고려하여 약간의 딜레이 후 포커스
-            setTimeout(() => {
-              setActivePanel("scenario", scenarioSessionId);
-            }, 350);
-          }
         }
-        // --- 👆 [여기까지] ---
+
+        // 시나리오가 진행중 상태인 경우 포커스 이동 (스크롤과 별개로 동작)
+        if (
+          activeScenario?.status === "active" ||
+          activeScenario?.status === "generating"
+        ) {
+          // 스크롤 애니메이션(smooth) 시간 고려하여 약간의 딜레이 후 포커스
+          const focusDelay = isLastMessage ? 350 : 0;
+          setTimeout(() => {
+            setActivePanel("scenario", scenarioSessionId);
+          }, focusDelay);
+        }
       }, 400); // CSS transition 시간과 맞춤
     }
     // 펼쳐진 것을 접을 때
     else {
+      // 진행 중인 시나리오 버블이 포커스된 상태에서 닫힐 때만 메인챗으로 포커스 이동
+      if (
+        isFocused &&
+        (activeScenario?.status === "active" ||
+          activeScenario?.status === "generating")
+      ) {
+        setActivePanel("main");
+      }
       setIsCollapsed(true);
     }
   };
