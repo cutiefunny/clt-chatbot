@@ -12,6 +12,7 @@ export default function GeneralSettingsPage() {
         hideDelayInHours,
         fontSizeDefault,
         fontSizeSmall,
+        isDevMode, // --- 👈 [추가]
         loadGeneralConfig, 
         saveGeneralConfig, 
         showEphemeralToast 
@@ -22,6 +23,7 @@ export default function GeneralSettingsPage() {
     const [delayHours, setDelayHours] = useState('0');
     const [defaultSize, setDefaultSize] = useState('');
     const [smallSize, setSmallSize] = useState('');
+    const [devMode, setDevMode] = useState(false); // --- 👈 [추가]
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
@@ -34,7 +36,8 @@ export default function GeneralSettingsPage() {
         if (hideDelayInHours !== null) setDelayHours(String(hideDelayInHours));
         if (fontSizeDefault) setDefaultSize(fontSizeDefault);
         if (fontSizeSmall) setSmallSize(fontSizeSmall);
-    }, [maxFavorites, hideCompletedScenarios, hideDelayInHours, fontSizeDefault, fontSizeSmall]);
+        setDevMode(isDevMode); // --- 👈 [추가]
+    }, [maxFavorites, hideCompletedScenarios, hideDelayInHours, fontSizeDefault, fontSizeSmall, isDevMode]);
 
     const handleSave = async () => {
         setIsLoading(true);
@@ -53,6 +56,7 @@ export default function GeneralSettingsPage() {
             hideDelayInHours: newDelayHours,
             fontSizeDefault: defaultSize,
             fontSizeSmall: smallSize,
+            isDevMode: devMode, // --- 👈 [추가]
         };
 
         const success = await saveGeneralConfig(settings);
@@ -73,6 +77,23 @@ export default function GeneralSettingsPage() {
             </header>
 
             <main className={styles.editorContainer}>
+                {/* --- 👇 [추가된 부분] --- */}
+                <div className={styles.settingItem}>
+                    <label className={styles.settingLabel}>
+                        <h3>개발자 모드</h3>
+                        <p>활성화 시, 채팅 화면 우측 하단에 현재 추출된 변수(Slots) 상태를 표시합니다.</p>
+                    </label>
+                    <label className={styles.switch}>
+                        <input
+                            type="checkbox"
+                            checked={devMode}
+                            onChange={(e) => setDevMode(e.target.checked)}
+                        />
+                        <span className={styles.slider}></span>
+                    </label>
+                </div>
+                {/* --- 👆 [여기까지] --- */}
+
                 <div className={styles.settingItem}>
                     <label htmlFor="max-favorites" className={styles.settingLabel}>
                         <h3>최대 즐겨찾기 개수</h3>

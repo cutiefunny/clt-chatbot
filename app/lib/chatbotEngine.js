@@ -1,6 +1,6 @@
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
-import { getGeminiStream } from './gemini';
+import { getGeminiResponseWithSlots } from './gemini';
 import { locales } from './locales';
 let cachedScenarioCategories = null;
 let lastFetchTime = 0;
@@ -348,14 +348,12 @@ async function handleApiNode(node, scenario, slots) {
 
 async function handleLlmNode(node, scenario, slots, language) {
     const interpolatedPrompt = interpolateMessage(node.data.prompt, slots);
-    const stream = await getGeminiStream(interpolatedPrompt, language);
-    const reader = stream.getReader();
-    const decoder = new TextDecoder();
-    let llmResponse = '';
-    while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        llmResponse += decoder.decode(value, { stream: true });
+    const geminiData = await getGeminiResponseWithSlots(interpolatedPrompt, language);
+    
+    const llmResponse = geminiData.response;
+
+    if (geminiData.slots) {
+        slots = { ...slots, ...geminiData.slots };
     }
 
     if (node.data.outputVar) {
@@ -365,6 +363,7 @@ async function handleLlmNode(node, scenario, slots, language) {
     const nextNode = getNextNode(scenario, node.id, null, slots);
     return { nextNode, slots, events: [] };
 }
+
 
 async function handleBranchNode(node, scenario, slots) {
   if (node.data.evaluationType === 'CONDITION') {

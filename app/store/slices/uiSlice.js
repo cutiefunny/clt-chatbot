@@ -15,6 +15,7 @@ export const createUISlice = (set, get) => ({
   hideDelayInHours: 0,
   fontSizeDefault: '16px', // 기본값
   fontSizeSmall: '14px',   // 기본값
+  isDevMode: false, // --- 👈 [추가] 개발자 모드 상태
   isProfileModalOpen: false,
   isSearchModalOpen: false,
   isScenarioModalOpen: false,
@@ -41,7 +42,7 @@ export const createUISlice = (set, get) => ({
   },
   scrollToMessageId: null,
   forceScrollToBottom: false,
-  scrollAmount: 0, // --- 👈 [추가] ---
+  scrollAmount: 0,
 
   // Actions
   loadGeneralConfig: async () => {
@@ -56,6 +57,7 @@ export const createUISlice = (set, get) => ({
             hideDelayInHours: typeof config.hideDelayInHours === 'number' ? config.hideDelayInHours : 0,
             fontSizeDefault: config.fontSizeDefault || '16px',
             fontSizeSmall: config.fontSizeSmall || '14px',
+            isDevMode: typeof config.isDevMode === 'boolean' ? config.isDevMode : false, // --- 👈 [추가]
         });
       }
     } catch (error) {
@@ -79,10 +81,8 @@ export const createUISlice = (set, get) => ({
   setScrollToMessageId: (id) => set({ scrollToMessageId: id }),
   setForceScrollToBottom: (value) => set({ forceScrollToBottom: value }),
 
-  // --- 👇 [추가] ---
   scrollBy: (amount) => set({ scrollAmount: amount }),
   resetScroll: () => set({ scrollAmount: 0 }),
-  // --- 👆 [여기까지] ---
 
   setShortcutMenuOpen: (menuName) => set({ shortcutMenuOpen: menuName }),
 

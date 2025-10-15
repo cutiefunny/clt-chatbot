@@ -9,6 +9,7 @@ import ScenarioModal from "../app/components/ScenarioModal";
 import Toast from "../app/components/Toast";
 import styles from "./page.module.css";
 import ConfirmModal from "../app/components/ConfirmModal";
+import DevStateDisplay from "../app/components/DevStateDisplay";
 
 export default function HomePage() {
   const {
@@ -17,6 +18,7 @@ export default function HomePage() {
     isScenarioModalOpen,
     confirmModal,
     closeConfirmModal,
+    isDevMode, // --- 👈 [추가]
   } = useChatStore();
 
   const handleConfirm = () => {
@@ -30,17 +32,21 @@ export default function HomePage() {
     <main className={styles.main}>
       <Toast />
       {user ? (
-        <div className={styles.chatLayout}>
-          <HistoryPanel />
-          <div
-            className={styles.contentAndInputWrapper}
-            style={{ paddingLeft: isHistoryPanelOpen ? "320px" : "60px" }}
-          >
-            <Chat />
-            <ChatInput />
+        <>
+          <div className={styles.chatLayout}>
+            <HistoryPanel />
+            <div
+              className={styles.contentAndInputWrapper}
+              style={{ paddingLeft: isHistoryPanelOpen ? "320px" : "60px" }}
+            >
+              <Chat />
+              <ChatInput />
+            </div>
+            {isScenarioModalOpen && <ScenarioModal />}
           </div>
-          {isScenarioModalOpen && <ScenarioModal />}
-        </div>
+          {/* --- 👇 [수정] isDevMode 조건 추가 --- */}
+          {isDevMode && <DevStateDisplay />}
+        </>
       ) : (
         <Login />
       )}

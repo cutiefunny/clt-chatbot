@@ -55,7 +55,8 @@ export const createScenarioSlice = (set, get) => ({
     }
   },
 
-  openScenarioPanel: async (scenarioId) => {
+  // --- 👇 [수정] initialSlots 파라미터 추가 ---
+  openScenarioPanel: async (scenarioId, initialSlots = {}) => {
     const { user, currentConversationId, handleEvents, language, setActivePanel, addMessage, setForceScrollToBottom } = get();
     if (!user) return;
     
@@ -85,17 +86,13 @@ export const createScenarioSlice = (set, get) => ({
       updatedAt: serverTimestamp(),
       messages: [],
       state: null,
-      slots: {},
+      slots: initialSlots, // 초기 슬롯 저장
     });
 
     const newScenarioSessionId = newSessionDoc.id;
     
-    // --- 👇 [수정된 부분] ---
-    // 1. 메인챗으로 포커스 이동
     setActivePanel('main');
-    // 2. 스크롤 맨 아래로 내리기 명령
     setForceScrollToBottom(true);
-    // 3. 시나리오 버블 생성
     addMessage('user', {
         type: 'scenario_bubble',
         scenarioSessionId: newScenarioSessionId,
@@ -103,11 +100,9 @@ export const createScenarioSlice = (set, get) => ({
     
     get().subscribeToScenarioSession(newScenarioSessionId);
     
-    // 4. 잠시 후 (렌더링 및 스크롤 이후) 시나리오 버블로 다시 포커스 이동
     setTimeout(() => {
         setActivePanel('scenario', newScenarioSessionId);
     }, 50);
-    // --- 👆 [여기까지] ---
 
     try {
       const response = await fetch('/api/chat', {
@@ -115,7 +110,8 @@ export const createScenarioSlice = (set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: { text: scenarioId },
-          scenarioSessionId: newScenarioSessionId
+          scenarioSessionId: newScenarioSessionId,
+          slots: initialSlots, // API 호출 시에도 초기 슬롯 전달
         }),
       });
       if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
@@ -125,10 +121,12 @@ export const createScenarioSlice = (set, get) => ({
 
       if (data.type === 'scenario_start' || data.type === 'scenario') {
         const sessionRef = doc(get().db, "chats", user.uid, "conversations", conversationId, "scenario_sessions", newScenarioSessionId);
+        // 응답으로 받은 슬롯과 기존 슬롯을 병합
+        const updatedSlots = { ...initialSlots, ...(data.slots || {}) };
         await updateDoc(sessionRef, {
             messages: [{ id: data.nextNode.id, sender: 'bot', node: data.nextNode }],
             state: data.scenarioState,
-            slots: data.slots || {},
+            slots: updatedSlots, 
             updatedAt: serverTimestamp(),
         });
         await get().continueScenarioIfNeeded(data.nextNode, newScenarioSessionId);
@@ -152,6 +150,7 @@ export const createScenarioSlice = (set, get) => ({
       });
     }
   },
+  // --- 👆 [여기까지] ---
   
   subscribeToScenarioSession: (sessionId) => {
     const { user, currentConversationId, unsubscribeScenariosMap } = get();
