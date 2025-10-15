@@ -1,23 +1,25 @@
-'use client';
+"use client";
 
-import dynamic from 'next/dynamic';
-import { useChatStore } from '../app/store';
-import Chat from '../app/components/Chat';
-import Login from '../app/components/Login';
-import HistoryPanel from '../app/components/HistoryPanel';
-import ChatInput from '../app/components/ChatInput';
-import Toast from '../app/components/Toast';
-import styles from './page.module.css';
-
-const ScenarioModal = dynamic(() => import('../app/components/ScenarioModal'));
-const ConfirmModal = dynamic(() => import('../app/components/ConfirmModal'));
+import { useChatStore } from "../app/store";
+import Chat from "../app/components/Chat";
+import Login from "../app/components/Login";
+import HistoryPanel from "../app/components/HistoryPanel";
+import ChatInput from "../app/components/ChatInput";
+import ScenarioModal from "../app/components/ScenarioModal";
+import Toast from "../app/components/Toast";
+import styles from "./page.module.css";
+import ConfirmModal from "../app/components/ConfirmModal";
+import DevStateDisplay from "../app/components/DevStateDisplay";
 
 export default function HomePage() {
-  const user = useChatStore((state) => state.user);
-  const isHistoryPanelOpen = useChatStore((state) => state.isHistoryPanelOpen);
-  const isScenarioModalOpen = useChatStore((state) => state.isScenarioModalOpen);
-  const confirmModal = useChatStore((state) => state.confirmModal);
-  const closeConfirmModal = useChatStore((state) => state.closeConfirmModal);
+  const {
+    user,
+    isHistoryPanelOpen,
+    isScenarioModalOpen,
+    confirmModal,
+    closeConfirmModal,
+    isDevMode, // --- 👈 [추가]
+  } = useChatStore();
 
   const handleConfirm = () => {
     if (confirmModal.onConfirm) {
@@ -30,17 +32,21 @@ export default function HomePage() {
     <main className={styles.main}>
       <Toast />
       {user ? (
-        <div className={styles.chatLayout}>
-          <HistoryPanel />
-          <div
-            className={styles.contentAndInputWrapper}
-            style={{ paddingLeft: isHistoryPanelOpen ? '260px' : '60px' }} 
-          >
-            <Chat />
-            <ChatInput />
+        <>
+          <div className={styles.chatLayout}>
+            <HistoryPanel />
+            <div
+              className={styles.contentAndInputWrapper}
+              style={{ paddingLeft: isHistoryPanelOpen ? "320px" : "60px" }}
+            >
+              <Chat />
+              <ChatInput />
+            </div>
+            {isScenarioModalOpen && <ScenarioModal />}
           </div>
-          {isScenarioModalOpen && <ScenarioModal />}
-        </div>
+          {/* --- 👇 [수정] isDevMode 조건 추가 --- */}
+          {isDevMode && <DevStateDisplay />}
+        </>
       ) : (
         <Login />
       )}

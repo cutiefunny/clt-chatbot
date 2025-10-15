@@ -38,6 +38,13 @@ const responseHandlers = {
   toast: (data, get) => {
     get().showToast(data.message, data.toastType);
   },
+  // --- 👇 [추가] 슬롯과 함께 LLM 응답을 처리하는 핸들러 ---
+  llm_response_with_slots: (data, get) => {
+    get().addMessage("bot", { text: data.message });
+    if (data.slots && Object.keys(data.slots).length > 0) {
+      get().setExtractedSlots(data.slots);
+    }
+  },
 };
 
 export const createChatSlice = (set, get) => ({
@@ -48,6 +55,8 @@ export const createChatSlice = (set, get) => ({
   isSearching: false,
   searchResults: [],
   slots: {},
+  // --- 👇 [추가] 추출된 슬롯을 저장할 상태 ---
+  extractedSlots: {},
   unsubscribeMessages: null,
   unsubscribeConversations: null,
   lastVisibleMessage: null,
@@ -56,6 +65,18 @@ export const createChatSlice = (set, get) => ({
 
   favorites: [],
   unsubscribeFavorites: null,
+
+  // --- 👇 [추가] 슬롯을 업데이트하고 기존 슬롯과 병합하는 액션 ---
+  setExtractedSlots: (newSlots) => {
+    set((state) => ({
+      extractedSlots: { ...state.extractedSlots, ...newSlots },
+    }));
+  },
+
+  // --- 👇 [추가] 슬롯을 초기화하는 액션 ---
+  clearExtractedSlots: () => {
+    set({ extractedSlots: {} });
+  },
 
   unsubscribeAllMessagesAndScenarios: () => {
     get().unsubscribeMessages?.();
@@ -205,8 +226,10 @@ export const createChatSlice = (set, get) => ({
     }
   },
 
+  // --- 👇 [수정] 숏컷 클릭 시 저장된 슬롯을 함께 전달 ---
   handleShortcutClick: async (item) => {
     if (!item || !item.action) return;
+    const { extractedSlots, clearExtractedSlots } = get();
 
     if (item.action.type === "custom") {
       await get().handleResponse({
@@ -214,9 +237,13 @@ export const createChatSlice = (set, get) => ({
         displayText: item.title,
       });
     } else {
-      get().openScenarioPanel(item.action.value);
+      // openScenarioPanel에 추출된 슬롯을 두 번째 인자로 전달
+      get().openScenarioPanel(item.action.value, extractedSlots);
     }
+    // 슬롯을 사용한 후에는 초기화
+    clearExtractedSlots();
   },
+  // --- 👆 [여기까지] ---
 
   toggleConversationExpansion: (conversationId) => {
     const { expandedConversationId, unsubscribeScenariosMap, user } = get();
@@ -273,7 +300,6 @@ export const createChatSlice = (set, get) => ({
     }));
   },
 
-  // --- 👇 [수정된 부분] ---
   loadConversations: (userId) => {
     const q = query(
       collection(get().db, "chats", userId, "conversations"),
@@ -288,7 +314,6 @@ export const createChatSlice = (set, get) => ({
       }));
       set({ conversations });
 
-      // 대화 목록이 로드되면, 모든 대화의 시나리오 정보를 가져옵니다.
       const allScenarios = {};
       for (const convo of conversations) {
         const scenariosRef = collection(
@@ -312,7 +337,6 @@ export const createChatSlice = (set, get) => ({
 
     set({ unsubscribeConversations: unsubscribe });
   },
-  // --- 👆 [여기까지] ---
 
   loadConversation: async (conversationId) => {
     const user = get().user;
@@ -482,24 +506,20 @@ export const createChatSlice = (set, get) => ({
     );
     const batch = writeBatch(get().db);
 
-    // 시나리오 세션 삭제를 배치에 추가
     const scenariosRef = collection(conversationRef, "scenario_sessions");
     const scenariosSnapshot = await getDocs(scenariosRef);
     scenariosSnapshot.forEach((doc) => {
       batch.delete(doc.ref);
     });
 
-    // 메시지 삭제를 배치에 추가
     const messagesRef = collection(conversationRef, "messages");
     const messagesSnapshot = await getDocs(messagesRef);
     messagesSnapshot.forEach((doc) => {
       batch.delete(doc.ref);
     });
 
-    // 대화 자체 삭제를 배치에 추가
     batch.delete(conversationRef);
 
-    // 배치 실행
     await batch.commit();
 
     if (get().currentConversationId === conversationId) {
@@ -550,7 +570,6 @@ export const createChatSlice = (set, get) => ({
       );
       conversationId = conversationRef.id;
       get().loadConversation(conversationId);
-      // Wait for the conversation to be loaded before proceeding
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
@@ -609,29 +628,9 @@ export const createChatSlice = (set, get) => ({
     }
   },
 
-  updateStreamingMessage: (id, chunk) => {
-    set((state) => ({
-      messages: state.messages.map((m) =>
-        m.id === id ? { ...m, text: (m.text || "") + chunk } : m
-      ),
-    }));
-  },
-
-  finalizeStreamingMessage: (id) => {
-    set((state) => {
-      const finalMessage = state.messages.find((m) => m.id === id);
-      if (finalMessage) {
-        const messageToSave = { ...finalMessage, isStreaming: false };
-        get().saveMessage(messageToSave);
-      }
-      return {
-        messages: state.messages.map((m) =>
-          m.id === id ? { ...m, isStreaming: false } : m
-        ),
-      };
-    });
-  },
-
+  // Streaming 관련 함수들은 제거됩니다.
+  
+  // --- 👇 [수정] handleResponse가 JSON 응답을 처리하도록 변경 ---
   handleResponse: async (messagePayload) => {
     set({ isLoading: true });
 
@@ -647,40 +646,21 @@ export const createChatSlice = (set, get) => ({
         body: JSON.stringify({
           message: { text: messagePayload.text },
           scenarioState: null,
-          slots: get().slots,
+          slots: get().slots, // 기존 slots도 전달 (확장성)
           language: get().language,
         }),
       });
       if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
 
-      const contentType = response.headers.get("content-type");
-      if (contentType && contentType.includes("application/json")) {
-        const data = await response.json();
-        const handler = responseHandlers[data.type];
-        if (handler) {
-          handler(data, get);
-        } else {
-          if (data.type !== "scenario_start" && data.type !== "scenario") {
-            console.warn(`[ChatStore] Unhandled response type: ${data.type}`);
-          }
-        }
+      const data = await response.json();
+      const handler = responseHandlers[data.type];
+
+      if (handler) {
+        handler(data, get);
       } else {
-        const reader = response.body
-          .pipeThrough(new TextDecoderStream())
-          .getReader();
-        const streamingMessageId = Date.now();
-        get().addMessage("bot", {
-          id: streamingMessageId,
-          text: "",
-          isStreaming: true,
-        });
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) {
-            get().finalizeStreamingMessage(streamingMessageId);
-            break;
-          }
-          get().updateStreamingMessage(streamingMessageId, value);
+        // 기본 JSON 응답 처리 (예: 시나리오 시작)
+        if (data.type !== "scenario_start" && data.type !== "scenario") {
+          console.warn(`[ChatStore] Unhandled response type: ${data.type}`);
         }
       }
     } catch (error) {
@@ -688,11 +668,12 @@ export const createChatSlice = (set, get) => ({
       const { language } = get();
       const errorMessage =
         locales[language][errorKey] || locales[language]["errorUnexpected"];
-      get().showToast(errorMessage, "error");
+      get().addMessage("bot", { text: errorMessage }); // 에러 메시지를 채팅에 표시
     } finally {
       set({ isLoading: false });
     }
   },
+  // --- 👆 [여기까지] ---
 
   searchConversations: async (searchQuery) => {
     if (!searchQuery.trim()) {
