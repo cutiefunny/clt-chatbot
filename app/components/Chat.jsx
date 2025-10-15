@@ -25,6 +25,10 @@ export default function Chat() {
     scrollToMessageId,
     setScrollToMessageId,
     activePanel,
+    forceScrollToBottom,
+    setForceScrollToBottom,
+    scrollAmount,
+    resetScroll,
   } = useChatStore();
   const [copiedMessageId, setCopiedMessageId] = useState(null);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
@@ -44,6 +48,28 @@ export default function Chat() {
   }, [hasMoreMessages, isFetchingMore, loadMoreMessages]);
 
   useEffect(() => {
+    if (forceScrollToBottom && historyRef.current) {
+      const scrollContainer = historyRef.current;
+      setTimeout(() => {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+        setForceScrollToBottom(false);
+      }, 0);
+    }
+  }, [forceScrollToBottom, setForceScrollToBottom]);
+
+  // --- 👇 [추가] ---
+  useEffect(() => {
+    if (scrollAmount && historyRef.current) {
+      historyRef.current.scrollBy({
+        top: scrollAmount,
+        behavior: "smooth",
+      });
+      resetScroll();
+    }
+  }, [scrollAmount, resetScroll]);
+  // --- 👆 [여기까지] ---
+
+  useEffect(() => {
     const scrollContainer = historyRef.current;
     if (!scrollContainer) return;
 
@@ -51,20 +77,16 @@ export default function Chat() {
       scrollContainer.scrollTop = scrollContainer.scrollHeight;
     };
 
-    const observer = new MutationObserver((mutations) => {
-      if (activePanel === "main") {
-        for (const mutation of mutations) {
-          if (mutation.type === "childList" && !isFetchingMore) {
-            scrollToBottom();
-          }
-        }
+    const observer = new MutationObserver(() => {
+      if (activePanel === "main" && !isFetchingMore) {
+        scrollToBottom();
       }
     });
 
     observer.observe(scrollContainer, { childList: true, subtree: true });
     scrollContainer.addEventListener("scroll", handleScroll);
 
-    if (!isFetchingMore && activePanel === "main") {
+    if (activePanel === "main" && !isFetchingMore) {
       scrollToBottom();
     }
 
@@ -89,6 +111,7 @@ export default function Chat() {
       }
     }
   }, [scrollToMessageId, messages, setScrollToMessageId]);
+
   const handleCopy = (text, id) => {
     if (!text || text.trim() === "") return;
 
@@ -221,12 +244,6 @@ export default function Chat() {
                           }
                         >
                           <CopyIcon />
-                        </button>
-                        <button
-                          className={styles.actionButton}
-                          onClick={() => handleLike(msg.id)}
-                        >
-                          <LikeIcon />
                         </button>
                       </div>
                     )}
