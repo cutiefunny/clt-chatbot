@@ -370,7 +370,7 @@ input:checked + .slider:before {
   border-radius: 20px;
   cursor: pointer;
   font-size: 0.9rem;
-  transition: background-color 0.2s, border-color 0.2s;
+  transition: background-color 0.2s, border-color 0.2s, opacity 0.2s;
   white-space: nowrap;
   text-align: center; /* 버튼 텍스트 중앙 정렬 */
 }
@@ -379,6 +379,31 @@ input:checked + .slider:before {
   background-color: var(--button-hover-bg); /* Themed */
   border-color: #aaa;
 }
+
+/* --- 👇 [추가된 부분] --- */
+.optionButton:disabled {
+  cursor: not-allowed;
+  background-color: var(--button-hover-bg);
+  border-color: var(--panel-border-color);
+}
+.optionButton.selected {
+  background-color: var(--login-button-bg);
+  color: white;
+  border-color: var(--login-button-bg);
+}
+.optionButton.dimmed {
+  opacity: 0.5;
+  background-color: transparent;
+}
+.optionButton:disabled:hover {
+  background-color: var(--button-hover-bg);
+  border-color: var(--panel-border-color);
+}
+.optionButton.selected:disabled:hover {
+  background-color: var(--login-button-bg);
+  border-color: var(--login-button-bg);
+}
+/* --- 👆 [여기까지] --- */
 
 .formContainer {
   display: flex;
