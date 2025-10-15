@@ -10,6 +10,8 @@ import SearchIcon from "./icons/SearchIcon";
 import EditIcon from "./icons/EditIcon";
 import ManualIcon from "./icons/ManualIcon";
 import NoHistoryIcon from "./icons/NoHistoryIcon";
+import HistoryIcon from "./icons/HistoryIcon";
+import NewChatIcon from "./icons/NewChatIcon";
 
 const ProfileModal = dynamic(() => import("./ProfileModal"));
 const SearchModal = dynamic(() => import("./SearchModal"));

@@ -125,7 +125,7 @@ export default function Chat() {
   const hasMessages = messages.some((m) => m.id !== "initial");
 
   return (
-    <div className={styles.chatContainer} onClick={handleContainerClick}>
+    <div className={styles.chatContainer}>
       <div className={styles.header}>
         <div className={styles.headerButtons}>
           <div className={styles.settingControl}>
