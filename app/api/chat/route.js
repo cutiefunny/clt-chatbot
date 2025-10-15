@@ -109,16 +109,14 @@ export async function POST(request) {
     // Fallback to LLM
     // LLM 호출 전, 숏컷 목록을 가져와 프롬프트에 포함
     const categories = await getScenarioCategories();
-    const shortcuts = categories.flatMap(cat => 
-        cat.subCategories.flatMap(subCat => 
-            subCat.items.map(item => ({
-                title: item.title,
-                description: item.description
-            }))
-        )
+    const allShortcuts = categories.flatMap(cat => 
+        cat.subCategories.flatMap(subCat => subCat.items)
     );
+    
+    // title을 기준으로 중복된 숏컷 제거
+    const uniqueShortcuts = [...new Map(allShortcuts.map(item => [item.title, item])).values()];
 
-    const stream = await getGeminiStream(message.text, language, shortcuts);
+    const stream = await getGeminiStream(message.text, language, uniqueShortcuts);
     // --- 👆 [여기까지] ---
     return new Response(stream, {
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },

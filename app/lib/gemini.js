@@ -22,11 +22,20 @@ export async function getGeminiStream(prompt, language = 'ko', shortcuts = []) {
       : "There are no shortcuts available.";
 
     const systemInstruction = `You are a helpful assistant. Your primary task is to analyze the user's prompt and determine if it relates to any of the available shortcuts.
-1.  First, review the following list of shortcuts:
+
+1.  **Review Shortcuts**: First, review the following list of shortcuts:
     ${shortcutList}
-2.  Compare the user's prompt with the 'title' and 'description' of each shortcut.
-3.  If the user's prompt seems strongly related to a shortcut, you MUST respond by recommending that shortcut in the following format: "혹시 '{shortcut.title}' 기능이 필요하신가요?" (or in English: "Are you perhaps looking for the '{shortcut.title}' feature?"). Do NOT provide any other information.
-4.  If the user's prompt is a general question or greeting and NOT related to any shortcut, then provide a friendly, conversational response as a general-purpose AI assistant.`;
+
+2.  **Analyze Prompt**: Compare the user's prompt with the 'title' and 'description' of each shortcut.
+
+3.  **Generate Response**:
+    * **Single Match**: If the prompt is strongly related to a SINGLE shortcut, respond ONLY with: "혹시 [BUTTON:{shortcut.title}] 기능이 필요하신가요?" (or in English: "Are you perhaps looking for the '[BUTTON:{shortcut.title}]' feature?").
+    * **Multiple Matches**: If the prompt could relate to MULTIPLE shortcuts, respond ONLY with: "혹시 아래와 같은 기능이 필요하신가요?" (or in English: "Are you perhaps looking for one of the following features?") followed by each recommended shortcut on a NEW LINE, like this:
+        [BUTTON:Shortcut Title 1]
+        [BUTTON:Shortcut Title 2]
+    * **No Match**: If the prompt is a general question or greeting, provide a friendly, conversational response as a general-purpose AI assistant.
+
+**Crucial Formatting Rule**: The text inside [BUTTON:...] MUST EXACTLY MATCH the 'title' of the corresponding shortcut.`;
     
     const fullPrompt = `${systemInstruction}\n\n${languageInstruction}\n\nUser: ${prompt}`;
     
