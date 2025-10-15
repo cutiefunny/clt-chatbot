@@ -58,7 +58,6 @@ export default function Chat() {
     }
   }, [forceScrollToBottom, setForceScrollToBottom]);
 
-  // --- 👇 [추가] ---
   useEffect(() => {
     if (scrollAmount && historyRef.current) {
       historyRef.current.scrollBy({
@@ -68,7 +67,6 @@ export default function Chat() {
       resetScroll();
     }
   }, [scrollAmount, resetScroll]);
-  // --- 👆 [여기까지] ---
 
   useEffect(() => {
     const scrollContainer = historyRef.current;
@@ -79,6 +77,7 @@ export default function Chat() {
     };
 
     const observer = new MutationObserver(() => {
+      // 메인 패널이 활성화 상태이고, 새로운 DOM 변경이 있을 때만 스크롤
       if (activePanel === "main" && !isFetchingMore) {
         scrollToBottom();
       }
@@ -87,15 +86,11 @@ export default function Chat() {
     observer.observe(scrollContainer, { childList: true, subtree: true });
     scrollContainer.addEventListener("scroll", handleScroll);
 
-    if (activePanel === "main" && !isFetchingMore) {
-      scrollToBottom();
-    }
-
     return () => {
       observer.disconnect();
       scrollContainer.removeEventListener("scroll", handleScroll);
     };
-  }, [messages, handleScroll, isFetchingMore, activePanel]);
+  }, [messages, handleScroll, isFetchingMore, activePanel]); // `activePanel` 의존성은 observer 콜백을 위해 유지
 
   useEffect(() => {
     if (scrollToMessageId && historyRef.current) {
