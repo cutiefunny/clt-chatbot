@@ -651,3 +651,7 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
   background: var(--Green-01, #c6eec2);
   color: var(--Green-02, #00770a);
 }
+.scenarioBadge.canceled {
+  background: var(--Error-01, #ffdbdb);
+  color: var(--Error-02, #ff4f4f);
+}

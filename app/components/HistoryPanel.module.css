@@ -651,7 +651,6 @@
   padding: 2px 4px;
 }
 
-/* --- 👇 [추가된 부분] --- */
 .unreadDot {
   width: 5px;
   height: 5px;
@@ -662,7 +661,6 @@
   left: 8px;
   top: 8px;
 }
-/* --- 👆 [여기까지] --- */
 
 .noScenarios {
   padding: 8px;
@@ -704,7 +702,11 @@
   color: var(--Green-02, #00770a);
 }
 
-/* --- 👆 [여기까지] --- */
+.scenarioBadge.canceled {
+  background: var(--Error-01, #ffdbdb);
+  color: var(--Error-02, #ff4f4f);
+}
+
 .footer {
   padding: 0.75rem;
   display: flex;

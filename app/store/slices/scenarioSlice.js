@@ -55,7 +55,6 @@ export const createScenarioSlice = (set, get) => ({
     }
   },
 
-  // --- 👇 [수정] initialSlots 파라미터 추가 ---
   openScenarioPanel: async (scenarioId, initialSlots = {}) => {
     const { user, currentConversationId, handleEvents, language, setActivePanel, addMessage, setForceScrollToBottom } = get();
     if (!user) return;
@@ -86,7 +85,7 @@ export const createScenarioSlice = (set, get) => ({
       updatedAt: serverTimestamp(),
       messages: [],
       state: null,
-      slots: initialSlots, // 초기 슬롯 저장
+      slots: initialSlots, 
     });
 
     const newScenarioSessionId = newSessionDoc.id;
@@ -111,7 +110,7 @@ export const createScenarioSlice = (set, get) => ({
         body: JSON.stringify({
           message: { text: scenarioId },
           scenarioSessionId: newScenarioSessionId,
-          slots: initialSlots, // API 호출 시에도 초기 슬롯 전달
+          slots: initialSlots, 
         }),
       });
       if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
@@ -121,7 +120,6 @@ export const createScenarioSlice = (set, get) => ({
 
       if (data.type === 'scenario_start' || data.type === 'scenario') {
         const sessionRef = doc(get().db, "chats", user.uid, "conversations", conversationId, "scenario_sessions", newScenarioSessionId);
-        // 응답으로 받은 슬롯과 기존 슬롯을 병합
         const updatedSlots = { ...initialSlots, ...(data.slots || {}) };
         await updateDoc(sessionRef, {
             messages: [{ id: data.nextNode.id, sender: 'bot', node: data.nextNode }],
@@ -150,7 +148,6 @@ export const createScenarioSlice = (set, get) => ({
       });
     }
   },
-  // --- 👆 [여기까지] ---
   
   subscribeToScenarioSession: (sessionId) => {
     const { user, currentConversationId, unsubscribeScenariosMap } = get();
@@ -197,6 +194,7 @@ export const createScenarioSlice = (set, get) => ({
       });
   },
 
+  // --- 👇 [수정] status 기본값을 'completed'로 설정 ---
   endScenario: async (scenarioSessionId, status = 'completed') => {
     const { user, currentConversationId } = get();
     if (!user || !currentConversationId || !scenarioSessionId) return;
@@ -208,6 +206,7 @@ export const createScenarioSlice = (set, get) => ({
         get().setActivePanel('main');
     }
   },
+  // --- 👆 [여기까지] ---
 
   handleScenarioResponse: async (payload) => {
     const { scenarioSessionId } = payload;

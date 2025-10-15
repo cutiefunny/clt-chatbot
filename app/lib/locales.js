@@ -78,6 +78,7 @@ export const locales = {
     statusCompleted: "완료",
     statusFailed: "실패",
     statusGenerating: "생성 중...",
+    statusCanceled: "취소됨", // --- 👈 [추가] ---
 
     // Chat Input
     enterResponse: "응답을 입력하세요...",
@@ -88,12 +89,10 @@ export const locales = {
     noScenariosFound: "실행된 시나리오가 없습니다.",
     loadingScenarios: "시나리오 로딩 중...",
     noHistory: "생성된 채팅 내역이 없습니다.",
-    // --- 👇 [추가된 부분] ---
     pin: "고정",
     unpin: "고정 해제",
     rename: "이름 변경",
     delete: "삭제",
-    // --- 👆 [여기까지] ---
 
     // Profile Modal
     greeting: (displayName) => `안녕하세요 ${displayName} 님`,
@@ -212,6 +211,7 @@ export const locales = {
     statusCompleted: "Completed",
     statusFailed: "Failed",
     statusGenerating: "Generating...",
+    statusCanceled: "Canceled", // --- 👈 [추가] ---
 
     // Chat Input
     enterResponse: "Enter your response...",
@@ -223,12 +223,10 @@ export const locales = {
     noScenariosFound: "No scenarios were run.",
     loadingScenarios: "Loading scenarios...",
     noHistory: "No chat history has been created.",
-    // --- 👇 [추가된 부분] ---
     pin: "Pin",
     unpin: "Unpin",
     rename: "Rename",
     delete: "Delete",
-    // --- 👆 [여기까지] ---
 
     // Profile Modal
     greeting: (displayName) => `Hello, ${displayName}`,
