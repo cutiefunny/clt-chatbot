@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getScenario, getNextNode, interpolateMessage, findActionByTrigger, getScenarioList, runScenario } from '../../lib/chatbotEngine';
+import { getScenario, getNextNode, interpolateMessage, findActionByTrigger, getScenarioList, runScenario, getScenarioCategories } from '../../lib/chatbotEngine';
 import { getGeminiStream } from '../../lib/gemini';
 import { locales } from '../../lib/locales';
 
@@ -105,8 +105,21 @@ export async function POST(request) {
         }
     }
 
+    // --- 👇 [수정된 부분] ---
     // Fallback to LLM
-    const stream = await getGeminiStream(message.text, language);
+    // LLM 호출 전, 숏컷 목록을 가져와 프롬프트에 포함
+    const categories = await getScenarioCategories();
+    const shortcuts = categories.flatMap(cat => 
+        cat.subCategories.flatMap(subCat => 
+            subCat.items.map(item => ({
+                title: item.title,
+                description: item.description
+            }))
+        )
+    );
+
+    const stream = await getGeminiStream(message.text, language, shortcuts);
+    // --- 👆 [여기까지] ---
     return new Response(stream, {
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },
     });
