@@ -45,6 +45,7 @@ export default function HistoryPanel() {
     handleScenarioItemClick,
     openConfirmModal,
     unreadScenarioSessions,
+    unreadConversations, // --- 👈 [추가]
   } = useChatStore();
   const { t } = useTranslations();
 
@@ -157,9 +158,9 @@ export default function HistoryPanel() {
               {conversations.length > 0 &&
                 conversations.map((convo) => {
                   const scenarios = scenariosForConversation[convo.id] || [];
-                  const hasUnread = scenarios.some((scenario) =>
-                    unreadScenarioSessions.has(scenario.sessionId)
-                  );
+                  // --- 👇 [수정된 부분] ---
+                  const hasUnread = unreadConversations.has(convo.id);
+                  // --- 👆 [여기까지] ---
 
                   return (
                     <ConversationItem

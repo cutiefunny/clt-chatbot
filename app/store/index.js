@@ -37,7 +37,6 @@ export const useChatStore = create((set, get) => ({
   ...createDevBoardSlice(set, get),
   ...createNotificationSlice(set, get),
 
-  // --- 👇 [추가된 부분] ---
   handleNotificationNavigation: async (notification) => {
     get().closeNotificationModal();
     get().markNotificationAsRead(notification.id);
@@ -52,7 +51,6 @@ export const useChatStore = create((set, get) => ({
       }, 300);
     }
   },
-  // --- 👆 [여기까지] ---
 
   setUserAndLoadData: async (user) => {
     set({ user });
@@ -119,10 +117,12 @@ export const useChatStore = create((set, get) => ({
     get().unsubscribeAll();
     get().loadConversations(user.uid);
     get().loadDevMemos();
-    get().loadNotifications(user.uid);
+    get().subscribeToUnreadStatus(user.uid);
+    get().subscribeToUnreadScenarioNotifications(user.uid);
     get().loadFavorites(user.uid);
   },
 
+  // --- 👇 [수정된 부분] ---
   clearUserAndData: () => {
     get().unsubscribeAll();
 
@@ -143,11 +143,15 @@ export const useChatStore = create((set, get) => ({
       scenarioStates: {},
       activeScenarioSessionId: null,
       activeScenarioSessions: [],
+      hasUnreadNotifications: false,
+      unreadScenarioSessions: new Set(),
+      unreadConversations: new Set(),
       theme,
       fontSize,
       language,
     });
   },
+  // --- 👆 [여기까지] ---
 
   initAuth: () => {
     get().loadScenarioCategories();
@@ -184,12 +188,16 @@ export const useChatStore = create((set, get) => ({
     get().unsubscribeAllMessagesAndScenarios();
     get().unsubscribeDevMemos?.();
     get().unsubscribeNotifications?.();
+    get().unsubscribeUnreadStatus?.();
+    get().unsubscribeUnreadScenarioNotifications?.();
     get().unsubscribeFavorites?.();
 
     set({
       unsubscribeConversations: null,
       unsubscribeDevMemos: null,
       unsubscribeNotifications: null,
+      unsubscribeUnreadStatus: null,
+      unsubscribeUnreadScenarioNotifications: null,
       unsubscribeFavorites: null,
     });
   },
