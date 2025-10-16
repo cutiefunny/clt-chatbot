@@ -186,7 +186,7 @@ export default function ScenarioBubble({ scenarioSessionId }) {
     activePanel,
     activeScenarioSessionId: focusedSessionId,
     scrollBy,
-    dimUnfocusedPanels, // --- 👈 [추가]
+    dimUnfocusedPanels,
   } = useChatStore();
   const { t, language } = useTranslations();
 
@@ -296,7 +296,7 @@ export default function ScenarioBubble({ scenarioSessionId }) {
       <div
         className={`GlassEffect ${styles.scenarioBubbleContainer} ${
           isCollapsed ? styles.collapsed : ""
-        } ${!isFocused && !isCompleted && dimUnfocusedPanels ? styles.dimmed : ""}`} 
+        } ${!isFocused && dimUnfocusedPanels ? styles.dimmed : ""}`}
       >
         <div
           className={styles.header}
