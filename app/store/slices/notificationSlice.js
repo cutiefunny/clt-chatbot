@@ -1,5 +1,5 @@
 'use client';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, deleteDoc, updateDoc, where, limit } from 'firebase/firestore';
 
 export const createNotificationSlice = (set, get) => ({
   // State
@@ -12,6 +12,10 @@ export const createNotificationSlice = (set, get) => ({
   unsubscribeNotifications: null,
   hasUnreadNotifications: false,
   unreadScenarioSessions: new Set(),
+  unreadConversations: new Set(), // --- 👈 [추가]
+  unsubscribeUnreadStatus: null,
+  unsubscribeUnreadScenarioNotifications: null,
+
 
   // Actions
   deleteNotification: async (notificationId) => {
@@ -33,7 +37,6 @@ export const createNotificationSlice = (set, get) => ({
     }
   },
   
-  // --- 👇 [수정] conversationId 파라미터 추가 ---
   showToast: (message, type = 'info', scenarioSessionId = null, conversationId = null) => {
     set({ toast: { id: Date.now(), message, type, visible: true } });
 
@@ -43,7 +46,7 @@ export const createNotificationSlice = (set, get) => ({
         createdAt: serverTimestamp(), 
         read: false,
         scenarioSessionId,
-        conversationId, // conversationId 저장
+        conversationId,
     };
     get().saveNotification(dataToSave); 
 
@@ -61,29 +64,60 @@ export const createNotificationSlice = (set, get) => ({
     }
   },
 
-  loadNotifications: (userId) => {
+  loadNotificationHistory: (userId) => {
+    if (get().unsubscribeNotifications) return; 
     const q = query(collection(get().db, "users", userId, "notifications"), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const notifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const hasUnread = notifications.some(n => !n.read);
-      
-      const unreadSessions = new Set(
-        notifications
-          .filter(n => !n.read && n.scenarioSessionId)
-          .map(n => n.scenarioSessionId)
-      );
-      
-      set({ 
-          toastHistory: notifications, 
-          hasUnreadNotifications: hasUnread,
-          unreadScenarioSessions: unreadSessions,
-      });
-
+      set({ toastHistory: notifications });
     }, (error) => {
         console.error("Error listening to notification changes:", error);
     });
     set({ unsubscribeNotifications: unsubscribe });
   },
+
+  subscribeToUnreadStatus: (userId) => {
+    const q = query(
+      collection(get().db, "users", userId, "notifications"),
+      where("read", "==", false),
+      limit(1)
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      set({ hasUnreadNotifications: !snapshot.empty });
+    }, (error) => {
+      console.error("Error listening to unread status:", error);
+    });
+    set({ unsubscribeUnreadStatus: unsubscribe });
+  },
+
+  // --- 👇 [수정된 부분] ---
+  subscribeToUnreadScenarioNotifications: (userId) => {
+    const q = query(
+      collection(get().db, "users", userId, "notifications"),
+      where("read", "==", false)
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const unreadSessions = new Set();
+      const unreadConvos = new Set();
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.scenarioSessionId) {
+          unreadSessions.add(data.scenarioSessionId);
+          if (data.conversationId) {
+            unreadConvos.add(data.conversationId);
+          }
+        }
+      });
+      set({ 
+        unreadScenarioSessions: unreadSessions,
+        unreadConversations: unreadConvos 
+      });
+    }, (error) => {
+      console.error("Error listening to unread scenario notifications:", error);
+    });
+    set({ unsubscribeUnreadScenarioNotifications: unsubscribe });
+  },
+  // --- 👆 [여기까지] ---
   
   markNotificationAsRead: async (notificationId) => {
     const user = get().user;
@@ -97,7 +131,6 @@ export const createNotificationSlice = (set, get) => ({
     }
   },
 
-  // --- 👇 [수정] conversationId 파라미터 추가 ---
   handleEvents: (events, scenarioSessionId = null, conversationId = null) => {
       if (!events || !Array.isArray(events)) return;
       events.forEach(event => {
@@ -107,7 +140,16 @@ export const createNotificationSlice = (set, get) => ({
       });
   },
   
+  openNotificationModal: () => {
+    const user = get().user;
+    if (user) {
+      get().loadNotificationHistory(user.uid);
+    }
+    set({ isNotificationModalOpen: true });
+  },
+
   closeNotificationModal: () => {
-    set({ isNotificationModalOpen: false });
+    get().unsubscribeNotifications?.();
+    set({ isNotificationModalOpen: false, unsubscribeNotifications: null });
   },
 });
