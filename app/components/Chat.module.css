@@ -366,7 +366,7 @@ input:checked + .slider:before {
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
-  padding: 12px 16px 12px 24px;
+  padding: 16px 16px 16px 16px;
   border-radius: 12px;
   border: 1px solid var(--panel-border-color); /* Themed */
   background-color: rgba(255, 255, 255, 0.1); /* Adjusted for dark mode */
@@ -392,8 +392,7 @@ input:checked + .slider:before {
 }
 
 .optionButton:hover {
-  background-color: var(--button-hover-bg); /* Themed */
-  border-color: #aaa;
+  background-color: #f0f2f5; /* Themed */
 }
 
 /* --- 👇 [추가된 부분] --- */
@@ -403,21 +402,23 @@ input:checked + .slider:before {
   border-color: var(--panel-border-color);
 }
 .optionButton.selected {
-  background-color: var(--login-button-bg);
-  color: white;
-  border-color: var(--login-button-bg);
+  border-color: #babcd1;
+  color: #282166;
 }
+
+.optionButton.selected svg path {
+  fill: #806bf5;
+}
+
 .optionButton.dimmed {
   opacity: 0.5;
   background-color: transparent;
 }
 .optionButton:disabled:hover {
-  background-color: var(--button-hover-bg);
   border-color: var(--panel-border-color);
 }
 .optionButton.selected:disabled:hover {
-  background-color: var(--login-button-bg);
-  border-color: var(--login-button-bg);
+  border-color: #babcd1;
 }
 /* --- 👆 [여기까지] --- */
 

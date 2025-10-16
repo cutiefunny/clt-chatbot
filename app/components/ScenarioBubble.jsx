@@ -413,7 +413,14 @@ export default function ScenarioBubble({ scenarioSessionId }) {
                               }}
                               disabled={isCompleted || !!selectedOption}
                             >
-                              {reply.display}
+                              <span className={styles.optionButtonText}>
+                                {reply.display}
+                              </span>
+                              {reply.display.toLowerCase().includes("link") ? (
+                                <OpenInNewIcon />
+                              ) : (
+                                <CheckCircle />
+                              )}
                             </button>
                           );
                         })}
