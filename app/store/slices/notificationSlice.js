@@ -11,7 +11,7 @@ export const createNotificationSlice = (set, get) => ({
   toastHistory: [],
   unsubscribeNotifications: null,
   hasUnreadNotifications: false,
-  unreadScenarioSessions: new Set(), // --- 👈 [추가] 읽지 않은 시나리오 세션 ID를 저장하는 Set
+  unreadScenarioSessions: new Set(),
 
   // Actions
   deleteNotification: async (notificationId) => {
@@ -27,15 +27,14 @@ export const createNotificationSlice = (set, get) => ({
     try {
         const notificationRef = doc(get().db, "users", user.uid, "notifications", notificationId);
         await deleteDoc(notificationRef);
-        // 상태 업데이트 로직은 onSnapshot이 처리하므로 별도 로직 불필요
     } catch (error) {
         console.error("Error deleting notification from Firestore:", error);
         get().showToast("Failed to delete notification.", "error");
     }
   },
   
-  // --- 👇 [수정] scenarioSessionId 파라미터 추가 ---
-  showToast: (message, type = 'info', scenarioSessionId = null) => {
+  // --- 👇 [수정] conversationId 파라미터 추가 ---
+  showToast: (message, type = 'info', scenarioSessionId = null, conversationId = null) => {
     set({ toast: { id: Date.now(), message, type, visible: true } });
 
     const dataToSave = { 
@@ -43,7 +42,8 @@ export const createNotificationSlice = (set, get) => ({
         type, 
         createdAt: serverTimestamp(), 
         read: false,
-        scenarioSessionId, // scenarioSessionId 저장
+        scenarioSessionId,
+        conversationId, // conversationId 저장
     };
     get().saveNotification(dataToSave); 
 
@@ -67,7 +67,6 @@ export const createNotificationSlice = (set, get) => ({
       const notifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const hasUnread = notifications.some(n => !n.read);
       
-      // --- 👇 [추가] 읽지 않은 시나리오 세션 Set 업데이트 ---
       const unreadSessions = new Set(
         notifications
           .filter(n => !n.read && n.scenarioSessionId)
@@ -98,11 +97,12 @@ export const createNotificationSlice = (set, get) => ({
     }
   },
 
-  handleEvents: (events, scenarioSessionId = null) => { // --- 👈 [수정] scenarioSessionId 파라미터 추가
+  // --- 👇 [수정] conversationId 파라미터 추가 ---
+  handleEvents: (events, scenarioSessionId = null, conversationId = null) => {
       if (!events || !Array.isArray(events)) return;
       events.forEach(event => {
         if (event.type === 'toast') {
-          get().showToast(event.message, event.toastType, scenarioSessionId); // --- 👈 [수정]
+          get().showToast(event.message, event.toastType, scenarioSessionId, conversationId);
         }
       });
   },

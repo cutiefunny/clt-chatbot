@@ -3,7 +3,7 @@
 import { useChatStore } from '../store';
 import { useTranslations } from '../hooks/useTranslations';
 import styles from './NotificationModal.module.css';
-import Modal from './Modal'; // Modal import
+import Modal from './Modal';
 
 const TrashIcon = () => (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -18,7 +18,7 @@ const NotificationModal = () => {
         isNotificationModalOpen, 
         closeNotificationModal, 
         deleteNotification,
-        markNotificationAsRead
+        handleNotificationNavigation, // --- 👈 [수정] markNotificationAsRead 대신 사용
     } = useChatStore();
     const { t, language } = useTranslations();
 
@@ -31,10 +31,6 @@ const NotificationModal = () => {
         deleteNotification(id);
     };
 
-    const handleNotificationClick = (id) => {
-        markNotificationAsRead(id);
-    };
-
     return (
         <Modal title={t('notificationHistory')} onClose={closeNotificationModal} contentStyle={{ maxWidth: '450px' }}>
             {toastHistory.length === 0 ? (
@@ -45,7 +41,7 @@ const NotificationModal = () => {
                         <li 
                             key={toast.id} 
                             className={`${styles.notificationItem} ${styles[toast.type]} ${!toast.read ? styles.unreadItem : ''}`}
-                            onClick={() => handleNotificationClick(toast.id)}
+                            onClick={() => handleNotificationNavigation(toast)} // --- 👈 [수정]
                         >
                             <button className={styles.deleteButton} onClick={(e) => handleDelete(e, toast.id)}>
                                 <TrashIcon />
