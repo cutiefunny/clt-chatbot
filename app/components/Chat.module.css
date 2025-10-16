@@ -366,7 +366,7 @@ input:checked + .slider:before {
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
-  padding: 16px 16px 16px 16px;
+  padding: 12px 16px 12px 24px;
   border-radius: 12px;
   border: 1px solid var(--panel-border-color); /* Themed */
   background-color: rgba(255, 255, 255, 0.1); /* Adjusted for dark mode */
@@ -402,7 +402,7 @@ input:checked + .slider:before {
   border-color: var(--panel-border-color);
 }
 .optionButton.selected {
-  border-color: #babcd1;
+  border-color: #806bf5;
   color: #282166;
 }
 
@@ -418,7 +418,7 @@ input:checked + .slider:before {
   border-color: var(--panel-border-color);
 }
 .optionButton.selected:disabled:hover {
-  border-color: #babcd1;
+  border-color: #806bf5;
 }
 /* --- 👆 [여기까지] --- */
 
