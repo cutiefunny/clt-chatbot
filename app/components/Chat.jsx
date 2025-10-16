@@ -236,7 +236,9 @@ export default function Chat() {
 
       <div
         className={`${styles.history} ${
-          activePanel === "scenario" && dimUnfocusedPanels ? styles.mainChatDimmed : "" // --- 👈 [수정]
+          activePanel === "scenario" && dimUnfocusedPanels
+            ? styles.mainChatDimmed
+            : "" // --- 👈 [수정]
         }`}
         ref={historyRef}
       >
@@ -278,7 +280,7 @@ export default function Chat() {
                   key={msg.id}
                   className={`${styles.messageRow} ${
                     msg.sender === "user" ? styles.userRow : ""
-                  } ${isMainChatDimmed ? styles.dimmedMessage : ""}`}
+                  }`}
                   data-message-id={msg.id}
                 >
                   <div
