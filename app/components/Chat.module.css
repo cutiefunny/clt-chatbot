@@ -495,14 +495,14 @@ input:checked + .slider:before {
 
 .formSubmitButton {
   align-self: flex-end;
-  padding: 8px 20px;
-  background-color: var(--login-button-bg); /* Themed */
-  color: white;
-  border: none;
-  border-radius: 20px;
-  font-weight: bold;
+  padding: 8px 16px;
+  color: var(--White, #fff); /* Themed */
+  border-radius: 8px;
+  background: var(
+    --Color-Light-Gradation-01,
+    linear-gradient(90deg, #8f9aff 0%, #634ce2 100%)
+  );
   cursor: pointer;
-  margin-top: 10px;
 }
 
 .formSubmitButton:hover {
