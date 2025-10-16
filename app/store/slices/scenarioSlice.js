@@ -3,15 +3,14 @@ import { locales } from '../../lib/locales';
 import { getErrorKey } from '../../lib/errorHandler'; 
 
 export const createScenarioSlice = (set, get) => ({
-  // State
+  // ... (기존 State 및 다른 함수들은 그대로 유지)
   scenarioStates: {},
-  activeScenarioSessionId: null, // This now represents the "focused" scenario
-  activeScenarioSessions: [], // Holds IDs of all visible scenarios in a conversation
+  activeScenarioSessionId: null,
+  activeScenarioSessions: [],
   scenarioCategories: [],
   availableScenarios: [],
   unsubscribeScenariosMap: {},
 
-  // Actions
   loadAvailableScenarios: async () => {
     try {
       const scenariosCollection = collection(get().db, 'scenarios');
@@ -116,7 +115,7 @@ export const createScenarioSlice = (set, get) => ({
       if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
       const data = await response.json();
       
-      handleEvents(data.events, newScenarioSessionId);
+      handleEvents(data.events, newScenarioSessionId, conversationId); // --- 👈 [수정] conversationId 전달
 
       if (data.type === 'scenario_start' || data.type === 'scenario') {
         const sessionRef = doc(get().db, "chats", user.uid, "conversations", conversationId, "scenario_sessions", newScenarioSessionId);
@@ -194,7 +193,6 @@ export const createScenarioSlice = (set, get) => ({
       });
   },
 
-  // --- 👇 [수정] status 기본값을 'completed'로 설정 ---
   endScenario: async (scenarioSessionId, status = 'completed') => {
     const { user, currentConversationId } = get();
     if (!user || !currentConversationId || !scenarioSessionId) return;
@@ -206,7 +204,6 @@ export const createScenarioSlice = (set, get) => ({
         get().setActivePanel('main');
     }
   },
-  // --- 👆 [여기까지] ---
 
   handleScenarioResponse: async (payload) => {
     const { scenarioSessionId } = payload;
@@ -249,7 +246,7 @@ export const createScenarioSlice = (set, get) => ({
       if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
       const data = await response.json();
 
-      handleEvents(data.events, scenarioSessionId);
+      handleEvents(data.events, scenarioSessionId, currentConversationId); // --- 👈 [수정] conversationId 전달
       
       if (data.nextNode) {
           newMessages.push({ id: data.nextNode.id, sender: 'bot', node: data.nextNode });

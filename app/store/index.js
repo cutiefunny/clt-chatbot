@@ -37,6 +37,23 @@ export const useChatStore = create((set, get) => ({
   ...createDevBoardSlice(set, get),
   ...createNotificationSlice(set, get),
 
+  // --- 👇 [추가된 부분] ---
+  handleNotificationNavigation: async (notification) => {
+    get().closeNotificationModal();
+    get().markNotificationAsRead(notification.id);
+
+    if (notification.conversationId && notification.scenarioSessionId) {
+      if (get().currentConversationId !== notification.conversationId) {
+        await get().loadConversation(notification.conversationId);
+      }
+
+      setTimeout(() => {
+        get().setScrollToMessageId(notification.scenarioSessionId);
+      }, 300);
+    }
+  },
+  // --- 👆 [여기까지] ---
+
   setUserAndLoadData: async (user) => {
     set({ user });
 
@@ -134,7 +151,7 @@ export const useChatStore = create((set, get) => ({
 
   initAuth: () => {
     get().loadScenarioCategories();
-    get().loadGeneralConfig(); // <-- 추가
+    get().loadGeneralConfig();
     onAuthStateChanged(get().auth, async (user) => {
       if (user) {
         get().setUserAndLoadData(user);
@@ -151,15 +168,11 @@ export const useChatStore = create((set, get) => ({
 
     get().setScrollToMessageId(scenario.sessionId);
 
-    // --- 👇 [수정된 부분] ---
     if (scenario.status === "completed" || scenario.status === "failed") {
-      // 완료/실패 시나리오는 메인챗에 포커스를 둡니다.
       get().setActivePanel("main");
     } else {
-      // 진행 중인 시나리오는 해당 시나리오에 포커스를 둡니다.
       get().setActivePanel("scenario", scenario.sessionId);
     }
-    // --- 👆 [여기까지] ---
 
     if (!get().scenarioStates[scenario.sessionId]) {
       get().subscribeToScenarioSession(scenario.sessionId);

@@ -171,7 +171,6 @@ const ScenarioStatusBadge = ({ status, t }) => {
       text = t("statusGenerating");
       statusClass = "generating";
       break;
-    // --- 👇 [추가] ---
     case "canceled":
       text = t("statusCanceled");
       statusClass = "canceled";
@@ -196,6 +195,7 @@ export default function ScenarioBubble({ scenarioSessionId }) {
     activePanel,
     activeScenarioSessionId: focusedSessionId,
     scrollBy,
+    dimUnfocusedPanels,
   } = useChatStore();
   const { t, language } = useTranslations();
 
@@ -204,7 +204,6 @@ export default function ScenarioBubble({ scenarioSessionId }) {
   const activeScenario = scenarioSessionId
     ? scenarioStates[scenarioSessionId]
     : null;
-  // --- 👇 [수정] 'canceled' 상태 추가 ---
   const isCompleted =
     activeScenario?.status === "completed" ||
     activeScenario?.status === "failed" ||
@@ -306,7 +305,7 @@ export default function ScenarioBubble({ scenarioSessionId }) {
       <div
         className={`GlassEffect ${styles.scenarioBubbleContainer} ${
           isCollapsed ? styles.collapsed : ""
-        } ${!isFocused && !isCompleted ? styles.dimmed : ""}`}
+        } ${!isFocused && dimUnfocusedPanels ? styles.dimmed : ""}`}
       >
         <div
           className={styles.header}
@@ -326,7 +325,6 @@ export default function ScenarioBubble({ scenarioSessionId }) {
                 className={`${styles.headerRestartButton}`}
                 onClick={(e) => {
                   e.stopPropagation();
-                  // --- 👇 [수정] 'canceled' 상태로 시나리오 종료 ---
                   endScenario(scenarioSessionId, "canceled");
                 }}
               >

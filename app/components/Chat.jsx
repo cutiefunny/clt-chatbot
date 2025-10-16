@@ -109,9 +109,9 @@ export default function Chat() {
     setForceScrollToBottom,
     scrollAmount,
     resetScroll,
-    // --- 👇 [추가] ---
     selectedOptions,
     setSelectedOption,
+    dimUnfocusedPanels, // --- 👈 [추가]
   } = useChatStore();
   const [copiedMessageId, setCopiedMessageId] = useState(null);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
@@ -236,7 +236,7 @@ export default function Chat() {
 
       <div
         className={`${styles.history} ${
-          activePanel === "scenario" ? styles.mainChatDimmed : ""
+          activePanel === "scenario" && dimUnfocusedPanels ? styles.mainChatDimmed : "" // --- 👈 [수정]
         }`}
         ref={historyRef}
       >
@@ -271,7 +271,6 @@ export default function Chat() {
                 );
               }
 
-              // --- 👇 [추가] ---
               const selectedOption = selectedOptions[msg.id];
 
               return (
@@ -302,7 +301,6 @@ export default function Chat() {
                             messageId={msg.id}
                           />
                         )}
-                        {/* --- 👇 [수정된 부분] --- */}
                         {msg.sender === "bot" && msg.scenarios && (
                           <div className={styles.scenarioList}>
                             {msg.scenarios.map((name) => {
@@ -330,7 +328,6 @@ export default function Chat() {
                             })}
                           </div>
                         )}
-                        {/* --- 👆 [여기까지] --- */}
                       </div>
                     </div>
                     {msg.sender === "bot" && (
