@@ -115,7 +115,7 @@ export const createScenarioSlice = (set, get) => ({
       if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
       const data = await response.json();
       
-      handleEvents(data.events, newScenarioSessionId, conversationId); // --- 👈 [수정] conversationId 전달
+      handleEvents(data.events, newScenarioSessionId, conversationId);
 
       if (data.type === 'scenario_start' || data.type === 'scenario') {
         const sessionRef = doc(get().db, "chats", user.uid, "conversations", conversationId, "scenario_sessions", newScenarioSessionId);
@@ -147,6 +147,55 @@ export const createScenarioSlice = (set, get) => ({
       });
     }
   },
+
+  // --- 👇 [추가된 부분] ---
+  setScenarioSelectedOption: async (scenarioSessionId, messageNodeId, selectedValue) => {
+    const { user, currentConversationId, scenarioStates } = get();
+    if (!user || !currentConversationId || !scenarioSessionId) return;
+
+    const scenarioState = scenarioStates[scenarioSessionId];
+    if (!scenarioState) return;
+
+    const originalMessages = scenarioState.messages;
+    const updatedMessages = originalMessages.map(msg => {
+        if (msg.node && msg.node.id === messageNodeId) {
+            return { ...msg, selectedOption: selectedValue };
+        }
+        return msg;
+    });
+
+    // 1. Optimistic UI update
+    set(state => ({
+        scenarioStates: {
+            ...state.scenarioStates,
+            [scenarioSessionId]: {
+                ...state.scenarioStates[scenarioSessionId],
+                messages: updatedMessages,
+            },
+        },
+    }));
+
+    // 2. Update Firestore
+    try {
+        const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", scenarioSessionId);
+        await updateDoc(sessionRef, {
+            messages: updatedMessages
+        });
+    } catch (error) {
+        console.error("Error updating scenario selected option in Firestore:", error);
+        // Rollback UI on error
+        set(state => ({
+            scenarioStates: {
+                ...state.scenarioStates,
+                [scenarioSessionId]: {
+                  ...state.scenarioStates[scenarioSessionId],
+                  messages: originalMessages,
+                }
+            },
+        }));
+    }
+  },
+  // --- 👆 [여기까지] ---
   
   subscribeToScenarioSession: (sessionId) => {
     const { user, currentConversationId, unsubscribeScenariosMap } = get();
@@ -246,7 +295,7 @@ export const createScenarioSlice = (set, get) => ({
       if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
       const data = await response.json();
 
-      handleEvents(data.events, scenarioSessionId, currentConversationId); // --- 👈 [수정] conversationId 전달
+      handleEvents(data.events, scenarioSessionId, currentConversationId);
       
       if (data.nextNode) {
           newMessages.push({ id: data.nextNode.id, sender: 'bot', node: data.nextNode });

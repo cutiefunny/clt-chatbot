@@ -187,6 +187,7 @@ export default function ScenarioBubble({ scenarioSessionId }) {
     activeScenarioSessionId: focusedSessionId,
     scrollBy,
     dimUnfocusedPanels,
+    setScenarioSelectedOption, // --- 👈 [추가]
   } = useChatStore();
   const { t, language } = useTranslations();
 
@@ -372,27 +373,43 @@ export default function ScenarioBubble({ scenarioSessionId }) {
                     ) : (
                       <p>{msg.text || msg.node?.data.content}</p>
                     )}
+                    {/* --- 👇 [수정된 부분] --- */}
                     {msg.node?.type === "branch" && msg.node.data.replies && (
                       <div className={styles.scenarioList}>
-                        {msg.node.data.replies.map((reply) => (
-                          <button
-                            key={reply.value}
-                            className={styles.optionButton}
-                            onClick={() =>
-                              handleScenarioResponse({
-                                scenarioSessionId: scenarioSessionId,
-                                currentNodeId: msg.node.id,
-                                sourceHandle: reply.value,
-                                userInput: reply.display,
-                              })
-                            }
-                            disabled={isCompleted}
-                          >
-                            {reply.display}
-                          </button>
-                        ))}
+                        {msg.node.data.replies.map((reply) => {
+                          const selectedOption = msg.selectedOption;
+                          const isSelected = selectedOption === reply.display;
+                          const isDimmed = selectedOption && !isSelected;
+                          
+                          return (
+                            <button
+                              key={reply.value}
+                              className={`${styles.optionButton} ${
+                                isSelected ? styles.selected : ""
+                              } ${isDimmed ? styles.dimmed : ""}`}
+                              onClick={() => {
+                                if (selectedOption) return;
+                                setScenarioSelectedOption(
+                                  scenarioSessionId,
+                                  msg.node.id,
+                                  reply.display
+                                );
+                                handleScenarioResponse({
+                                  scenarioSessionId: scenarioSessionId,
+                                  currentNodeId: msg.node.id,
+                                  sourceHandle: reply.value,
+                                  userInput: reply.display,
+                                });
+                              }}
+                              disabled={isCompleted || !!selectedOption}
+                            >
+                              {reply.display}
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
+                    {/* --- 👆 [여기까지] --- */}
                   </div>
                 </div>
               </div>
