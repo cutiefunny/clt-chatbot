@@ -15,7 +15,8 @@ export const createUISlice = (set, get) => ({
   hideDelayInHours: 0,
   fontSizeDefault: '16px', // 기본값
   fontSizeSmall: '14px',   // 기본값
-  isDevMode: false, // --- 👈 [추가] 개발자 모드 상태
+  isDevMode: false,
+  dimUnfocusedPanels: true, // --- 👈 [추가] 포커스 dimmed 효과 상태
   isProfileModalOpen: false,
   isSearchModalOpen: false,
   isScenarioModalOpen: false,
@@ -57,7 +58,8 @@ export const createUISlice = (set, get) => ({
             hideDelayInHours: typeof config.hideDelayInHours === 'number' ? config.hideDelayInHours : 0,
             fontSizeDefault: config.fontSizeDefault || '16px',
             fontSizeSmall: config.fontSizeSmall || '14px',
-            isDevMode: typeof config.isDevMode === 'boolean' ? config.isDevMode : false, // --- 👈 [추가]
+            isDevMode: typeof config.isDevMode === 'boolean' ? config.isDevMode : false,
+            dimUnfocusedPanels: typeof config.dimUnfocusedPanels === 'boolean' ? config.dimUnfocusedPanels : true, // --- 👈 [추가]
         });
       }
     } catch (error) {
