@@ -76,7 +76,7 @@ const MessageWithButtons = ({ text, messageId }) => {
                   isSelected ? styles.selected : ""
                 } ${isDimmed ? styles.dimmed : ""}`}
                 style={{ margin: "4px 4px 4px 0", display: "block" }}
-                onClick={() => handleShortcutClick(shortcutItem, messageId)}
+                onClick={() => handleShortcutClick(shortcutItem, messageId)} // --- 👈 [수정] async/await 제거
                 disabled={!!selectedOption}
               >
                 {buttonText}
@@ -111,7 +111,7 @@ export default function Chat() {
     resetScroll,
     selectedOptions,
     setSelectedOption,
-    dimUnfocusedPanels, // --- 👈 [추가]
+    dimUnfocusedPanels,
   } = useChatStore();
   const [copiedMessageId, setCopiedMessageId] = useState(null);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
@@ -238,7 +238,7 @@ export default function Chat() {
         className={`${styles.history} ${
           activePanel === "scenario" && dimUnfocusedPanels
             ? styles.mainChatDimmed
-            : "" // --- 👈 [수정]
+            : ""
         }`}
         ref={historyRef}
       >
@@ -306,6 +306,7 @@ export default function Chat() {
                         {msg.sender === "bot" && msg.scenarios && (
                           <div className={styles.scenarioList}>
                             {msg.scenarios.map((name) => {
+                              // --- 👈 [수정] async 제거
                               const isSelected = selectedOption === name;
                               const isDimmed = selectedOption && !isSelected;
                               return (
@@ -315,6 +316,7 @@ export default function Chat() {
                                     isSelected ? styles.selected : ""
                                   } ${isDimmed ? styles.dimmed : ""}`}
                                   onClick={(e) => {
+                                    // --- 👈 [수정] async/await 제거
                                     e.stopPropagation();
                                     setSelectedOption(msg.id, name);
                                     openScenarioPanel(name);

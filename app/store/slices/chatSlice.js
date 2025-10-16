@@ -55,7 +55,6 @@ export const createChatSlice = (set, get) => ({
   searchResults: [],
   slots: {},
   extractedSlots: {},
-  // --- 👇 [추가] 선택된 옵션을 기록하기 위한 상태 ---
   selectedOptions: {},
   unsubscribeMessages: null,
   unsubscribeConversations: null,
@@ -66,14 +65,33 @@ export const createChatSlice = (set, get) => ({
   favorites: [],
   unsubscribeFavorites: null,
 
-  // --- 👇 [추가] 선택된 옵션을 상태에 저장하는 액션 ---
-  setSelectedOption: (messageId, optionValue) => {
+  setSelectedOption: async (messageId, optionValue) => {
+    // 1. 로컬 상태 우선 업데이트 (즉각적인 UI 반응)
     set((state) => ({
       selectedOptions: {
         ...state.selectedOptions,
         [messageId]: optionValue,
       },
     }));
+
+    // 2. Firestore에 비동기로 선택 상태 저장
+    const { user, currentConversationId } = get();
+    if (!user || !currentConversationId || !messageId) return;
+
+    try {
+      const messageRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "messages", messageId);
+      await updateDoc(messageRef, {
+        selectedOption: optionValue,
+      });
+    } catch (error) {
+      console.error("Error updating selected option in Firestore:", error);
+      // 필요 시 에러 처리 (예: 롤백)
+      set((state) => {
+        const newSelectedOptions = { ...state.selectedOptions };
+        delete newSelectedOptions[messageId];
+        return { selectedOptions: newSelectedOptions };
+      });
+    }
   },
 
   setExtractedSlots: (newSlots) => {
@@ -238,9 +256,8 @@ export const createChatSlice = (set, get) => ({
     if (!item || !item.action) return;
     const { extractedSlots, clearExtractedSlots, setSelectedOption } = get();
 
-    // --- 👇 [추가] 버튼 클릭 시 상태 업데이트 ---
     if (messageId) {
-      setSelectedOption(messageId, item.title);
+      await setSelectedOption(messageId, item.title);
     }
 
     if (item.action.type === "custom") {
@@ -316,32 +333,12 @@ export const createChatSlice = (set, get) => ({
       orderBy("updatedAt", "desc")
     );
 
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
+    const unsubscribe = onSnapshot(q, (snapshot) => {
       const conversations = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
       set({ conversations });
-
-      const allScenarios = {};
-      for (const convo of conversations) {
-        const scenariosRef = collection(
-          get().db,
-          "chats",
-          userId,
-          "conversations",
-          convo.id,
-          "scenario_sessions"
-        );
-        const scenariosSnapshot = await getDocs(
-          query(scenariosRef, orderBy("createdAt", "desc"))
-        );
-        allScenarios[convo.id] = scenariosSnapshot.docs.map((doc) => ({
-          sessionId: doc.id,
-          ...doc.data(),
-        }));
-      }
-      set({ scenariosForConversation: allScenarios });
     });
 
     set({ unsubscribeConversations: unsubscribe });
@@ -362,7 +359,7 @@ export const createChatSlice = (set, get) => ({
       lastVisibleMessage: null,
       hasMoreMessages: true,
       expandedConversationId: null,
-      selectedOptions: {}, // ---  [추가] 대화방 변경 시 선택 상태 초기화
+      selectedOptions: {},
     });
 
     const messagesRef = collection(
@@ -380,21 +377,25 @@ export const createChatSlice = (set, get) => ({
     );
 
     const unsubscribeMessages = onSnapshot(q, (messagesSnapshot) => {
-      console.log(
-        "[loadConversation] Firestore onSnapshot triggered. Fetched messages:",
-        messagesSnapshot.docs.length
-      );
       const newMessages = messagesSnapshot.docs
         .map((doc) => ({ id: doc.id, ...doc.data() }))
         .reverse();
       const lastVisible =
         messagesSnapshot.docs[messagesSnapshot.docs.length - 1];
 
+      const newSelectedOptions = {};
+      newMessages.forEach(msg => {
+        if (msg.selectedOption) {
+          newSelectedOptions[msg.id] = msg.selectedOption;
+        }
+      });
+
       set((state) => ({
         messages: [initialMessage, ...newMessages],
         lastVisibleMessage: lastVisible,
         hasMoreMessages: messagesSnapshot.docs.length === MESSAGE_LIMIT,
         isLoading: false,
+        selectedOptions: newSelectedOptions,
       }));
     });
 
@@ -408,7 +409,7 @@ export const createChatSlice = (set, get) => ({
       conversationId,
       "scenario_sessions"
     );
-    const scenariosQuery = query(scenariosRef); // No "where" clause, load all
+    const scenariosQuery = query(scenariosRef);
     const scenariosSnapshot = await getDocs(scenariosQuery);
 
     scenariosSnapshot.forEach((doc) => {
@@ -460,10 +461,18 @@ export const createChatSlice = (set, get) => ({
       const initialMessage = messages[0];
       const existingMessages = messages.slice(1);
 
+      const newSelectedOptions = { ...get().selectedOptions };
+      newMessages.forEach(msg => {
+        if (msg.selectedOption) {
+          newSelectedOptions[msg.id] = msg.selectedOption;
+        }
+      });
+
       set({
         messages: [initialMessage, ...newMessages, ...existingMessages],
         lastVisibleMessage: newLastVisible,
         hasMoreMessages: snapshot.docs.length === MESSAGE_LIMIT,
+        selectedOptions: newSelectedOptions,
       });
     } catch (error) {
       console.error("Error loading more messages:", error);
@@ -614,7 +623,6 @@ export const createChatSlice = (set, get) => ({
       doc(get().db, "chats", user.uid, "conversations", activeConversationId),
       { updatedAt: serverTimestamp() }
     );
-    // --- 👇 [수정] 저장된 메시지 ID를 반환하도록 수정 ---
     return messageRef.id;
   },
 
@@ -636,7 +644,6 @@ export const createChatSlice = (set, get) => ({
     }
     set((state) => ({ messages: [...state.messages, newMessage] }));
     if (!newMessage.isStreaming) {
-      // --- 👇 [수정] Firestore에 저장 후 반환된 ID로 메시지 ID 업데이트 ---
       const savedMessageId = await get().saveMessage(newMessage);
       set((state) => ({
         messages: state.messages.map((msg) =>
