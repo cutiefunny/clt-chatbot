@@ -97,7 +97,7 @@ export const createChatSlice = (set, get) => ({
     if (!user || !currentConversationId || !messageId) return;
 
     try {
-      const messageRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "messages", messageId);
+      const messageRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "messages", String(messageId));
       await updateDoc(messageRef, {
         selectedOption: optionValue,
       });
@@ -737,16 +737,15 @@ export const createChatSlice = (set, get) => ({
         // --- 👇 [수정된 부분] ---
         let finalMessageText = fullResponse;
         if (get().llmProvider === 'flowise') {
-            set({ llmRawResponse: fullResponse });
-            if (finalMessageText.toLowerCase().includes("change the vessel")) {
-              finalMessageText += '\n\nor you can execute via below button.';
-              finalMessageText += '\n\n[BUTTON:Vessel Schedule]';
-
-              const bookingNoRegex = /\b([A-Z]{2}\d{10})\b/i;
-              const match = finalMessageText.match(bookingNoRegex);
-              if (match && match[1]) {
-                  get().setExtractedSlots({ booking_no: match[1] });
-              }
+            //set({ llmRawResponse: fullResponse });
+            // if (finalMessageText.toLowerCase().includes("change the vessel")) {
+            //   finalMessageText += '\n\nor you can execute via below button.';
+            //     finalMessageText += '\n\n[BUTTON:Vessel Schedule]';
+            // }
+            const bookingNoRegex = /\b([A-Z]{2}\d{10})\b/i;
+            const match = finalMessageText.match(bookingNoRegex);
+            if (match && match[1]) {
+                get().setExtractedSlots({ bkgNr: match[1] });
             }
         }
         

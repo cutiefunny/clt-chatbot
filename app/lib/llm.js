@@ -70,7 +70,15 @@ async function getFlowiseResponse(prompt, apiUrl) {
         }
 
         const jsonData = JSON.parse(fullResponse);
-        const responseText = jsonData.text || "죄송합니다, Flowise에서 응답을 받지 못했습니다.";
+        let responseText = jsonData.text || "죄송합니다, Flowise에서 응답을 받지 못했습니다.";
+        const content = jsonData.agentFlowExecutedData[7].data.input.messages[6].content || "not found";
+        const contentJson = JSON.parse(content);
+        const scenarioId = contentJson[0].scenarioId || "not found";
+        const label = contentJson[0].label || "not found";
+        //responseText += `\n\n[BUTTON:Execute ${label} (ID: ${scenarioId})]`;
+        if (responseText.toLowerCase().includes("change the vessel") || responseText.toLowerCase().includes("booking no")) {
+            responseText += `\n\n[BUTTON:Vessel Schedule]`;
+        }
         
         return new ReadableStream({
             start(controller) {
