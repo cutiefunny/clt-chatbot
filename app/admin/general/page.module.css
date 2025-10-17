@@ -143,3 +143,31 @@ input:checked + .slider {
 input:checked + .slider:before {
     transform: translateX(20px);
 }
+
+/* --- 👇 [추가된 부분] --- */
+.settingGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    border: 1px solid var(--panel-border-color);
+    border-radius: 8px;
+    padding: 16px;
+    background-color: var(--bot-message-bg);
+}
+.subSettingItem {
+    margin-top: 8px;
+    padding-top: 16px;
+    border-top: 1px solid var(--panel-border-color);
+}
+.radioGroup {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+}
+.radioGroup label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+/* --- 👆 [여기까지] --- */

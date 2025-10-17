@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getScenario, getNextNode, interpolateMessage, findActionByTrigger, getScenarioList, runScenario, getScenarioCategories } from '../../lib/chatbotEngine';
-// gemini.js에서 새로운 함수를 가져옵니다.
-import { getGeminiResponseWithSlots } from '../../lib/gemini'; 
+import { getLlmResponse } from '../../lib/llm';
 import { locales } from '../../lib/locales';
 
 const actionHandlers = {
@@ -65,7 +64,7 @@ async function determineAction(messageText) {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { message, scenarioState, slots, language = 'ko', scenarioSessionId } = body;
+    const { message, scenarioState, slots, language = 'ko', scenarioSessionId, llmProvider, flowiseApiUrl } = body;
 
     if (scenarioSessionId && scenarioState && scenarioState.scenarioId) {
       const scenario = await getScenario(scenarioState.scenarioId);
@@ -87,23 +86,30 @@ export async function POST(request) {
             return await handler(action.payload, slots, language);
         }
     }
-
+    
     // --- 👇 [수정된 부분] ---
-    // Fallback to LLM
     const categories = await getScenarioCategories();
     const allShortcuts = categories.flatMap(cat => 
         cat.subCategories.flatMap(subCat => subCat.items)
     );
     const uniqueShortcuts = [...new Map(allShortcuts.map(item => [item.title, item])).values()];
 
-    // 스트리밍 대신 JSON 응답을 기다립니다.
-    const geminiData = await getGeminiResponseWithSlots(message.text, language, uniqueShortcuts);
+    const llmResult = await getLlmResponse(message.text, language, uniqueShortcuts, llmProvider, flowiseApiUrl);
 
-    // LLM 응답을 클라이언트로 전송합니다.
+    if (llmResult instanceof ReadableStream) {
+        return new Response(llmResult, {
+            headers: {
+                'Content-Type': 'text/event-stream',
+                'Cache-Control': 'no-cache',
+            },
+        });
+    }
+
+    // JSON 객체 (에러 등)가 반환될 경우에 대한 폴백
     return NextResponse.json({
         type: 'llm_response_with_slots',
-        message: geminiData.response,
-        slots: geminiData.slots,
+        message: llmResult.response,
+        slots: llmResult.slots,
     });
     // --- 👆 [여기까지] ---
 

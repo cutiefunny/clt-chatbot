@@ -16,7 +16,9 @@ export const createUISlice = (set, get) => ({
   fontSizeDefault: '16px', // 기본값
   fontSizeSmall: '14px',   // 기본값
   isDevMode: false,
-  dimUnfocusedPanels: true, // --- 👈 [추가] 포커스 dimmed 효과 상태
+  dimUnfocusedPanels: true,
+  llmProvider: 'gemini', // --- 👈 [추가]
+  flowiseApiUrl: '', // --- 👈 [추가]
   isProfileModalOpen: false,
   isSearchModalOpen: false,
   isScenarioModalOpen: false,
@@ -46,6 +48,7 @@ export const createUISlice = (set, get) => ({
   scrollAmount: 0,
 
   // Actions
+  // --- 👇 [수정된 부분] ---
   loadGeneralConfig: async () => {
     try {
       const configRef = doc(get().db, 'config', 'general');
@@ -59,13 +62,16 @@ export const createUISlice = (set, get) => ({
             fontSizeDefault: config.fontSizeDefault || '16px',
             fontSizeSmall: config.fontSizeSmall || '14px',
             isDevMode: typeof config.isDevMode === 'boolean' ? config.isDevMode : false,
-            dimUnfocusedPanels: typeof config.dimUnfocusedPanels === 'boolean' ? config.dimUnfocusedPanels : true, // --- 👈 [추가]
+            dimUnfocusedPanels: typeof config.dimUnfocusedPanels === 'boolean' ? config.dimUnfocusedPanels : true,
+            llmProvider: config.llmProvider || 'gemini',
+            flowiseApiUrl: config.flowiseApiUrl || '',
         });
       }
     } catch (error) {
       console.error("Error loading general config from Firestore:", error);
     }
   },
+  // --- 👆 [여기까지] ---
 
   saveGeneralConfig: async (settings) => {
     try {

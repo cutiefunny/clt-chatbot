@@ -55,6 +55,7 @@ export const createChatSlice = (set, get) => ({
   searchResults: [],
   slots: {},
   extractedSlots: {},
+  llmRawResponse: null,
   selectedOptions: {},
   unsubscribeMessages: null,
   unsubscribeConversations: null,
@@ -64,6 +65,23 @@ export const createChatSlice = (set, get) => ({
 
   favorites: [],
   unsubscribeFavorites: null,
+
+  updateLastMessage: (chunk) => {
+    set((state) => {
+      const lastMessage = state.messages[state.messages.length - 1];
+      if (lastMessage && lastMessage.sender === 'bot') {
+        const updatedMessage = {
+          ...lastMessage,
+          text: (lastMessage.text || '') + chunk,
+          isStreaming: true,
+        };
+        return {
+          messages: [...state.messages.slice(0, -1), updatedMessage],
+        };
+      }
+      return state;
+    });
+  },
 
   setSelectedOption: async (messageId, optionValue) => {
     // 1. 로컬 상태 우선 업데이트 (즉각적인 UI 반응)
@@ -588,7 +606,7 @@ export const createChatSlice = (set, get) => ({
         }
       );
       conversationId = conversationRef.id;
-      get().loadConversation(conversationId);
+      get().loadConversation(conversationRef.id);
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
@@ -654,7 +672,7 @@ export const createChatSlice = (set, get) => ({
   },
 
   handleResponse: async (messagePayload) => {
-    set({ isLoading: true });
+    set({ isLoading: true, llmRawResponse: null });
 
     const textForUser = messagePayload.displayText || messagePayload.text;
     if (textForUser) {
@@ -670,18 +688,91 @@ export const createChatSlice = (set, get) => ({
           scenarioState: null,
           slots: get().slots,
           language: get().language,
+          llmProvider: get().llmProvider,
+          flowiseApiUrl: get().flowiseApiUrl,
         }),
       });
       if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
 
-      const data = await response.json();
-      const handler = responseHandlers[data.type];
+      if (response.headers.get("Content-Type")?.includes("text/event-stream")) {
+        await get().addMessage("bot", { text: "", isStreaming: true });
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let fullResponse = '';
+        let buffer = '';
+        let slotsFound = false;
 
-      if (handler) {
-        handler(data, get);
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value);
+          fullResponse += chunk;
+          
+          if (get().llmProvider === 'gemini' && !slotsFound) {
+            buffer += chunk;
+            const separatorIndex = buffer.indexOf('|||');
+            if (separatorIndex !== -1) {
+              const jsonPart = buffer.substring(0, separatorIndex);
+              const textPart = buffer.substring(separatorIndex + 3);
+              
+              try {
+                const parsed = JSON.parse(jsonPart);
+                if (parsed.slots) {
+                  get().setExtractedSlots(parsed.slots);
+                  set({ llmRawResponse: parsed });
+                }
+              } catch (e) {
+                console.error("Failed to parse slots JSON from stream:", e);
+                set({ llmRawResponse: { error: "Failed to parse slots", data: jsonPart } });
+              }
+              
+              slotsFound = true;
+              get().updateLastMessage(textPart);
+            }
+          } else {
+            get().updateLastMessage(chunk);
+          }
+        }
+        
+        // --- 👇 [수정된 부분] ---
+        let finalMessageText = fullResponse;
+        if (get().llmProvider === 'flowise') {
+            set({ llmRawResponse: fullResponse });
+            if (finalMessageText.toLowerCase().includes("change the vessel")) {
+              finalMessageText += '\n\nor you can execute via below button.';
+                finalMessageText += '\n\n[BUTTON:Vessel Schedule]';
+            }
+        }
+        
+        set(state => {
+            const lastMessage = state.messages[state.messages.length - 1];
+            if (lastMessage && lastMessage.sender === 'bot') {
+                const updatedMessage = {
+                    ...lastMessage,
+                    text: finalMessageText,
+                    isStreaming: false,
+                };
+                return {
+                    messages: [...state.messages.slice(0, -1), updatedMessage],
+                };
+            }
+            return state;
+        });
+        
+        await get().saveMessage(get().messages[get().messages.length - 1]);
+        // --- 👆 [여기까지] ---
+
       } else {
-        if (data.type !== "scenario_start" && data.type !== "scenario") {
-          console.warn(`[ChatStore] Unhandled response type: ${data.type}`);
+        const data = await response.json();
+        set({ llmRawResponse: data });
+        const handler = responseHandlers[data.type];
+
+        if (handler) {
+          handler(data, get);
+        } else {
+          if (data.type !== "scenario_start" && data.type !== "scenario") {
+            console.warn(`[ChatStore] Unhandled response type: ${data.type}`);
+          }
         }
       }
     } catch (error) {
