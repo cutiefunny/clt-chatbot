@@ -23,7 +23,7 @@ const streamingModel = genAI.getGenerativeModel({
  * @param {Array} shortcuts - 숏컷 목록
  * @param {string} llmProvider - 사용할 LLM ('gemini' or 'flowise')
  * @param {string} flowiseApiUrl - Flowise API URL
- * @returns {Promise<object|ReadableStream>} - Gemini/Flowise 스트림의 경우 ReadableStream, 에러 시 JSON 객체를 반환
+ * @returns {Promise<object|ReadableStream>} - Gemini 스트림의 경우 ReadableStream, Flowise나 에러 시 JSON 객체를 반환
  */
 export async function getLlmResponse(prompt, language = 'ko', shortcuts = [], llmProvider, flowiseApiUrl) {
     if (llmProvider === 'flowise') {
@@ -34,15 +34,13 @@ export async function getLlmResponse(prompt, language = 'ko', shortcuts = [], ll
     return getGeminiStreamingResponse(prompt, language, shortcuts);
 }
 
-// --- 👇 [수정된 부분] ---
+
 async function getFlowiseResponse(prompt, apiUrl) {
     if (!apiUrl) {
-        return new ReadableStream({
-            start(controller) {
-                controller.enqueue("Flowise API URL이 설정되지 않았습니다. 관리자 설정에서 URL을 입력해주세요.");
-                controller.close();
-            }
-        });
+        return {
+            response: "Flowise API URL이 설정되지 않았습니다. 관리자 설정에서 URL을 입력해주세요.",
+            slots: {}
+        };
     }
 
     try {
@@ -57,47 +55,50 @@ async function getFlowiseResponse(prompt, apiUrl) {
             console.error("Flowise API Error:", errorBody);
             throw new Error(`Flowise API request failed with status ${response.status}`);
         }
-
-        // 스트림을 읽어서 JSON으로 파싱하고 'text' 필드만 다시 스트림으로 만듭니다.
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let fullResponse = '';
-
-        while (true) {
-            const { value, done } = await reader.read();
-            if (done) break;
-            fullResponse += decoder.decode(value);
-        }
-
-        const jsonData = JSON.parse(fullResponse);
-        let responseText = jsonData.text || "죄송합니다, Flowise에서 응답을 받지 못했습니다.";
-        const content = jsonData.agentFlowExecutedData[7].data.input.messages[6].content || "not found";
-        const contentJson = JSON.parse(content);
-        const scenarioId = contentJson[0].scenarioId || "not found";
-        const label = contentJson[0].label || "not found";
-        //responseText += `\n\n[BUTTON:Execute ${label} (ID: ${scenarioId})]`;
-        if (responseText.toLowerCase().includes("change the vessel") || responseText.toLowerCase().includes("booking no")) {
-            responseText += `\n\n[BUTTON:Vessel Schedule]`;
-        }
         
-        return new ReadableStream({
-            start(controller) {
-                controller.enqueue(new TextEncoder().encode(responseText));
-                controller.close();
+        const jsonData = await response.json();
+        
+        let responseText = jsonData.text || "죄송합니다, Flowise에서 응답을 받지 못했습니다.";
+        const newSlots = {};
+        
+        // 시나리오 추천 버튼 추가 로직
+        if (jsonData.agentFlowExecutedData) {
+            const recommendContent = jsonData.agentFlowExecutedData[7]?.data?.input?.messages[6]?.content;
+            if (recommendContent) {
+                try {
+                    const contentJson = JSON.parse(recommendContent);
+                    const scenarioId = contentJson[0]?.scenarioId;
+                    const label = contentJson[0]?.label;
+                    if (scenarioId && label) {
+                         responseText += `\n\n[BUTTON:${label}]`;
+                    }
+                } catch (e) {
+                    console.warn("Could not parse recommendation from Flowise:", e);
+                }
             }
-        });
+        }
+
+        // 슬롯 추출 로직 (예: Booking No)
+        const bookingNoRegex = /\b([A-Z]{2}\d{10})\b/i;
+        const match = responseText.match(bookingNoRegex);
+        if (match && match[1]) {
+            newSlots.bkgNr = match[1];
+        }
+
+        return {
+            response: responseText,
+            slots: newSlots
+        };
 
     } catch (error) {
         console.error("Flowise API call failed:", error);
-        return new ReadableStream({
-            start(controller) {
-                controller.enqueue("죄송합니다, Flowise API 호출 중 문제가 발생했습니다.");
-                controller.close();
-            }
-        });
+        return {
+            response: "죄송합니다, Flowise API 호출 중 문제가 발생했습니다.",
+            slots: {}
+        };
     }
 }
-// --- 👆 [여기까지] ---
+
 
 async function getGeminiStreamingResponse(prompt, language = 'ko', shortcuts = []) {
   try {
@@ -141,12 +142,10 @@ ${shortcutList}
 
   } catch (error) {
     console.error("Gemini API Error:", error);
-    return new ReadableStream({
-      start(controller) {
-        const errorMessage = "죄송합니다, 답변을 생성하는 데 문제가 발생했습니다.";
-        controller.enqueue(new TextEncoder().encode(errorMessage));
-        controller.close();
-      }
-    });
+    // 스트리밍 API 실패 시, JSON 객체로 에러 응답 반환
+    return {
+        response: "죄송합니다, 답변을 생성하는 데 문제가 발생했습니다.",
+        slots: {}
+    };
   }
 }
