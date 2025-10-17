@@ -740,7 +740,13 @@ export const createChatSlice = (set, get) => ({
             set({ llmRawResponse: fullResponse });
             if (finalMessageText.toLowerCase().includes("change the vessel")) {
               finalMessageText += '\n\nor you can execute via below button.';
-                finalMessageText += '\n\n[BUTTON:Vessel Schedule]';
+              finalMessageText += '\n\n[BUTTON:Vessel Schedule]';
+
+              const bookingNoRegex = /\b([A-Z]{2}\d{10})\b/i;
+              const match = finalMessageText.match(bookingNoRegex);
+              if (match && match[1]) {
+                  get().setExtractedSlots({ booking_no: match[1] });
+              }
             }
         }
         
