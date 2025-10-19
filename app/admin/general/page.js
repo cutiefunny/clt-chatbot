@@ -13,7 +13,9 @@ export default function GeneralSettingsPage() {
     fontSizeDefault,
     fontSizeSmall,
     isDevMode,
-    dimUnfocusedPanels, // --- 👈 [추가]
+    dimUnfocusedPanels,
+    llmProvider, // --- 👈 [추가]
+    flowiseApiUrl, // --- 👈 [추가]
     loadGeneralConfig,
     saveGeneralConfig,
     showEphemeralToast,
@@ -25,7 +27,9 @@ export default function GeneralSettingsPage() {
   const [defaultSize, setDefaultSize] = useState("");
   const [smallSize, setSmallSize] = useState("");
   const [devMode, setDevMode] = useState(false);
-  const [dimPanels, setDimPanels] = useState(true); // --- 👈 [추가]
+  const [dimPanels, setDimPanels] = useState(true);
+  const [provider, setProvider] = useState("gemini"); // --- 👈 [추가]
+  const [apiUrl, setApiUrl] = useState(""); // --- 👈 [추가]
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -39,7 +43,9 @@ export default function GeneralSettingsPage() {
     if (fontSizeDefault) setDefaultSize(fontSizeDefault);
     if (fontSizeSmall) setSmallSize(fontSizeSmall);
     setDevMode(isDevMode);
-    setDimPanels(dimUnfocusedPanels); // --- 👈 [추가]
+    setDimPanels(dimUnfocusedPanels);
+    setProvider(llmProvider); // --- 👈 [추가]
+    setApiUrl(flowiseApiUrl); // --- 👈 [추가]
   }, [
     maxFavorites,
     hideCompletedScenarios,
@@ -48,6 +54,8 @@ export default function GeneralSettingsPage() {
     fontSizeSmall,
     isDevMode,
     dimUnfocusedPanels,
+    llmProvider,
+    flowiseApiUrl,
   ]);
 
   const handleSave = async () => {
@@ -66,6 +74,7 @@ export default function GeneralSettingsPage() {
       return;
     }
 
+    // --- 👇 [수정된 부분] ---
     const settings = {
       maxFavorites: newLimit,
       hideCompletedScenarios: hideCompleted,
@@ -73,8 +82,11 @@ export default function GeneralSettingsPage() {
       fontSizeDefault: defaultSize,
       fontSizeSmall: smallSize,
       isDevMode: devMode,
-      dimUnfocusedPanels: dimPanels, // --- 👈 [추가]
+      dimUnfocusedPanels: dimPanels,
+      llmProvider: provider,
+      flowiseApiUrl: apiUrl,
     };
+    // --- 👆 [여기까지] ---
 
     const success = await saveGeneralConfig(settings);
     if (success) {
@@ -97,6 +109,53 @@ export default function GeneralSettingsPage() {
 
       <main className={styles.editorContainer}>
         {/* --- 👇 [추가된 부분] --- */}
+        <div className={styles.settingGroup}>
+          <div className={styles.settingItem}>
+            <label className={styles.settingLabel}>
+              <h3>LLM 공급자</h3>
+              <p>챗봇의 자연어 응답을 생성할 LLM을 선택합니다.</p>
+            </label>
+            <div className={styles.radioGroup}>
+              <label>
+                <input
+                  type="radio"
+                  value="gemini"
+                  checked={provider === "gemini"}
+                  onChange={(e) => setProvider(e.target.value)}
+                />
+                Gemini
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  value="flowise"
+                  checked={provider === "flowise"}
+                  onChange={(e) => setProvider(e.target.value)}
+                />
+                Flowise
+              </label>
+            </div>
+          </div>
+          {provider === "flowise" && (
+            <div className={`${styles.settingItem} ${styles.subSettingItem}`}>
+              <label htmlFor="flowise-url" className={styles.settingLabel}>
+                <h4>Flowise API URL</h4>
+                <p>사용할 Flowise 챗플로우의 API Endpoint URL을 입력합니다.</p>
+              </label>
+              <input
+                id="flowise-url"
+                type="text"
+                value={apiUrl}
+                onChange={(e) => setApiUrl(e.target.value)}
+                className={styles.settingInput}
+                style={{ width: "100%", textAlign: "left" }}
+                placeholder="http://..."
+              />
+            </div>
+          )}
+        </div>
+        {/* --- 👆 [여기까지] --- */}
+
         <div className={styles.settingItem}>
           <label className={styles.settingLabel}>
             <h3>포커스 잃은 창 흐리게</h3>
@@ -114,7 +173,6 @@ export default function GeneralSettingsPage() {
             <span className={styles.slider}></span>
           </label>
         </div>
-        {/* --- 👆 [여기까지] --- */}
 
         <div className={styles.settingItem}>
           <label className={styles.settingLabel}>

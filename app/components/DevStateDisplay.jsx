@@ -8,7 +8,6 @@ export default function DevStateDisplay() {
     extractedSlots,
     activeScenarioSessionId,
     scenarioStates,
-    // --- 👇 [추가] General Settings 상태 가져오기 ---
     maxFavorites,
     hideCompletedScenarios,
     hideDelayInHours,
@@ -16,6 +15,8 @@ export default function DevStateDisplay() {
     fontSizeSmall,
     isDevMode,
     dimUnfocusedPanels,
+    llmProvider,
+    llmRawResponse, // --- 👈 [추가]
   } = useChatStore();
 
   const activeScenarioState =
@@ -25,8 +26,8 @@ export default function DevStateDisplay() {
 
   const devState = {};
 
-  // 1. General Settings 정보 추가
   devState.generalSettings = {
+    llmProvider,
     isDevMode,
     dimUnfocusedPanels,
     maxFavorites,
@@ -36,7 +37,6 @@ export default function DevStateDisplay() {
     fontSizeSmall,
   };
 
-  // 2. 활성 시나리오 정보 추가
   if (activeScenarioState) {
     devState.activeScenario = {
       sessionId: activeScenarioSessionId,
@@ -47,12 +47,16 @@ export default function DevStateDisplay() {
     };
   }
 
-  // 3. LLM이 추출한 슬롯 정보 추가
   if (Object.keys(extractedSlots).length > 0) {
     devState.llmExtractedSlots = extractedSlots;
   }
+  
+  // --- 👇 [추가된 부분] ---
+  if (llmRawResponse) {
+    devState.llmRawResponse = llmRawResponse;
+  }
+  // --- 👆 [여기까지] ---
 
-  // 표시할 정보가 없으면 컴포넌트를 렌더링하지 않음 (generalSettings는 항상 있으므로 이 조건은 사실상 항상 true)
   if (Object.keys(devState).length === 0) {
     return null;
   }

@@ -4,14 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { useChatStore } from "../store";
 import { useTranslations } from "../hooks/useTranslations";
 import styles from "./Chat.module.css";
-import { validateInput } from "../lib/chatbotEngine";
+import { validateInput, interpolateMessage } from "../lib/chatbotEngine";
 import LogoIcon from "./icons/LogoIcon";
 import ChevronDownIcon from "./icons/ChevronDownIcon";
 import ArrowDropDownIcon from "./icons/ArrowDropDownIcon";
 import CheckCircle from "./icons/CheckCircle";
 import OpenInNewIcon from "./icons/OpenInNew";
 
-const FormRenderer = ({ node, onFormSubmit, disabled, language }) => {
+const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
   const [formData, setFormData] = useState({});
   const dateInputRef = useRef(null);
   const { t } = useTranslations();
@@ -76,7 +76,8 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language }) => {
         }
         return (
           <div key={el.id} className={styles.formElement}>
-            <label className={styles.formLabel}>{el.label}</label>
+            {el.type !== 'grid' && <label className={styles.formLabel}>{el.label}</label>}
+            
             {el.type === "input" && (
               <input
                 className={styles.formInput}
@@ -137,6 +138,30 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language }) => {
                   <label htmlFor={`${el.id}-${opt}`}>{opt}</label>
                 </div>
               ))}
+            {el.type === 'grid' && (() => {
+              const columns = el.columns || 2;
+              const rowsData = [];
+              if (el.data && Array.isArray(el.data)) {
+                for (let i = 0; i < el.data.length; i += columns) {
+                  rowsData.push(el.data.slice(i, i + columns));
+                }
+              }
+              return (
+                <table className={styles.formGridTable}>
+                  <tbody>
+                    {rowsData.map((row, r) => (
+                      <tr key={r}>
+                        {row.map((cell, c) => (
+                          <td key={c}>
+                            {interpolateMessage(cell || '', slots)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              );
+            })()}
           </div>
         );
       })}
@@ -196,7 +221,7 @@ export default function ScenarioBubble({ scenarioSessionId }) {
     activeScenarioSessionId: focusedSessionId,
     scrollBy,
     dimUnfocusedPanels,
-    setScenarioSelectedOption, // --- 👈 [추가]
+    setScenarioSelectedOption,
   } = useChatStore();
   const { t, language } = useTranslations();
 
@@ -358,6 +383,7 @@ export default function ScenarioBubble({ scenarioSessionId }) {
                         onFormSubmit={handleFormSubmit}
                         disabled={isCompleted}
                         language={language}
+                        slots={activeScenario?.slots}
                       />
                     ) : msg.node?.type === "iframe" ? (
                       <div className={styles.iframeContainer}>
@@ -383,7 +409,6 @@ export default function ScenarioBubble({ scenarioSessionId }) {
                     ) : (
                       <p>{msg.text || msg.node?.data.content}</p>
                     )}
-                    {/* --- 👇 [수정된 부분] --- */}
                     {msg.node?.type === "branch" && msg.node.data.replies && (
                       <div className={styles.scenarioList}>
                         {msg.node.data.replies.map((reply) => {
@@ -426,7 +451,6 @@ export default function ScenarioBubble({ scenarioSessionId }) {
                         })}
                       </div>
                     )}
-                    {/* --- 👆 [여기까지] --- */}
                   </div>
                 </div>
               </div>

@@ -395,7 +395,6 @@ input:checked + .slider:before {
   background-color: #f0f2f5; /* Themed */
 }
 
-/* --- 👇 [추가된 부분] --- */
 .optionButton:disabled {
   cursor: not-allowed;
   background-color: var(--button-hover-bg);
@@ -420,7 +419,6 @@ input:checked + .slider:before {
 .optionButton.selected:disabled:hover {
   border-color: #806bf5;
 }
-/* --- 👆 [여기까지] --- */
 
 .formContainer {
   display: flex;
@@ -702,3 +700,44 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
   background: var(--Error-01, #ffdbdb);
   color: var(--Error-02, #ff4f4f);
 }
+
+/* --- 👇 [추가된 부분] --- */
+.formGridTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+  font-size: 0.9rem;
+  border: 1px solid var(--panel-border-color);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.formGridTable tr {
+  border-bottom: 1px solid var(--panel-border-color);
+}
+
+.formGridTable tr:last-child {
+  border-bottom: none;
+}
+
+.formGridTable td {
+  padding: 10px 12px;
+  background-color: var(--bot-message-bg);
+}
+
+.formGridTable td:first-child {
+  font-weight: 500;
+  color: #5e7599;
+  width: 40%;
+  background-color: var(--panel-bg-color);
+}
+
+body.dark .formGridTable td {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+body.dark .formGridTable td:first-child {
+  color: #aaa;
+  background-color: rgba(255, 255, 255, 0.02);
+}
+/* --- 👆 [여기까지] --- */
