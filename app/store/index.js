@@ -1,3 +1,4 @@
+// app/store/index.js
 import { create } from "zustand";
 import {
   db,
@@ -122,7 +123,6 @@ export const useChatStore = create((set, get) => ({
     get().loadFavorites(user.uid);
   },
 
-  // --- 👇 [수정된 부분] ---
   clearUserAndData: () => {
     get().unsubscribeAll();
 
@@ -151,16 +151,50 @@ export const useChatStore = create((set, get) => ({
       language,
     });
   },
-  // --- 👆 [여기까지] ---
 
   initAuth: () => {
     get().loadScenarioCategories();
     get().loadGeneralConfig();
+
+    // --- 👇 [수정된 부분] ---
+    // URL 쿼리 파라미터 확인 및 자동 테스트 로그인
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const testId = urlParams.get("id");
+      if (testId) {
+        console.log(`Attempting auto login with test ID: ${testId}`);
+        // Zustand 스토어가 완전히 초기화된 후 실행되도록 setTimeout 사용
+        setTimeout(() => {
+          // Firebase Auth 상태 확인 전에 테스트 로그인을 시도
+          if (!get().user) { // 이미 로그인된 사용자가 없는 경우에만 실행
+            get().loginWithTestId(testId);
+          } else {
+            console.log("User already logged in, skipping auto test login.");
+          }
+        }, 0);
+        // 자동 로그인 후 URL에서 id 파라미터 제거 (선택 사항)
+        // urlParams.delete('id');
+        // window.history.replaceState({}, document.title, `${window.location.pathname}?${urlParams.toString()}`);
+      }
+    }
+    // --- 👆 [여기까지] ---
+
     onAuthStateChanged(get().auth, async (user) => {
+      // --- 👇 [수정된 부분] ---
+      // 이미 테스트 사용자로 로그인되어 있으면 Firebase Auth 상태 변경 무시
+      if (get().user?.isTestUser) {
+        console.log("Already logged in as test user, ignoring Firebase Auth state change.");
+        return;
+      }
+      // --- 👆 [여기까지] ---
+
       if (user) {
         get().setUserAndLoadData(user);
       } else {
+        // --- 👇 [수정된 부분] ---
+        // 로그아웃 시에도 URL 파라미터 체크 로직을 다시 타지 않도록 clearUserAndData만 호출
         get().clearUserAndData();
+        // --- 👆 [여기까지] ---
       }
     });
   },
@@ -203,4 +237,5 @@ export const useChatStore = create((set, get) => ({
   },
 }));
 
+// 초기화 로직은 스토어 생성 후 바로 호출
 useChatStore.getState().initAuth();
