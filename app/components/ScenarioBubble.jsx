@@ -408,7 +408,7 @@ export default function ScenarioBubble({ scenarioSessionId }) {
           style={{ cursor: "pointer" }}
         >
           <div className={styles.headerContent}>
-            <ChevronDownIcon isRotated={isCollapsed} />
+            <ChevronDownIcon isRotated={!isCollapsed} />
             <span className={styles.headerTitle}>
               {t("scenarioTitle")(scenarioId)}
             </span>

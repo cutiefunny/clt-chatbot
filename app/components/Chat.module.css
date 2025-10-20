@@ -397,11 +397,13 @@ input:checked + .slider:before {
 
 .optionButton:disabled {
   cursor: not-allowed;
-  background-color: var(--button-hover-bg);
-  border-color: var(--panel-border-color);
+  background-color: #f4f5fb;
+  border-color: #d8e0eb;
+  color: #babcd1;
 }
 .optionButton.selected {
   border-color: #806bf5;
+  background-color: var(--White-Opacity-48, rgba(255, 255, 255, 0.48));
   color: #282166;
 }
 
@@ -409,10 +411,6 @@ input:checked + .slider:before {
   fill: #806bf5;
 }
 
-.optionButton.dimmed {
-  opacity: 0.5;
-  background-color: transparent;
-}
 .optionButton:disabled:hover {
   border-color: var(--panel-border-color);
 }
