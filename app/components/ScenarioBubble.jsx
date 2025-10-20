@@ -102,7 +102,6 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
               />
             )}
 
-            {/* --- 👇 [수정된 부분] --- */}
             {el.type === "dropbox" && (
               <select
                 value={formData[el.name] || ""}
@@ -120,7 +119,6 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
                 ))}
               </select>
             )}
-            {/* --- 👆 [여기까지] --- */}
 
             {el.type === "checkbox" &&
               el.options?.map((opt) => (
@@ -292,10 +290,8 @@ export default function ScenarioBubble({ scenarioSessionId }) {
   };
 
   const handleBubbleClick = (e) => {
-    // Check if the click target is inside a form element that shouldn't trigger panel change
     const formElements = ['INPUT', 'SELECT', 'BUTTON', 'LABEL', 'OPTION'];
     if (formElements.includes(e.target.tagName)) {
-       // Do nothing, let the form element handle the click
        return;
     }
     e.stopPropagation();
@@ -351,11 +347,15 @@ export default function ScenarioBubble({ scenarioSessionId }) {
       onClick={handleBubbleClick}
       ref={bubbleRef}
     >
+      {/* --- 👇 [수정된 부분] --- */}
       <div
         className={`GlassEffect ${styles.scenarioBubbleContainer} ${
           isCollapsed ? styles.collapsed : ""
-        } ${!isFocused && dimUnfocusedPanels ? styles.dimmed : ""}`}
+        } ${!isFocused && dimUnfocusedPanels ? styles.dimmed : ""} ${
+          isFocused ? styles.focusedBubble : "" // 포커스 시 클래스 추가
+        }`}
       >
+      {/* --- 👆 [여기까지] --- */}
         <div
           className={styles.header}
           onClick={handleToggleCollapse}
@@ -446,7 +446,7 @@ export default function ScenarioBubble({ scenarioSessionId }) {
                                 className={`${styles.optionButton} ${
                                   isSelected ? styles.selected : ""
                                 } ${isDimmed ? styles.dimmed : ""}`}
-                                onClick={(e) => { // Added stopPropagation here
+                                onClick={(e) => {
                                   e.stopPropagation();
                                   if (selectedOption) return;
                                   setScenarioSelectedOption(

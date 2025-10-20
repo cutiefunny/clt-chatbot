@@ -581,8 +581,14 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
   border-top-right-radius: 4px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   overflow: hidden;
-  transition: height 0.4s ease-out, opacity 0.4s ease-out;
+  transition: height 0.4s ease-out, opacity 0.4s ease-out, border-color 0.2s ease-out; /* border-color transition 추가 */
 }
+
+/* --- 👇 [추가된 부분] --- */
+.focusedBubble {
+  border: var(--stroke-weight-1, 1px) solid var(--Color-Light-Gradation-03, #3051ea);
+}
+/* --- 👆 [여기까지] --- */
 
 .scenarioBubbleContainer .header {
   flex-shrink: 0;
@@ -654,7 +660,6 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
   color: var(--Error-02, #ff4f4f);
 }
 
-/* --- 👇 [추가된 부분] --- */
 .formGridTable {
   width: 100%;
   border-collapse: collapse;
@@ -693,4 +698,3 @@ body.dark .formGridTable td:first-child {
   color: #aaa;
   background-color: rgba(255, 255, 255, 0.02);
 }
-/* --- 👆 [여기까지] --- */
