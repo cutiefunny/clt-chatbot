@@ -70,7 +70,9 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
         }
         return (
           <div key={el.id} className={styles.formElement}>
-            {el.type !== 'grid' && <label className={styles.formLabel}>{el.label}</label>}
+            {el.type !== "grid" && (
+              <label className={styles.formLabel}>{el.label}</label>
+            )}
 
             {el.type === "input" && (
               <input
@@ -114,7 +116,7 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
                 ))}
               </select>
             )}
-             {/* --- 👆 [여기까지] --- */}
+            {/* --- 👆 [여기까지] --- */}
 
             {el.type === "checkbox" &&
               el.options?.map((opt) => (
@@ -132,46 +134,51 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
                 </div>
               ))}
 
-            {el.type === 'grid' && (() => {
-              const columns = el.columns || 2;
-              const nodeData = el.data;
-              let sourceData = [];
+            {el.type === "grid" &&
+              (() => {
+                const columns = el.columns || 2;
+                const nodeData = el.data;
+                let sourceData = [];
 
-              if (Array.isArray(nodeData)) {
-                  sourceData = nodeData.map(item =>
-                      typeof item === 'string' ? interpolateMessage(item, slots) : String(item || '')
+                if (Array.isArray(nodeData)) {
+                  sourceData = nodeData.map((item) =>
+                    typeof item === "string"
+                      ? interpolateMessage(item, slots)
+                      : String(item || "")
                   );
-              } else if (typeof nodeData === 'string' && nodeData.startsWith('{') && nodeData.endsWith('}')) {
+                } else if (
+                  typeof nodeData === "string" &&
+                  nodeData.startsWith("{") &&
+                  nodeData.endsWith("}")
+                ) {
                   const slotName = nodeData.substring(1, nodeData.length - 1);
                   const slotValue = slots[slotName];
                   if (Array.isArray(slotValue)) {
-                      sourceData = slotValue.map(item => String(item || ''));
+                    sourceData = slotValue.map((item) => String(item || ""));
                   }
-              }
-
-              const rowsData = [];
-              if (sourceData.length > 0) {
-                for (let i = 0; i < sourceData.length; i += columns) {
-                  rowsData.push(sourceData.slice(i, i + columns));
                 }
-              }
 
-              return (
-                <table className={styles.formGridTable}>
-                  <tbody>
-                    {rowsData.map((row, r) => (
-                      <tr key={r}>
-                        {row.map((cellValue, c) => (
-                          <td key={c}>
-                            {cellValue}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              );
-            })()}
+                const rowsData = [];
+                if (sourceData.length > 0) {
+                  for (let i = 0; i < sourceData.length; i += columns) {
+                    rowsData.push(sourceData.slice(i, i + columns));
+                  }
+                }
+
+                return (
+                  <table className={styles.formGridTable}>
+                    <tbody>
+                      {rowsData.map((row, r) => (
+                        <tr key={r}>
+                          {row.map((cellValue, c) => (
+                            <td key={c}>{cellValue}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                );
+              })()}
           </div>
         );
       })}
@@ -183,7 +190,6 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
     </form>
   );
 };
-
 
 export default function ScenarioChat() {
   const {
@@ -208,6 +214,17 @@ export default function ScenarioChat() {
   const scenarioId = activeScenario?.scenarioId;
 
   const historyRef = useRef(null);
+  const wasAtBottomRef = useRef(true);
+
+  const updateWasAtBottom = () => {
+    const scrollContainer = historyRef.current;
+    if (!scrollContainer) return;
+    const scrollableDistance =
+      scrollContainer.scrollHeight -
+      scrollContainer.clientHeight -
+      scrollContainer.scrollTop;
+    wasAtBottomRef.current = scrollableDistance <= 100;
+  };
 
   useEffect(() => {
     const scrollContainer = historyRef.current;
@@ -215,11 +232,15 @@ export default function ScenarioChat() {
 
     const scrollToBottom = () => {
       scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      wasAtBottomRef.current = true;
     };
 
     scrollToBottom();
 
-    const observer = new MutationObserver(scrollToBottom);
+    const observer = new MutationObserver(() => {
+      if (!wasAtBottomRef.current) return;
+      scrollToBottom();
+    });
     observer.observe(scrollContainer, {
       childList: true,
       subtree: true,
@@ -229,6 +250,31 @@ export default function ScenarioChat() {
       observer.disconnect();
     };
   }, [scenarioMessages]);
+
+  useEffect(() => {
+    const scrollContainer = historyRef.current;
+    if (!scrollContainer) return;
+
+    const handleScroll = () => {
+      updateWasAtBottom();
+    };
+
+    updateWasAtBottom();
+    scrollContainer.addEventListener("scroll", handleScroll);
+    return () => {
+      scrollContainer.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!wasAtBottomRef.current) return;
+    const scrollContainer = historyRef.current;
+    if (!scrollContainer) return;
+    requestAnimationFrame(() => {
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      wasAtBottomRef.current = true;
+    });
+  }, [scenarioMessages, isScenarioLoading]);
 
   if (!isScenarioPanelOpen || !activeScenario) {
     return null;
@@ -257,7 +303,7 @@ export default function ScenarioChat() {
               e.stopPropagation();
               // Original code used setScenarioPanelOpen(false);
               // setActivePanel('main') might be more consistent?
-              useChatStore.getState().setActivePanel('main');
+              useChatStore.getState().setActivePanel("main");
             }}
           >
             {t("hide")}
@@ -294,7 +340,7 @@ export default function ScenarioChat() {
                 />
               )}
               <div
-                className={`GlassEffect ${styles.message} ${
+                className={`GlassEffect noOpacity ${styles.message} ${
                   msg.sender === "bot" ? styles.botMessage : styles.userMessage
                 }`}
               >
@@ -338,7 +384,8 @@ export default function ScenarioChat() {
                           <button
                             key={reply.value}
                             className={styles.optionButton}
-                            onClick={() => // No stopPropagation needed here usually
+                            onClick={() =>
+                              // No stopPropagation needed here usually
                               handleScenarioResponse({
                                 scenarioSessionId: activeScenarioSessionId,
                                 currentNodeId: msg.node.id,

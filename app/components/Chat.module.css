@@ -12,7 +12,7 @@
   padding: 10px 15px;
   background-color: transparent;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   flex-shrink: 0;
 }
@@ -362,22 +362,37 @@ input:checked + .slider:before {
 }
 
 .optionButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   flex-shrink: 0;
-  padding: 8px 16px;
+  padding: 12px 16px 12px 24px;
+  border-radius: 12px;
   border: 1px solid var(--panel-border-color); /* Themed */
   background-color: rgba(255, 255, 255, 0.1); /* Adjusted for dark mode */
   color: var(--text-color); /* Themed */
-  border-radius: 20px;
   cursor: pointer;
-  font-size: 0.9rem;
-  transition: background-color 0.2s, border-color 0.2s, opacity 0.2s;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 14px; /* 116.667% */
+  letter-spacing: -0.12px;
+  transition: background-color 0.2s, border-color 0.2s;
   white-space: nowrap;
   text-align: center; /* 버튼 텍스트 중앙 정렬 */
 }
 
+.optionButton svg {
+  width: 20px;
+  height: 20px;
+}
+
+.optionButtonText {
+  flex-grow: 1;
+  text-align: left;
+}
+
 .optionButton:hover {
-  background-color: var(--button-hover-bg); /* Themed */
-  border-color: #aaa;
+  background-color: #f0f2f5; /* Themed */
 }
 
 .optionButton:disabled {
@@ -386,21 +401,23 @@ input:checked + .slider:before {
   border-color: var(--panel-border-color);
 }
 .optionButton.selected {
-  background-color: var(--login-button-bg);
-  color: white;
-  border-color: var(--login-button-bg);
+  border-color: #806bf5;
+  color: #282166;
 }
+
+.optionButton.selected svg path {
+  fill: #806bf5;
+}
+
 .optionButton.dimmed {
   opacity: 0.5;
   background-color: transparent;
 }
 .optionButton:disabled:hover {
-  background-color: var(--button-hover-bg);
   border-color: var(--panel-border-color);
 }
 .optionButton.selected:disabled:hover {
-  background-color: var(--login-button-bg);
-  border-color: var(--login-button-bg);
+  border-color: #806bf5;
 }
 
 .formContainer {
@@ -410,10 +427,16 @@ input:checked + .slider:before {
 }
 
 .formContainer h3 {
-  margin: 0;
-  font-size: 1.1rem;
-  border-bottom: 1px solid var(--panel-border-color); /* Themed */
-  padding-bottom: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 20px; /* 125% */
+  letter-spacing: -0.24px;
+}
+
+.formContainerSeparator {
+  height: 1px;
+  background-color: var(--panel-border-color);
+  scale: 1.2;
 }
 
 .formElement {
@@ -423,21 +446,45 @@ input:checked + .slider:before {
 }
 
 .formLabel {
-  font-size: 0.9rem;
-  font-weight: bold;
-  color: var(--text-color); /* Themed */
+  color: var(--Gray-05, #8d9eba);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 14px; /* 116.667% */
+  letter-spacing: -0.18px;
 }
 
 .formInput,
 .formContainer select {
   width: 100%;
-  padding: 8px 12px;
+  padding: 8px 12px 8px 16px;
   border: 1px solid var(--panel-border-color); /* Themed */
-  background-color: var(--panel-bg-color); /* Themed */
   color: var(--text-color); /* Themed */
   border-radius: 6px;
-  font-size: 0.9rem;
   box-sizing: border-box;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px; /* 142.857% */
+  letter-spacing: -0.21px;
+}
+
+.selectWrapper {
+  position: relative;
+}
+
+.selectWrapper select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 100%;
+  padding-right: 36px;
+}
+
+.selectWrapper svg {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
 }
 
 .formInput[type="date"] {
@@ -446,14 +493,14 @@ input:checked + .slider:before {
 
 .formSubmitButton {
   align-self: flex-end;
-  padding: 8px 20px;
-  background-color: var(--login-button-bg); /* Themed */
-  color: white;
-  border: none;
-  border-radius: 20px;
-  font-weight: bold;
+  padding: 8px 16px;
+  color: var(--White, #fff); /* Themed */
+  border-radius: 8px;
+  background: var(
+    --Color-Light-Gradation-01,
+    linear-gradient(90deg, #8f9aff 0%, #634ce2 100%)
+  );
   cursor: pointer;
-  margin-top: 10px;
 }
 
 .formSubmitButton:hover {
@@ -574,19 +621,22 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 70%;
-  height: 500px;
+  max-width: 75%;
+  height: auto;
+  max-height: 500px;
   border: 1px solid var(--panel-border-color);
   border-radius: 18px;
   border-top-right-radius: 4px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   overflow: hidden;
-  transition: height 0.4s ease-out, opacity 0.4s ease-out, border-color 0.2s ease-out; /* border-color transition 추가 */
+  transition: max-height 0.4s ease-out, height 0.4s ease-out,
+    opacity 0.4s ease-out, border-color 0.2s ease-out;
 }
 
 /* --- 👇 [추가된 부분] --- */
 .focusedBubble {
-  border: var(--stroke-weight-1, 1px) solid var(--Color-Light-Gradation-03, #3051ea);
+  border: var(--stroke-weight-1, 1px) solid
+    var(--Color-Light-Gradation-03, #3051ea);
 }
 /* --- 👆 [여기까지] --- */
 
@@ -606,6 +656,7 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
 
 .scenarioBubbleContainer.collapsed {
   height: 60px;
+  max-height: 60px;
   cursor: pointer;
 }
 
@@ -691,7 +742,7 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
 }
 
 body.dark .formGridTable td {
-   background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(255, 255, 255, 0.05);
 }
 
 body.dark .formGridTable td:first-child {

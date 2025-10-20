@@ -1,12 +1,29 @@
 "use client";
 
-import { useEffect, useRef, useState, Fragment } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useChatStore } from "../store";
 import { useTranslations } from "../hooks/useTranslations";
 import styles from "./ChatInput.module.css";
 import StarIcon from "./icons/StarIcon";
-import ArrowDropDownIcon from "./icons/ArrowDropDownIcon";
-import AddIcon from "./icons/AddIcon";
+
+const ChevronDownIcon = ({ size = 16, style = {} }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    style={style}
+  >
+    <path
+      d="M6 9L12 15L18 9"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
 
 const useDraggableScroll = () => {
   const ref = useRef(null);
@@ -34,21 +51,27 @@ const useDraggableScroll = () => {
 };
 
 export default function ChatInput() {
-  const {
-    isLoading,
-    handleResponse,
-    activePanel,
-    activeScenarioSessionId,
-    scenarioStates,
-    handleScenarioResponse,
-    focusRequest,
-    scenarioCategories,
-    favorites,
-    toggleFavorite,
-    handleShortcutClick,
-    shortcutMenuOpen,
-    setShortcutMenuOpen,
-  } = useChatStore();
+  const isLoading = useChatStore((state) => state.isLoading);
+  const handleResponse = useChatStore((state) => state.handleResponse);
+  const activePanel = useChatStore((state) => state.activePanel);
+  const activeScenarioSessionId = useChatStore(
+    (state) => state.activeScenarioSessionId
+  );
+  const scenarioStates = useChatStore((state) => state.scenarioStates);
+  const handleScenarioResponse = useChatStore(
+    (state) => state.handleScenarioResponse
+  );
+  const focusRequest = useChatStore((state) => state.focusRequest);
+  const scenarioCategories = useChatStore((state) => state.scenarioCategories);
+  const favorites = useChatStore((state) => state.favorites);
+  const toggleFavorite = useChatStore((state) => state.toggleFavorite);
+  const handleShortcutClick = useChatStore(
+    (state) => state.handleShortcutClick
+  );
+  const shortcutMenuOpen = useChatStore((state) => state.shortcutMenuOpen);
+  const setShortcutMenuOpen = useChatStore(
+    (state) => state.setShortcutMenuOpen
+  );
 
   const { t } = useTranslations();
   const inputRef = useRef(null);
@@ -120,7 +143,7 @@ export default function ChatInput() {
               }
             >
               {category.name}{" "}
-              <ArrowDropDownIcon
+              <ChevronDownIcon
                 style={{
                   transform:
                     shortcutMenuOpen === category.name

@@ -3,7 +3,6 @@
 import { useChatStore } from "../store";
 import styles from "./FavoritePanel.module.css";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import DragIndicatorIcon from "./icons/DragIndicatorIcon";
 import StarIcon from "./icons/StarIcon";
 
 const PlusIcon = () => (
@@ -25,16 +24,20 @@ const PlusIcon = () => (
 );
 
 export default function FavoritePanel() {
-  const {
-    favorites,
-    isLoading,
-    handleShortcutClick,
-    updateFavoritesOrder,
-    setShortcutMenuOpen,
-    scenarioCategories,
-    deleteFavorite,
-    maxFavorites,
-  } = useChatStore();
+  const favorites = useChatStore((state) => state.favorites);
+  const isLoading = useChatStore((state) => state.isLoading);
+  const handleShortcutClick = useChatStore(
+    (state) => state.handleShortcutClick
+  );
+  const updateFavoritesOrder = useChatStore(
+    (state) => state.updateFavoritesOrder
+  );
+  const setShortcutMenuOpen = useChatStore(
+    (state) => state.setShortcutMenuOpen
+  );
+  const scenarioCategories = useChatStore((state) => state.scenarioCategories);
+  const deleteFavorite = useChatStore((state) => state.deleteFavorite);
+  const maxFavorites = useChatStore((state) => state.maxFavorites);
 
   const onDragEnd = (result) => {
     if (!result.destination) return;
@@ -67,7 +70,6 @@ export default function FavoritePanel() {
     <div className={styles.panel}>
       <div className={styles.welcomeMessage}>
         <h2>Welcome to AI Chatbot</h2>
-        <p>You can customize your own action buttons below.</p>
       </div>
 
       <DragDropContext onDragEnd={onDragEnd}>

@@ -5,7 +5,8 @@ import styles from './SettingsModal.module.css';
 import Modal from './Modal'; // Modal import
 
 export default function SettingsModal({ onClose }) {
-    const { theme, toggleTheme } = useChatStore();
+    const theme = useChatStore((state) => state.theme);
+    const toggleTheme = useChatStore((state) => state.toggleTheme);
 
     return (
         <Modal title="Settings" onClose={onClose} contentStyle={{ maxWidth: '400px' }}>

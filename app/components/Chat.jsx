@@ -6,17 +6,15 @@ import { useTranslations } from "../hooks/useTranslations";
 import styles from "./Chat.module.css";
 import FavoritePanel from "./FavoritePanel";
 import ScenarioBubble from "./ScenarioBubble";
+import CheckCircle from "./icons/CheckCircle";
 import MoonIcon from "./icons/MoonIcon";
+import LogoIcon from "./icons/LogoIcon";
 import CopyIcon from "./icons/CopyIcon";
 import LikeIcon from "./icons/LikeIcon";
-import LogoIcon from "./icons/LogoIcon";
 
 const MessageWithButtons = ({ text, messageId }) => {
-  const {
-    handleShortcutClick,
-    scenarioCategories,
-    selectedOptions,
-  } = useChatStore();
+  const { handleShortcutClick, scenarioCategories, selectedOptions } =
+    useChatStore();
   const selectedOption = selectedOptions[messageId];
 
   const findShortcutByTitle = useCallback(
@@ -118,7 +116,19 @@ export default function Chat() {
   const [copiedMessageId, setCopiedMessageId] = useState(null);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const historyRef = useRef(null);
+  const containerRef = useRef(null);
+  const wasAtBottomRef = useRef(true);
   const { t } = useTranslations();
+
+  const updateWasAtBottom = useCallback(() => {
+    const scrollContainer = historyRef.current;
+    if (!scrollContainer) return;
+    const scrollableDistance =
+      scrollContainer.scrollHeight -
+      scrollContainer.clientHeight -
+      scrollContainer.scrollTop;
+    wasAtBottomRef.current = scrollableDistance <= 100;
+  }, []);
 
   const handleScroll = useCallback(async () => {
     if (
@@ -138,6 +148,7 @@ export default function Chat() {
       setTimeout(() => {
         scrollContainer.scrollTop = scrollContainer.scrollHeight;
         setForceScrollToBottom(false);
+        wasAtBottomRef.current = true;
       }, 0);
     }
   }, [forceScrollToBottom, setForceScrollToBottom]);
@@ -148,36 +159,42 @@ export default function Chat() {
         top: scrollAmount,
         behavior: "smooth",
       });
+      updateWasAtBottom();
       resetScroll();
     }
-  }, [scrollAmount, resetScroll]);
+  }, [scrollAmount, resetScroll, updateWasAtBottom]);
 
   useEffect(() => {
     const scrollContainer = historyRef.current;
     if (!scrollContainer) return;
+    const handleScrollEvent = () => {
+      updateWasAtBottom();
+      handleScroll();
+    };
 
-    const handleScrollEvent = () => handleScroll();
-
-    const lastMessage = messages[messages.length - 1];
-    const isUserMessage = lastMessage?.sender === "user";
-
-    const isScrolledNearBottom =
-      scrollContainer.scrollHeight -
-        scrollContainer.clientHeight -
-        scrollContainer.scrollTop <
-      100;
-
-    if (isUserMessage || isScrolledNearBottom) {
-      setTimeout(() => {
-        scrollContainer.scrollTop = scrollContainer.scrollHeight;
-      }, 0);
-    }
-
+    updateWasAtBottom();
     scrollContainer.addEventListener("scroll", handleScrollEvent);
     return () => {
       scrollContainer.removeEventListener("scroll", handleScrollEvent);
     };
-  }, [messages, handleScroll]);
+  }, [handleScroll, updateWasAtBottom]);
+
+  useEffect(() => {
+    const lastMessage = messages[messages.length - 1];
+    const shouldAutoScroll =
+      lastMessage?.sender === "user" || wasAtBottomRef.current;
+
+    if (!shouldAutoScroll) return;
+
+    const scrollToBottom = () => {
+      const scrollContainer = historyRef.current;
+      if (!scrollContainer) return;
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      wasAtBottomRef.current = true;
+    };
+
+    requestAnimationFrame(scrollToBottom);
+  }, [messages]);
 
   useEffect(() => {
     if (scrollToMessageId && historyRef.current) {
@@ -195,6 +212,33 @@ export default function Chat() {
     }
   }, [scrollToMessageId, messages, setScrollToMessageId]);
 
+  useEffect(() => {
+    const container = containerRef.current;
+    const scrollTarget = historyRef.current;
+    if (!container || !scrollTarget) return;
+
+    const handleWheelOutsideHistory = (event) => {
+      if (event.defaultPrevented) return;
+      const withinHistory = event.target.closest(`.${styles.history}`);
+      if (withinHistory) return;
+
+      scrollTarget.scrollBy({
+        top: event.deltaY,
+        left: event.deltaX,
+        behavior: "auto",
+      });
+      updateWasAtBottom();
+      event.preventDefault();
+    };
+
+    container.addEventListener("wheel", handleWheelOutsideHistory, {
+      passive: false,
+    });
+    return () => {
+      container.removeEventListener("wheel", handleWheelOutsideHistory);
+    };
+  }, [updateWasAtBottom]);
+
   const handleCopy = (text, id) => {
     if (!text || text.trim() === "") return;
 
@@ -207,11 +251,11 @@ export default function Chat() {
   const hasMessages = messages.some((m) => m.id !== "initial");
 
   return (
-    <div className={styles.chatContainer}>
+    <div className={styles.chatContainer} ref={containerRef}>
       <div className={styles.header}>
-        <div className={styles.headerContent}></div>
         <div className={styles.headerButtons}>
           <div className={styles.settingControl}>
+            <span className={styles.settingLabel}>Large text</span>
             <label className={styles.switch}>
               <input
                 type="checkbox"
@@ -222,9 +266,9 @@ export default function Chat() {
               />
               <span className={styles.slider}></span>
             </label>
-            <span className={styles.settingLabel}>Large text</span>
           </div>
 
+          <div className={styles.separator}></div>
           <div>
             <button
               className={styles.themeToggleButton}
@@ -238,7 +282,9 @@ export default function Chat() {
 
       <div
         className={`${styles.history} ${
-          activePanel === "scenario" && dimUnfocusedPanels ? styles.mainChatDimmed : ""
+          activePanel === "scenario" && dimUnfocusedPanels
+            ? styles.mainChatDimmed
+            : ""
         }`}
         ref={historyRef}
       >
@@ -268,9 +314,7 @@ export default function Chat() {
               if (msg.type === "scenario_bubble") {
                 return (
                   <div key={msg.id} data-message-id={msg.scenarioSessionId}>
-                    <ScenarioBubble
-                      scenarioSessionId={msg.scenarioSessionId}
-                    />
+                    <ScenarioBubble scenarioSessionId={msg.scenarioSessionId} />
                   </div>
                 );
               }
@@ -295,15 +339,20 @@ export default function Chat() {
                     {copiedMessageId === msg.id && (
                       <div className={styles.copyFeedback}>{t("copied")}</div>
                     )}
+
                     <div className={styles.messageContentWrapper}>
                       {msg.sender === "bot" && <LogoIcon />}
                       <div className={styles.messageContent}>
                         {msg.text && (
-                          <MessageWithButtons text={msg.text} messageId={msg.id} />
+                          <MessageWithButtons
+                            text={msg.text}
+                            messageId={msg.id}
+                          />
                         )}
                         {msg.sender === "bot" && msg.scenarios && (
                           <div className={styles.scenarioList}>
-                            {msg.scenarios.map((name) => { // --- 👈 [수정] async 제거
+                            {msg.scenarios.map((name) => {
+                              // --- 👈 [수정] async 제거
                               const isSelected = selectedOption === name;
                               const isDimmed = selectedOption && !isSelected;
                               return (
@@ -312,14 +361,18 @@ export default function Chat() {
                                   className={`${styles.optionButton} ${
                                     isSelected ? styles.selected : ""
                                   } ${isDimmed ? styles.dimmed : ""}`}
-                                  onClick={(e) => { // --- 👈 [수정] async/await 제거
+                                  onClick={(e) => {
+                                    // --- 👈 [수정] async/await 제거
                                     e.stopPropagation();
                                     setSelectedOption(msg.id, name);
                                     openScenarioPanel(name);
                                   }}
                                   disabled={!!selectedOption}
                                 >
-                                  {name}
+                                  <span className={styles.optionButtonText}>
+                                    {name}
+                                  </span>
+                                  <CheckCircle />
                                 </button>
                               );
                             })}

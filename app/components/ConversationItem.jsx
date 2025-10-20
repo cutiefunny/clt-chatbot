@@ -202,7 +202,7 @@ export default function ConversationItem({
       >
         <div className={styles.convoMain}>
           {hasUnreadScenarios && !isEditing && (
-            <div className={styles.unreadDot} style={{position: 'relative', left: 0, top: 0}}></div>
+            <div className={styles.unreadDot}></div>
           )}
           {convo.pinned && !isEditing && (
             <span className={styles.pinIndicator}>

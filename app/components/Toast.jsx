@@ -4,10 +4,11 @@ import { useChatStore } from '../store';
 import styles from './Toast.module.css';
 
 const Toast = () => {
-    // --- 👇 [수정] 휘발성 토스트 상태와 함수 추가 ---
-    const { toast, hideToast, ephemeralToast, hideEphemeralToast } = useChatStore();
+    const toast = useChatStore((state) => state.toast);
+    const hideToast = useChatStore((state) => state.hideToast);
+    const ephemeralToast = useChatStore((state) => state.ephemeralToast);
+    const hideEphemeralToast = useChatStore((state) => state.hideEphemeralToast);
 
-    // --- 👇 [수정] 휘발성 토스트를 우선적으로 렌더링 ---
     if (ephemeralToast.visible) {
         return (
             <div className={`${styles.toast} ${styles[ephemeralToast.type]}`} onClick={hideEphemeralToast}>

@@ -18,13 +18,12 @@ const HighlightedText = ({ text, highlight }) => {
 };
 
 export default function SearchModal() {
-    const {
-        loadConversation,
-        closeSearchModal,
-        searchConversations,
-        searchResults,
-        isSearching,
-    } = useChatStore();
+    const loadConversation = useChatStore((state) => state.loadConversation);
+    const closeSearchModal = useChatStore((state) => state.closeSearchModal);
+    const searchConversations = useChatStore((state) => state.searchConversations);
+    const searchResults = useChatStore((state) => state.searchResults);
+    const isSearching = useChatStore((state) => state.isSearching);
+    
     const [query, setQuery] = useState('');
     const { t } = useTranslations();
 

@@ -17,8 +17,12 @@ const ChevronDownIcon = ({ isRotated }) => (
 );
 
 export default function ScenarioEditorPage() {
-    // --- 👇 [수정] showToast 대신 showEphemeralToast 사용 ---
-    const { scenarioCategories, saveScenarioCategories, showEphemeralToast, availableScenarios, loadAvailableScenarios } = useChatStore();
+    const scenarioCategories = useChatStore((state) => state.scenarioCategories);
+    const saveScenarioCategories = useChatStore((state) => state.saveScenarioCategories);
+    const showEphemeralToast = useChatStore((state) => state.showEphemeralToast);
+    const availableScenarios = useChatStore((state) => state.availableScenarios);
+    const loadAvailableScenarios = useChatStore((state) => state.loadAvailableScenarios);
+    
     const [categories, setCategories] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [collapsedPaths, setCollapsedPaths] = useState(new Set());
@@ -70,7 +74,6 @@ export default function ScenarioEditorPage() {
     const handleSave = async () => {
         setIsLoading(true);
         const success = await saveScenarioCategories(categories);
-        // --- 👇 [수정] showEphemeralToast 호출 ---
         if (success) {
             showEphemeralToast('성공적으로 저장되었습니다.', 'success');
         } else {

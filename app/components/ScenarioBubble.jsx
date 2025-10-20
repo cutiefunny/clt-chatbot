@@ -7,6 +7,9 @@ import styles from "./Chat.module.css";
 import { validateInput, interpolateMessage } from "../lib/chatbotEngine";
 import LogoIcon from "./icons/LogoIcon";
 import ChevronDownIcon from "./icons/ChevronDownIcon";
+import ArrowDropDownIcon from "./icons/ArrowDropDownIcon";
+import CheckCircle from "./icons/CheckCircle";
+import OpenInNewIcon from "./icons/OpenInNew";
 
 const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
   const [formData, setFormData] = useState({});
@@ -57,6 +60,7 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
   return (
     <form onSubmit={handleSubmit} className={styles.formContainer}>
       <h3>{node.data.title}</h3>
+      <div className={styles.formContainerSeparator} />
       {node.data.elements?.map((el) => {
         const dateProps = {};
         if (el.type === "date" && el.validation) {
@@ -72,7 +76,9 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
         }
         return (
           <div key={el.id} className={styles.formElement}>
-            {el.type !== 'grid' && <label className={styles.formLabel}>{el.label}</label>}
+            {el.type !== "grid" && (
+              <label className={styles.formLabel}>{el.label}</label>
+            )}
 
             {el.type === "input" && (
               <input
@@ -94,35 +100,42 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
                 value={formData[el.name] || ""}
                 onChange={(e) => handleInputChange(el.name, e.target.value)}
                 onClick={(e) => {
-                    e.stopPropagation(); // Prevent bubble click
-                    handleDateInputClick();
-                 }}
+                  e.stopPropagation(); // Prevent bubble click
+                  handleDateInputClick();
+                }}
                 disabled={disabled}
                 {...dateProps}
               />
             )}
 
             {el.type === "dropbox" && (
-              <select
-                value={formData[el.name] || ""}
-                onChange={(e) => handleInputChange(el.name, e.target.value)}
-                disabled={disabled}
-                onClick={(e) => e.stopPropagation()} // 이벤트 버블링 중단
-              >
-                <option value="" disabled>
-                  {t("select")}
-                </option>
-                {el.options?.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
+              <div className={styles.selectWrapper}>
+                <select
+                  value={formData[el.name] || ""}
+                  onChange={(e) => handleInputChange(el.name, e.target.value)}
+                  disabled={disabled}
+                  onClick={(e) => e.stopPropagation()} // 이벤트 버블링 중단
+                >
+                  <option value="" disabled>
+                    {t("select")}
                   </option>
-                ))}
-              </select>
+                  {el.options?.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+                <ArrowDropDownIcon
+                  style={{ color: "var(--Gray-07, #5E7599)" }}
+                />
+              </div>
             )}
 
             {el.type === "checkbox" &&
               el.options?.map((opt) => (
-                <div key={opt} onClick={(e) => e.stopPropagation()}> {/* Prevent bubble click */}
+                <div key={opt} onClick={(e) => e.stopPropagation()}>
+                  {" "}
+                  {/* Prevent bubble click */}
                   <input
                     type="checkbox"
                     id={`${el.id}-${opt}`}
@@ -136,58 +149,66 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
                 </div>
               ))}
 
-            {el.type === 'grid' && (() => {
-              const columns = el.columns || 2;
-              const nodeData = el.data;
-              let sourceData = [];
+            {el.type === "grid" &&
+              (() => {
+                const columns = el.columns || 2;
+                const nodeData = el.data;
+                let sourceData = [];
 
-              if (Array.isArray(nodeData)) {
-                  sourceData = nodeData.map(item =>
-                      typeof item === 'string' ? interpolateMessage(item, slots) : String(item || '')
+                if (Array.isArray(nodeData)) {
+                  sourceData = nodeData.map((item) =>
+                    typeof item === "string"
+                      ? interpolateMessage(item, slots)
+                      : String(item || "")
                   );
-              } else if (typeof nodeData === 'string' && nodeData.startsWith('{') && nodeData.endsWith('}')) {
+                } else if (
+                  typeof nodeData === "string" &&
+                  nodeData.startsWith("{") &&
+                  nodeData.endsWith("}")
+                ) {
                   const slotName = nodeData.substring(1, nodeData.length - 1);
                   const slotValue = slots[slotName];
                   if (Array.isArray(slotValue)) {
-                      sourceData = slotValue.map(item => String(item || ''));
+                    sourceData = slotValue.map((item) => String(item || ""));
                   }
-              }
-
-              const rowsData = [];
-              if (sourceData.length > 0) {
-                for (let i = 0; i < sourceData.length; i += columns) {
-                  rowsData.push(sourceData.slice(i, i + columns));
                 }
-              }
 
-              return (
-                <table className={styles.formGridTable}>
-                  <tbody>
-                    {rowsData.map((row, r) => (
-                      <tr key={r}>
-                        {row.map((cellValue, c) => (
-                          <td key={c}>
-                            {cellValue}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              );
-            })()}
+                const rowsData = [];
+                if (sourceData.length > 0) {
+                  for (let i = 0; i < sourceData.length; i += columns) {
+                    rowsData.push(sourceData.slice(i, i + columns));
+                  }
+                }
+
+                return (
+                  <table className={styles.formGridTable}>
+                    <tbody>
+                      {rowsData.map((row, r) => (
+                        <tr key={r}>
+                          {row.map((cellValue, c) => (
+                            <td key={c}>{cellValue}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                );
+              })()}
           </div>
         );
       })}
       {!disabled && (
-        <button type="submit" className={styles.formSubmitButton} onClick={(e) => e.stopPropagation()}>
+        <button
+          type="submit"
+          className={styles.formSubmitButton}
+          onClick={(e) => e.stopPropagation()}
+        >
           {t("submit")}
         </button>
       )}
     </form>
   );
 };
-
 
 const ScenarioStatusBadge = ({ status, t }) => {
   if (!status) return null;
@@ -258,9 +279,15 @@ export default function ScenarioBubble({ scenarioSessionId }) {
 
   const historyRef = useRef(null);
   const bubbleRef = useRef(null);
+  const previousHeightRef = useRef(0);
 
   useEffect(() => {
     setIsCollapsed(false);
+  }, []);
+
+  useEffect(() => {
+    if (!bubbleRef.current) return;
+    previousHeightRef.current = bubbleRef.current.scrollHeight;
   }, []);
 
   useEffect(() => {
@@ -277,6 +304,26 @@ export default function ScenarioBubble({ scenarioSessionId }) {
     return () => observer.disconnect();
   }, [scenarioMessages, isCollapsed]);
 
+  useEffect(() => {
+    if (!bubbleRef.current) return;
+
+    const updateScrollForGrowth = () => {
+      if (!bubbleRef.current) return;
+
+      const currentHeight = bubbleRef.current.scrollHeight;
+      const previousHeight = previousHeightRef.current || currentHeight;
+      const heightDiff = currentHeight - previousHeight;
+
+      if (heightDiff > 0 && !isCollapsed) {
+        scrollBy(heightDiff);
+      }
+
+      previousHeightRef.current = currentHeight;
+    };
+
+    requestAnimationFrame(updateScrollForGrowth);
+  }, [scenarioMessages, isScenarioLoading, isCollapsed, scrollBy]);
+
   if (!activeScenario) {
     return null;
   }
@@ -290,9 +337,9 @@ export default function ScenarioBubble({ scenarioSessionId }) {
   };
 
   const handleBubbleClick = (e) => {
-    const formElements = ['INPUT', 'SELECT', 'BUTTON', 'LABEL', 'OPTION'];
+    const formElements = ["INPUT", "SELECT", "BUTTON", "LABEL", "OPTION"];
     if (formElements.includes(e.target.tagName)) {
-       return;
+      return;
     }
     e.stopPropagation();
     if (!isCompleted) {
@@ -308,8 +355,7 @@ export default function ScenarioBubble({ scenarioSessionId }) {
       setTimeout(() => {
         const isLastMessage =
           messages.length > 0 &&
-          messages[messages.length - 1].scenarioSessionId ===
-            scenarioSessionId;
+          messages[messages.length - 1].scenarioSessionId === scenarioSessionId;
 
         if (isLastMessage) {
           setActivePanel("main");
@@ -355,7 +401,7 @@ export default function ScenarioBubble({ scenarioSessionId }) {
           isFocused ? styles.focusedBubble : "" // 포커스 시 클래스 추가
         }`}
       >
-      {/* --- 👆 [여기까지] --- */}
+        {/* --- 👆 [여기까지] --- */}
         <div
           className={styles.header}
           onClick={handleToggleCollapse}
@@ -371,7 +417,7 @@ export default function ScenarioBubble({ scenarioSessionId }) {
             <ScenarioStatusBadge status={activeScenario?.status} t={t} />
             {!isCompleted && (
               <button
-                className={`${styles.headerRestartButton} `}
+                className={`${styles.headerRestartButton}`}
                 onClick={(e) => {
                   e.stopPropagation();
                   endScenario(scenarioSessionId, "canceled");
@@ -395,11 +441,15 @@ export default function ScenarioBubble({ scenarioSessionId }) {
               >
                 <div
                   className={`GlassEffect ${styles.message} ${
-                    msg.sender === "bot" ? styles.botMessage : styles.userMessage
+                    msg.sender === "bot"
+                      ? styles.botMessage
+                      : styles.userMessage
                   }`}
                 >
                   <div className={styles.scenarioMessageContentWrapper}>
-                    {msg.sender === "bot" && <LogoIcon />}
+                    {msg.sender === "bot" && msg.node?.type !== "form" && (
+                      <LogoIcon />
+                    )}
                     <div className={styles.messageContent}>
                       {msg.node?.type === "form" ? (
                         <FormRenderer
@@ -463,7 +513,16 @@ export default function ScenarioBubble({ scenarioSessionId }) {
                                 }}
                                 disabled={isCompleted || !!selectedOption}
                               >
-                                {reply.display}
+                                <span className={styles.optionButtonText}>
+                                  {reply.display}
+                                </span>
+                                {reply.display
+                                  .toLowerCase()
+                                  .includes("link") ? (
+                                  <OpenInNewIcon />
+                                ) : (
+                                  <CheckCircle />
+                                )}
                               </button>
                             );
                           })}

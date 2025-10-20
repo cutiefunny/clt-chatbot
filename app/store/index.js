@@ -45,7 +45,7 @@ export const useChatStore = create((set, get) => ({
       if (get().currentConversationId !== notification.conversationId) {
         await get().loadConversation(notification.conversationId);
       }
-      
+
       setTimeout(() => {
         get().setScrollToMessageId(notification.scenarioSessionId);
       }, 300);
@@ -172,10 +172,10 @@ export const useChatStore = create((set, get) => ({
 
     get().setScrollToMessageId(scenario.sessionId);
 
-    if (scenario.status === 'completed' || scenario.status === 'failed') {
-      get().setActivePanel('main');
+    if (scenario.status === "completed" || scenario.status === "failed") {
+      get().setActivePanel("main");
     } else {
-      get().setActivePanel('scenario', scenario.sessionId);
+      get().setActivePanel("scenario", scenario.sessionId);
     }
 
     if (!get().scenarioStates[scenario.sessionId]) {
