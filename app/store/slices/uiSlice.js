@@ -1,3 +1,4 @@
+// app/store/slices/uiSlice.js
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { locales } from '../../lib/locales';
 
@@ -17,8 +18,8 @@ export const createUISlice = (set, get) => ({
   fontSizeSmall: '14px',   // 기본값
   isDevMode: false,
   dimUnfocusedPanels: true,
-  llmProvider: 'gemini', // --- 👈 [추가]
-  flowiseApiUrl: '', // --- 👈 [추가]
+  llmProvider: 'gemini',
+  flowiseApiUrl: '',
   isProfileModalOpen: false,
   isSearchModalOpen: false,
   isScenarioModalOpen: false,
@@ -35,7 +36,7 @@ export const createUISlice = (set, get) => ({
     onConfirm: () => {},
     confirmVariant: 'default',
   },
-  activePanel: 'main', 
+  activePanel: 'main',
   focusRequest: 0,
   shortcutMenuOpen: null,
   ephemeralToast: {
@@ -46,16 +47,19 @@ export const createUISlice = (set, get) => ({
   scrollToMessageId: null,
   forceScrollToBottom: false,
   scrollAmount: 0,
+  selectedRow: null, // --- 👈 [추가] 선택된 Grid 행 데이터 ---
 
   // Actions
-  // --- 👇 [수정된 부분] ---
+  setSelectedRow: (rowData) => set({ selectedRow: rowData }), // --- 👈 [추가] selectedRow 업데이트 함수 ---
+
+  // --- 기존 코드 생략 ---
   loadGeneralConfig: async () => {
     try {
       const configRef = doc(get().db, 'config', 'general');
       const docSnap = await getDoc(configRef);
       if (docSnap.exists()) {
         const config = docSnap.data();
-        set({ 
+        set({
             maxFavorites: typeof config.maxFavorites === 'number' ? config.maxFavorites : 10,
             hideCompletedScenarios: typeof config.hideCompletedScenarios === 'boolean' ? config.hideCompletedScenarios : false,
             hideDelayInHours: typeof config.hideDelayInHours === 'number' ? config.hideDelayInHours : 0,
@@ -71,7 +75,6 @@ export const createUISlice = (set, get) => ({
       console.error("Error loading general config from Firestore:", error);
     }
   },
-  // --- 👆 [여기까지] ---
 
   saveGeneralConfig: async (settings) => {
     try {
@@ -103,7 +106,7 @@ export const createUISlice = (set, get) => ({
   hideEphemeralToast: () => {
      set(state => ({ ephemeralToast: { ...state.ephemeralToast, visible: false } }));
   },
-  
+
   setTheme: async (newTheme) => {
     if (get().theme === newTheme) return;
     set({ theme: newTheme });
@@ -120,7 +123,7 @@ export const createUISlice = (set, get) => ({
       }
     }
   },
-  
+
   toggleTheme: async () => {
     const newTheme = get().theme === 'light' ? 'dark' : 'light';
     await get().setTheme(newTheme);
@@ -183,7 +186,7 @@ export const createUISlice = (set, get) => ({
   })),
 
   toggleHistoryPanel: () => set(state => ({ isHistoryPanelOpen: !state.isHistoryPanelOpen })),
-  
+
   setActivePanel: (panel, sessionId = null) => {
       if (panel === 'scenario') {
           set({ activePanel: panel, activeScenarioSessionId: sessionId });

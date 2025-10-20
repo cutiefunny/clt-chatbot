@@ -12,10 +12,12 @@ import CheckCircle from "./icons/CheckCircle";
 import OpenInNewIcon from "./icons/OpenInNew";
 
 const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
+  const setSelectedRow = useChatStore((state) => state.setSelectedRow);
   const [formData, setFormData] = useState({});
   const dateInputRef = useRef(null);
   const { t } = useTranslations();
 
+  // --- handleInputChange, handleMultiInputChange, handleSubmit, handleDateInputClick 함수 생략 ---
   const handleInputChange = (name, value) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -57,12 +59,23 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
     }
   };
 
+
+  const hasSlotBoundGrid = node.data.elements?.some(el =>
+    el.type === 'grid' &&
+    el.optionsSlot &&
+    Array.isArray(slots[el.optionsSlot]) &&
+    slots[el.optionsSlot].length > 0 &&
+    typeof slots[el.optionsSlot][0] === 'object' &&
+    slots[el.optionsSlot][0] !== null
+  );
+
   return (
     <form onSubmit={handleSubmit} className={styles.formContainer}>
       <h3>{node.data.title}</h3>
       <div className={styles.formContainerSeparator} />
       {node.data.elements?.map((el) => {
         const dateProps = {};
+        // --- Date props 계산 로직 생략 ---
         if (el.type === "date" && el.validation) {
           if (el.validation.type === "today after") {
             dateProps.min = new Date().toISOString().split("T")[0];
@@ -74,130 +87,191 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
             if (el.validation.endDate) dateProps.max = el.validation.endDate;
           }
         }
+
         return (
           <div key={el.id} className={styles.formElement}>
-            {el.type !== "grid" && (
-              <label className={styles.formLabel}>{el.label}</label>
-            )}
+            {el.type === "grid" ? (() => {
+                const gridDataFromSlot = el.optionsSlot ? slots[el.optionsSlot] : null;
+                const hasSlotData = Array.isArray(gridDataFromSlot) && gridDataFromSlot.length > 0;
 
-            {el.type === "input" && (
-              <input
-                className={styles.formInput}
-                type="text"
-                placeholder={el.placeholder}
-                value={formData[el.name] || ""}
-                onChange={(e) => handleInputChange(el.name, e.target.value)}
-                disabled={disabled}
-                onClick={(e) => e.stopPropagation()} // Prevent bubble click
-              />
-            )}
+                if (hasSlotData) {
+                    const isDynamicObjectArray = typeof gridDataFromSlot[0] === 'object' && gridDataFromSlot[0] !== null && !Array.isArray(gridDataFromSlot[0]);
+                    if (isDynamicObjectArray) {
+                        const displayKeys = el.displayKeys && el.displayKeys.length > 0 ? el.displayKeys : Object.keys(gridDataFromSlot[0] || {});
+                        const filteredKeys = el.hideNullColumns
+                            ? displayKeys.filter(key => gridDataFromSlot.some(obj => obj[key] !== null && obj[key] !== undefined && obj[key] !== ""))
+                            : displayKeys;
 
-            {el.type === "date" && (
-              <input
-                ref={dateInputRef}
-                className={styles.formInput}
-                type="date"
-                value={formData[el.name] || ""}
-                onChange={(e) => handleInputChange(el.name, e.target.value)}
-                onClick={(e) => {
-                  e.stopPropagation(); // Prevent bubble click
-                  handleDateInputClick();
-                }}
-                disabled={disabled}
-                {...dateProps}
-              />
-            )}
+                        // 컬럼 키가 하나도 없을 경우 렌더링하지 않음 (Hydration 오류 방지)
+                        if (filteredKeys.length === 0) {
+                            console.warn("Grid rendering skipped: No valid keys to display.", el);
+                            return null;
+                        }
 
-            {el.type === "dropbox" && (
-              <div className={styles.selectWrapper}>
-                <select
-                  value={formData[el.name] || ""}
-                  onChange={(e) => handleInputChange(el.name, e.target.value)}
-                  disabled={disabled}
-                  onClick={(e) => e.stopPropagation()} // 이벤트 버블링 중단
-                >
-                  <option value="" disabled>
-                    {t("select")}
-                  </option>
-                  {el.options?.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                    </option>
-                  ))}
-                </select>
-                <ArrowDropDownIcon
-                  style={{ color: "var(--Gray-07, #5E7599)" }}
-                />
-              </div>
-            )}
+                        const columnWidths = filteredKeys.reduce((acc, key) => {
+                            const headerLength = key.length;
+                            const maxLength = gridDataFromSlot.reduce((max, obj) => {
+                                const valueStr = String(interpolateMessage(obj[key] || '', slots));
+                                return Math.max(max, valueStr.length);
+                            }, 0);
+                            acc[key] = Math.max(headerLength, maxLength) + 2;
+                            return acc;
+                        }, {});
 
-            {el.type === "checkbox" &&
-              el.options?.map((opt) => (
-                <div key={opt} onClick={(e) => e.stopPropagation()}>
-                  {" "}
-                  {/* Prevent bubble click */}
-                  <input
-                    type="checkbox"
-                    id={`${el.id}-${opt}`}
-                    value={opt}
-                    onChange={(e) =>
-                      handleMultiInputChange(el.name, opt, e.target.checked)
+
+                        return (
+                            <div key={el.id} style={{ overflowX: 'auto', width: '100%' }}>
+                                <table className={styles.formGridTable} style={{ tableLayout: 'auto' }}>
+                                    {/* table > thead 구조 확인 */}
+                                    <thead>
+                                        {/* thead > tr 구조 확인 */}
+                                        <tr>
+                                            {/* tr > th 구조 확인 */}
+                                            {filteredKeys.map(key => (
+                                              <th key={key} style={{ minWidth: `${columnWidths[key]}ch`, textAlign: 'left', padding: '10px 12px' }}>{key}</th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    {/* table > tbody 구조 확인 */}
+                                    <tbody>
+                                        {gridDataFromSlot.map((dataObject, index) => (
+                                            // tbody > tr 구조 확인
+                                            <tr key={`${el.id}-${index}`} onClick={() => !disabled && setSelectedRow(dataObject)} style={{ cursor: disabled ? 'default' : 'pointer' }}>
+                                                {/* tr > td 구조 확인, 텍스트는 td 내부에 위치 */}
+                                                {filteredKeys.map(key => (
+                                                    <td key={key} style={{ minWidth: `${columnWidths[key]}ch`, whiteSpace: 'nowrap' }}>
+                                                      {interpolateMessage(dataObject[key] || '', slots)}
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        );
+                    } else {
+                        // 2차원 배열 렌더링 (기존 로직 유지)
+                        // --- 2차원 배열 렌더링 코드 생략 ---
+                        const rows = gridDataFromSlot.length;
+                        const columns = gridDataFromSlot[0]?.length || 0;
+                        return (
+                            <table key={el.id} className={styles.formGridTable}>
+                                <tbody>
+                                    {[...Array(rows)].map((_, r) => (
+                                        <tr key={r}>
+                                            {[...Array(columns)].map((_, c) => {
+                                                const cellValue = gridDataFromSlot[r] ? gridDataFromSlot[r][c] : '';
+                                                // td 내부에 텍스트 위치 확인
+                                                return <td key={c}>{interpolateMessage(cellValue || '', slots)}</td>;
+                                            })}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        );
                     }
+                } else {
+                     // 수동 입력 데이터 렌더링 (기존 로직 유지)
+                    // --- 수동 입력 데이터 렌더링 코드 생략 ---
+                    const rows = el.rows || 2;
+                    const columns = el.columns || 2;
+                    return (
+                        <table key={el.id} className={styles.formGridTable}>
+                            <tbody>
+                                {[...Array(rows)].map((_, r) => (
+                                    <tr key={r}>
+                                        {[...Array(columns)].map((_, c) => {
+                                            const cellIndex = r * columns + c;
+                                            const cellValue = el.data && el.data[cellIndex] ? el.data[cellIndex] : '';
+                                            // td 내부에 텍스트 위치 확인
+                                            return <td key={c}>{interpolateMessage(cellValue, slots)}</td>;
+                                        })}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    );
+                }
+            })() : (
+              // 다른 폼 요소 렌더링
+              // --- 다른 폼 요소 렌더링 코드 생략 ---
+              <>
+                <label className={styles.formLabel}>{el.label}</label>
+
+                {el.type === "input" && (
+                  <input
+                    className={styles.formInput}
+                    type="text"
+                    placeholder={el.placeholder}
+                    value={formData[el.name] || ""}
+                    onChange={(e) => handleInputChange(el.name, e.target.value)}
                     disabled={disabled}
+                    onClick={(e) => e.stopPropagation()} // Prevent bubble click
                   />
-                  <label htmlFor={`${el.id}-${opt}`}>{opt}</label>
-                </div>
-              ))}
+                )}
 
-            {el.type === "grid" &&
-              (() => {
-                const columns = el.columns || 2;
-                const nodeData = el.data;
-                let sourceData = [];
+                {el.type === "date" && (
+                  <input
+                    ref={dateInputRef}
+                    className={styles.formInput}
+                    type="date"
+                    value={formData[el.name] || ""}
+                    onChange={(e) => handleInputChange(el.name, e.target.value)}
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent bubble click
+                      handleDateInputClick();
+                    }}
+                    disabled={disabled}
+                    {...dateProps}
+                  />
+                )}
 
-                if (Array.isArray(nodeData)) {
-                  sourceData = nodeData.map((item) =>
-                    typeof item === "string"
-                      ? interpolateMessage(item, slots)
-                      : String(item || "")
-                  );
-                } else if (
-                  typeof nodeData === "string" &&
-                  nodeData.startsWith("{") &&
-                  nodeData.endsWith("}")
-                ) {
-                  const slotName = nodeData.substring(1, nodeData.length - 1);
-                  const slotValue = slots[slotName];
-                  if (Array.isArray(slotValue)) {
-                    sourceData = slotValue.map((item) => String(item || ""));
-                  }
-                }
-
-                const rowsData = [];
-                if (sourceData.length > 0) {
-                  for (let i = 0; i < sourceData.length; i += columns) {
-                    rowsData.push(sourceData.slice(i, i + columns));
-                  }
-                }
-
-                return (
-                  <table className={styles.formGridTable}>
-                    <tbody>
-                      {rowsData.map((row, r) => (
-                        <tr key={r}>
-                          {row.map((cellValue, c) => (
-                            <td key={c}>{cellValue}</td>
-                          ))}
-                        </tr>
+                {el.type === "dropbox" && (
+                  <div className={styles.selectWrapper}>
+                    <select
+                      value={formData[el.name] || ""}
+                      onChange={(e) => handleInputChange(el.name, e.target.value)}
+                      disabled={disabled}
+                      onClick={(e) => e.stopPropagation()} // 이벤트 버블링 중단
+                    >
+                      <option value="" disabled>
+                        {t("select")}
+                      </option>
+                      {el.options?.map((opt) => (
+                        <option key={opt} value={opt}>
+                          {opt}
+                        </option>
                       ))}
-                    </tbody>
-                  </table>
-                );
-              })()}
+                    </select>
+                    <ArrowDropDownIcon
+                      style={{ color: "var(--Gray-07, #5E7599)" }}
+                    />
+                  </div>
+                )}
+
+                {el.type === "checkbox" &&
+                  el.options?.map((opt) => (
+                    <div key={opt} onClick={(e) => e.stopPropagation()}>
+                      {" "}
+                      {/* Prevent bubble click */}
+                      <input
+                        type="checkbox"
+                        id={`${el.id}-${opt}`}
+                        value={opt}
+                        onChange={(e) =>
+                          handleMultiInputChange(el.name, opt, e.target.checked)
+                        }
+                        disabled={disabled}
+                      />
+                      <label htmlFor={`${el.id}-${opt}`}>{opt}</label>
+                    </div>
+                  ))}
+              </>
+            )}
           </div>
         );
       })}
-      {!disabled && (
+      {!hasSlotBoundGrid && !disabled && (
         <button
           type="submit"
           className={styles.formSubmitButton}
@@ -210,6 +284,7 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
   );
 };
 
+// --- ScenarioStatusBadge 및 ScenarioBubble 컴포넌트 나머지 코드는 동일 ---
 const ScenarioStatusBadge = ({ status, t }) => {
   if (!status) return null;
   let text;
@@ -245,6 +320,7 @@ const ScenarioStatusBadge = ({ status, t }) => {
     </span>
   );
 };
+
 
 export default function ScenarioBubble({ scenarioSessionId }) {
   const {
@@ -324,6 +400,7 @@ export default function ScenarioBubble({ scenarioSessionId }) {
     requestAnimationFrame(updateScrollForGrowth);
   }, [scenarioMessages, isScenarioLoading, isCollapsed, scrollBy]);
 
+
   if (!activeScenario) {
     return null;
   }
@@ -337,15 +414,25 @@ export default function ScenarioBubble({ scenarioSessionId }) {
   };
 
   const handleBubbleClick = (e) => {
-    const formElements = ["INPUT", "SELECT", "BUTTON", "LABEL", "OPTION"];
+    const formElements = ["INPUT", "SELECT", "BUTTON", "LABEL", "OPTION", "TABLE", "THEAD", "TBODY", "TR", "TH", "TD"];
     if (formElements.includes(e.target.tagName)) {
-      return;
+      const clickedRow = e.target.closest('tr');
+      const isSelectableRow = clickedRow && clickedRow.closest('table')?.classList.contains(styles.formGridTable) && clickedRow.tagName === 'TR' && clickedRow.onclick;
+
+      if (isSelectableRow) {
+          // Let the row's onClick handler manage the event
+      } else {
+          // Prevent bubble click for other form elements NOT part of a selectable row
+          e.stopPropagation();
+      }
+      return; // Always return to prevent the bubble click handler from proceeding further for form elements
     }
     e.stopPropagation();
     if (!isCompleted) {
       setActivePanel("scenario", scenarioSessionId);
     }
   };
+
 
   const handleToggleCollapse = (e) => {
     e.stopPropagation();
@@ -387,26 +474,26 @@ export default function ScenarioBubble({ scenarioSessionId }) {
     }
   };
 
+
   return (
     <div
       className={`${styles.messageRow} ${styles.userRow}`}
       onClick={handleBubbleClick}
       ref={bubbleRef}
     >
-      {/* --- 👇 [수정된 부분] --- */}
       <div
         className={`GlassEffect ${styles.scenarioBubbleContainer} ${
           isCollapsed ? styles.collapsed : ""
         } ${!isFocused && dimUnfocusedPanels ? styles.dimmed : ""} ${
-          isFocused ? styles.focusedBubble : "" // 포커스 시 클래스 추가
+          isFocused ? styles.focusedBubble : ""
         }`}
       >
-        {/* --- 👆 [여기까지] --- */}
         <div
           className={styles.header}
           onClick={handleToggleCollapse}
           style={{ cursor: "pointer" }}
         >
+          {/* Header content */}
           <div className={styles.headerContent}>
             <ChevronDownIcon isRotated={isCollapsed} />
             <span className={styles.headerTitle}>
@@ -430,6 +517,7 @@ export default function ScenarioBubble({ scenarioSessionId }) {
         </div>
 
         <div className={styles.history} ref={historyRef}>
+          {/* Messages loop */}
           {scenarioMessages
             .filter((msg) => msg.node?.type !== "set-slot")
             .map((msg, index) => (
@@ -459,7 +547,8 @@ export default function ScenarioBubble({ scenarioSessionId }) {
                           language={language}
                           slots={activeScenario?.slots}
                         />
-                      ) : msg.node?.type === "iframe" ? (
+                      ) : // Other message types (iframe, link, branch, text)
+                       msg.node?.type === "iframe" ? (
                         <div className={styles.iframeContainer}>
                           <iframe
                             src={msg.node.data.url}
@@ -533,6 +622,7 @@ export default function ScenarioBubble({ scenarioSessionId }) {
                 </div>
               </div>
             ))}
+          {/* Loading indicator */}
           {isScenarioLoading && (
             <div className={styles.messageRow}>
               <img
