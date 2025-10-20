@@ -214,6 +214,17 @@ export default function ScenarioChat() {
   const scenarioId = activeScenario?.scenarioId;
 
   const historyRef = useRef(null);
+  const wasAtBottomRef = useRef(true);
+
+  const updateWasAtBottom = () => {
+    const scrollContainer = historyRef.current;
+    if (!scrollContainer) return;
+    const scrollableDistance =
+      scrollContainer.scrollHeight -
+      scrollContainer.clientHeight -
+      scrollContainer.scrollTop;
+    wasAtBottomRef.current = scrollableDistance <= 100;
+  };
 
   useEffect(() => {
     const scrollContainer = historyRef.current;
@@ -221,11 +232,15 @@ export default function ScenarioChat() {
 
     const scrollToBottom = () => {
       scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      wasAtBottomRef.current = true;
     };
 
     scrollToBottom();
 
-    const observer = new MutationObserver(scrollToBottom);
+    const observer = new MutationObserver(() => {
+      if (!wasAtBottomRef.current) return;
+      scrollToBottom();
+    });
     observer.observe(scrollContainer, {
       childList: true,
       subtree: true,
@@ -235,6 +250,31 @@ export default function ScenarioChat() {
       observer.disconnect();
     };
   }, [scenarioMessages]);
+
+  useEffect(() => {
+    const scrollContainer = historyRef.current;
+    if (!scrollContainer) return;
+
+    const handleScroll = () => {
+      updateWasAtBottom();
+    };
+
+    updateWasAtBottom();
+    scrollContainer.addEventListener("scroll", handleScroll);
+    return () => {
+      scrollContainer.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!wasAtBottomRef.current) return;
+    const scrollContainer = historyRef.current;
+    if (!scrollContainer) return;
+    requestAnimationFrame(() => {
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      wasAtBottomRef.current = true;
+    });
+  }, [scenarioMessages, isScenarioLoading]);
 
   if (!isScenarioPanelOpen || !activeScenario) {
     return null;

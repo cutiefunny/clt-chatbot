@@ -279,9 +279,15 @@ export default function ScenarioBubble({ scenarioSessionId }) {
 
   const historyRef = useRef(null);
   const bubbleRef = useRef(null);
+  const previousHeightRef = useRef(0);
 
   useEffect(() => {
     setIsCollapsed(false);
+  }, []);
+
+  useEffect(() => {
+    if (!bubbleRef.current) return;
+    previousHeightRef.current = bubbleRef.current.scrollHeight;
   }, []);
 
   useEffect(() => {
@@ -297,6 +303,26 @@ export default function ScenarioBubble({ scenarioSessionId }) {
     observer.observe(scrollContainer, { childList: true, subtree: true });
     return () => observer.disconnect();
   }, [scenarioMessages, isCollapsed]);
+
+  useEffect(() => {
+    if (!bubbleRef.current) return;
+
+    const updateScrollForGrowth = () => {
+      if (!bubbleRef.current) return;
+
+      const currentHeight = bubbleRef.current.scrollHeight;
+      const previousHeight = previousHeightRef.current || currentHeight;
+      const heightDiff = currentHeight - previousHeight;
+
+      if (heightDiff > 0 && !isCollapsed) {
+        scrollBy(heightDiff);
+      }
+
+      previousHeightRef.current = currentHeight;
+    };
+
+    requestAnimationFrame(updateScrollForGrowth);
+  }, [scenarioMessages, isScenarioLoading, isCollapsed, scrollBy]);
 
   if (!activeScenario) {
     return null;

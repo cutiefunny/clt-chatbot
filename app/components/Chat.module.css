@@ -622,14 +622,15 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
   flex-direction: column;
   width: 100%;
   max-width: 75%;
-  height: 500px;
+  height: auto;
+  max-height: 500px;
   border: 1px solid var(--panel-border-color);
   border-radius: 18px;
   border-top-right-radius: 4px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   overflow: hidden;
-  transition: height 0.4s ease-out, opacity 0.4s ease-out,
-    border-color 0.2s ease-out; /* border-color transition 추가 */
+  transition: max-height 0.4s ease-out, height 0.4s ease-out,
+    opacity 0.4s ease-out, border-color 0.2s ease-out;
 }
 
 /* --- 👇 [추가된 부분] --- */
@@ -655,6 +656,7 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
 
 .scenarioBubbleContainer.collapsed {
   height: 60px;
+  max-height: 60px;
   cursor: pointer;
 }
 
