@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useChatStore } from "../store";
+import { useChatStore } from "../store"; // useChatStore 임포트 확인
 import { useTranslations } from "../hooks/useTranslations";
 import styles from "./Chat.module.css";
 import { validateInput, interpolateMessage } from "../lib/chatbotEngine";
@@ -11,8 +11,7 @@ import ArrowDropDownIcon from "./icons/ArrowDropDownIcon";
 import CheckCircle from "./icons/CheckCircle";
 import OpenInNewIcon from "./icons/OpenInNew";
 
-const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
-  const setSelectedRow = useChatStore((state) => state.setSelectedRow);
+const FormRenderer = ({ node, onFormSubmit, disabled, language, slots, onGridRowClick }) => {
   const [formData, setFormData] = useState({});
   const dateInputRef = useRef(null);
   const { t } = useTranslations();
@@ -97,16 +96,22 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
                 if (hasSlotData) {
                     const isDynamicObjectArray = typeof gridDataFromSlot[0] === 'object' && gridDataFromSlot[0] !== null && !Array.isArray(gridDataFromSlot[0]);
                     if (isDynamicObjectArray) {
-                        const displayKeys = el.displayKeys && el.displayKeys.length > 0 ? el.displayKeys : Object.keys(gridDataFromSlot[0] || {});
+                        const originalDisplayKeys = el.displayKeys && el.displayKeys.length > 0 ? el.displayKeys : Object.keys(gridDataFromSlot[0] || {});
                         const filteredKeys = el.hideNullColumns
-                            ? displayKeys.filter(key => gridDataFromSlot.some(obj => obj[key] !== null && obj[key] !== undefined && obj[key] !== ""))
-                            : displayKeys;
+                            ? originalDisplayKeys.filter(key => gridDataFromSlot.some(obj => obj[key] !== null && obj[key] !== undefined && obj[key] !== ""))
+                            : originalDisplayKeys;
 
-                        // 컬럼 키가 하나도 없을 경우 렌더링하지 않음 (Hydration 오류 방지)
-                        if (filteredKeys.length === 0) {
-                            console.warn("Grid rendering skipped: No valid keys to display.", el);
-                            return null;
+                        // 컬럼 키가 하나도 없을 경우 렌더링하지 않음 (Hydration 오류 방지 - 1단계)
+                        if (filteredKeys.length === 0 && !el.hideNullColumns) {
+                           console.warn("Grid rendering skipped: No keys found in data object.", el, gridDataFromSlot[0]);
+                           return <div>No data columns found.</div>; // Or some placeholder
                         }
+                         // hideNullColumns에 의해 모든 키가 필터링 된 경우
+                        if (filteredKeys.length === 0 && el.hideNullColumns) {
+                            console.warn("Grid rendering skipped: All columns were hidden due to hideNullColumns.", el);
+                            return <div>All columns hidden.</div>; // Or some placeholder
+                        }
+
 
                         const columnWidths = filteredKeys.reduce((acc, key) => {
                             const headerLength = key.length;
@@ -122,36 +127,39 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
                         return (
                             <div key={el.id} style={{ overflowX: 'auto', width: '100%' }}>
                                 <table className={styles.formGridTable} style={{ tableLayout: 'auto' }}>
-                                    {/* table > thead 구조 확인 */}
                                     <thead>
-                                        {/* thead > tr 구조 확인 */}
                                         <tr>
-                                            {/* tr > th 구조 확인 */}
                                             {filteredKeys.map(key => (
                                               <th key={key} style={{ minWidth: `${columnWidths[key]}ch`, textAlign: 'left', padding: '10px 12px' }}>{key}</th>
                                             ))}
                                         </tr>
                                     </thead>
-                                    {/* table > tbody 구조 확인 */}
                                     <tbody>
-                                        {gridDataFromSlot.map((dataObject, index) => (
-                                            // tbody > tr 구조 확인
-                                            <tr key={`${el.id}-${index}`} onClick={() => !disabled && setSelectedRow(dataObject)} style={{ cursor: disabled ? 'default' : 'pointer' }}>
-                                                {/* tr > td 구조 확인, 텍스트는 td 내부에 위치 */}
-                                                {filteredKeys.map(key => (
-                                                    <td key={key} style={{ minWidth: `${columnWidths[key]}ch`, whiteSpace: 'nowrap' }}>
-                                                      {interpolateMessage(dataObject[key] || '', slots)}
-                                                    </td>
-                                                ))}
-                                            </tr>
-                                        ))}
+                                        {gridDataFromSlot.map((dataObject, index) => {
+                                            // --- 👇 [수정] cells 배열 생성 및 빈 배열 방지 ---
+                                            const cells = filteredKeys.map(key => (
+                                                <td key={key} style={{ minWidth: `${columnWidths[key]}ch`, whiteSpace: 'nowrap' }}>
+                                                  {interpolateMessage(dataObject[key] || '', slots)}
+                                                </td>
+                                            ));
+                                            // filteredKeys가 비어있지 않음을 위에서 보장했으므로, cells도 비어있지 않음.
+                                            // 만약을 대비해 cells가 비었을 경우 빈 td 추가 (Hydration 오류 방지 - 2단계)
+                                            if (cells.length === 0) {
+                                                cells.push(<td key="empty-cell">&nbsp;</td>);
+                                            }
+                                            // --- 👆 [여기까지] ---
+                                            return (
+                                                <tr key={`${el.id}-${index}`} onClick={() => !disabled && onGridRowClick(el, dataObject)} style={{ cursor: disabled ? 'default' : 'pointer' }}>
+                                                    {cells}
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>
                         );
                     } else {
                         // 2차원 배열 렌더링 (기존 로직 유지)
-                        // --- 2차원 배열 렌더링 코드 생략 ---
                         const rows = gridDataFromSlot.length;
                         const columns = gridDataFromSlot[0]?.length || 0;
                         return (
@@ -161,9 +169,10 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
                                         <tr key={r}>
                                             {[...Array(columns)].map((_, c) => {
                                                 const cellValue = gridDataFromSlot[r] ? gridDataFromSlot[r][c] : '';
-                                                // td 내부에 텍스트 위치 확인
                                                 return <td key={c}>{interpolateMessage(cellValue || '', slots)}</td>;
                                             })}
+                                            {/* 2차원 배열에서도 빈 행 방지 */}
+                                            {columns === 0 && <td key="empty-cell">&nbsp;</td>}
                                         </tr>
                                     ))}
                                 </tbody>
@@ -172,7 +181,6 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
                     }
                 } else {
                      // 수동 입력 데이터 렌더링 (기존 로직 유지)
-                    // --- 수동 입력 데이터 렌더링 코드 생략 ---
                     const rows = el.rows || 2;
                     const columns = el.columns || 2;
                     return (
@@ -183,9 +191,10 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
                                         {[...Array(columns)].map((_, c) => {
                                             const cellIndex = r * columns + c;
                                             const cellValue = el.data && el.data[cellIndex] ? el.data[cellIndex] : '';
-                                            // td 내부에 텍스트 위치 확인
                                             return <td key={c}>{interpolateMessage(cellValue, slots)}</td>;
                                         })}
+                                         {/* 수동 입력에서도 빈 행 방지 */}
+                                        {columns === 0 && <td key="empty-cell">&nbsp;</td>}
                                     </tr>
                                 ))}
                             </tbody>
@@ -194,7 +203,6 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
                 }
             })() : (
               // 다른 폼 요소 렌더링
-              // --- 다른 폼 요소 렌더링 코드 생략 ---
               <>
                 <label className={styles.formLabel}>{el.label}</label>
 
@@ -284,7 +292,6 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
   );
 };
 
-// --- ScenarioStatusBadge 및 ScenarioBubble 컴포넌트 나머지 코드는 동일 ---
 const ScenarioStatusBadge = ({ status, t }) => {
   if (!status) return null;
   let text;
@@ -334,6 +341,7 @@ export default function ScenarioBubble({ scenarioSessionId }) {
     scrollBy,
     dimUnfocusedPanels,
     setScenarioSelectedOption,
+    setSelectedRow
   } = useChatStore();
   const { t, language } = useTranslations();
 
@@ -404,6 +412,24 @@ export default function ScenarioBubble({ scenarioSessionId }) {
   if (!activeScenario) {
     return null;
   }
+
+  const handleGridRowSelected = (gridElement, selectedRowData) => {
+    setSelectedRow(selectedRowData);
+
+    const targetSlot = gridElement.selectSlot || 'selectedGridItem';
+    const updatedSlots = {
+      ...activeScenario.slots,
+      [targetSlot]: selectedRowData,
+    };
+
+    handleScenarioResponse({
+      scenarioSessionId: scenarioSessionId,
+      currentNodeId: currentScenarioNodeId,
+      sourceHandle: null,
+      userInput: null,
+      formData: updatedSlots,
+    });
+  };
 
   const handleFormSubmit = (formData) => {
     handleScenarioResponse({
@@ -495,7 +521,7 @@ export default function ScenarioBubble({ scenarioSessionId }) {
         >
           {/* Header content */}
           <div className={styles.headerContent}>
-            <ChevronDownIcon isRotated={!isCollapsed} />
+            <ChevronDownIcon isRotated={isCollapsed} />
             <span className={styles.headerTitle}>
               {t("scenarioTitle")(scenarioId)}
             </span>
@@ -546,6 +572,7 @@ export default function ScenarioBubble({ scenarioSessionId }) {
                           disabled={isCompleted}
                           language={language}
                           slots={activeScenario?.slots}
+                          onGridRowClick={handleGridRowSelected} // Pass the handler
                         />
                       ) : // Other message types (iframe, link, branch, text)
                        msg.node?.type === "iframe" ? (
@@ -623,7 +650,7 @@ export default function ScenarioBubble({ scenarioSessionId }) {
               </div>
             ))}
           {/* Loading indicator */}
-          {isScenarioLoading && (
+           {isScenarioLoading && (
             <div className={styles.messageRow}>
               <img
                 src="/images/avatar-loading.png"

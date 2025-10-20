@@ -1,3 +1,4 @@
+/* cutiefunny/clt-chatbot/clt-chatbot-9973bfd6ea085df5f5470357978fff2421e29109/app/components/Chat.module.css */
 .chatContainer {
   flex-grow: 1;
   display: flex;
@@ -397,13 +398,11 @@ input:checked + .slider:before {
 
 .optionButton:disabled {
   cursor: not-allowed;
-  background-color: #f4f5fb;
-  border-color: #d8e0eb;
-  color: #babcd1;
+  background-color: var(--button-hover-bg);
+  border-color: var(--panel-border-color);
 }
 .optionButton.selected {
   border-color: #806bf5;
-  background-color: var(--White-Opacity-48, rgba(255, 255, 255, 0.48));
   color: #282166;
 }
 
@@ -411,6 +410,10 @@ input:checked + .slider:before {
   fill: #806bf5;
 }
 
+.optionButton.dimmed {
+  opacity: 0.5;
+  background-color: transparent;
+}
 .optionButton:disabled:hover {
   border-color: var(--panel-border-color);
 }
@@ -631,12 +634,10 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
     opacity 0.4s ease-out, border-color 0.2s ease-out;
 }
 
-/* --- 👇 [추가된 부분] --- */
 .focusedBubble {
   border: var(--stroke-weight-1, 1px) solid
     var(--Color-Light-Gradation-03, #3051ea);
 }
-/* --- 👆 [여기까지] --- */
 
 .scenarioBubbleContainer .header {
   flex-shrink: 0;
@@ -715,35 +716,49 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
   margin-top: 8px;
   font-size: 0.9rem;
   border: 1px solid var(--panel-border-color);
-  border-radius: 8px;
-  overflow: hidden;
+  border-radius: 8px; /* 테이블 전체에 radius 적용 */
+  overflow: hidden; /* radius 적용 위해 추가 */
+}
+
+.formGridTable th { /* 헤더 스타일 추가 */
+  background-color: var(--panel-bg-color); /* 헤더 배경색 */
+  font-weight: 600; /* 헤더 폰트 두께 */
+  color: var(--text-color);
+  border-bottom: 1px solid var(--panel-border-color);
 }
 
 .formGridTable tr {
   border-bottom: 1px solid var(--panel-border-color);
+  transition: background-color 0.2s ease-out; /* hover 효과 트랜지션 */
 }
 
 .formGridTable tr:last-child {
   border-bottom: none;
 }
 
-.formGridTable td {
+/* --- 👇 [수정] 행 hover 효과 --- */
+.formGridTable tbody tr:hover {
+  background-color: var(--button-hover-bg); /* hover 시 배경색 변경 */
+}
+/* --- 👆 [여기까지] --- */
+
+
+.formGridTable td, .formGridTable th { /* th 스타일도 함께 적용 */
   padding: 10px 12px;
   background-color: var(--bot-message-bg);
+  text-align: left; /* 기본 정렬 왼쪽으로 변경 */
 }
 
-.formGridTable td:first-child {
-  font-weight: 500;
-  color: #5e7599;
-  width: 40%;
-  background-color: var(--panel-bg-color);
+body.dark .formGridTable th { /* 다크모드 헤더 */
+   background-color: rgba(255, 255, 255, 0.08);
 }
 
 body.dark .formGridTable td {
   background-color: rgba(255, 255, 255, 0.05);
 }
 
-body.dark .formGridTable td:first-child {
-  color: #aaa;
-  background-color: rgba(255, 255, 255, 0.02);
+/* --- 👇 [수정] 다크모드 hover 효과 --- */
+body.dark .formGridTable tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.1);
 }
+/* --- 👆 [여기까지] --- */
