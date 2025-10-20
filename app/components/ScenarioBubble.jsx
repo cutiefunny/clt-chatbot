@@ -76,8 +76,10 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
         }
         return (
           <div key={el.id} className={styles.formElement}>
-            {el.type !== 'grid' && <label className={styles.formLabel}>{el.label}</label>}
-            
+            {el.type !== "grid" && (
+              <label className={styles.formLabel}>{el.label}</label>
+            )}
+
             {el.type === "input" && (
               <input
                 className={styles.formInput}
@@ -86,6 +88,7 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
                 value={formData[el.name] || ""}
                 onChange={(e) => handleInputChange(el.name, e.target.value)}
                 disabled={disabled}
+                onClick={(e) => e.stopPropagation()} // Prevent bubble click
               />
             )}
 
@@ -96,7 +99,10 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
                 type="date"
                 value={formData[el.name] || ""}
                 onChange={(e) => handleInputChange(el.name, e.target.value)}
-                onClick={handleDateInputClick}
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevent bubble click
+                  handleDateInputClick();
+                }}
                 disabled={disabled}
                 {...dateProps}
               />
@@ -108,6 +114,7 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
                   value={formData[el.name] || ""}
                   onChange={(e) => handleInputChange(el.name, e.target.value)}
                   disabled={disabled}
+                  onClick={(e) => e.stopPropagation()} // 이벤트 버블링 중단
                 >
                   <option value="" disabled>
                     {t("select")}
@@ -123,9 +130,12 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
                 />
               </div>
             )}
+
             {el.type === "checkbox" &&
               el.options?.map((opt) => (
-                <div key={opt}>
+                <div key={opt} onClick={(e) => e.stopPropagation()}>
+                  {" "}
+                  {/* Prevent bubble click */}
                   <input
                     type="checkbox"
                     id={`${el.id}-${opt}`}
@@ -138,35 +148,61 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
                   <label htmlFor={`${el.id}-${opt}`}>{opt}</label>
                 </div>
               ))}
-            {el.type === 'grid' && (() => {
-              const columns = el.columns || 2;
-              const rowsData = [];
-              if (el.data && Array.isArray(el.data)) {
-                for (let i = 0; i < el.data.length; i += columns) {
-                  rowsData.push(el.data.slice(i, i + columns));
+
+            {el.type === "grid" &&
+              (() => {
+                const columns = el.columns || 2;
+                const nodeData = el.data;
+                let sourceData = [];
+
+                if (Array.isArray(nodeData)) {
+                  sourceData = nodeData.map((item) =>
+                    typeof item === "string"
+                      ? interpolateMessage(item, slots)
+                      : String(item || "")
+                  );
+                } else if (
+                  typeof nodeData === "string" &&
+                  nodeData.startsWith("{") &&
+                  nodeData.endsWith("}")
+                ) {
+                  const slotName = nodeData.substring(1, nodeData.length - 1);
+                  const slotValue = slots[slotName];
+                  if (Array.isArray(slotValue)) {
+                    sourceData = slotValue.map((item) => String(item || ""));
+                  }
                 }
-              }
-              return (
-                <table className={styles.formGridTable}>
-                  <tbody>
-                    {rowsData.map((row, r) => (
-                      <tr key={r}>
-                        {row.map((cell, c) => (
-                          <td key={c}>
-                            {interpolateMessage(cell || '', slots)}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              );
-            })()}
+
+                const rowsData = [];
+                if (sourceData.length > 0) {
+                  for (let i = 0; i < sourceData.length; i += columns) {
+                    rowsData.push(sourceData.slice(i, i + columns));
+                  }
+                }
+
+                return (
+                  <table className={styles.formGridTable}>
+                    <tbody>
+                      {rowsData.map((row, r) => (
+                        <tr key={r}>
+                          {row.map((cellValue, c) => (
+                            <td key={c}>{cellValue}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                );
+              })()}
           </div>
         );
       })}
       {!disabled && (
-        <button type="submit" className={styles.formSubmitButton}>
+        <button
+          type="submit"
+          className={styles.formSubmitButton}
+          onClick={(e) => e.stopPropagation()}
+        >
           {t("submit")}
         </button>
       )}
@@ -275,6 +311,10 @@ export default function ScenarioBubble({ scenarioSessionId }) {
   };
 
   const handleBubbleClick = (e) => {
+    const formElements = ["INPUT", "SELECT", "BUTTON", "LABEL", "OPTION"];
+    if (formElements.includes(e.target.tagName)) {
+      return;
+    }
     e.stopPropagation();
     if (!isCompleted) {
       setActivePanel("scenario", scenarioSessionId);
@@ -327,11 +367,15 @@ export default function ScenarioBubble({ scenarioSessionId }) {
       onClick={handleBubbleClick}
       ref={bubbleRef}
     >
+      {/* --- 👇 [수정된 부분] --- */}
       <div
         className={`GlassEffect ${styles.scenarioBubbleContainer} ${
           isCollapsed ? styles.collapsed : ""
-        } ${!isFocused && dimUnfocusedPanels ? styles.dimmed : ""}`}
+        } ${!isFocused && dimUnfocusedPanels ? styles.dimmed : ""} ${
+          isFocused ? styles.focusedBubble : "" // 포커스 시 클래스 추가
+        }`}
       >
+        {/* --- 👆 [여기까지] --- */}
         <div
           className={styles.header}
           onClick={handleToggleCollapse}
@@ -360,102 +404,98 @@ export default function ScenarioBubble({ scenarioSessionId }) {
         </div>
 
         <div className={styles.history} ref={historyRef}>
-          {scenarioMessages.map((msg, index) => (
-            <div
-              key={`${msg.id}-${index}`}
-              className={`${styles.messageRow} ${
-                msg.sender === "user" ? styles.userRow : ""
-              }`}
-            >
+          {scenarioMessages
+            .filter((msg) => msg.node?.type !== "set-slot")
+            .map((msg, index) => (
               <div
-                className={`GlassEffect ${styles.message} ${
-                  msg.sender === "bot" ? styles.botMessage : styles.userMessage
+                key={`${msg.id}-${index}`}
+                className={`${styles.messageRow} ${
+                  msg.sender === "user" ? styles.userRow : ""
                 }`}
               >
-                <div className={styles.scenarioMessageContentWrapper}>
-                  {msg.sender === "bot" && msg.node?.type !== "form" && (
-                    <LogoIcon />
-                  )}
-                  <div className={styles.messageContent}>
-                    {msg.node?.type === "form" ? (
-                      <FormRenderer
-                        node={msg.node}
-                        onFormSubmit={handleFormSubmit}
-                        disabled={isCompleted}
-                        language={language}
-                        slots={activeScenario?.slots}
-                      />
-                    ) : msg.node?.type === "iframe" ? (
-                      <div className={styles.iframeContainer}>
-                        <iframe
-                          src={msg.node.data.url}
-                          width={msg.node.data.width || "100%"}
-                          height={msg.node.data.height || "250"}
-                          style={{ border: "none", borderRadius: "18px" }}
-                          title="chatbot-iframe"
-                        ></iframe>
-                      </div>
-                    ) : msg.node?.type === "link" ? (
-                      <div>
-                        <span>Opening link in a new tab: </span>
-                        <a
-                          href={msg.node.data.content}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {msg.node.data.display || msg.node.data.content}
-                        </a>
-                      </div>
-                    ) : (
-                      <p>{msg.text || msg.node?.data.content}</p>
-                    )}
-                    {msg.node?.type === "branch" && msg.node.data.replies && (
-                      <div className={styles.scenarioList}>
-                        {msg.node.data.replies.map((reply) => {
-                          const selectedOption = msg.selectedOption;
-                          const isSelected = selectedOption === reply.display;
-                          const isDimmed = selectedOption && !isSelected;
+                <div
+                  className={`GlassEffect ${styles.message} ${
+                    msg.sender === "bot"
+                      ? styles.botMessage
+                      : styles.userMessage
+                  }`}
+                >
+                  <div className={styles.scenarioMessageContentWrapper}>
+                    {msg.sender === "bot" && <LogoIcon />}
+                    <div className={styles.messageContent}>
+                      {msg.node?.type === "form" ? (
+                        <FormRenderer
+                          node={msg.node}
+                          onFormSubmit={handleFormSubmit}
+                          disabled={isCompleted}
+                          language={language}
+                          slots={activeScenario?.slots}
+                        />
+                      ) : msg.node?.type === "iframe" ? (
+                        <div className={styles.iframeContainer}>
+                          <iframe
+                            src={msg.node.data.url}
+                            width={msg.node.data.width || "100%"}
+                            height={msg.node.data.height || "250"}
+                            style={{ border: "none", borderRadius: "18px" }}
+                            title="chatbot-iframe"
+                          ></iframe>
+                        </div>
+                      ) : msg.node?.type === "link" ? (
+                        <div>
+                          <span>Opening link in a new tab: </span>
+                          <a
+                            href={msg.node.data.content}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            {msg.node.data.display || msg.node.data.content}
+                          </a>
+                        </div>
+                      ) : (
+                        <p>{msg.text || msg.node?.data.content}</p>
+                      )}
+                      {msg.node?.type === "branch" && msg.node.data.replies && (
+                        <div className={styles.scenarioList}>
+                          {msg.node.data.replies.map((reply) => {
+                            const selectedOption = msg.selectedOption;
+                            const isSelected = selectedOption === reply.display;
+                            const isDimmed = selectedOption && !isSelected;
 
-                          return (
-                            <button
-                              key={reply.value}
-                              className={`${styles.optionButton} ${
-                                isSelected ? styles.selected : ""
-                              } ${isDimmed ? styles.dimmed : ""}`}
-                              onClick={() => {
-                                if (selectedOption) return;
-                                setScenarioSelectedOption(
-                                  scenarioSessionId,
-                                  msg.node.id,
-                                  reply.display
-                                );
-                                handleScenarioResponse({
-                                  scenarioSessionId: scenarioSessionId,
-                                  currentNodeId: msg.node.id,
-                                  sourceHandle: reply.value,
-                                  userInput: reply.display,
-                                });
-                              }}
-                              disabled={isCompleted || !!selectedOption}
-                            >
-                              <span className={styles.optionButtonText}>
+                            return (
+                              <button
+                                key={reply.value}
+                                className={`${styles.optionButton} ${
+                                  isSelected ? styles.selected : ""
+                                } ${isDimmed ? styles.dimmed : ""}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (selectedOption) return;
+                                  setScenarioSelectedOption(
+                                    scenarioSessionId,
+                                    msg.node.id,
+                                    reply.display
+                                  );
+                                  handleScenarioResponse({
+                                    scenarioSessionId: scenarioSessionId,
+                                    currentNodeId: msg.node.id,
+                                    sourceHandle: reply.value,
+                                    userInput: reply.display,
+                                  });
+                                }}
+                                disabled={isCompleted || !!selectedOption}
+                              >
                                 {reply.display}
-                              </span>
-                              {reply.display.toLowerCase().includes("link") ? (
-                                <OpenInNewIcon />
-                              ) : (
-                                <CheckCircle />
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
           {isScenarioLoading && (
             <div className={styles.messageRow}>
               <img
