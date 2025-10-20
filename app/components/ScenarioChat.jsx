@@ -4,11 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { useChatStore } from "../store";
 import { useTranslations } from "../hooks/useTranslations";
 import styles from "./Chat.module.css";
-import { validateInput, interpolateMessage } from "../lib/chatbotEngine"; // interpolateMessage 추가
+import { validateInput, interpolateMessage } from "../lib/chatbotEngine";
 
-// --- 👇 [수정된 부분] ---
 const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
-// --- 👆 [여기까지] ---
   const [formData, setFormData] = useState({});
   const dateInputRef = useRef(null);
   const { t } = useTranslations();
@@ -72,9 +70,7 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
         }
         return (
           <div key={el.id} className={styles.formElement}>
-             {/* --- 👇 [수정된 부분] --- */}
             {el.type !== 'grid' && <label className={styles.formLabel}>{el.label}</label>}
-             {/* --- 👆 [여기까지] --- */}
 
             {el.type === "input" && (
               <input
@@ -100,11 +96,13 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
               />
             )}
 
+            {/* --- 👇 [수정된 부분] --- */}
             {el.type === "dropbox" && (
               <select
                 value={formData[el.name] || ""}
                 onChange={(e) => handleInputChange(el.name, e.target.value)}
                 disabled={disabled}
+                onClick={(e) => e.stopPropagation()} // 이벤트 버블링 중단 (ScenarioChat에서는 필요 없을 수 있으나 일관성을 위해 추가)
               >
                 <option value="" disabled>
                   {t("select")}
@@ -116,6 +114,8 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
                 ))}
               </select>
             )}
+             {/* --- 👆 [여기까지] --- */}
+
             {el.type === "checkbox" &&
               el.options?.map((opt) => (
                 <div key={opt}>
@@ -132,7 +132,6 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
                 </div>
               ))}
 
-            {/* --- 👇 [수정된 부분] --- */}
             {el.type === 'grid' && (() => {
               const columns = el.columns || 2;
               const nodeData = el.data;
@@ -173,7 +172,6 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
                 </table>
               );
             })()}
-            {/* --- 👆 [여기까지] --- */}
           </div>
         );
       })}
@@ -193,7 +191,7 @@ export default function ScenarioChat() {
     activeScenarioSessionId,
     scenarioStates,
     handleScenarioResponse,
-    setScenarioPanelOpen,
+    setScenarioPanelOpen, // Note: This function seems unused in the component logic below
     endScenario,
   } = useChatStore();
   const { t, language } = useTranslations();
@@ -257,7 +255,9 @@ export default function ScenarioChat() {
             className={styles.headerRestartButton}
             onClick={(e) => {
               e.stopPropagation();
-              setScenarioPanelOpen(false);
+              // Original code used setScenarioPanelOpen(false);
+              // setActivePanel('main') might be more consistent?
+              useChatStore.getState().setActivePanel('main');
             }}
           >
             {t("hide")}
@@ -301,7 +301,6 @@ export default function ScenarioChat() {
                 <div className={`${styles.messageContentWrapper}`}>
                   <div className={`${styles.messageContent}`}>
                     {msg.node?.type === "form" ? (
-                      // --- 👇 [수정된 부분] ---
                       <FormRenderer
                         node={msg.node}
                         onFormSubmit={handleFormSubmit}
@@ -309,7 +308,6 @@ export default function ScenarioChat() {
                         language={language}
                         slots={activeScenario?.slots}
                       />
-                      // --- 👆 [여기까지] ---
                     ) : msg.node?.type === "iframe" ? (
                       <div className={styles.iframeContainer}>
                         <iframe
@@ -340,7 +338,7 @@ export default function ScenarioChat() {
                           <button
                             key={reply.value}
                             className={styles.optionButton}
-                            onClick={() =>
+                            onClick={() => // No stopPropagation needed here usually
                               handleScenarioResponse({
                                 scenarioSessionId: activeScenarioSessionId,
                                 currentNodeId: msg.node.id,

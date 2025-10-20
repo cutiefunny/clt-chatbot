@@ -82,6 +82,7 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
                 value={formData[el.name] || ""}
                 onChange={(e) => handleInputChange(el.name, e.target.value)}
                 disabled={disabled}
+                onClick={(e) => e.stopPropagation()} // Prevent bubble click
               />
             )}
 
@@ -92,17 +93,22 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
                 type="date"
                 value={formData[el.name] || ""}
                 onChange={(e) => handleInputChange(el.name, e.target.value)}
-                onClick={handleDateInputClick}
+                onClick={(e) => {
+                    e.stopPropagation(); // Prevent bubble click
+                    handleDateInputClick();
+                 }}
                 disabled={disabled}
                 {...dateProps}
               />
             )}
 
+            {/* --- 👇 [수정된 부분] --- */}
             {el.type === "dropbox" && (
               <select
                 value={formData[el.name] || ""}
                 onChange={(e) => handleInputChange(el.name, e.target.value)}
                 disabled={disabled}
+                onClick={(e) => e.stopPropagation()} // 이벤트 버블링 중단
               >
                 <option value="" disabled>
                   {t("select")}
@@ -114,9 +120,11 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
                 ))}
               </select>
             )}
+            {/* --- 👆 [여기까지] --- */}
+
             {el.type === "checkbox" &&
               el.options?.map((opt) => (
-                <div key={opt}>
+                <div key={opt} onClick={(e) => e.stopPropagation()}> {/* Prevent bubble click */}
                   <input
                     type="checkbox"
                     id={`${el.id}-${opt}`}
@@ -130,29 +138,23 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
                 </div>
               ))}
 
-            {/* --- 👇 [수정된 부분] --- */}
             {el.type === 'grid' && (() => {
               const columns = el.columns || 2;
               const nodeData = el.data;
-              let sourceData = []; // 최종적으로 셀에 표시될 값들의 배열
+              let sourceData = [];
 
-              // el.data가 배열 형태인지 확인 (예: ["{vvdInfo[0].vvd}", "{vvdInfo[0].pol}", ...])
               if (Array.isArray(nodeData)) {
-                  // 배열의 각 항목(문자열)을 interpolateMessage를 사용해 실제 값으로 변환
                   sourceData = nodeData.map(item =>
                       typeof item === 'string' ? interpolateMessage(item, slots) : String(item || '')
                   );
               } else if (typeof nodeData === 'string' && nodeData.startsWith('{') && nodeData.endsWith('}')) {
-                  // el.data가 슬롯 변수 참조 문자열인 경우 (예: "{myGridData}")
                   const slotName = nodeData.substring(1, nodeData.length - 1);
                   const slotValue = slots[slotName];
-                  // 슬롯 값이 배열이라면, 각 항목을 문자열로 변환 (객체/배열은 직접 표시 어려움)
                   if (Array.isArray(slotValue)) {
                       sourceData = slotValue.map(item => String(item || ''));
                   }
               }
 
-              // 실제 값들(sourceData)을 기반으로 테이블 행(rowsData) 구성
               const rowsData = [];
               if (sourceData.length > 0) {
                 for (let i = 0; i < sourceData.length; i += columns) {
@@ -165,7 +167,7 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
                   <tbody>
                     {rowsData.map((row, r) => (
                       <tr key={r}>
-                        {row.map((cellValue, c) => ( // cellValue는 이미 보간된 실제 값
+                        {row.map((cellValue, c) => (
                           <td key={c}>
                             {cellValue}
                           </td>
@@ -176,12 +178,11 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
                 </table>
               );
             })()}
-            {/* --- 👆 [여기까지] --- */}
           </div>
         );
       })}
       {!disabled && (
-        <button type="submit" className={styles.formSubmitButton}>
+        <button type="submit" className={styles.formSubmitButton} onClick={(e) => e.stopPropagation()}>
           {t("submit")}
         </button>
       )}
@@ -291,6 +292,12 @@ export default function ScenarioBubble({ scenarioSessionId }) {
   };
 
   const handleBubbleClick = (e) => {
+    // Check if the click target is inside a form element that shouldn't trigger panel change
+    const formElements = ['INPUT', 'SELECT', 'BUTTON', 'LABEL', 'OPTION'];
+    if (formElements.includes(e.target.tagName)) {
+       // Do nothing, let the form element handle the click
+       return;
+    }
     e.stopPropagation();
     if (!isCompleted) {
       setActivePanel("scenario", scenarioSessionId);
@@ -439,7 +446,8 @@ export default function ScenarioBubble({ scenarioSessionId }) {
                                 className={`${styles.optionButton} ${
                                   isSelected ? styles.selected : ""
                                 } ${isDimmed ? styles.dimmed : ""}`}
-                                onClick={() => {
+                                onClick={(e) => { // Added stopPropagation here
+                                  e.stopPropagation();
                                   if (selectedOption) return;
                                   setScenarioSelectedOption(
                                     scenarioSessionId,
