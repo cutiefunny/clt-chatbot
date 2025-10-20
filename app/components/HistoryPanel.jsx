@@ -101,14 +101,12 @@ export default function HistoryPanel() {
         >
           <MenuIcon />
         </button>
-        {currentConversationId && (
-          <button
-            className={styles.newChatButton}
-            onClick={createNewConversation}
-          >
-            <NewChatIcon />
-          </button>
-        )}
+        <button
+          className={styles.newChatButton}
+          onClick={createNewConversation}
+        >
+          <NewChatIcon />
+        </button>
         <button className={styles.historyButton} onClick={toggleHistoryPanel}>
           <HistoryIcon />
         </button>
@@ -130,19 +128,10 @@ export default function HistoryPanel() {
                 </button>
               </div>
             </div>
-            {currentConversationId && (
-              <button
-                className={styles.sidePanelButton}
-                onClick={createNewConversation}
-              >
-                <EditIcon />
-                <span className={styles.newChatText}>{t("newChat")}</span>
-              </button>
-            )}
           </div>
 
           <div className={styles.panelContent}>
-            {currentConversationId === null && (
+            {
               <button
                 className={styles.sidePanelButton}
                 onClick={createNewConversation}
@@ -150,7 +139,7 @@ export default function HistoryPanel() {
                 <EditIcon />
                 <span className={styles.newChatText}>{t("newChat")}</span>
               </button>
-            )}
+            }
             <span className={styles.commonText}>{t("History")}</span>
             <div className={styles.conversationList}>
               {conversations.length > 0 &&
