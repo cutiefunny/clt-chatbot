@@ -231,7 +231,7 @@ export default function ConversationItem({
         {isEditing ? (
           <div className={styles.editConfirmButton}>
             <button
-              className={styles.actionButton}
+              className={styles.actionButton + " " + styles.confirm}
               style={{ opacity: 1 }}
               onClick={(e) => {
                 e.stopPropagation();

@@ -359,6 +359,9 @@ input:checked + .slider:before {
   margin-top: 10px;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+  }
   gap: 8px;
 }
 
@@ -520,6 +523,7 @@ input:checked + .slider:before {
   width: 100%;
   max-width: 450px;
   aspect-ratio: 16 / 10;
+  overflow: hidden;
 }
 
 .iframeContainer iframe {
@@ -642,7 +646,7 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
 .scenarioBubbleContainer .header {
   flex-shrink: 0;
   padding: 12px 20px;
-  height: 60px;
+  height: 48px;
   border-bottom: 1px solid var(--panel-border-color);
 }
 
@@ -720,7 +724,8 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
   overflow: hidden; /* radius 적용 위해 추가 */
 }
 
-.formGridTable th { /* 헤더 스타일 추가 */
+.formGridTable th {
+  /* 헤더 스타일 추가 */
   background-color: var(--panel-bg-color); /* 헤더 배경색 */
   font-weight: 600; /* 헤더 폰트 두께 */
   color: var(--text-color);
@@ -742,15 +747,17 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
 }
 /* --- 👆 [여기까지] --- */
 
-
-.formGridTable td, .formGridTable th { /* th 스타일도 함께 적용 */
+.formGridTable td,
+.formGridTable th {
+  /* th 스타일도 함께 적용 */
   padding: 10px 12px;
   background-color: var(--bot-message-bg);
   text-align: left; /* 기본 정렬 왼쪽으로 변경 */
 }
 
-body.dark .formGridTable th { /* 다크모드 헤더 */
-   background-color: rgba(255, 255, 255, 0.08);
+body.dark .formGridTable th {
+  /* 다크모드 헤더 */
+  background-color: rgba(255, 255, 255, 0.08);
 }
 
 body.dark .formGridTable td {
