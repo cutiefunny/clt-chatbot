@@ -73,7 +73,7 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
         return (
           <div key={el.id} className={styles.formElement}>
             {el.type !== 'grid' && <label className={styles.formLabel}>{el.label}</label>}
-            
+
             {el.type === "input" && (
               <input
                 className={styles.formInput}
@@ -129,22 +129,45 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
                   <label htmlFor={`${el.id}-${opt}`}>{opt}</label>
                 </div>
               ))}
+
+            {/* --- 👇 [수정된 부분] --- */}
             {el.type === 'grid' && (() => {
               const columns = el.columns || 2;
+              const nodeData = el.data;
+              let sourceData = []; // 최종적으로 셀에 표시될 값들의 배열
+
+              // el.data가 배열 형태인지 확인 (예: ["{vvdInfo[0].vvd}", "{vvdInfo[0].pol}", ...])
+              if (Array.isArray(nodeData)) {
+                  // 배열의 각 항목(문자열)을 interpolateMessage를 사용해 실제 값으로 변환
+                  sourceData = nodeData.map(item =>
+                      typeof item === 'string' ? interpolateMessage(item, slots) : String(item || '')
+                  );
+              } else if (typeof nodeData === 'string' && nodeData.startsWith('{') && nodeData.endsWith('}')) {
+                  // el.data가 슬롯 변수 참조 문자열인 경우 (예: "{myGridData}")
+                  const slotName = nodeData.substring(1, nodeData.length - 1);
+                  const slotValue = slots[slotName];
+                  // 슬롯 값이 배열이라면, 각 항목을 문자열로 변환 (객체/배열은 직접 표시 어려움)
+                  if (Array.isArray(slotValue)) {
+                      sourceData = slotValue.map(item => String(item || ''));
+                  }
+              }
+
+              // 실제 값들(sourceData)을 기반으로 테이블 행(rowsData) 구성
               const rowsData = [];
-              if (el.data && Array.isArray(el.data)) {
-                for (let i = 0; i < el.data.length; i += columns) {
-                  rowsData.push(el.data.slice(i, i + columns));
+              if (sourceData.length > 0) {
+                for (let i = 0; i < sourceData.length; i += columns) {
+                  rowsData.push(sourceData.slice(i, i + columns));
                 }
               }
+
               return (
                 <table className={styles.formGridTable}>
                   <tbody>
                     {rowsData.map((row, r) => (
                       <tr key={r}>
-                        {row.map((cell, c) => (
+                        {row.map((cellValue, c) => ( // cellValue는 이미 보간된 실제 값
                           <td key={c}>
-                            {interpolateMessage(cell || '', slots)}
+                            {cellValue}
                           </td>
                         ))}
                       </tr>
@@ -153,6 +176,7 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
                 </table>
               );
             })()}
+            {/* --- 👆 [여기까지] --- */}
           </div>
         );
       })}
@@ -164,6 +188,7 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
     </form>
   );
 };
+
 
 const ScenarioStatusBadge = ({ status, t }) => {
   if (!status) return null;
@@ -352,93 +377,95 @@ export default function ScenarioBubble({ scenarioSessionId }) {
         </div>
 
         <div className={styles.history} ref={historyRef}>
-          {scenarioMessages.map((msg, index) => (
-            <div
-              key={`${msg.id}-${index}`}
-              className={`${styles.messageRow} ${
-                msg.sender === "user" ? styles.userRow : ""
-              }`}
-            >
+          {scenarioMessages
+            .filter((msg) => msg.node?.type !== "set-slot")
+            .map((msg, index) => (
               <div
-                className={`GlassEffect ${styles.message} ${
-                  msg.sender === "bot" ? styles.botMessage : styles.userMessage
+                key={`${msg.id}-${index}`}
+                className={`${styles.messageRow} ${
+                  msg.sender === "user" ? styles.userRow : ""
                 }`}
               >
-                <div className={styles.scenarioMessageContentWrapper}>
-                  {msg.sender === "bot" && <LogoIcon />}
-                  <div className={styles.messageContent}>
-                    {msg.node?.type === "form" ? (
-                      <FormRenderer
-                        node={msg.node}
-                        onFormSubmit={handleFormSubmit}
-                        disabled={isCompleted}
-                        language={language}
-                        slots={activeScenario?.slots}
-                      />
-                    ) : msg.node?.type === "iframe" ? (
-                      <div className={styles.iframeContainer}>
-                        <iframe
-                          src={msg.node.data.url}
-                          width={msg.node.data.width || "100%"}
-                          height={msg.node.data.height || "250"}
-                          style={{ border: "none", borderRadius: "18px" }}
-                          title="chatbot-iframe"
-                        ></iframe>
-                      </div>
-                    ) : msg.node?.type === "link" ? (
-                      <div>
-                        <span>Opening link in a new tab: </span>
-                        <a
-                          href={msg.node.data.content}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {msg.node.data.display || msg.node.data.content}
-                        </a>
-                      </div>
-                    ) : (
-                      <p>{msg.text || msg.node?.data.content}</p>
-                    )}
-                    {msg.node?.type === "branch" && msg.node.data.replies && (
-                      <div className={styles.scenarioList}>
-                        {msg.node.data.replies.map((reply) => {
-                          const selectedOption = msg.selectedOption;
-                          const isSelected = selectedOption === reply.display;
-                          const isDimmed = selectedOption && !isSelected;
-                          
-                          return (
-                            <button
-                              key={reply.value}
-                              className={`${styles.optionButton} ${
-                                isSelected ? styles.selected : ""
-                              } ${isDimmed ? styles.dimmed : ""}`}
-                              onClick={() => {
-                                if (selectedOption) return;
-                                setScenarioSelectedOption(
-                                  scenarioSessionId,
-                                  msg.node.id,
-                                  reply.display
-                                );
-                                handleScenarioResponse({
-                                  scenarioSessionId: scenarioSessionId,
-                                  currentNodeId: msg.node.id,
-                                  sourceHandle: reply.value,
-                                  userInput: reply.display,
-                                });
-                              }}
-                              disabled={isCompleted || !!selectedOption}
-                            >
-                              {reply.display}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
+                <div
+                  className={`GlassEffect ${styles.message} ${
+                    msg.sender === "bot" ? styles.botMessage : styles.userMessage
+                  }`}
+                >
+                  <div className={styles.scenarioMessageContentWrapper}>
+                    {msg.sender === "bot" && <LogoIcon />}
+                    <div className={styles.messageContent}>
+                      {msg.node?.type === "form" ? (
+                        <FormRenderer
+                          node={msg.node}
+                          onFormSubmit={handleFormSubmit}
+                          disabled={isCompleted}
+                          language={language}
+                          slots={activeScenario?.slots}
+                        />
+                      ) : msg.node?.type === "iframe" ? (
+                        <div className={styles.iframeContainer}>
+                          <iframe
+                            src={msg.node.data.url}
+                            width={msg.node.data.width || "100%"}
+                            height={msg.node.data.height || "250"}
+                            style={{ border: "none", borderRadius: "18px" }}
+                            title="chatbot-iframe"
+                          ></iframe>
+                        </div>
+                      ) : msg.node?.type === "link" ? (
+                        <div>
+                          <span>Opening link in a new tab: </span>
+                          <a
+                            href={msg.node.data.content}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            {msg.node.data.display || msg.node.data.content}
+                          </a>
+                        </div>
+                      ) : (
+                        <p>{msg.text || msg.node?.data.content}</p>
+                      )}
+                      {msg.node?.type === "branch" && msg.node.data.replies && (
+                        <div className={styles.scenarioList}>
+                          {msg.node.data.replies.map((reply) => {
+                            const selectedOption = msg.selectedOption;
+                            const isSelected = selectedOption === reply.display;
+                            const isDimmed = selectedOption && !isSelected;
+
+                            return (
+                              <button
+                                key={reply.value}
+                                className={`${styles.optionButton} ${
+                                  isSelected ? styles.selected : ""
+                                } ${isDimmed ? styles.dimmed : ""}`}
+                                onClick={() => {
+                                  if (selectedOption) return;
+                                  setScenarioSelectedOption(
+                                    scenarioSessionId,
+                                    msg.node.id,
+                                    reply.display
+                                  );
+                                  handleScenarioResponse({
+                                    scenarioSessionId: scenarioSessionId,
+                                    currentNodeId: msg.node.id,
+                                    sourceHandle: reply.value,
+                                    userInput: reply.display,
+                                  });
+                                }}
+                                disabled={isCompleted || !!selectedOption}
+                              >
+                                {reply.display}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
           {isScenarioLoading && (
             <div className={styles.messageRow}>
               <img

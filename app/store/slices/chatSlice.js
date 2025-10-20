@@ -83,6 +83,7 @@ export const createChatSlice = (set, get) => ({
     });
   },
 
+  // --- 👇 [수정된 부분] ---
   setSelectedOption: async (messageId, optionValue) => {
     // 1. 로컬 상태 우선 업데이트 (즉각적인 UI 반응)
     set((state) => ({
@@ -91,8 +92,15 @@ export const createChatSlice = (set, get) => ({
         [messageId]: optionValue,
       },
     }));
+    
+    // 2. 임시 ID인지 확인 (숫자로만 구성된 타임스탬프)
+    const isTemporaryId = /^\d{13,}$/.test(String(messageId));
+    if (isTemporaryId) {
+      console.warn("Optimistic update for temporary message ID:", messageId);
+      return; // Firestore 업데이트를 시도하지 않고 종료 (오류 방지)
+    }
 
-    // 2. Firestore에 비동기로 선택 상태 저장
+    // 3. (ID가 임시가 아닐 경우) Firestore에 비동기로 선택 상태 저장
     const { user, currentConversationId } = get();
     if (!user || !currentConversationId || !messageId) return;
 
@@ -111,6 +119,7 @@ export const createChatSlice = (set, get) => ({
       });
     }
   },
+  // --- 👆 [여기까지] ---
 
   setExtractedSlots: (newSlots) => {
     set((state) => ({
@@ -644,6 +653,7 @@ export const createChatSlice = (set, get) => ({
     return messageRef.id;
   },
 
+  // --- 👇 [수정된 부분] ---
   addMessage: async (sender, messageData) => {
     let newMessage;
     if (sender === "user") {
@@ -660,16 +670,51 @@ export const createChatSlice = (set, get) => ({
         scenarioSessionId: messageData.scenarioSessionId,
       };
     }
+    
+    const temporaryId = newMessage.id;
     set((state) => ({ messages: [...state.messages, newMessage] }));
+
     if (!newMessage.isStreaming) {
       const savedMessageId = await get().saveMessage(newMessage);
-      set((state) => ({
-        messages: state.messages.map((msg) =>
-          msg.id === newMessage.id ? { ...msg, id: savedMessageId } : msg
-        ),
-      }));
+      
+      let selectedOptionValue = null; // 선택된 값을 임시 저장할 변수
+
+      set((state) => {
+        const newSelectedOptions = { ...state.selectedOptions };
+        // 임시 ID로 저장된 선택 값이 있는지 확인
+        if (newSelectedOptions[temporaryId]) {
+          selectedOptionValue = newSelectedOptions[temporaryId]; // 값 저장
+          newSelectedOptions[savedMessageId] = selectedOptionValue; // 실제 ID로 교체
+          delete newSelectedOptions[temporaryId]; // 임시 ID 항목 삭제
+        }
+
+        return {
+          messages: state.messages.map((msg) =>
+            msg.id === temporaryId ? { ...msg, id: savedMessageId } : msg
+          ),
+          selectedOptions: newSelectedOptions, // 업데이트된 맵 적용
+        };
+      });
+
+      // 만약 임시 ID로 선택된 값이 있었다면,
+      // 이제 실제 ID로 Firestore에 업데이트를 실행
+      if (selectedOptionValue) {
+        const { user, currentConversationId } = get();
+        if (user && currentConversationId) {
+          try {
+            const messageRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "messages", String(savedMessageId));
+            await updateDoc(messageRef, {
+              selectedOption: selectedOptionValue,
+            });
+          } catch (error) {
+            console.error("Error saving selected option after ID swap:", error);
+            // UI는 이미 낙관적으로 업데이트되었으므로, 에러 로깅만 처리
+          }
+        }
+      }
     }
   },
+  // --- 👆 [여기까지] ---
 
   handleResponse: async (messagePayload) => {
     set({ isLoading: true, llmRawResponse: null });
@@ -734,14 +779,8 @@ export const createChatSlice = (set, get) => ({
           }
         }
         
-        // --- 👇 [수정된 부분] ---
         let finalMessageText = fullResponse;
         if (get().llmProvider === 'flowise') {
-            //set({ llmRawResponse: fullResponse });
-            // if (finalMessageText.toLowerCase().includes("change the vessel")) {
-            //   finalMessageText += '\n\nor you can execute via below button.';
-            //     finalMessageText += '\n\n[BUTTON:Vessel Schedule]';
-            // }
             const bookingNoRegex = /\b([A-Z]{2}\d{10})\b/i;
             const match = finalMessageText.match(bookingNoRegex);
             if (match && match[1]) {
@@ -765,7 +804,6 @@ export const createChatSlice = (set, get) => ({
         });
         
         await get().saveMessage(get().messages[get().messages.length - 1]);
-        // --- 👆 [여기까지] ---
 
       } else {
         const data = await response.json();

@@ -120,8 +120,17 @@ export const createScenarioSlice = (set, get) => ({
       if (data.type === 'scenario_start' || data.type === 'scenario') {
         const sessionRef = doc(get().db, "chats", user.uid, "conversations", conversationId, "scenario_sessions", newScenarioSessionId);
         const updatedSlots = { ...initialSlots, ...(data.slots || {}) };
+        
+        // --- 👇 [수정된 부분] ---
+        // setSlot 노드는 메시지 리스트에 추가하지 않음
+        const initialMessages = [];
+        if (data.nextNode && data.nextNode.type !== 'setSlot') {
+            initialMessages.push({ id: data.nextNode.id, sender: 'bot', node: data.nextNode });
+        }
+        // --- 👆 [여기까지] ---
+
         await updateDoc(sessionRef, {
-            messages: [{ id: data.nextNode.id, sender: 'bot', node: data.nextNode }],
+            messages: initialMessages,
             state: data.scenarioState,
             slots: updatedSlots, 
             updatedAt: serverTimestamp(),
@@ -148,7 +157,6 @@ export const createScenarioSlice = (set, get) => ({
     }
   },
 
-  // --- 👇 [추가된 부분] ---
   setScenarioSelectedOption: async (scenarioSessionId, messageNodeId, selectedValue) => {
     const { user, currentConversationId, scenarioStates } = get();
     if (!user || !currentConversationId || !scenarioSessionId) return;
@@ -195,7 +203,6 @@ export const createScenarioSlice = (set, get) => ({
         }));
     }
   },
-  // --- 👆 [여기까지] ---
   
   subscribeToScenarioSession: (sessionId) => {
     const { user, currentConversationId, unsubscribeScenariosMap } = get();
@@ -297,9 +304,12 @@ export const createScenarioSlice = (set, get) => ({
 
       handleEvents(data.events, scenarioSessionId, currentConversationId);
       
-      if (data.nextNode) {
+      // --- 👇 [수정된 부분] ---
+      // 'setSlot' 노드는 메시지로 표시하지 않습니다.
+      if (data.nextNode && data.nextNode.type !== 'setSlot') {
           newMessages.push({ id: data.nextNode.id, sender: 'bot', node: data.nextNode });
       } else if (data.message) {
+      // --- 👆 [여기까지] ---
           newMessages.push({ id: 'end', sender: 'bot', text: data.message });
       }
       
@@ -338,7 +348,11 @@ export const createScenarioSlice = (set, get) => ({
   },
 
   continueScenarioIfNeeded: async (lastNode, scenarioSessionId) => {
+    // --- 👇 [수정된 부분] ---
+    // 'setSlot' 노드도 비대화형 노드로 간주합니다.
     const isInteractive = lastNode.type === 'slotfilling' || lastNode.type === 'form' || (lastNode.data?.replies && lastNode.data.replies.length > 0);
+    // --- 👆 [여기까지] ---
+
     if (!isInteractive && lastNode.id !== 'end') {
       await new Promise(resolve => setTimeout(resolve, 500));
       await get().handleScenarioResponse({

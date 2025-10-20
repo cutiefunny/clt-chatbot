@@ -4,9 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { useChatStore } from "../store";
 import { useTranslations } from "../hooks/useTranslations";
 import styles from "./Chat.module.css";
-import { validateInput } from "../lib/chatbotEngine";
+import { validateInput, interpolateMessage } from "../lib/chatbotEngine"; // interpolateMessage 추가
 
-const FormRenderer = ({ node, onFormSubmit, disabled, language }) => {
+// --- 👇 [수정된 부분] ---
+const FormRenderer = ({ node, onFormSubmit, disabled, language, slots }) => {
+// --- 👆 [여기까지] ---
   const [formData, setFormData] = useState({});
   const dateInputRef = useRef(null);
   const { t } = useTranslations();
@@ -70,7 +72,10 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language }) => {
         }
         return (
           <div key={el.id} className={styles.formElement}>
-            <label className={styles.formLabel}>{el.label}</label>
+             {/* --- 👇 [수정된 부분] --- */}
+            {el.type !== 'grid' && <label className={styles.formLabel}>{el.label}</label>}
+             {/* --- 👆 [여기까지] --- */}
+
             {el.type === "input" && (
               <input
                 className={styles.formInput}
@@ -126,6 +131,49 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language }) => {
                   <label htmlFor={`${el.id}-${opt}`}>{opt}</label>
                 </div>
               ))}
+
+            {/* --- 👇 [수정된 부분] --- */}
+            {el.type === 'grid' && (() => {
+              const columns = el.columns || 2;
+              const nodeData = el.data;
+              let sourceData = [];
+
+              if (Array.isArray(nodeData)) {
+                  sourceData = nodeData.map(item =>
+                      typeof item === 'string' ? interpolateMessage(item, slots) : String(item || '')
+                  );
+              } else if (typeof nodeData === 'string' && nodeData.startsWith('{') && nodeData.endsWith('}')) {
+                  const slotName = nodeData.substring(1, nodeData.length - 1);
+                  const slotValue = slots[slotName];
+                  if (Array.isArray(slotValue)) {
+                      sourceData = slotValue.map(item => String(item || ''));
+                  }
+              }
+
+              const rowsData = [];
+              if (sourceData.length > 0) {
+                for (let i = 0; i < sourceData.length; i += columns) {
+                  rowsData.push(sourceData.slice(i, i + columns));
+                }
+              }
+
+              return (
+                <table className={styles.formGridTable}>
+                  <tbody>
+                    {rowsData.map((row, r) => (
+                      <tr key={r}>
+                        {row.map((cellValue, c) => (
+                          <td key={c}>
+                            {cellValue}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              );
+            })()}
+            {/* --- 👆 [여기까지] --- */}
           </div>
         );
       })}
@@ -137,6 +185,7 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language }) => {
     </form>
   );
 };
+
 
 export default function ScenarioChat() {
   const {
@@ -152,11 +201,9 @@ export default function ScenarioChat() {
   const activeScenario = activeScenarioSessionId
     ? scenarioStates[activeScenarioSessionId]
     : null;
-  // --- 👇 [수정된 부분] ---
   const isCompleted =
     activeScenario?.status === "completed" ||
     activeScenario?.status === "failed";
-  // --- 👆 [여기까지] ---
   const scenarioMessages = activeScenario?.messages || [];
   const isScenarioLoading = activeScenario?.isLoading || false;
   const currentScenarioNodeId = activeScenario?.state?.currentNodeId;
@@ -230,84 +277,89 @@ export default function ScenarioChat() {
       </div>
 
       <div className={styles.history} ref={historyRef}>
-        {scenarioMessages.map((msg, index) => (
-          <div
-            key={`${msg.id}-${index}`}
-            className={`${styles.messageRow} ${
-              msg.sender === "user" ? styles.userRow : ""
-            }`}
-          >
-            {msg.sender === "bot" && (
-              <img
-                src="/images/avatar.png"
-                alt="Avatar"
-                className={styles.avatar}
-              />
-            )}
+        {scenarioMessages
+          .filter((msg) => msg.node?.type !== "set-slot")
+          .map((msg, index) => (
             <div
-              className={`GlassEffect ${styles.message} ${
-                msg.sender === "bot" ? styles.botMessage : styles.userMessage
+              key={`${msg.id}-${index}`}
+              className={`${styles.messageRow} ${
+                msg.sender === "user" ? styles.userRow : ""
               }`}
             >
-              <div className={`${styles.messageContentWrapper}`}>
-                <div className={`${styles.messageContent}`}>
-                  {msg.node?.type === "form" ? (
-                    <FormRenderer
-                      node={msg.node}
-                      onFormSubmit={handleFormSubmit}
-                      disabled={isCompleted}
-                      language={language}
-                    />
-                  ) : msg.node?.type === "iframe" ? (
-                    <div className={styles.iframeContainer}>
-                      <iframe
-                        src={msg.node.data.url}
-                        width={msg.node.data.width || "100%"}
-                        height={msg.node.data.height || "250"}
-                        style={{ border: "none", borderRadius: "18px" }}
-                        title="chatbot-iframe"
-                      ></iframe>
-                    </div>
-                  ) : msg.node?.type === "link" ? (
-                    <div>
-                      <span>Opening link in a new tab: </span>
-                      <a
-                        href={msg.node.data.content}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {msg.node.data.display || msg.node.data.content}
-                      </a>
-                    </div>
-                  ) : (
-                    <p>{msg.text || msg.node?.data.content}</p>
-                  )}
-                  {msg.node?.type === "branch" && msg.node.data.replies && (
-                    <div className={styles.scenarioList}>
-                      {msg.node.data.replies.map((reply) => (
-                        <button
-                          key={reply.value}
-                          className={styles.optionButton}
-                          onClick={() =>
-                            handleScenarioResponse({
-                              scenarioSessionId: activeScenarioSessionId,
-                              currentNodeId: msg.node.id,
-                              sourceHandle: reply.value,
-                              userInput: reply.display,
-                            })
-                          }
-                          disabled={isCompleted}
+              {msg.sender === "bot" && (
+                <img
+                  src="/images/avatar.png"
+                  alt="Avatar"
+                  className={styles.avatar}
+                />
+              )}
+              <div
+                className={`GlassEffect ${styles.message} ${
+                  msg.sender === "bot" ? styles.botMessage : styles.userMessage
+                }`}
+              >
+                <div className={`${styles.messageContentWrapper}`}>
+                  <div className={`${styles.messageContent}`}>
+                    {msg.node?.type === "form" ? (
+                      // --- 👇 [수정된 부분] ---
+                      <FormRenderer
+                        node={msg.node}
+                        onFormSubmit={handleFormSubmit}
+                        disabled={isCompleted}
+                        language={language}
+                        slots={activeScenario?.slots}
+                      />
+                      // --- 👆 [여기까지] ---
+                    ) : msg.node?.type === "iframe" ? (
+                      <div className={styles.iframeContainer}>
+                        <iframe
+                          src={msg.node.data.url}
+                          width={msg.node.data.width || "100%"}
+                          height={msg.node.data.height || "250"}
+                          style={{ border: "none", borderRadius: "18px" }}
+                          title="chatbot-iframe"
+                        ></iframe>
+                      </div>
+                    ) : msg.node?.type === "link" ? (
+                      <div>
+                        <span>Opening link in a new tab: </span>
+                        <a
+                          href={msg.node.data.content}
+                          target="_blank"
+                          rel="noopener noreferrer"
                         >
-                          {reply.display}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                          {msg.node.data.display || msg.node.data.content}
+                        </a>
+                      </div>
+                    ) : (
+                      <p>{msg.text || msg.node?.data.content}</p>
+                    )}
+                    {msg.node?.type === "branch" && msg.node.data.replies && (
+                      <div className={styles.scenarioList}>
+                        {msg.node.data.replies.map((reply) => (
+                          <button
+                            key={reply.value}
+                            className={styles.optionButton}
+                            onClick={() =>
+                              handleScenarioResponse({
+                                scenarioSessionId: activeScenarioSessionId,
+                                currentNodeId: msg.node.id,
+                                sourceHandle: reply.value,
+                                userInput: reply.display,
+                              })
+                            }
+                            disabled={isCompleted}
+                          >
+                            {reply.display}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
         {isScenarioLoading && (
           <div className={styles.messageRow}>
             <img
