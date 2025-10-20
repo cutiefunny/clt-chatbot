@@ -447,7 +447,9 @@ export default function ScenarioBubble({ scenarioSessionId }) {
                   }`}
                 >
                   <div className={styles.scenarioMessageContentWrapper}>
-                    {msg.sender === "bot" && <LogoIcon />}
+                    {msg.sender === "bot" && msg.node?.type !== "form" && (
+                      <LogoIcon />
+                    )}
                     <div className={styles.messageContent}>
                       {msg.node?.type === "form" ? (
                         <FormRenderer
