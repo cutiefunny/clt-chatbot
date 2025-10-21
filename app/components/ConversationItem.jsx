@@ -57,8 +57,18 @@ const TrashIcon = () => (
   </svg>
 );
 
-// --- 👇 [수정된 부분] ---
-const ScenarioStatusBadge = ({ status, t }) => {
+// --- 👇 [수정된 부분 시작] ---
+const ScenarioStatusBadge = ({ status, t, isSelected }) => {
+  // isSelected가 true이면 'selected' 상태를 우선 표시
+  if (isSelected) {
+    return (
+      <span className={`${styles.scenarioBadge} ${styles.selected}`}>
+        {t("statusSelected")}
+      </span>
+    );
+  }
+
+  // isSelected가 false이면 기존 status 로직 수행
   if (!status) return null;
 
   let text;
@@ -95,7 +105,7 @@ const ScenarioStatusBadge = ({ status, t }) => {
     </span>
   );
 };
-// --- 👆 [여기까지] ---
+// --- 👆 [수정된 부분 끝] ---
 
 export default function ConversationItem({
   convo,
@@ -117,7 +127,7 @@ export default function ConversationItem({
   const inputRef = useRef(null);
   const menuRef = useRef(null);
   const { t } = useTranslations();
-  const { hideCompletedScenarios, hideDelayInHours } = useChatStore();
+  const { hideCompletedScenarios, hideDelayInHours, activeScenarioSessionId } = useChatStore();
 
   useEffect(() => {
     if (isEditing) {
@@ -283,6 +293,7 @@ export default function ConversationItem({
                 const hasUnread = unreadScenarioSessions?.has(
                   scenario.sessionId
                 );
+                const isSelected = scenario.sessionId === activeScenarioSessionId;
                 return (
                   <div
                     key={scenario.sessionId}
@@ -293,7 +304,7 @@ export default function ConversationItem({
                     <span className={styles.scenarioTitle}>
                       {scenario.scenarioId}
                     </span>
-                    <ScenarioStatusBadge status={scenario.status} t={t} />
+                    <ScenarioStatusBadge status={scenario.status} t={t} isSelected={isSelected} />
                   </div>
                 );
               })

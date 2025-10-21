@@ -156,7 +156,6 @@ export const useChatStore = create((set, get) => ({
     get().loadScenarioCategories();
     get().loadGeneralConfig();
 
-    // --- 👇 [수정된 부분] ---
     // URL 쿼리 파라미터 확인 및 자동 테스트 로그인
     if (typeof window !== "undefined") {
       const urlParams = new URLSearchParams(window.location.search);
@@ -177,45 +176,52 @@ export const useChatStore = create((set, get) => ({
         // window.history.replaceState({}, document.title, `${window.location.pathname}?${urlParams.toString()}`);
       }
     }
-    // --- 👆 [여기까지] ---
 
     onAuthStateChanged(get().auth, async (user) => {
-      // --- 👇 [수정된 부분] ---
       // 이미 테스트 사용자로 로그인되어 있으면 Firebase Auth 상태 변경 무시
       if (get().user?.isTestUser) {
         console.log("Already logged in as test user, ignoring Firebase Auth state change.");
         return;
       }
-      // --- 👆 [여기까지] ---
 
       if (user) {
         get().setUserAndLoadData(user);
       } else {
-        // --- 👇 [수정된 부분] ---
         // 로그아웃 시에도 URL 파라미터 체크 로직을 다시 타지 않도록 clearUserAndData만 호출
         get().clearUserAndData();
-        // --- 👆 [여기까지] ---
       }
     });
   },
 
+  // --- 👇 [수정된 부분 시작] ---
   handleScenarioItemClick: (conversationId, scenario) => {
+    // 1. Load conversation if different
     if (get().currentConversationId !== conversationId) {
+      // 대화 로드가 완료될 때까지 기다릴 필요는 없지만, 비동기 로드를 시작합니다.
       get().loadConversation(conversationId);
     }
 
+    // 2. Scroll to the message in the main chat
     get().setScrollToMessageId(scenario.sessionId);
 
-    if (scenario.status === "completed" || scenario.status === "failed") {
-      get().setActivePanel("main");
+    // 3. Decide which *panel* to make visually active
+    //    BUT always update activeScenarioSessionId to reflect the selection.
+    if (scenario.status === "completed" || scenario.status === "failed" || scenario.status === "canceled") {
+      // Keep main panel visually active, but record the selection
+      get().setActivePanel("main"); // This might nullify activeScenarioSessionId internally
+      set({ activeScenarioSessionId: scenario.sessionId }); // Explicitly set/overwrite it *after* setActivePanel('main')
     } else {
+      // Make scenario panel visually active (this also sets activeScenarioSessionId)
       get().setActivePanel("scenario", scenario.sessionId);
     }
 
+    // 4. Subscribe if needed (existing logic)
     if (!get().scenarioStates[scenario.sessionId]) {
       get().subscribeToScenarioSession(scenario.sessionId);
     }
   },
+  // --- 👆 [수정된 부분 끝] ---
+
 
   unsubscribeAll: () => {
     get().unsubscribeConversations?.();
