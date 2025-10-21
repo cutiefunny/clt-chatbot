@@ -128,9 +128,7 @@ const evaluateCondition = (slotValue, operator, conditionValue) => {
 
 
 export const getNextNode = (scenario, currentNodeId, sourceHandleId = null, slots = {}) => {
-  // --- 👇 [수정된 부분 시작] ---
   if (!currentNodeId) {
-    // 1. 시나리오 데이터에 startNodeId가 명시적으로 있는지 확인
     if (scenario.startNodeId) {
       const startNode = scenario.nodes.find(node => node.id === scenario.startNodeId);
       if (startNode) {
@@ -140,7 +138,6 @@ export const getNextNode = (scenario, currentNodeId, sourceHandleId = null, slot
         console.warn(`Specified startNodeId "${scenario.startNodeId}" not found in nodes. Falling back to default start node finding logic.`);
       }
     }
-    // 2. startNodeId가 없거나 찾지 못하면 기존 로직 실행 (엣지의 target이 아닌 노드 찾기)
     const edgeTargets = new Set(scenario.edges.map(edge => edge.target));
     const defaultStartNode = scenario.nodes.find(node => !edgeTargets.has(node.id));
     if (defaultStartNode) {
@@ -148,15 +145,14 @@ export const getNextNode = (scenario, currentNodeId, sourceHandleId = null, slot
         return defaultStartNode;
     } else {
         console.error("Could not determine the start node for the scenario.");
-        return null; // 시작 노드를 찾을 수 없음
+        return null;
     }
   }
-  // --- 👆 [수정된 부분 끝] ---
 
   const sourceNode = scenario.nodes.find(n => n.id === currentNodeId);
   if (!sourceNode) {
       console.error(`Current node with ID "${currentNodeId}" not found in scenario.`);
-      return null; // 현재 노드를 찾을 수 없음
+      return null;
   }
   let nextEdge;
 
@@ -173,17 +169,15 @@ export const getNextNode = (scenario, currentNodeId, sourceHandleId = null, slot
   if (!nextEdge && sourceNode && sourceNode.type === 'branch' && sourceNode.data.evaluationType === 'CONDITION') {
     const conditions = sourceNode.data.conditions || [];
     for (const condition of conditions) {
-        const slotValue = slots[condition.slot]; // 비교 대상 슬롯 값
-        // condition.valueType에 따라 비교할 값을 결정 (슬롯 값 또는 리터럴 값)
+        const slotValue = slots[condition.slot];
         const valueToCompare = condition.valueType === 'slot' ? slots[condition.value] : condition.value;
 
         if (evaluateCondition(slotValue, condition.operator, valueToCompare)) {
-            // 조건 배열의 인덱스를 사용하여 replies 배열에서 핸들 ID 찾기
             const conditionIndex = conditions.indexOf(condition);
             const handleId = sourceNode.data.replies?.[conditionIndex]?.value;
             if(handleId) {
                 nextEdge = scenario.edges.find(edge => edge.source === currentNodeId && edge.sourceHandle === handleId);
-                if (nextEdge) break; // 첫 번째 일치하는 조건에서 멈춤
+                if (nextEdge) break;
             }
         }
     }
@@ -196,13 +190,16 @@ export const getNextNode = (scenario, currentNodeId, sourceHandleId = null, slot
   }
 
   if (!nextEdge && !sourceHandleId) {
-      // 기본 핸들(sourceHandle이 없는 엣지) 찾기
-      // 'branch' CONDITION 타입의 경우, 모든 조건 불일치 시 기본 핸들 사용
       if (sourceNode.type === 'branch' && sourceNode.data.evaluationType === 'CONDITION') {
-          // 'default' 핸들이나 핸들 ID 없는 엣지를 찾음
-          const defaultReply = sourceNode.data.replies?.find(r => r.value === 'default' || !r.value);
-          const defaultHandleId = defaultReply?.value;
-          nextEdge = scenario.edges.find(edge => edge.source === currentNodeId && edge.sourceHandle === defaultHandleId);
+          // --- 👇 [수정된 부분 시작] ---
+          // 1. 명시적으로 'default' 핸들을 가진 엣지를 먼저 찾습니다.
+          nextEdge = scenario.edges.find(edge => edge.source === currentNodeId && edge.sourceHandle === 'default');
+
+          // 2. 'default' 핸들이 없으면, 핸들 ID가 없는 엣지를 찾습니다 (기존 fallback).
+          if (!nextEdge) {
+              nextEdge = scenario.edges.find(edge => edge.source === currentNodeId && !edge.sourceHandle);
+          }
+          // --- 👆 [수정된 부분 끝] ---
       } else {
           // 다른 노드 타입의 경우, 핸들 ID 없는 엣지만 찾음
           nextEdge = scenario.edges.find(edge => edge.source === currentNodeId && !edge.sourceHandle);
@@ -219,7 +216,7 @@ export const getNextNode = (scenario, currentNodeId, sourceHandleId = null, slot
   }
 
   console.log(`No next edge found for node "${currentNodeId}" with sourceHandle "${sourceHandleId}". Ending flow branch.`);
-  return null; // 다음 노드가 없음 (시나리오 분기 종료)
+  return null;
 };
 
 /**

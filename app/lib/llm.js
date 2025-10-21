@@ -47,7 +47,7 @@ async function getFlowiseResponse(prompt, apiUrl) {
         const response = await fetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ question: prompt }),
+            body: JSON.stringify({ question: prompt, stream: true }),
         });
 
         if (!response.ok) {
@@ -57,6 +57,8 @@ async function getFlowiseResponse(prompt, apiUrl) {
         }
         
         const jsonData = await response.json();
+
+        console.log("Flowise API Response:", jsonData);
         
         let responseText = jsonData.text || "죄송합니다, Flowise에서 응답을 받지 못했습니다.";
         const newSlots = {};
@@ -70,7 +72,7 @@ async function getFlowiseResponse(prompt, apiUrl) {
                     const scenarioId = contentJson[0]?.scenarioId;
                     const label = contentJson[0]?.label;
                     if (scenarioId && label) {
-                         responseText += `\n\n[BUTTON:${label}]`;
+                        responseText += `\n\n[BUTTON:${label}]`;
                     }
                 } catch (e) {
                     console.warn("Could not parse recommendation from Flowise:", e);
