@@ -629,10 +629,8 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
   max-width: 75%;
   height: auto;
   max-height: 500px;
-  border: 1px solid var(--panel-border-color);
   border-radius: 18px;
   border-top-right-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   overflow: hidden;
   transition: max-height 0.4s ease-out, height 0.4s ease-out,
     opacity 0.4s ease-out, border-color 0.2s ease-out;

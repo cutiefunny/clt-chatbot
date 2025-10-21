@@ -631,6 +631,10 @@
 .scenarioItem:hover {
   background-color: var(--Gray-02, #e1e4f2);
 }
+.scenarioItem.selected {
+  background-color: var(--Gray-02, #e1e4f2);
+}
+
 .scenarioStatusDot {
   width: 8px;
   height: 8px;
