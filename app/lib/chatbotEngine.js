@@ -128,13 +128,36 @@ const evaluateCondition = (slotValue, operator, conditionValue) => {
 
 
 export const getNextNode = (scenario, currentNodeId, sourceHandleId = null, slots = {}) => {
+  // --- 👇 [수정된 부분 시작] ---
   if (!currentNodeId) {
+    // 1. 시나리오 데이터에 startNodeId가 명시적으로 있는지 확인
+    if (scenario.startNodeId) {
+      const startNode = scenario.nodes.find(node => node.id === scenario.startNodeId);
+      if (startNode) {
+        console.log(`Starting scenario with specified startNodeId: ${scenario.startNodeId}`);
+        return startNode;
+      } else {
+        console.warn(`Specified startNodeId "${scenario.startNodeId}" not found in nodes. Falling back to default start node finding logic.`);
+      }
+    }
+    // 2. startNodeId가 없거나 찾지 못하면 기존 로직 실행 (엣지의 target이 아닌 노드 찾기)
     const edgeTargets = new Set(scenario.edges.map(edge => edge.target));
-    const startNode = scenario.nodes.find(node => !edgeTargets.has(node.id));
-    return startNode;
+    const defaultStartNode = scenario.nodes.find(node => !edgeTargets.has(node.id));
+    if (defaultStartNode) {
+        console.log(`Starting scenario with default start node (no incoming edges): ${defaultStartNode.id}`);
+        return defaultStartNode;
+    } else {
+        console.error("Could not determine the start node for the scenario.");
+        return null; // 시작 노드를 찾을 수 없음
+    }
   }
+  // --- 👆 [수정된 부분 끝] ---
 
   const sourceNode = scenario.nodes.find(n => n.id === currentNodeId);
+  if (!sourceNode) {
+      console.error(`Current node with ID "${currentNodeId}" not found in scenario.`);
+      return null; // 현재 노드를 찾을 수 없음
+  }
   let nextEdge;
 
   if (sourceNode && sourceNode.type === 'llm' && sourceNode.data.conditions?.length > 0) {
@@ -150,12 +173,17 @@ export const getNextNode = (scenario, currentNodeId, sourceHandleId = null, slot
   if (!nextEdge && sourceNode && sourceNode.type === 'branch' && sourceNode.data.evaluationType === 'CONDITION') {
     const conditions = sourceNode.data.conditions || [];
     for (const condition of conditions) {
-        const slotValue = slots[condition.slot];
-        if (evaluateCondition(slotValue, condition.operator, condition.value)) {
-            const handleId = sourceNode.data.replies[conditions.indexOf(condition)]?.value;
+        const slotValue = slots[condition.slot]; // 비교 대상 슬롯 값
+        // condition.valueType에 따라 비교할 값을 결정 (슬롯 값 또는 리터럴 값)
+        const valueToCompare = condition.valueType === 'slot' ? slots[condition.value] : condition.value;
+
+        if (evaluateCondition(slotValue, condition.operator, valueToCompare)) {
+            // 조건 배열의 인덱스를 사용하여 replies 배열에서 핸들 ID 찾기
+            const conditionIndex = conditions.indexOf(condition);
+            const handleId = sourceNode.data.replies?.[conditionIndex]?.value;
             if(handleId) {
                 nextEdge = scenario.edges.find(edge => edge.source === currentNodeId && edge.sourceHandle === handleId);
-                if (nextEdge) break;
+                if (nextEdge) break; // 첫 번째 일치하는 조건에서 멈춤
             }
         }
     }
@@ -168,17 +196,32 @@ export const getNextNode = (scenario, currentNodeId, sourceHandleId = null, slot
   }
 
   if (!nextEdge && !sourceHandleId) {
-      nextEdge = scenario.edges.find(edge => edge.source === currentNodeId && !edge.sourceHandle);
+      // 기본 핸들(sourceHandle이 없는 엣지) 찾기
+      // 'branch' CONDITION 타입의 경우, 모든 조건 불일치 시 기본 핸들 사용
+      if (sourceNode.type === 'branch' && sourceNode.data.evaluationType === 'CONDITION') {
+          // 'default' 핸들이나 핸들 ID 없는 엣지를 찾음
+          const defaultReply = sourceNode.data.replies?.find(r => r.value === 'default' || !r.value);
+          const defaultHandleId = defaultReply?.value;
+          nextEdge = scenario.edges.find(edge => edge.source === currentNodeId && edge.sourceHandle === defaultHandleId);
+      } else {
+          // 다른 노드 타입의 경우, 핸들 ID 없는 엣지만 찾음
+          nextEdge = scenario.edges.find(edge => edge.source === currentNodeId && !edge.sourceHandle);
+      }
   }
 
   if (nextEdge) {
-    return scenario.nodes.find(node => node.id === nextEdge.target);
+    const nextNode = scenario.nodes.find(node => node.id === nextEdge.target);
+    if (!nextNode) {
+        console.error(`Next node with ID "${nextEdge.target}" (target of edge "${nextEdge.id}") not found.`);
+        return null;
+    }
+    return nextNode;
   }
 
-  return null;
+  console.log(`No next edge found for node "${currentNodeId}" with sourceHandle "${sourceHandleId}". Ending flow branch.`);
+  return null; // 다음 노드가 없음 (시나리오 분기 종료)
 };
 
-// --- 👇 [수정된 부분] ---
 /**
  * 객체와 경로 문자열을 받아 중첩된 값을 안전하게 가져오는 함수.
  * 경로 예: 'user.name', 'items[0].id', 'data.vvdInfo[0].vvd'
@@ -223,7 +266,6 @@ export const interpolateMessage = (message, slots) => {
         return value !== undefined && value !== null ? String(value) : match;
     });
 };
-// --- 👆 [여기까지] ---
 
 export const getNestedValue = (obj, path) => {
     if (!path) return undefined;
@@ -474,7 +516,17 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
 
     if (awaitingInput) {
         const currentNode = scenario.nodes.find(n => n.id === currentId);
-        const validation = currentNode.data.validation;
+        if (!currentNode) {
+             console.error(`Error in runScenario: Node with ID "${currentId}" not found.`);
+             return {
+                 type: 'scenario_end',
+                 message: 'Error: Scenario node not found.',
+                 scenarioState: null,
+                 slots: newSlots,
+                 events: allEvents,
+             };
+        }
+        const validation = currentNode.data?.validation; // Add null check for data
         const { isValid, message: validationMessage } = validateInput(message.text, validation, language);
 
         if (!isValid) {
@@ -486,10 +538,15 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
                 events: [],
             };
         }
-        newSlots[currentNode.data.slot] = message.text;
+        // Ensure data and slot properties exist before assignment
+        if (currentNode.data && currentNode.data.slot) {
+            newSlots[currentNode.data.slot] = message.text;
+        } else {
+             console.warn(`Node "${currentId}" is awaiting input but has no data.slot defined.`);
+        }
     }
 
-    let currentNode = getNextNode(scenario, currentId, message.sourceHandle, newSlots);
+    let currentNode = getNextNode(scenario, currentId, message?.sourceHandle, newSlots); // Add null check for message
 
     while (currentNode) {
         // interpolateMessage는 이제 노드 핸들러 내부에서 필요시 호출됨 (중복 방지)
@@ -501,6 +558,12 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
 
         if (handler) {
             const result = await handler(currentNode, scenario, newSlots, scenarioSessionId, language);
+            // Handle cases where handler might return null or undefined result
+            if (!result) {
+                 console.error(`Handler for node type "${currentNode.type}" (ID: ${currentNode.id}) returned an invalid result.`);
+                 currentNode = null; // Terminate loop on handler error
+                 break;
+            }
             newSlots = result.slots || newSlots;
             if (result.events) allEvents.push(...result.events);
 
@@ -526,6 +589,24 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
        if (currentNode.data && currentNode.data.content) {
             currentNode.data.content = interpolateMessage(currentNode.data.content, newSlots);
        }
+       // Interpolate form title if it's a form node
+       if (currentNode.type === 'form' && currentNode.data && currentNode.data.title) {
+           currentNode.data.title = interpolateMessage(currentNode.data.title, newSlots);
+       }
+        // Interpolate form element labels and placeholders
+        if (currentNode.type === 'form' && currentNode.data && Array.isArray(currentNode.data.elements)) {
+            currentNode.data.elements.forEach(el => {
+                if (el.label) el.label = interpolateMessage(el.label, newSlots);
+                if (el.placeholder) el.placeholder = interpolateMessage(el.placeholder, newSlots);
+            });
+        }
+        // Interpolate branch replies display text
+        if (currentNode.type === 'branch' && currentNode.data && Array.isArray(currentNode.data.replies)) {
+             currentNode.data.replies.forEach(reply => {
+                 if (reply.display) reply.display = interpolateMessage(reply.display, newSlots);
+             });
+        }
+
         return {
             type: 'scenario',
             nextNode: currentNode,
@@ -537,9 +618,7 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
         // Loop finished (reached end or no next node/handler)
         return {
             type: 'scenario_end',
-            // --- 👇 [수정] 종료 메시지 보간 ---
             message: interpolateMessage(locales[language]?.scenarioEnded(scenarioId) || 'Scenario ended.', newSlots), // Interpolate end message
-            // --- 👆 [여기까지] ---
             scenarioState: null,
             slots: newSlots,
             events: allEvents,
