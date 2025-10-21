@@ -47,10 +47,12 @@ export const createUISlice = (set, get) => ({
   scrollToMessageId: null,
   forceScrollToBottom: false,
   scrollAmount: 0,
-  selectedRow: null, // --- 👈 [추가] 선택된 Grid 행 데이터 ---
+  // --- 👇 [삭제] selectedRow 제거 ---
+  // selectedRow: null,
 
   // Actions
-  setSelectedRow: (rowData) => set({ selectedRow: rowData }), // --- 👈 [추가] selectedRow 업데이트 함수 ---
+  // --- 👇 [삭제] setSelectedRow 제거 ---
+  // setSelectedRow: (rowData) => set({ selectedRow: rowData }),
 
   // --- 기존 코드 생략 ---
   loadGeneralConfig: async () => {

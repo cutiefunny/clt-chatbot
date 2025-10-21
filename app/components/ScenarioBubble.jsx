@@ -136,18 +136,14 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots, onGridRow
                                     </thead>
                                     <tbody>
                                         {gridDataFromSlot.map((dataObject, index) => {
-                                            // --- 👇 [수정] cells 배열 생성 및 빈 배열 방지 ---
                                             const cells = filteredKeys.map(key => (
                                                 <td key={key} style={{ minWidth: `${columnWidths[key]}ch`, whiteSpace: 'nowrap' }}>
                                                   {interpolateMessage(dataObject[key] || '', slots)}
                                                 </td>
                                             ));
-                                            // filteredKeys가 비어있지 않음을 위에서 보장했으므로, cells도 비어있지 않음.
-                                            // 만약을 대비해 cells가 비었을 경우 빈 td 추가 (Hydration 오류 방지 - 2단계)
                                             if (cells.length === 0) {
                                                 cells.push(<td key="empty-cell">&nbsp;</td>);
                                             }
-                                            // --- 👆 [여기까지] ---
                                             return (
                                                 <tr key={`${el.id}-${index}`} onClick={() => !disabled && onGridRowClick(el, dataObject)} style={{ cursor: disabled ? 'default' : 'pointer' }}>
                                                     {cells}
@@ -341,7 +337,6 @@ export default function ScenarioBubble({ scenarioSessionId }) {
     scrollBy,
     dimUnfocusedPanels,
     setScenarioSelectedOption,
-    setSelectedRow
   } = useChatStore();
   const { t, language } = useTranslations();
 
@@ -414,9 +409,9 @@ export default function ScenarioBubble({ scenarioSessionId }) {
   }
 
   const handleGridRowSelected = (gridElement, selectedRowData) => {
-    setSelectedRow(selectedRowData);
+    // --- 👇 [수정] 기본 슬롯 키를 'selectedRow'로 변경 ---
+    const targetSlot = gridElement.selectSlot || 'selectedRow';
 
-    const targetSlot = gridElement.selectSlot || 'selectedGridItem';
     const updatedSlots = {
       ...activeScenario.slots,
       [targetSlot]: selectedRowData,
