@@ -127,7 +127,8 @@ export default function ConversationItem({
   const inputRef = useRef(null);
   const menuRef = useRef(null);
   const { t } = useTranslations();
-  const { hideCompletedScenarios, hideDelayInHours, activeScenarioSessionId } = useChatStore();
+  const { hideCompletedScenarios, hideDelayInHours, activeScenarioSessionId } =
+    useChatStore();
 
   useEffect(() => {
     if (isEditing) {
@@ -245,20 +246,20 @@ export default function ConversationItem({
               style={{ opacity: 1 }}
               onClick={(e) => {
                 e.stopPropagation();
-                handleUpdate();
-              }}
-            >
-              <CheckIcon />
-            </button>
-            <button
-              className={styles.actionButton}
-              style={{ opacity: 1 }}
-              onClick={(e) => {
-                e.stopPropagation();
                 setIsEditing(false);
               }}
             >
               <CloseIcon />
+            </button>
+            <button
+              className={styles.actionButton + " " + styles.confirm}
+              style={{ opacity: 1 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleUpdate();
+              }}
+            >
+              <CheckIcon />
             </button>
           </div>
         ) : (
@@ -293,18 +294,25 @@ export default function ConversationItem({
                 const hasUnread = unreadScenarioSessions?.has(
                   scenario.sessionId
                 );
-                const isSelected = scenario.sessionId === activeScenarioSessionId;
+                const isSelected =
+                  scenario.sessionId === activeScenarioSessionId;
                 return (
                   <div
                     key={scenario.sessionId}
-                    className={styles.scenarioItem}
+                    className={`${styles.scenarioItem} ${
+                      isSelected ? styles.selected : ""
+                    }`}
                     onClick={() => onScenarioClick(convo.id, scenario)}
                   >
                     {hasUnread && <div className={styles.unreadDot}></div>}
                     <span className={styles.scenarioTitle}>
                       {scenario.scenarioId}
                     </span>
-                    <ScenarioStatusBadge status={scenario.status} t={t} isSelected={isSelected} />
+                    <ScenarioStatusBadge
+                      status={scenario.status}
+                      t={t}
+                      // isSelected={isSelected}
+                    />
                   </div>
                 );
               })
