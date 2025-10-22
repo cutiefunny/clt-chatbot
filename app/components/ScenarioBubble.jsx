@@ -16,6 +16,23 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots, onGridRow
   const dateInputRef = useRef(null);
   const { t } = useTranslations();
 
+  // --- 👇 [수정된 부분 시작]: useEffect를 사용하여 defaultValue로 formData 초기화 ---
+  useEffect(() => {
+    const initialFormData = {};
+    if (node.data && Array.isArray(node.data.elements)) {
+      node.data.elements.forEach(el => {
+        if (el.type === 'input' && el.defaultValue !== undefined && el.defaultValue !== null && el.name) {
+          // defaultValue를 interpolateMessage로 처리할 수도 있습니다 (선택사항)
+          // initialFormData[el.name] = interpolateMessage(el.defaultValue, slots);
+          initialFormData[el.name] = el.defaultValue;
+        }
+        // 다른 타입(dropbox, checkbox 등)의 defaultValue 처리도 필요하다면 여기에 추가
+      });
+    }
+    setFormData(initialFormData);
+  }, [node.data.elements]); // node.data.elements가 변경될 때만 실행
+  // --- 👆 [수정된 부분 끝] ---
+
   // --- handleInputChange, handleMultiInputChange, handleSubmit, handleDateInputClick 함수 생략 ---
   const handleInputChange = (name, value) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -34,8 +51,10 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots, onGridRow
   const handleSubmit = (e) => {
     e.preventDefault();
     for (const element of node.data.elements) {
+      // --- 👇 [수정] form 제출 시 formData에 없는 defaultValue도 포함하도록 수정 ---
+      const value = formData[element.name] ?? (element.type === 'input' && element.defaultValue !== undefined ? element.defaultValue : "");
+      // --- 👆 [수정] ---
       if (element.type === "input" || element.type === "date") {
-        const value = formData[element.name] || "";
         const { isValid, message } = validateInput(
           value,
           element.validation,
@@ -47,7 +66,16 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots, onGridRow
         }
       }
     }
-    onFormSubmit(formData);
+    // --- 👇 [수정] 제출 시 formData와 defaultValue를 합쳐서 전달 ---
+    const finalFormData = { ...formData };
+    node.data.elements?.forEach(el => {
+      if (el.type === 'input' && el.defaultValue !== undefined && !(el.name in finalFormData)) {
+        finalFormData[el.name] = el.defaultValue;
+      }
+      // 다른 타입 기본값 처리
+    });
+    onFormSubmit(finalFormData);
+    // --- 👆 [수정] ---
   };
 
   const handleDateInputClick = () => {
@@ -207,7 +235,7 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots, onGridRow
                     className={styles.formInput}
                     type="text"
                     placeholder={el.placeholder}
-                    value={formData[el.name] || ""}
+                    value={formData[el.name] || ""} // formData 우선 사용
                     onChange={(e) => handleInputChange(el.name, e.target.value)}
                     disabled={disabled}
                     onClick={(e) => e.stopPropagation()} // Prevent bubble click
