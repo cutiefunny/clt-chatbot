@@ -115,6 +115,20 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots, onGridRow
           }
         }
 
+         // --- 👇 [수정된 부분 시작] ---
+        // Dropbox 옵션 결정 로직
+        let dropboxOptions = [];
+        if (el.type === 'dropbox') {
+          if (el.optionsSlot && Array.isArray(slots[el.optionsSlot])) {
+            // optionsSlot이 있고 해당 슬롯 값이 배열이면 사용
+            dropboxOptions = slots[el.optionsSlot].map(String); // 배열 요소를 문자열로 변환
+          } else if (Array.isArray(el.options)) {
+            // optionsSlot이 없거나 슬롯 값이 배열이 아니면, el.options 사용
+            dropboxOptions = el.options;
+          }
+        }
+        // --- 👆 [수정된 부분 끝] ---
+
         return (
           <div key={el.id} className={styles.formElement}>
             {el.type === "grid" ? (() => {
@@ -258,6 +272,7 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots, onGridRow
                   />
                 )}
 
+                 {/* --- 👇 [수정된 부분] dropboxOptions 사용 --- */}
                 {el.type === "dropbox" && (
                   <div className={styles.selectWrapper}>
                     <select
@@ -269,7 +284,7 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots, onGridRow
                       <option value="" disabled>
                         {t("select")}
                       </option>
-                      {el.options?.map((opt) => (
+                      {dropboxOptions.map((opt) => ( // dropboxOptions 변수 사용
                         <option key={opt} value={opt}>
                           {opt}
                         </option>
@@ -280,6 +295,7 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots, onGridRow
                     />
                   </div>
                 )}
+                 {/* --- 👆 [수정된 부분] --- */}
 
                 {el.type === "checkbox" &&
                   el.options?.map((opt) => (
