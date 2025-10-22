@@ -248,21 +248,41 @@ const getDeepValue = (obj, path) => {
 
 
 /**
- * 메시지 문자열 내의 {slot.path[index].property} 형식의 플레이스홀더를
- * slots 객체의 실제 값으로 치환하는 함수.
- * @param {string} message - 플레이스홀더를 포함할 수 있는 원본 문자열
- * @param {object} slots - 슬롯 키와 값을 담고 있는 객체
- * @returns {string} - 플레이스홀더가 실제 값으로 치환된 문자열
- */
+ * 메시지 문자열 내의 플레이스홀더를 slots 객체의 값으로 치환합니다.
+ * {key}는 문자열로, {{key}}는 JSON 문자열로 치환합니다.
+ * @param {string} message - 플레이스홀더를 포함할 수 있는 원본 문자열
+ * @param {object} slots - 슬롯 키와 값을 담고 있는 객체
+ * @returns {string} - 플레이스홀더가 실제 값으로 치환된 문자열
+ */
 export const interpolateMessage = (message, slots) => {
-    if (!message || typeof message !== 'string') return String(message || ''); // 입력값이 문자열이 아니면 그대로 반환
-    return message.replace(/\{([^}]+)\}/g, (match, key) => {
-        const path = key.trim(); // 경로 문자열 추출 (예: 'vvdInfo[0].vvd')
-        const value = getDeepValue(slots, path); // 중첩된 값 가져오기
-        // 값이 존재하면 문자열로 변환하여 반환, 없으면 원본 플레이스홀더({..}) 반환
-        return value !== undefined && value !== null ? String(value) : match;
-    });
+    if (!message || typeof message !== 'string') return String(message || '');
+
+    // {{key}} 또는 {key} 형태의 플레이스홀더를 찾습니다.
+    // 캡처 그룹: 1: 첫번째 '{', 2: 키 경로, 3: 마지막 '}' ({{..}} 인 경우 undefined 가 아님)
+    return message.replace(/\{(\{)?([^}]+)(\})?\}/g, (match, doubleBraceStart, key, doubleBraceEnd) => {
+        const path = key.trim();
+        const value = getDeepValue(slots, path);
+
+        if (value === undefined || value === null) {
+            return match; // 값이 없으면 원본 플레이스홀더 반환
+        }
+
+        // {{key}} 형태인지 확인 (doubleBraceStart가 '{'이고 doubleBraceEnd가 '}'일 때)
+        if (doubleBraceStart === '{' && doubleBraceEnd === '}') {
+             try {
+                // 값을 JSON 문자열로 변환
+                 return JSON.stringify(value);
+             } catch (e) {
+                 console.error(`Error stringifying value for path "${path}":`, e);
+                 return match; // JSON 변환 실패 시 원본 플레이스홀더 반환
+             }
+        } else {
+             // {key} 형태일 경우, 문자열로 변환 (기존 로직)
+             return String(value);
+        }
+    });
 };
+
 
 export const getNestedValue = (obj, path) => {
     if (!path) return undefined;
@@ -371,13 +391,18 @@ async function handleLinkNode(node, scenario, slots) {
 
 async function handleApiNode(node, scenario, slots) {
     const { method, url, headers, body, params, responseMapping } = node.data;
+
+    // --- 👇 [수정] URL 보간 먼저 수행 ---
     let interpolatedUrl = interpolateMessage(url, slots);
+    // --- 👆 [수정] ---
 
     if (method === 'GET' && params) {
         const queryParams = new URLSearchParams();
         for (const key in params) {
             if (Object.hasOwnProperty.call(params, key)) {
+                // --- 👇 [수정] 파라미터 값 보간 시에도 수정된 interpolateMessage 사용 ---
                 const value = interpolateMessage(params[key], slots);
+                // --- 👆 [수정] ---
                 if (value) queryParams.append(key, value);
             }
         }
@@ -392,12 +417,22 @@ async function handleApiNode(node, scenario, slots) {
         interpolatedUrl = `${baseURL}${interpolatedUrl}`;
     }
 
-    const interpolatedHeaders = JSON.parse(interpolateMessage(headers || '{}', slots));
-    const interpolatedBody = method !== 'GET' && body ? interpolateMessage(body, slots) : undefined;
+    const interpolatedHeadersString = interpolateMessage(headers || '{}', slots);
+    const interpolatedBodyString = method !== 'GET' && body ? interpolateMessage(body, slots) : undefined;
+
+    let interpolatedHeaders = {};
+    try {
+        interpolatedHeaders = JSON.parse(interpolatedHeadersString);
+    } catch (e) {
+        console.error("API Node Error: Failed to parse headers JSON string:", interpolatedHeadersString, e);
+        // 헤더 파싱 실패 시 기본값 또는 에러 처리 로직 추가 가능
+    }
+
+    let finalBody = interpolatedBodyString;
 
     let isSuccess = false;
     try {
-        const response = await fetch(interpolatedUrl, { method, headers: interpolatedHeaders, body: interpolatedBody });
+        const response = await fetch(interpolatedUrl, { method, headers: interpolatedHeaders, body: finalBody });
         if (!response.ok) {
             const errorBody = await response.text();
             throw new Error(`API request failed with status ${response.status}. Body: ${errorBody}`);
@@ -596,13 +631,13 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
                 if (el.label) el.label = interpolateMessage(el.label, newSlots);
                 if (el.placeholder) el.placeholder = interpolateMessage(el.placeholder, newSlots);
 
-                // --- 👇 [수정된 부분 시작] ---
+                // --- 👇 [기존 defaultValue 로직 유지] ---
                 // Check for input elements with a default value and update slots if needed
                 if (el.type === 'input' && el.defaultValue !== undefined && el.defaultValue !== null && el.name && newSlots[el.name] === undefined) {
                   console.log(`[runScenario] Applying default value for form input "${el.name}": "${el.defaultValue}"`);
                   newSlots[el.name] = el.defaultValue; // Assign default value if slot is empty
                 }
-                // --- 👆 [수정된 부분 끝] ---
+                // --- 👆 [기존 defaultValue 로직 유지] ---
             });
         }
         // Interpolate branch replies display text
