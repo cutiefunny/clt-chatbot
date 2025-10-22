@@ -66,13 +66,14 @@ export const createChatSlice = (set, get) => ({
   favorites: [],
   unsubscribeFavorites: null,
 
-  updateLastMessage: (chunk) => {
+  updateLastMessage: (chunk, replace = false) => {
     set((state) => {
       const lastMessage = state.messages[state.messages.length - 1];
       if (lastMessage && lastMessage.sender === 'bot') {
+        const updatedText = replace ? chunk : (lastMessage.text || '') + chunk;
         const updatedMessage = {
           ...lastMessage,
-          text: (lastMessage.text || '') + chunk,
+          text: updatedText,
           isStreaming: true,
         };
         return {
@@ -83,16 +84,16 @@ export const createChatSlice = (set, get) => ({
     });
   },
 
-  // --- 👇 [수정된 부분] ---
   setSelectedOption: async (messageId, optionValue) => {
-    // 1. 로컬 상태 우선 업데이트 (즉각적인 UI 반응)
+    // ... (setSelectedOption 로직 동일) ...
+     // 1. 로컬 상태 우선 업데이트 (즉각적인 UI 반응)
     set((state) => ({
       selectedOptions: {
         ...state.selectedOptions,
         [messageId]: optionValue,
       },
     }));
-    
+
     // 2. 임시 ID인지 확인 (숫자로만 구성된 타임스탬프)
     const isTemporaryId = /^\d{13,}$/.test(String(messageId));
     if (isTemporaryId) {
@@ -119,20 +120,22 @@ export const createChatSlice = (set, get) => ({
       });
     }
   },
-  // --- 👆 [여기까지] ---
 
   setExtractedSlots: (newSlots) => {
-    set((state) => ({
+    // ... (setExtractedSlots 로직 동일) ...
+      set((state) => ({
       extractedSlots: { ...state.extractedSlots, ...newSlots },
     }));
   },
 
   clearExtractedSlots: () => {
-    set({ extractedSlots: {} });
+    // ... (clearExtractedSlots 로직 동일) ...
+     set({ extractedSlots: {} });
   },
 
   unsubscribeAllMessagesAndScenarios: () => {
-    get().unsubscribeMessages?.();
+    // ... (unsubscribeAllMessagesAndScenarios 로직 동일) ...
+      get().unsubscribeMessages?.();
     const scenariosMap = get().unsubscribeScenariosMap;
     Object.values(scenariosMap).forEach((unsub) => unsub());
     set({
@@ -146,7 +149,8 @@ export const createChatSlice = (set, get) => ({
   },
 
   loadFavorites: (userId) => {
-    const q = query(
+    // ... (loadFavorites 로직 동일) ...
+      const q = query(
       collection(get().db, "users", userId, "favorites"),
       orderBy("order", "asc")
     );
@@ -161,7 +165,8 @@ export const createChatSlice = (set, get) => ({
   },
 
   addFavorite: async (favoriteData) => {
-    const user = get().user;
+    // ... (addFavorite 로직 동일) ...
+      const user = get().user;
     if (!user) return;
 
     if (get().favorites.length >= get().maxFavorites) {
@@ -183,7 +188,8 @@ export const createChatSlice = (set, get) => ({
   },
 
   updateFavoritesOrder: async (newOrder) => {
-    const user = get().user;
+    // ... (updateFavoritesOrder 로직 동일) ...
+         const user = get().user;
     if (!user) return;
 
     const originalOrder = get().favorites;
@@ -205,7 +211,8 @@ export const createChatSlice = (set, get) => ({
   },
 
   deleteFavorite: async (favoriteId) => {
-    const user = get().user;
+    // ... (deleteFavorite 로직 동일) ...
+        const user = get().user;
     if (!user) return;
 
     const originalFavorites = get().favorites;
@@ -244,7 +251,8 @@ export const createChatSlice = (set, get) => ({
   },
 
   toggleFavorite: async (item) => {
-    const {
+    // ... (toggleFavorite 로직 동일) ...
+      const {
       user,
       favorites,
       addFavorite,
@@ -280,7 +288,8 @@ export const createChatSlice = (set, get) => ({
   },
 
   handleShortcutClick: async (item, messageId) => {
-    if (!item || !item.action) return;
+    // ... (handleShortcutClick 로직 동일) ...
+        if (!item || !item.action) return;
     const { extractedSlots, clearExtractedSlots, setSelectedOption } = get();
 
     if (messageId) {
@@ -293,13 +302,16 @@ export const createChatSlice = (set, get) => ({
         displayText: item.title,
       });
     } else {
+       // --- 👇 [수정] 버튼 클릭 시 action.value (scenarioId) 사용 ---
       get().openScenarioPanel(item.action.value, extractedSlots);
+       // --- 👆 [여기까지] ---
     }
     clearExtractedSlots();
   },
 
   toggleConversationExpansion: (conversationId) => {
-    const { expandedConversationId, unsubscribeScenariosMap, user } = get();
+    // ... (toggleConversationExpansion 로직 동일) ...
+         const { expandedConversationId, unsubscribeScenariosMap, user } = get();
 
     if (expandedConversationId === conversationId) {
       unsubscribeScenariosMap[conversationId]?.();
@@ -354,7 +366,8 @@ export const createChatSlice = (set, get) => ({
   },
 
   loadConversations: (userId) => {
-    const q = query(
+    // ... (loadConversations 로직 동일) ...
+       const q = query(
       collection(get().db, "chats", userId, "conversations"),
       orderBy("pinned", "desc"),
       orderBy("updatedAt", "desc")
@@ -372,7 +385,8 @@ export const createChatSlice = (set, get) => ({
   },
 
   loadConversation: async (conversationId) => {
-    const user = get().user;
+    // ... (loadConversation 로직 동일) ...
+       const user = get().user;
     if (!user || get().currentConversationId === conversationId) return;
 
     get().unsubscribeAllMessagesAndScenarios();
@@ -445,7 +459,8 @@ export const createChatSlice = (set, get) => ({
   },
 
   loadMoreMessages: async () => {
-    const user = get().user;
+    // ... (loadMoreMessages 로직 동일) ...
+        const user = get().user;
     const {
       currentConversationId,
       lastVisibleMessage,
@@ -509,7 +524,8 @@ export const createChatSlice = (set, get) => ({
   },
 
   createNewConversation: async (returnId = false) => {
-    if (get().currentConversationId === null && !returnId) return;
+    // ... (createNewConversation 로직 동일) ...
+         if (get().currentConversationId === null && !returnId) return;
 
     get().unsubscribeAllMessagesAndScenarios();
 
@@ -540,7 +556,8 @@ export const createChatSlice = (set, get) => ({
   },
 
   deleteConversation: async (conversationId) => {
-    const user = get().user;
+    // ... (deleteConversation 로직 동일) ...
+          const user = get().user;
     if (!user) return;
 
     const conversationRef = doc(
@@ -574,7 +591,8 @@ export const createChatSlice = (set, get) => ({
   },
 
   updateConversationTitle: async (conversationId, newTitle) => {
-    const user = get().user;
+    // ... (updateConversationTitle 로직 동일) ...
+          const user = get().user;
     if (!user || !newTitle.trim()) return;
     const conversationRef = doc(
       get().db,
@@ -587,7 +605,8 @@ export const createChatSlice = (set, get) => ({
   },
 
   pinConversation: async (conversationId, pinned) => {
-    const user = get().user;
+    // ... (pinConversation 로직 동일) ...
+       const user = get().user;
     if (!user) return;
     const conversationRef = doc(
       get().db,
@@ -600,7 +619,8 @@ export const createChatSlice = (set, get) => ({
   },
 
   saveMessage: async (message) => {
-    const user = get().user;
+    // ... (saveMessage 로직 동일) ...
+          const user = get().user;
     if (!user) return;
     let conversationId = get().currentConversationId;
     if (!conversationId) {
@@ -653,9 +673,9 @@ export const createChatSlice = (set, get) => ({
     return messageRef.id;
   },
 
-  // --- 👇 [수정된 부분] ---
   addMessage: async (sender, messageData) => {
-    let newMessage;
+    // ... (addMessage 로직 동일) ...
+     let newMessage;
     if (sender === "user") {
       newMessage = { id: Date.now(), sender, ...messageData };
     } else {
@@ -670,13 +690,13 @@ export const createChatSlice = (set, get) => ({
         scenarioSessionId: messageData.scenarioSessionId,
       };
     }
-    
+
     const temporaryId = newMessage.id;
     set((state) => ({ messages: [...state.messages, newMessage] }));
 
     if (!newMessage.isStreaming) {
       const savedMessageId = await get().saveMessage(newMessage);
-      
+
       let selectedOptionValue = null; // 선택된 값을 임시 저장할 변수
 
       set((state) => {
@@ -714,7 +734,6 @@ export const createChatSlice = (set, get) => ({
       }
     }
   },
-  // --- 👆 [여기까지] ---
 
   handleResponse: async (messagePayload) => {
     set({ isLoading: true, llmRawResponse: null });
@@ -740,97 +759,334 @@ export const createChatSlice = (set, get) => ({
       if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
 
       if (response.headers.get("Content-Type")?.includes("text/event-stream")) {
-        await get().addMessage("bot", { text: "", isStreaming: true });
+        console.log("[handleResponse] Detected text/event-stream response.");
+        const thinkingText = "생각중...";
+        await get().addMessage("bot", { text: thinkingText, isStreaming: true });
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
-        let fullResponse = '';
         let buffer = '';
-        let slotsFound = false;
+        let finalAnswerText = '';
+        let thinkingMessageReplaced = false;
+        const llmProvider = get().llmProvider;
 
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value);
-          fullResponse += chunk;
-          
-          if (get().llmProvider === 'gemini' && !slotsFound) {
-            buffer += chunk;
-            const separatorIndex = buffer.indexOf('|||');
-            if (separatorIndex !== -1) {
-              const jsonPart = buffer.substring(0, separatorIndex);
-              const textPart = buffer.substring(separatorIndex + 3);
-              
-              try {
-                const parsed = JSON.parse(jsonPart);
-                if (parsed.slots) {
-                  get().setExtractedSlots(parsed.slots);
-                  set({ llmRawResponse: parsed });
+        console.log(`[handleResponse] Starting stream processing for provider: ${llmProvider}`);
+
+        if (llmProvider === 'gemini') {
+          // ... (기존 Gemini 로직, finalAnswerText 누적 및 thinkingMessageReplaced 플래그 사용) ...
+           let slotsFound = false;
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            const chunk = decoder.decode(value);
+
+            if (!slotsFound) {
+              buffer += chunk;
+              const separatorIndex = buffer.indexOf('|||');
+              if (separatorIndex !== -1) {
+                const jsonPart = buffer.substring(0, separatorIndex);
+                const textPart = buffer.substring(separatorIndex + 3);
+
+                try {
+                  const parsed = JSON.parse(jsonPart);
+                  if (parsed.slots) {
+                    get().setExtractedSlots(parsed.slots);
+                    set({ llmRawResponse: parsed });
+                  }
+                } catch (e) {
+                  console.error("Failed to parse slots JSON from stream:", e);
+                  set({ llmRawResponse: { error: "Failed to parse slots", data: jsonPart } });
                 }
-              } catch (e) {
-                console.error("Failed to parse slots JSON from stream:", e);
-                set({ llmRawResponse: { error: "Failed to parse slots", data: jsonPart } });
+
+                slotsFound = true;
+                get().updateLastMessage(textPart, !thinkingMessageReplaced);
+                thinkingMessageReplaced = true;
+                finalAnswerText += textPart;
               }
-              
-              slotsFound = true;
-              get().updateLastMessage(textPart);
+            } else {
+              get().updateLastMessage(chunk);
+              finalAnswerText += chunk;
             }
-          } else {
-            get().updateLastMessage(chunk);
           }
-        }
-        
-        let finalMessageText = fullResponse;
-        if (get().llmProvider === 'flowise') {
-            const bookingNoRegex = /\b([A-Z]{2}\d{10})\b/i;
-            const match = finalMessageText.match(bookingNoRegex);
-            if (match && match[1]) {
-                get().setExtractedSlots({ bkgNr: match[1] });
+
+        } else if (llmProvider === 'flowise') {
+          let newSlots = {};
+          let buttonText = ''; // 이제 scenarioId를 저장할 변수
+
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) {
+              console.log("[handleResponse/Flowise] Stream finished (reader.read done). Final buffer:", buffer);
+              // 마지막 버퍼 처리
+              if (buffer) {
+                const lines = buffer.split('\n');
+                for (const line of lines) {
+                    if (line.toLowerCase().startsWith('data:')) {
+                        const jsonString = line.substring(line.indexOf(':') + 1).trim();
+                        if (jsonString && jsonString !== "[DONE]") {
+                            try {
+                                const data = JSON.parse(jsonString);
+                                console.log("[handleResponse/Flowise] Processing final buffer data:", data);
+                                let textChunk = '';
+                                if (data.event === 'agentFlowExecutedData' && Array.isArray(data.data)) {
+                                    const lastNodeExecution = data.data[data.data.length - 1];
+                                    if (lastNodeExecution?.data?.output?.content) {
+                                        textChunk = lastNodeExecution.data.output.content;
+                                        console.log("[handleResponse/Flowise] Found final text in agentFlowExecutedData (final buffer):", textChunk);
+                                        finalAnswerText = textChunk;
+                                        get().updateLastMessage(textChunk, true);
+                                        thinkingMessageReplaced = true;
+                                    }
+                                }
+                                // --- 👇 [수정] usedTools 이벤트 처리 (final buffer) ---
+                                else if (data.event === 'usedTools' && Array.isArray(data.data) && data.data.length > 0 && data.data[0]?.toolOutput) {
+                                    if (!buttonText) { // 아직 버튼 텍스트(scenarioId)가 설정되지 않았을 때만
+                                        try {
+                                            // toolOutput이 JSON 형태의 문자열이라고 가정하고 파싱
+                                            const toolOutputData = JSON.parse(data.data[0].toolOutput);
+                                            if (toolOutputData.scenarioId) {
+                                                buttonText = `\n\n[BUTTON:${toolOutputData.scenarioId}]`;
+                                                console.log("[handleResponse/Flowise] Extracted button text (scenarioId) from usedTools (final buffer):", buttonText);
+                                            }
+                                        } catch (e) {
+                                            console.warn("[handleResponse/Flowise] Failed to parse toolOutput or find scenarioId (final buffer):", data.data[0].toolOutput, e);
+                                        }
+                                    }
+                                }
+                                // --- 👆 [여기까지] ---
+                                // Fallback 텍스트 처리 (이전 로직과 유사하게 추가 가능, 필요 시)
+                                // else if (typeof data.text === 'string') { ... }
+                                // else if (data.event === 'token' ... ) { ... }
+                                // else if (data.event === 'chunk' ... ) { ... }
+                                // if (textChunk && !finalAnswerText) { /* Fallback 처리 */ }
+
+                            } catch (e) {
+                                console.warn("[handleResponse/Flowise] Failed to parse final buffer data chunk:", jsonString, "Error:", e);
+                            }
+                        }
+                    }
+                }
+              }
+              break; // 루프 종료
             }
-        }
-        
+
+            if (!value) {
+                console.log("[handleResponse/Flowise] Received empty value from reader.read(), continuing...");
+                continue;
+            }
+            console.log("[handleResponse/Flowise] reader.read() - done:", done);
+
+            let chunk;
+            try {
+                if (value instanceof Uint8Array) {
+                    chunk = decoder.decode(value, { stream: true });
+                    console.log("[handleResponse/Flowise] Decoded chunk:", JSON.stringify(chunk));
+                } else {
+                    console.warn("[handleResponse/Flowise] Received non-Uint8Array value:", value);
+                    chunk = '';
+                }
+            } catch (e) {
+                console.error("[handleResponse/Flowise] Error decoding chunk:", e, "Raw value:", value);
+                chunk = '';
+            }
+            buffer += chunk;
+
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            console.log(`[handleResponse/Flowise] Processed ${lines.length} lines. Remaining buffer:`, JSON.stringify(buffer));
+
+            for (const line of lines) {
+              console.log("[handleResponse/Flowise] Processing line:", JSON.stringify(line));
+
+              if (line.trim() === '' || line.toLowerCase().startsWith('message:')) {
+                  console.log("[handleResponse/Flowise] Ignoring empty line or 'message:' line.");
+                  continue;
+              }
+
+              let jsonString = '';
+              if (line.toLowerCase().startsWith('data:')) {
+                  jsonString = line.substring(line.indexOf(':') + 1).trim();
+              } else {
+                  jsonString = line.trim();
+                  console.warn("[handleResponse/Flowise] Line does not start with 'data:', attempting direct JSON parse:", JSON.stringify(line));
+              }
+
+              console.log("[handleResponse/Flowise] Extracted data string:", JSON.stringify(jsonString));
+
+              if (jsonString === "[DONE]") {
+                console.log("[handleResponse/Flowise] Received [DONE] marker.");
+                continue;
+              }
+
+              let data;
+              try {
+                data = JSON.parse(jsonString);
+                console.log("[handleResponse/Flowise] Successfully parsed JSON data:", data);
+              } catch (e) {
+                console.warn("[handleResponse/Flowise] Failed to parse SSE data chunk:", jsonString, "Error:", e);
+                console.log("[handleResponse/Flowise] Adding line back to buffer for retry:", JSON.stringify(line));
+                buffer = line + (buffer ? '\n' + buffer : '');
+                continue;
+              }
+
+              let textChunk = '';
+              if (data.event === 'agentFlowExecutedData' && Array.isArray(data.data)) {
+                  const lastNodeExecution = data.data[data.data.length - 1];
+                  if (lastNodeExecution?.data?.output?.content) {
+                      textChunk = lastNodeExecution.data.output.content;
+                      console.log("[handleResponse/Flowise] Found potential final text in agentFlowExecutedData:", textChunk);
+                      finalAnswerText = textChunk;
+                      get().updateLastMessage(textChunk, true);
+                      thinkingMessageReplaced = true;
+                  } else {
+                      console.log("[handleResponse/Flowise] agentFlowExecutedData found, but no output.content in the last element.");
+                  }
+              }
+              // --- 👇 [수정] usedTools 이벤트 처리: scenarioId 추출 ---
+              else if (data.event === 'usedTools' && Array.isArray(data.data) && data.data.length > 0 && data.data[0]?.toolOutput) {
+                  if (!buttonText) {
+                      try {
+                          // toolOutput 문자열에서 scenarioId 값을 추출 시도
+                          // 예시: "[{\"scenarioId\":\"PoC_Scenario_fin\"...]"
+                          const match = data.data[0].toolOutput.match(/"scenarioId"\s*:\s*"([^"]+)"/);
+                          if (match && match[1]) {
+                              const scenarioIdValue = match[1];
+                              buttonText = `\n\n[BUTTON:${scenarioIdValue}]`;
+                              console.log("[handleResponse/Flowise] Extracted button text (scenarioId) from usedTools:", buttonText);
+                          } else {
+                              console.warn("[handleResponse/Flowise] Could not find scenarioId in toolOutput:", data.data[0].toolOutput);
+                          }
+                      } catch (e) {
+                          console.warn("[handleResponse/Flowise] Failed to parse toolOutput or find scenarioId:", data.data[0].toolOutput, e);
+                      }
+                  }
+              }
+              // --- 👆 [여기까지] ---
+              // 토큰/청크 이벤트 처리 (Fallback)
+              else if (data.event === 'token' && typeof data.data === 'string') {
+                  textChunk = data.data;
+                  console.log("[handleResponse/Flowise] Found text in event 'token':", textChunk);
+                  get().updateLastMessage(textChunk, !thinkingMessageReplaced);
+                  thinkingMessageReplaced = true;
+                  finalAnswerText += textChunk;
+              } else if (data.event === 'chunk' && data.data?.response) {
+                  textChunk = data.data.response;
+                  console.log("[handleResponse/Flowise] Found text in event 'chunk':", textChunk);
+                  get().updateLastMessage(textChunk, !thinkingMessageReplaced);
+                  thinkingMessageReplaced = true;
+                  finalAnswerText += textChunk;
+              }
+              // Fallback: data.text 처리 (필요 시)
+              // else if (typeof data.text === 'string' && !finalAnswerText) { ... }
+
+              // 처리 안 된 다른 이벤트 로그
+              else if (data.event !== 'agentFlowExecutedData' && data.event !== 'usedTools') {
+                 console.log("[handleResponse/Flowise] Received unhandled data event:", data);
+              }
+
+            } // end for loop over lines
+          } // end while(true)
+
+          console.log("[handleResponse/Flowise] Finished stream reading loop. Processing final steps.");
+
+          // 스트림 종료 후 버튼 텍스트 최종 추가
+          if (buttonText) {
+             console.log("[handleResponse/Flowise] Appending button text to final answer.");
+             finalAnswerText += buttonText;
+             get().updateLastMessage(buttonText);
+          }
+
+          // 슬롯 추출
+          const bookingNoRegex = /\b([A-Z]{2}\d{10})\b/i;
+          if (finalAnswerText) {
+              const match = finalAnswerText.match(bookingNoRegex);
+              if (match && match[1]) {
+                newSlots.bkgNr = match[1];
+                console.log("[handleResponse/Flowise] Extracted booking number slot:", newSlots);
+              }
+          }
+          if (Object.keys(newSlots).length > 0) {
+            get().setExtractedSlots(newSlots);
+          }
+
+        } // end else if (llmProvider === 'flowise')
+
+        console.log("[handleResponse] Stream processing complete. Finalizing message.");
+
         set(state => {
             const lastMessage = state.messages[state.messages.length - 1];
             if (lastMessage && lastMessage.sender === 'bot') {
+                const finalTextToUse = llmProvider === 'flowise' ? finalAnswerText : lastMessage.text;
+
+                const finalMessageText = finalTextToUse.trim() === '' || finalTextToUse.trim() === thinkingText.trim()
+                    ? "(응답을 받지 못했습니다)"
+                    : finalTextToUse;
+
                 const updatedMessage = {
                     ...lastMessage,
                     text: finalMessageText,
                     isStreaming: false,
                 };
+                console.log("[handleResponse] Final message state updated:", updatedMessage);
                 return {
                     messages: [...state.messages.slice(0, -1), updatedMessage],
                 };
             }
+            console.warn("[handleResponse] Could not find the last bot message to finalize.");
             return state;
         });
-        
-        await get().saveMessage(get().messages[get().messages.length - 1]);
 
-      } else {
-        const data = await response.json();
+        if (get().messages[get().messages.length - 1]?.text !== "(응답을 받지 못했습니다)") {
+            await get().saveMessage(get().messages[get().messages.length - 1]);
+            console.log("[handleResponse] Final message saved to Firestore.");
+        } else {
+             console.log("[handleResponse] Skipping save for empty response.");
+        }
+
+      } else { // Not a stream response
+        // ... (비-스트림 처리 로직 동일) ...
+          const data = await response.json();
         set({ llmRawResponse: data });
         const handler = responseHandlers[data.type];
 
         if (handler) {
           handler(data, get);
         } else {
-          if (data.type !== "scenario_start" && data.type !== "scenario") {
-            console.warn(`[ChatStore] Unhandled response type: ${data.type}`);
-          }
+           if (data.response || data.text) {
+               get().addMessage("bot", { text: data.response || data.text });
+               if (data.slots && Object.keys(data.slots).length > 0) {
+                 get().setExtractedSlots(data.slots);
+               }
+           } else if (data.type !== "scenario_start" && data.type !== "scenario") {
+             console.warn(`[ChatStore] Unhandled response type or empty response:`, data);
+             get().addMessage("bot", { text: "(응답 내용 없음)" });
+           }
         }
       }
     } catch (error) {
-      const errorKey = getErrorKey(error);
+      // ... (에러 처리 로직 동일) ...
+          const errorKey = getErrorKey(error);
       const { language } = get();
       const errorMessage =
         locales[language][errorKey] || locales[language]["errorUnexpected"];
-      get().addMessage("bot", { text: errorMessage });
+       set(state => {
+           const lastMessage = state.messages[state.messages.length - 1];
+           if (lastMessage && lastMessage.sender === 'bot' && lastMessage.isStreaming) {
+               const updatedMessage = { ...lastMessage, text: errorMessage, isStreaming: false };
+               return { messages: [...state.messages.slice(0, -1), updatedMessage] };
+           }
+           get().addMessage("bot", { text: errorMessage });
+           return state;
+       });
+      console.error("[handleResponse] Error during fetch or processing:", error);
     } finally {
       set({ isLoading: false });
     }
   },
 
   searchConversations: async (searchQuery) => {
-    if (!searchQuery.trim()) {
+    // ... (searchConversations 로직 동일) ...
+      if (!searchQuery.trim()) {
       set({ searchResults: [], isSearching: false });
       return;
     }
