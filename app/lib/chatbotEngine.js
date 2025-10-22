@@ -229,19 +229,42 @@ export const getNextNode = (scenario, currentNodeId, sourceHandleId = null, slot
 const getDeepValue = (obj, path) => {
     if (!path || !obj) return undefined;
     // 경로를 . 기준으로 나누되, 대괄호 안의 내용은 보존
-    const keys = path.match(/([^[.\]])+/g);
+    // 정규식을 수정하여 대괄호 안의 숫자나 문자열 키도 처리하도록 개선
+    const keys = path.match(/[^.[\]]+|\[(?:(-?\d+)|(["'])((?:(?!\2)[^\\]|\\.)*?)\2)\]/g);
+    if (!keys) return undefined; // 경로 파싱 실패
+
     let value = obj;
     try {
-        for (const key of keys) {
-            if (value && typeof value === 'object' && key in value) {
-                value = value[key];
-            } else {
-                return undefined; // 경로 중간에 값이 없거나 객체가 아닌 경우
+        for (let key of keys) {
+            let actualKey = key;
+            // 대괄호 표기법 처리 (예: [0], ["key"], ['key'])
+            const bracketMatch = key.match(/^\[(?:(-?\d+)|(["'])((?:(?!\2)[^\\]|\\.)*?)\2)\]$/);
+            if (bracketMatch) {
+                if (bracketMatch[1]) { // 숫자 인덱스
+                    actualKey = parseInt(bracketMatch[1], 10);
+                } else if (bracketMatch[3]) { // 따옴표로 감싸진 키
+                    // 역슬래시 이스케이프 처리 (\", \', \\)
+                    actualKey = bracketMatch[3].replace(/\\(['"\\])/g, '$1');
+                }
+            }
+
+            // Check if value is null or undefined before proceeding
+            if (value === null || typeof value === 'undefined') {
+                 return undefined;
+            }
+
+            // Check if the key exists or if it's a valid array index
+            if (typeof value === 'object' && actualKey in value) {
+                value = value[actualKey];
+            } else if (Array.isArray(value) && Number.isInteger(actualKey) && actualKey >= 0 && actualKey < value.length) {
+                value = value[actualKey];
+            } else {
+                return undefined; // 경로 중간에 값이 없거나 객체/배열이 아닌 경우
             }
         }
         return value;
     } catch (e) {
-        console.error(`Error accessing path "${path}":`, e);
+        console.error(`Error accessing path "${path}" at key "${key}":`, e);
         return undefined; // 접근 중 오류 발생 시
     }
 };
@@ -256,9 +279,7 @@ const getDeepValue = (obj, path) => {
  */
 export const interpolateMessage = (message, slots) => {
     if (!message || typeof message !== 'string') return String(message || ''); // 입력값이 문자열이 아니면 그대로 반환
-    // --- 👇 [수정된 부분] 정규식을 {{...}} 로 변경 ---
     return message.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
-    // --- 👆 [수정된 부분] ---
         const path = key.trim(); // 경로 문자열 추출 (예: 'vvdInfo[0].vvd')
         const value = getDeepValue(slots, path); // 중첩된 값 가져오기
         // 값이 존재하면 문자열로 변환하여 반환, 없으면 원본 플레이스홀더({{..}}) 반환
@@ -266,10 +287,13 @@ export const interpolateMessage = (message, slots) => {
     });
 };
 
-export const getNestedValue = (obj, path) => {
-    if (!path) return undefined;
-    return path.split('.').reduce((acc, part) => acc && acc[part], obj);
-};
+// --- 👇 [삭제] getNestedValue 함수 제거 ---
+// export const getNestedValue = (obj, path) => {
+//     if (!path) return undefined;
+//     return path.split('.').reduce((acc, part) => acc && acc[part], obj);
+// };
+// --- 👆 [삭제] ---
+
 
 export const validateInput = (value, validation, language = 'ko') => {
   if (!validation) return { isValid: true };
@@ -364,7 +388,12 @@ async function handleInteractiveNode(node, scenario, slots, scenarioSessionId) {
 
 async function handleLinkNode(node, scenario, slots) {
     if (node.data.content) {
-        window.open(node.data.content, '_blank', 'noopener,noreferrer');
+        // 클라이언트 측에서만 window 객체 사용 가능
+        if (typeof window !== 'undefined') {
+            window.open(node.data.content, '_blank', 'noopener,noreferrer');
+        } else {
+            console.warn("window.open is not available in this environment for link node:", node.data.content);
+        }
     }
     const nextNode = getNextNode(scenario, node.id, null, slots);
     return { nextNode, slots, events: [] };
@@ -397,9 +426,16 @@ async function handleApiNode(node, scenario, slots) {
     const interpolatedHeaders = JSON.parse(interpolateMessage(headers || '{}', slots));
     const interpolatedBody = method !== 'GET' && body ? interpolateMessage(body, slots) : undefined;
 
+    // 디버깅을 위해 실제 전송될 요청 본문을 슬롯에 저장
+    if (interpolatedBody) {
+        slots['_lastApiRequestBody'] = interpolatedBody;
+    } else if (slots['_lastApiRequestBody']) {
+        // GET 요청 등 body가 없는 경우 이전 값 제거
+        delete slots['_lastApiRequestBody'];
+    }
+
     let isSuccess = false;
     try {
-        console.log(`[API] url: ${interpolatedUrl}, method: ${method}, headers: ${interpolatedHeaders}, body: ${interpolatedBody}`);
         const response = await fetch(interpolatedUrl, { method, headers: interpolatedHeaders, body: interpolatedBody });
         if (!response.ok) {
             const errorBody = await response.text();
@@ -409,7 +445,9 @@ async function handleApiNode(node, scenario, slots) {
         const result = await response.json();
         if (responseMapping && responseMapping.length > 0) {
             responseMapping.forEach(mapping => {
-                const value = getNestedValue(result, mapping.path); // Use basic getNestedValue here
+              // --- 👇 [수정된 부분] getDeepValue 사용 ---
+                const value = getDeepValue(result, mapping.path);
+              // --- 👆 [수정된 부분] ---
                 if (value !== undefined) slots[mapping.slot] = value;
             });
         }
@@ -422,7 +460,7 @@ async function handleApiNode(node, scenario, slots) {
     }
 
     const nextNode = getNextNode(scenario, node.id, isSuccess ? 'onSuccess' : 'onError', slots);
-    return { nextNode, slots, events: [] };
+    return { nextNode, slots, events: [] }; // slots 객체 반환
 }
 
 async function handleLlmNode(node, scenario, slots, language) {
@@ -527,7 +565,7 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
              };
         }
         const validation = currentNode.data?.validation; // Add null check for data
-        const { isValid, message: validationMessage } = validateInput(message.text, validation, language);
+        const { isValid, message: validationMessage } = validateInput(message?.text, validation, language); // Add null check for message
 
         if (!isValid) {
             return {
@@ -540,7 +578,7 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
         }
         // Ensure data and slot properties exist before assignment
         if (currentNode.data && currentNode.data.slot) {
-            newSlots[currentNode.data.slot] = message.text;
+            newSlots[currentNode.data.slot] = message?.text; // Add null check for message
         } else {
              console.warn(`Node "${currentId}" is awaiting input but has no data.slot defined.`);
         }
@@ -599,13 +637,11 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
                 if (el.label) el.label = interpolateMessage(el.label, newSlots);
                 if (el.placeholder) el.placeholder = interpolateMessage(el.placeholder, newSlots);
 
-                // --- 👇 [수정된 부분 시작] ---
                 // Check for input elements with a default value and update slots if needed
                 if (el.type === 'input' && el.defaultValue !== undefined && el.defaultValue !== null && el.name && newSlots[el.name] === undefined) {
                   console.log(`[runScenario] Applying default value for form input "${el.name}": "${el.defaultValue}"`);
                   newSlots[el.name] = el.defaultValue; // Assign default value if slot is empty
                 }
-                // --- 👆 [수정된 부분 끝] ---
             });
         }
         // Interpolate branch replies display text
