@@ -248,7 +248,7 @@ const getDeepValue = (obj, path) => {
 
 
 /**
- * 메시지 문자열 내의 {slot.path[index].property} 형식의 플레이스홀더를
+ * 메시지 문자열 내의 {{slot.path[index].property}} 형식의 플레이스홀더를
  * slots 객체의 실제 값으로 치환하는 함수.
  * @param {string} message - 플레이스홀더를 포함할 수 있는 원본 문자열
  * @param {object} slots - 슬롯 키와 값을 담고 있는 객체
@@ -256,10 +256,12 @@ const getDeepValue = (obj, path) => {
  */
 export const interpolateMessage = (message, slots) => {
     if (!message || typeof message !== 'string') return String(message || ''); // 입력값이 문자열이 아니면 그대로 반환
-    return message.replace(/\{([^}]+)\}/g, (match, key) => {
+    // --- 👇 [수정된 부분] 정규식을 {{...}} 로 변경 ---
+    return message.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
+    // --- 👆 [수정된 부분] ---
         const path = key.trim(); // 경로 문자열 추출 (예: 'vvdInfo[0].vvd')
         const value = getDeepValue(slots, path); // 중첩된 값 가져오기
-        // 값이 존재하면 문자열로 변환하여 반환, 없으면 원본 플레이스홀더({..}) 반환
+        // 값이 존재하면 문자열로 변환하여 반환, 없으면 원본 플레이스홀더({{..}}) 반환
         return value !== undefined && value !== null ? String(value) : match;
     });
 };
