@@ -7,16 +7,18 @@ export default function DevStateDisplay() {
   const {
     activeScenarioSessionId,
     scenarioStates,
-    maxFavorites,
-    hideCompletedScenarios,
-    hideDelayInHours,
-    fontSizeDefault,
-    fontSizeSmall,
-    isDevMode,
-    dimUnfocusedPanels,
-    llmProvider,
-    llmRawResponse,
-    selectedRow,
+    // --- 👇 [삭제] 사용하지 않는 상태 제거 ---
+    // maxFavorites,
+    // hideCompletedScenarios,
+    // hideDelayInHours,
+    // fontSizeDefault,
+    // fontSizeSmall,
+    // isDevMode,
+    // dimUnfocusedPanels,
+    // llmProvider,
+    // llmRawResponse,
+    // selectedRow,
+    // --- 👆 [여기까지] ---
   } = useChatStore();
 
   const activeScenarioState =
@@ -24,44 +26,26 @@ export default function DevStateDisplay() {
       ? scenarioStates[activeScenarioSessionId]
       : null;
 
+  // --- 👇 [수정된 부분 시작] ---
+  // 표시할 상태 객체 초기화
   const devState = {};
 
-  devState.generalSettings = {
-    llmProvider,
-    isDevMode,
-    dimUnfocusedPanels,
-    maxFavorites,
-    hideCompletedScenarios,
-    hideDelayInHours,
-    fontSizeDefault,
-    fontSizeSmall,
-  };
-
-  if (activeScenarioState) {
-    devState.activeScenario = {
-      sessionId: activeScenarioSessionId,
-      scenarioId: activeScenarioState.scenarioId,
-      currentNodeId: activeScenarioState.state?.currentNodeId,
-      status: activeScenarioState.status,
-      slots: activeScenarioState.slots || {},
-    };
+  // 활성화된 시나리오가 있을 경우 slots 정보만 추가
+  if (activeScenarioState && activeScenarioState.slots) {
+    devState.activeScenarioSlots = activeScenarioState.slots;
   }
 
-  if (selectedRow) {
-    devState.selectedRow = selectedRow;
-  }
-
-  if (llmRawResponse) {
-    devState.llmRawResponse = llmRawResponse;
-  }
-
-  if (Object.keys(devState).length <= 1 && !devState.generalSettings && !devState.selectedRow) {
+  // 표시할 상태가 없으면 컴포넌트 렌더링 안 함
+  if (Object.keys(devState).length === 0) {
     return null;
   }
+  // --- 👆 [수정된 부분 끝] ---
+
 
   return (
     <div className={styles.stateContainer}>
       <h4 className={styles.title}>[Dev] Real-time State</h4>
+      {/* --- 👇 [수정] devState 객체를 JSON으로 표시 --- */}
       <pre className={styles.pre}>{JSON.stringify(devState, null, 2)}</pre>
     </div>
   );
