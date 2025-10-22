@@ -1,3 +1,5 @@
+// app/store/slices/notificationSlice.js
+
 'use client';
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, deleteDoc, updateDoc, where, limit } from 'firebase/firestore';
 
@@ -36,19 +38,19 @@ export const createNotificationSlice = (set, get) => ({
         get().showToast("Failed to delete notification.", "error");
     }
   },
-  
+
   showToast: (message, type = 'info', scenarioSessionId = null, conversationId = null) => {
     set({ toast: { id: Date.now(), message, type, visible: true } });
 
-    const dataToSave = { 
-        message, 
-        type, 
-        createdAt: serverTimestamp(), 
+    const dataToSave = {
+        message,
+        type,
+        createdAt: serverTimestamp(),
         read: false,
         scenarioSessionId,
         conversationId,
     };
-    get().saveNotification(dataToSave); 
+    get().saveNotification(dataToSave);
 
     setTimeout(() => set(state => ({ toast: { ...state.toast, visible: false } })), 3000);
   },
@@ -65,7 +67,7 @@ export const createNotificationSlice = (set, get) => ({
   },
 
   loadNotificationHistory: (userId) => {
-    if (get().unsubscribeNotifications) return; 
+    if (get().unsubscribeNotifications) return;
     const q = query(collection(get().db, "users", userId, "notifications"), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const notifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -108,9 +110,9 @@ export const createNotificationSlice = (set, get) => ({
           }
         }
       });
-      set({ 
+      set({
         unreadScenarioSessions: unreadSessions,
-        unreadConversations: unreadConvos 
+        unreadConversations: unreadConvos
       });
     }, (error) => {
       console.error("Error listening to unread scenario notifications:", error);
@@ -118,7 +120,7 @@ export const createNotificationSlice = (set, get) => ({
     set({ unsubscribeUnreadScenarioNotifications: unsubscribe });
   },
   // --- 👆 [여기까지] ---
-  
+
   markNotificationAsRead: async (notificationId) => {
     const user = get().user;
     if (!user) return;
@@ -131,15 +133,24 @@ export const createNotificationSlice = (set, get) => ({
     }
   },
 
+  // --- 👇 [수정] handleEvents 수정 ---
   handleEvents: (events, scenarioSessionId = null, conversationId = null) => {
       if (!events || !Array.isArray(events)) return;
       events.forEach(event => {
         if (event.type === 'toast') {
           get().showToast(event.message, event.toastType, scenarioSessionId, conversationId);
+        } else if (event.type === 'open_link' && event.url) { // 'open_link' 이벤트 처리 추가
+          if (typeof window !== 'undefined') {
+            window.open(event.url, '_blank', 'noopener,noreferrer');
+            console.log(`[handleEvents] Opened link: ${event.url}`);
+          } else {
+             console.warn("[handleEvents] Cannot open link: window object not available.");
+          }
         }
       });
   },
-  
+  // --- 👆 [수정] ---
+
   openNotificationModal: () => {
     const user = get().user;
     if (user) {
