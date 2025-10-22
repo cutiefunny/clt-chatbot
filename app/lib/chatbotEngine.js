@@ -399,6 +399,7 @@ async function handleApiNode(node, scenario, slots) {
 
     let isSuccess = false;
     try {
+        console.log(`[API] url: ${interpolatedUrl}, method: ${method}, headers: ${interpolatedHeaders}, body: ${interpolatedBody}`);
         const response = await fetch(interpolatedUrl, { method, headers: interpolatedHeaders, body: interpolatedBody });
         if (!response.ok) {
             const errorBody = await response.text();
