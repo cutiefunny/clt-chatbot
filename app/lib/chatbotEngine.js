@@ -271,23 +271,80 @@ const getDeepValue = (obj, path) => {
     }
 };
 
-
+// --- 👇 [수정된 부분 시작] interpolateMessage 함수 수정 ---
 /**
- * 메시지 문자열 내의 {{slot.path[index].property}} 형식의 플레이스홀더를
- * slots 객체의 실제 값으로 치환하는 함수.
+ * 메시지 문자열 내의 {{slot.path}} 형식 플레이스홀더를 slots 객체 값으로 치환합니다.
+ * URL 인코딩된 {{, }} (%7B%7B, %7D%7D)를 먼저 디코딩하고 치환합니다.
+ * URL 파라미터 컨텍스트에서는 치환될 값을 URL 인코딩합니다.
  * @param {string} message - 플레이스홀더를 포함할 수 있는 원본 문자열
  * @param {object} slots - 슬롯 키와 값을 담고 있는 객체
  * @returns {string} - 플레이스홀더가 실제 값으로 치환된 문자열
  */
 export const interpolateMessage = (message, slots) => {
-    if (!message || typeof message !== 'string') return String(message || ''); // 입력값이 문자열이 아니면 그대로 반환
-    return message.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
-        const path = key.trim(); // 경로 문자열 추출 (예: 'vvdInfo[0].vvd')
-        const value = getDeepValue(slots, path); // 중첩된 값 가져오기
-        // 값이 존재하면 문자열로 변환하여 반환, 없으면 원본 플레이스홀더({{..}}) 반환
-        return value !== undefined && value !== null ? String(value) : match;
+    if (!message || typeof message !== 'string') return String(message || '');
+
+    // 1. URL 인코딩된 중괄호 디코딩 (%7B%7B -> {{, %7D%7D -> }})
+    let decodedMessage = message;
+    try {
+        // 정규식을 사용하여 전역 치환
+        decodedMessage = decodedMessage.replace(/%7B%7B/g, '{{').replace(/%7D%7D/g, '}}');
+    } catch (e) {
+        console.error("Error during URL decoding in interpolateMessage:", e);
+        // 디코딩 실패 시 원본 메시지로 계속 진행
+    }
+
+    // 2. 슬롯 값 치환
+    const result = decodedMessage.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
+        const path = key.trim();
+        const value = getDeepValue(slots, path);
+
+        if (value !== undefined && value !== null) {
+            const stringValue = String(value);
+
+            // 3. URL 파라미터 값인 경우 URL 인코딩 적용
+            // 플레이스홀더 바로 앞에 '=' 또는 '&' 문자가 있는지 확인
+            const matchIndex = decodedMessage.indexOf(match);
+            const precedingChar = matchIndex > 0 ? decodedMessage[matchIndex - 1] : '';
+            const isUrlParamValue = precedingChar === '=' || precedingChar === '&';
+
+            if (isUrlParamValue) {
+                try {
+                    // 간단한 방법으로 이미 인코딩되었는지 확인 (완벽하지 않음)
+                    // 디코딩 시도 시 에러가 발생하거나 결과가 원본과 다르면 이미 인코딩된 것으로 간주
+                    let needsEncoding = true;
+                    try {
+                        if (decodeURIComponent(stringValue) !== stringValue) {
+                            needsEncoding = false; // 이미 인코딩된 것으로 보임
+                        }
+                    } catch (decodeError) {
+                         needsEncoding = false; // 디코딩 실패 시 이미 인코딩된 것으로 간주
+                    }
+
+                    if (needsEncoding) {
+                        // console.log(`[interpolateMessage] Encoding URL parameter value for key "${path}": "${stringValue}"`);
+                        return encodeURIComponent(stringValue);
+                    } else {
+                        // console.log(`[interpolateMessage] Value for key "${path}" seems already URL encoded, using as is: "${stringValue}"`);
+                        return stringValue; // 이미 인코딩된 값이면 그대로 사용
+                    }
+                } catch (encodeError) {
+                    console.error(`[interpolateMessage] Error encoding value for key "${path}":`, encodeError);
+                    return stringValue; // 인코딩 실패 시 원본 문자열 반환
+                }
+            } else {
+                // URL 파라미터 값이 아니면 그냥 문자열 값 반환
+                return stringValue;
+            }
+        } else {
+            // 슬롯 값이 없으면 원본 플레이스홀더 반환
+            // console.warn(`[interpolateMessage] Slot value not found for key: "${path}". Returning placeholder.`);
+            return match;
+        }
     });
+
+    return result;
 };
+// --- 👆 [수정된 부분 끝] ---
 
 
 export const validateInput = (value, validation, language = 'ko') => {
@@ -366,42 +423,44 @@ async function handleToastNode(node, scenario, slots, scenarioSessionId) {
 }
 
 async function handleInteractiveNode(node, scenario, slots, scenarioSessionId) {
+    // Note: iframe URL interpolation is now handled later in runScenario
     if (node.type === 'iframe' && node.data.url && scenarioSessionId) {
+        // Add scenario session ID only if not already present
+        // (interpolation might add it later, but we add it here as a fallback)
         try {
             const url = new URL(node.data.url);
-            url.searchParams.set('scenario_session_id', scenarioSessionId);
-            node.data.url = url.toString();
+            if (!url.searchParams.has('scenario_session_id')) {
+                url.searchParams.set('scenario_session_id', scenarioSessionId);
+                node.data.url = url.toString();
+            }
         } catch (e) {
-            console.error("Invalid URL in iFrame node:", node.data.url);
-            const separator = node.data.url.includes('?') ? '&' : '?';
-            node.data.url += `${separator}scenario_session_id=${scenarioSessionId}`;
+            console.warn("Could not parse URL to add session ID in handleInteractiveNode:", node.data.url);
+             if (!node.data.url.includes('scenario_session_id=')) {
+                 const separator = node.data.url.includes('?') ? '&' : '?';
+                 node.data.url += `${separator}scenario_session_id=${scenarioSessionId}`;
+             }
         }
     }
-    // 대화형 노드는 자기 자신을 nextNode로 반환하여 루프를 멈추게 함
+    // Return the node itself to stop the loop for user interaction
     return { nextNode: node };
 }
 
-// --- 👇 [수정] handleLinkNode 수정 ---
+
 async function handleLinkNode(node, scenario, slots) {
     const events = [];
     if (node.data.content) {
-         // URL 보간
         const interpolatedUrl = interpolateMessage(node.data.content, slots);
-        // 서버에서는 window.open을 호출할 수 없으므로, 클라이언트에게 이벤트를 보냄
         events.push({
             type: 'open_link',
             url: interpolatedUrl,
-            // 필요하다면 target 속성도 전달 가능: target: node.data.target || '_blank'
         });
         console.log(`[handleLinkNode] Generated open_link event for URL: ${interpolatedUrl}`);
     } else {
         console.warn("[handleLinkNode] Link node has no content (URL).");
     }
     const nextNode = getNextNode(scenario, node.id, null, slots);
-    // nextNode와 함께 이벤트를 반환
     return { nextNode, slots, events };
 }
-// --- 👆 [수정] ---
 
 
 async function handleApiNode(node, scenario, slots) {
@@ -430,11 +489,9 @@ async function handleApiNode(node, scenario, slots) {
     const interpolatedHeaders = JSON.parse(interpolateMessage(headers || '{}', slots));
     const interpolatedBody = method !== 'GET' && body ? interpolateMessage(body, slots) : undefined;
 
-    // 디버깅을 위해 실제 전송될 요청 본문을 슬롯에 저장
     if (interpolatedBody) {
         slots['_lastApiRequestBody'] = interpolatedBody;
     } else if (slots['_lastApiRequestBody']) {
-        // GET 요청 등 body가 없는 경우 이전 값 제거
         delete slots['_lastApiRequestBody'];
     }
 
@@ -449,9 +506,7 @@ async function handleApiNode(node, scenario, slots) {
         const result = await response.json();
         if (responseMapping && responseMapping.length > 0) {
             responseMapping.forEach(mapping => {
-              // --- 👇 [수정된 부분] getDeepValue 사용 ---
                 const value = getDeepValue(result, mapping.path);
-              // --- 👆 [수정된 부분] ---
                 if (value !== undefined) slots[mapping.slot] = value;
             });
         }
@@ -459,12 +514,12 @@ async function handleApiNode(node, scenario, slots) {
     } catch (error) {
         console.error("API Node Error:", error);
         slots['apiError'] = error.message;
-        slots['apiFailed'] = true; // API 실패 플래그 설정
+        slots['apiFailed'] = true;
         isSuccess = false;
     }
 
     const nextNode = getNextNode(scenario, node.id, isSuccess ? 'onSuccess' : 'onError', slots);
-    return { nextNode, slots, events: [] }; // slots 객체 반환
+    return { nextNode, slots, events: [] };
 }
 
 async function handleLlmNode(node, scenario, slots, language) {
@@ -488,50 +543,42 @@ async function handleLlmNode(node, scenario, slots, language) {
 
 async function handleBranchNode(node, scenario, slots) {
   if (node.data.evaluationType === 'CONDITION') {
-    // 자동 노드: 즉시 다음 노드를 찾아 반환
     const nextNode = getNextNode(scenario, node.id, null, slots);
     return { nextNode, slots, events: [] };
   } else {
-    // 대화형 노드: 노드 자신을 반환하여 UI 렌더링
     return { nextNode: node };
   }
 }
 
 async function handleSetSlotNode(node, scenario, slots) {
   console.log('[handleSetSlotNode] Executing node:', node.id);
-  console.log('[handleSetSlotNode] Slots before assignment:', { ...slots });
+  // console.log('[handleSetSlotNode] Slots before assignment:', JSON.stringify(slots)); // Avoid excessive logging if needed
 
   const newSlots = { ...slots };
   const assignments = node.data.assignments || [];
 
   for (const assignment of assignments) {
     if (assignment.key) {
-      // 1. 값을 우선 보간합니다.
-      let interpolatedValue = interpolateMessage(assignment.value, newSlots);
+      let interpolatedValue = interpolateMessage(assignment.value, newSlots); // Use already updated newSlots for sequential interpolation
 
-      // 2. 보간된 값이 JSON 형태의 문자열인지 확인합니다.
       if (typeof interpolatedValue === 'string' &&
           ( (interpolatedValue.startsWith('{') && interpolatedValue.endsWith('}')) ||
             (interpolatedValue.startsWith('[') && interpolatedValue.endsWith(']')) )
       ) {
         try {
-          // 3. JSON 파싱을 시도합니다.
           const parsedJson = JSON.parse(interpolatedValue);
-          // 4. 파싱 성공 시, 객체/배열을 할당합니다.
           newSlots[assignment.key] = parsedJson;
         } catch (e) {
-          // 5. 파싱 실패 시, 원본 문자열을 그대로 할당합니다.
-          console.warn(`[handleSetSlotNode] Failed to parse JSON for key "${assignment.key}", assigning as string. Value:`, interpolatedValue);
+          // console.warn(`[handleSetSlotNode] Failed to parse JSON for key "${assignment.key}", assigning as string. Value:`, interpolatedValue);
           newSlots[assignment.key] = interpolatedValue;
         }
       } else {
-        // 6. JSON 형태가 아니거나 문자열이 아닌 경우, 보간된 값을 그대로 할당합니다.
         newSlots[assignment.key] = interpolatedValue;
       }
     }
   }
 
-  console.log('[handleSetSlotNode] Slots after assignment:', { ...newSlots });
+  // console.log('[handleSetSlotNode] Slots after assignment:', JSON.stringify(newSlots)); // Avoid excessive logging if needed
 
   const nextNode = getNextNode(scenario, node.id, null, newSlots);
   return { nextNode, slots: newSlots, events: [] };
@@ -560,95 +607,98 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
         const currentNode = scenario.nodes.find(n => n.id === currentId);
         if (!currentNode) {
              console.error(`Error in runScenario: Node with ID "${currentId}" not found.`);
-             return {
-                 type: 'scenario_end',
-                 message: 'Error: Scenario node not found.',
-                 scenarioState: null,
-                 slots: newSlots,
-                 events: allEvents,
-             };
+             return { /* ... error response ... */ };
         }
-        const validation = currentNode.data?.validation; // Add null check for data
-        const { isValid, message: validationMessage } = validateInput(message?.text, validation, language); // Add null check for message
+        const validation = currentNode.data?.validation;
+        const { isValid, message: validationMessage } = validateInput(message?.text, validation, language);
 
         if (!isValid) {
-            return {
-                type: 'scenario_validation_fail',
-                message: validationMessage,
-                scenarioState: { ...scenarioState, awaitingInput: true },
-                slots: newSlots,
-                events: [],
-            };
+            return { /* ... validation fail response ... */ };
         }
-        // Ensure data and slot properties exist before assignment
         if (currentNode.data && currentNode.data.slot) {
-            newSlots[currentNode.data.slot] = message?.text; // Add null check for message
+            newSlots[currentNode.data.slot] = message?.text;
         } else {
              console.warn(`Node "${currentId}" is awaiting input but has no data.slot defined.`);
         }
     }
 
-    let currentNode = getNextNode(scenario, currentId, message?.sourceHandle, newSlots); // Add null check for message
+    let currentNode = getNextNode(scenario, currentId, message?.sourceHandle, newSlots);
 
     while (currentNode) {
-        // interpolateMessage는 이제 노드 핸들러 내부에서 필요시 호출됨 (중복 방지)
-        // if (currentNode.data) {
-        //     currentNode.data.content = interpolateMessage(currentNode.data.content, newSlots);
-        // }
-
         const handler = nodeHandlers[currentNode.type];
 
         if (handler) {
+            // console.log(`[runScenario] Before handler for node ${currentNode.id} (${currentNode.type}). Slots:`, JSON.stringify(newSlots)); // Less verbose logging
             const result = await handler(currentNode, scenario, newSlots, scenarioSessionId, language);
-            // Handle cases where handler might return null or undefined result
+
             if (!result) {
                 console.error(`Handler for node type "${currentNode.type}" (ID: ${currentNode.id}) returned an invalid result.`);
-                currentNode = null; // Terminate loop on handler error
+                currentNode = null;
                 break;
             }
             newSlots = result.slots || newSlots;
+            // console.log(`[runScenario] After handler for node ${currentNode.id} (${currentNode.type}). Updated Slots:`, JSON.stringify(newSlots)); // Less verbose logging
+
             if (result.events) allEvents.push(...result.events);
 
-            // Check if the node returned itself (interactive node)
             if (result.nextNode && result.nextNode.id === currentNode.id) {
-                currentNode = result.nextNode; // Keep the current node
-                break; // Stop the loop for interactive nodes
+                currentNode = result.nextNode;
+                break;
             }
-
-            // Move to the next node determined by the handler
             currentNode = result.nextNode;
         } else {
-            // No handler found for this node type, treat as end or break loop
             console.warn(`No handler found for node type: ${currentNode.type}. Ending scenario flow.`);
-            currentNode = null; // Ensure loop terminates
+            currentNode = null;
         }
     }
 
     if (currentNode) {
-        // Loop stopped because an interactive node was returned
-        const isAwaiting = currentNode.type === 'slotfilling'; // Slotfilling still requires waiting
-       // Interpolate content right before returning for display
+        // console.log(`[runScenario] Preparing to return interactive node ${currentNode.id}. Final slots before interpolation:`, JSON.stringify(newSlots));
+        // console.log(`[runScenario] Value of reqData specifically:`, newSlots.reqData);
+
+       // Interpolate basic content
        if (currentNode.data && currentNode.data.content) {
             currentNode.data.content = interpolateMessage(currentNode.data.content, newSlots);
        }
-       // Interpolate form title if it's a form node
+       // Interpolate iframe URL (Now handled by the updated interpolateMessage)
+       if (currentNode.type === 'iframe' && currentNode.data && currentNode.data.url) {
+           const originalUrl = currentNode.data.url;
+           currentNode.data.url = interpolateMessage(currentNode.data.url, newSlots); // Should now work correctly
+           console.log(`[runScenario] Interpolating iframe URL. Original: "${originalUrl}", Interpolated: "${currentNode.data.url}"`);
+            if (originalUrl !== currentNode.data.url && currentNode.data.url.includes('%7B%7BreqData%7D%7D')) {
+               // This case should ideally not happen anymore, but log if it does
+               console.error(`[runScenario] !!! reqData interpolation seems incorrect, placeholder remnant found: ${currentNode.data.url} !!!`);
+           } else if (originalUrl === currentNode.data.url && originalUrl.includes('%7B%7BreqData%7D%7D')) {
+               // Log if interpolation completely failed (shouldn't happen if slot exists)
+               console.error(`[runScenario] !!! reqData interpolation FAILED for iframe URL !!!`);
+           }
+       }
+       // Interpolate form title
        if (currentNode.type === 'form' && currentNode.data && currentNode.data.title) {
            currentNode.data.title = interpolateMessage(currentNode.data.title, newSlots);
        }
-        // Interpolate form element labels and placeholders
+        // Interpolate form elements
         if (currentNode.type === 'form' && currentNode.data && Array.isArray(currentNode.data.elements)) {
             currentNode.data.elements.forEach(el => {
                 if (el.label) el.label = interpolateMessage(el.label, newSlots);
                 if (el.placeholder) el.placeholder = interpolateMessage(el.placeholder, newSlots);
-
-                // Check for input elements with a default value and update slots if needed
+                // Assign default value only if the slot is currently undefined in newSlots
                 if (el.type === 'input' && el.defaultValue !== undefined && el.defaultValue !== null && el.name && newSlots[el.name] === undefined) {
-                  console.log(`[runScenario] Applying default value for form input "${el.name}": "${el.defaultValue}"`);
-                  newSlots[el.name] = el.defaultValue; // Assign default value if slot is empty
+                  // Interpolate the default value itself before assigning
+                  newSlots[el.name] = interpolateMessage(String(el.defaultValue), newSlots);
+                  // console.log(`[runScenario] Applied interpolated default value for form input "${el.name}": "${newSlots[el.name]}"`);
+                }
+                 // Interpolate dropbox options
+                if (el.type === 'dropbox' && Array.isArray(el.options)) {
+                    el.options = el.options.map(opt => interpolateMessage(opt, newSlots));
+                }
+                // Interpolate checkbox options
+                if (el.type === 'checkbox' && Array.isArray(el.options)) {
+                    el.options = el.options.map(opt => interpolateMessage(opt, newSlots));
                 }
             });
         }
-        // Interpolate branch replies display text
+        // Interpolate branch replies
         if (currentNode.type === 'branch' && currentNode.data && Array.isArray(currentNode.data.replies)) {
              currentNode.data.replies.forEach(reply => {
                  if (reply.display) reply.display = interpolateMessage(reply.display, newSlots);
@@ -658,15 +708,15 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
         return {
             type: 'scenario',
             nextNode: currentNode,
-            scenarioState: { scenarioId, currentNodeId: currentNode.id, awaitingInput: isAwaiting },
-            slots: newSlots, // Return updated slots including default values
+            scenarioState: { scenarioId, currentNodeId: currentNode.id, awaitingInput: currentNode.type === 'slotfilling' },
+            slots: newSlots,
             events: allEvents,
         };
     } else {
-        // Loop finished (reached end or no next node/handler)
+        // Scenario end
         return {
             type: 'scenario_end',
-            message: interpolateMessage(locales[language]?.scenarioEnded(scenarioId) || 'Scenario ended.', newSlots), // Interpolate end message
+            message: interpolateMessage(locales[language]?.scenarioEnded(scenarioId) || 'Scenario ended.', newSlots),
             scenarioState: null,
             slots: newSlots,
             events: allEvents,
