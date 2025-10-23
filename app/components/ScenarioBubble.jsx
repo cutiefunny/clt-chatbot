@@ -617,9 +617,7 @@ export default function ScenarioBubble({ scenarioSessionId }) {
                        msg.node?.type === "iframe" ? (
                         <div className={styles.iframeContainer}>
                           <iframe
-                            // --- 👇 [수정] iframe URL 보간 처리 ---
                             src={interpolateMessage(msg.node.data.url, activeScenario?.slots)}
-                             // --- 👆 [수정] ---
                             width={msg.node.data.width || "100%"}
                             height={msg.node.data.height || "250"}
                             style={{ border: "none", borderRadius: "18px" }}
@@ -630,21 +628,15 @@ export default function ScenarioBubble({ scenarioSessionId }) {
                         <div>
                           <span>Opening link in a new tab: </span>
                           <a
-                             // --- 👇 [수정] Link URL 및 표시 텍스트 보간 처리 ---
                             href={interpolateMessage(msg.node.data.content, activeScenario?.slots)}
-                             // --- 👆 [수정] ---
                             target="_blank"
                             rel="noopener noreferrer"
                           >
-                             {/* --- 👇 [수정] Link URL 및 표시 텍스트 보간 처리 --- */}
                             {interpolateMessage(msg.node.data.display || msg.node.data.content, activeScenario?.slots)}
-                             {/* --- 👆 [수정] --- */}
                           </a>
                         </div>
                       ) : (
-                         // --- 👇 [수정] 일반 텍스트 메시지 보간 처리 ---
                         <p>{interpolateMessage(msg.text || msg.node?.data.content, activeScenario?.slots)}</p>
-                         // --- 👆 [수정] ---
                       )}
                       {msg.node?.type === "branch" && msg.node.data.replies && (
                         <div className={styles.scenarioList}>
@@ -652,9 +644,7 @@ export default function ScenarioBubble({ scenarioSessionId }) {
                             const selectedOption = msg.selectedOption;
                             const isSelected = selectedOption === reply.display;
                             const isDimmed = selectedOption && !isSelected;
-                             // --- 👇 [수정] 버튼 텍스트 보간 처리 ---
                             const interpolatedDisplayText = interpolateMessage(reply.display, activeScenario?.slots);
-                            // --- 👆 [수정] ---
 
                             return (
                               <button
@@ -665,28 +655,23 @@ export default function ScenarioBubble({ scenarioSessionId }) {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   if (selectedOption) return;
-                                   // --- 👇 [수정] 선택 옵션 및 사용자 입력으로 보간된 텍스트 사용 ---
                                   setScenarioSelectedOption(
                                     scenarioSessionId,
                                     msg.node.id,
-                                    interpolatedDisplayText // 보간된 텍스트 저장
+                                    interpolatedDisplayText 
                                   );
                                   handleScenarioResponse({
                                     scenarioSessionId: scenarioSessionId,
                                     currentNodeId: msg.node.id,
                                     sourceHandle: reply.value,
-                                    userInput: interpolatedDisplayText, // 보간된 텍스트 전송
+                                    userInput: interpolatedDisplayText, 
                                   });
-                                   // --- 👆 [수정] ---
                                 }}
                                 disabled={isCompleted || !!selectedOption}
                               >
                                 <span className={styles.optionButtonText}>
-                                   {/* --- 👇 [수정] 보간된 텍스트 표시 --- */}
                                   {interpolatedDisplayText}
-                                   {/* --- 👆 [수정] --- */}
                                 </span>
-                                {/* --- 👇 [수정] 아이콘 표시 조건 수정 (보간된 텍스트 기준) --- */}
                                 {interpolatedDisplayText
                                   .toLowerCase()
                                   .includes("link") ? (
@@ -694,7 +679,6 @@ export default function ScenarioBubble({ scenarioSessionId }) {
                                 ) : (
                                   <CheckCircle />
                                 )}
-                                {/* --- 👆 [수정] --- */}
                               </button>
                             );
                           })}
