@@ -517,17 +517,23 @@ input:checked + .slider:before {
   opacity: 0.7;
 }
 
+/* --- 👇 [수정된 부분] max-width, aspect-ratio 제거 --- */
 .iframeContainer {
   padding: 0;
   background-color: transparent;
   width: 100%;
-  max-width: 450px;
-  aspect-ratio: 16 / 10;
-  overflow: hidden;
+  /* max-width: 450px; 제거 */
+  /* aspect-ratio: 16 / 10; 제거 */
+  overflow: hidden; /* 추가: 내용이 넘칠 경우 숨김 */
+  display: flex; /* 추가: iframe 정렬 */
+  justify-content: center; /* 추가: iframe 가운데 정렬 (선택 사항) */
+  align-items: center; /* 추가: iframe 가운데 정렬 (선택 사항) */
 }
+/* --- 👆 [여기까지] --- */
 
 .iframeContainer iframe {
-  display: block;
+  display: block; /* 기본 스타일 유지 */
+  max-width: 100%; /* 추가: 컨테이너 너비를 넘지 않도록 */
 }
 
 @keyframes wobble {
