@@ -37,6 +37,9 @@ export const createUISlice = (set, get) => ({
     confirmVariant: 'default',
   },
   activePanel: 'main',
+  // --- 👇 [수정된 부분 시작] ---
+  lastFocusedScenarioSessionId: null, // 마지막 포커스된 시나리오 ID 추가
+  // --- 👆 [수정된 부분 끝] ---
   focusRequest: 0,
   shortcutMenuOpen: null,
   ephemeralToast: {
@@ -189,14 +192,18 @@ export const createUISlice = (set, get) => ({
 
   toggleHistoryPanel: () => set(state => ({ isHistoryPanelOpen: !state.isHistoryPanelOpen })),
 
+  // --- 👇 [수정된 부분 시작]: setActivePanel 수정 ---
   setActivePanel: (panel, sessionId = null) => {
       if (panel === 'scenario') {
-          set({ activePanel: panel, activeScenarioSessionId: sessionId });
+          // 시나리오 패널 활성화 시, active 및 lastFocused 모두 업데이트
+          set({ activePanel: panel, activeScenarioSessionId: sessionId, lastFocusedScenarioSessionId: sessionId });
       } else {
+          // 메인 패널 활성화 시, active만 업데이트하고 lastFocused는 유지
           set({ activePanel: 'main', activeScenarioSessionId: null });
       }
       get().focusChatInput();
   },
+  // --- 👆 [수정된 부분 끝] ---
 
   focusChatInput: () => set(state => ({ focusRequest: state.focusRequest + 1 })),
 });

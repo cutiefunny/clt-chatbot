@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useChatStore } from "../store"; // useChatStore 임포트 확인
 import { useTranslations } from "../hooks/useTranslations";
 import styles from "./Chat.module.css";
-import { validateInput, interpolateMessage } from "../lib/chatbotEngine";
+import { validateInput, interpolateMessage } from "../lib/chatbotEngine"; // interpolateMessage 임포트 확인
 import LogoIcon from "./icons/LogoIcon";
 import ChevronDownIcon from "./icons/ChevronDownIcon";
 import ArrowDropDownIcon from "./icons/ArrowDropDownIcon";
@@ -16,7 +16,24 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots, onGridRow
   const dateInputRef = useRef(null);
   const { t } = useTranslations();
 
-  // --- handleInputChange, handleMultiInputChange, handleSubmit, handleDateInputClick 함수 생략 ---
+  // useEffect를 사용하여 defaultValue로 formData 초기화
+  useEffect(() => {
+    const initialFormData = {};
+    if (node.data && Array.isArray(node.data.elements)) {
+      node.data.elements.forEach(el => {
+        if (el.type === 'input' && el.defaultValue !== undefined && el.defaultValue !== null && el.name) {
+          // --- 👇 [수정] defaultValue도 interpolateMessage로 처리 ---
+          initialFormData[el.name] = interpolateMessage(String(el.defaultValue), slots);
+          // --- 👆 [수정] ---
+        }
+        // 다른 타입(dropbox, checkbox 등)의 defaultValue 처리도 필요하다면 여기에 추가
+      });
+    }
+    setFormData(initialFormData);
+    // --- 👇 [수정] slots도 의존성 배열에 추가 ---
+  }, [node.data.elements, slots]);
+  // --- 👆 [수정] ---
+
   const handleInputChange = (name, value) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -33,11 +50,21 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots, onGridRow
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    const finalFormData = { ...formData }; // 현재 formData 복사
+
     for (const element of node.data.elements) {
+      // --- 👇 [수정] 제출 시 검증할 값 가져오기 (formData 우선, 없으면 보간된 defaultValue) ---
+      let valueToValidate = formData[element.name];
+      if (valueToValidate === undefined && element.type === 'input' && element.defaultValue !== undefined) {
+         valueToValidate = interpolateMessage(String(element.defaultValue), slots);
+         finalFormData[element.name] = valueToValidate; // 제출 데이터에도 추가
+      }
+      valueToValidate = valueToValidate ?? ""; // null/undefined면 빈 문자열로
+      // --- 👆 [수정] ---
+
       if (element.type === "input" || element.type === "date") {
-        const value = formData[element.name] || "";
         const { isValid, message } = validateInput(
-          value,
+          valueToValidate, // 검증할 값 사용
           element.validation,
           language
         );
@@ -47,8 +74,9 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots, onGridRow
         }
       }
     }
-    onFormSubmit(formData);
+    onFormSubmit(finalFormData); // 최종 데이터 제출
   };
+
 
   const handleDateInputClick = () => {
     try {
@@ -70,11 +98,12 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots, onGridRow
 
   return (
     <form onSubmit={handleSubmit} className={styles.formContainer}>
-      <h3>{node.data.title}</h3>
+      {/* --- 👇 [수정] 폼 제목도 보간 처리 --- */}
+      <h3>{interpolateMessage(node.data.title, slots)}</h3>
+      {/* --- 👆 [수정] --- */}
       <div className={styles.formContainerSeparator} />
       {node.data.elements?.map((el) => {
         const dateProps = {};
-        // --- Date props 계산 로직 생략 ---
         if (el.type === "date" && el.validation) {
           if (el.validation.type === "today after") {
             dateProps.min = new Date().toISOString().split("T")[0];
@@ -84,6 +113,15 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots, onGridRow
             if (el.validation.startDate)
               dateProps.min = el.validation.startDate;
             if (el.validation.endDate) dateProps.max = el.validation.endDate;
+          }
+        }
+
+        let dropboxOptions = [];
+        if (el.type === 'dropbox') {
+          if (el.optionsSlot && Array.isArray(slots[el.optionsSlot])) {
+            dropboxOptions = slots[el.optionsSlot].map(String);
+          } else if (Array.isArray(el.options)) {
+            dropboxOptions = el.options;
           }
         }
 
@@ -101,15 +139,13 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots, onGridRow
                             ? originalDisplayKeys.filter(key => gridDataFromSlot.some(obj => obj[key] !== null && obj[key] !== undefined && obj[key] !== ""))
                             : originalDisplayKeys;
 
-                        // 컬럼 키가 하나도 없을 경우 렌더링하지 않음 (Hydration 오류 방지 - 1단계)
                         if (filteredKeys.length === 0 && !el.hideNullColumns) {
                            console.warn("Grid rendering skipped: No keys found in data object.", el, gridDataFromSlot[0]);
-                           return <div>No data columns found.</div>; // Or some placeholder
+                           return <div>No data columns found.</div>;
                         }
-                         // hideNullColumns에 의해 모든 키가 필터링 된 경우
                         if (filteredKeys.length === 0 && el.hideNullColumns) {
                             console.warn("Grid rendering skipped: All columns were hidden due to hideNullColumns.", el);
-                            return <div>All columns hidden.</div>; // Or some placeholder
+                            return <div>All columns hidden.</div>;
                         }
 
 
@@ -119,7 +155,9 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots, onGridRow
                                 const valueStr = String(interpolateMessage(obj[key] || '', slots));
                                 return Math.max(max, valueStr.length);
                             }, 0);
-                            acc[key] = Math.max(headerLength, maxLength) + 2;
+                            // --- 👇 [수정] 최소 너비 추가 및 너비 계산 방식 미세 조정 ---
+                            acc[key] = Math.max(5, Math.max(headerLength, maxLength) + 2); // 최소 5ch 보장
+                             // --- 👆 [수정] ---
                             return acc;
                         }, {});
 
@@ -130,7 +168,9 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots, onGridRow
                                     <thead>
                                         <tr>
                                             {filteredKeys.map(key => (
-                                              <th key={key} style={{ minWidth: `${columnWidths[key]}ch`, textAlign: 'left', padding: '10px 12px' }}>{key}</th>
+                                              // --- 👇 [수정] 헤더도 보간 처리 ---
+                                              <th key={key} style={{ minWidth: `${columnWidths[key]}ch`, textAlign: 'left', padding: '10px 12px' }}>{interpolateMessage(key, slots)}</th>
+                                              // --- 👆 [수정] ---
                                             ))}
                                         </tr>
                                     </thead>
@@ -155,7 +195,6 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots, onGridRow
                             </div>
                         );
                     } else {
-                        // 2차원 배열 렌더링 (기존 로직 유지)
                         const rows = gridDataFromSlot.length;
                         const columns = gridDataFromSlot[0]?.length || 0;
                         return (
@@ -167,7 +206,6 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots, onGridRow
                                                 const cellValue = gridDataFromSlot[r] ? gridDataFromSlot[r][c] : '';
                                                 return <td key={c}>{interpolateMessage(cellValue || '', slots)}</td>;
                                             })}
-                                            {/* 2차원 배열에서도 빈 행 방지 */}
                                             {columns === 0 && <td key="empty-cell">&nbsp;</td>}
                                         </tr>
                                     ))}
@@ -176,7 +214,6 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots, onGridRow
                         );
                     }
                 } else {
-                     // 수동 입력 데이터 렌더링 (기존 로직 유지)
                     const rows = el.rows || 2;
                     const columns = el.columns || 2;
                     return (
@@ -189,7 +226,6 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots, onGridRow
                                             const cellValue = el.data && el.data[cellIndex] ? el.data[cellIndex] : '';
                                             return <td key={c}>{interpolateMessage(cellValue, slots)}</td>;
                                         })}
-                                         {/* 수동 입력에서도 빈 행 방지 */}
                                         {columns === 0 && <td key="empty-cell">&nbsp;</td>}
                                     </tr>
                                 ))}
@@ -198,19 +234,24 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots, onGridRow
                     );
                 }
             })() : (
-              // 다른 폼 요소 렌더링
               <>
-                <label className={styles.formLabel}>{el.label}</label>
+                {/* --- 👇 [수정] 라벨도 보간 처리 --- */}
+                <label className={styles.formLabel}>{interpolateMessage(el.label, slots)}</label>
+                {/* --- 👆 [수정] --- */}
 
                 {el.type === "input" && (
                   <input
                     className={styles.formInput}
                     type="text"
-                    placeholder={el.placeholder}
-                    value={formData[el.name] || ""}
+                    // --- 👇 [수정] placeholder도 보간 처리 ---
+                    placeholder={interpolateMessage(el.placeholder, slots)}
+                    // --- 👆 [수정] ---
+                    // --- 👇 [수정] value를 formData에서 가져오되, 없으면 보간된 defaultValue 사용 ---
+                    value={formData[el.name] ?? interpolateMessage(String(el.defaultValue ?? ''), slots)}
+                    // --- 👆 [수정] ---
                     onChange={(e) => handleInputChange(el.name, e.target.value)}
                     disabled={disabled}
-                    onClick={(e) => e.stopPropagation()} // Prevent bubble click
+                    onClick={(e) => e.stopPropagation()}
                   />
                 )}
 
@@ -222,7 +263,7 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots, onGridRow
                     value={formData[el.name] || ""}
                     onChange={(e) => handleInputChange(el.name, e.target.value)}
                     onClick={(e) => {
-                      e.stopPropagation(); // Prevent bubble click
+                      e.stopPropagation();
                       handleDateInputClick();
                     }}
                     disabled={disabled}
@@ -236,15 +277,17 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots, onGridRow
                       value={formData[el.name] || ""}
                       onChange={(e) => handleInputChange(el.name, e.target.value)}
                       disabled={disabled}
-                      onClick={(e) => e.stopPropagation()} // 이벤트 버블링 중단
+                      onClick={(e) => e.stopPropagation()}
                     >
                       <option value="" disabled>
                         {t("select")}
                       </option>
-                      {el.options?.map((opt) => (
+                      {dropboxOptions.map((opt) => (
+                        // --- 👇 [수정] 옵션 텍스트도 보간 처리 ---
                         <option key={opt} value={opt}>
-                          {opt}
+                          {interpolateMessage(opt, slots)}
                         </option>
+                         // --- 👆 [수정] ---
                       ))}
                     </select>
                     <ArrowDropDownIcon
@@ -256,8 +299,6 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots, onGridRow
                 {el.type === "checkbox" &&
                   el.options?.map((opt) => (
                     <div key={opt} onClick={(e) => e.stopPropagation()}>
-                      {" "}
-                      {/* Prevent bubble click */}
                       <input
                         type="checkbox"
                         id={`${el.id}-${opt}`}
@@ -267,7 +308,9 @@ const FormRenderer = ({ node, onFormSubmit, disabled, language, slots, onGridRow
                         }
                         disabled={disabled}
                       />
-                      <label htmlFor={`${el.id}-${opt}`}>{opt}</label>
+                      {/* --- 👇 [수정] 체크박스 라벨도 보간 처리 --- */}
+                      <label htmlFor={`${el.id}-${opt}`}>{interpolateMessage(opt, slots)}</label>
+                      {/* --- 👆 [수정] --- */}
                     </div>
                   ))}
               </>
@@ -409,7 +452,6 @@ export default function ScenarioBubble({ scenarioSessionId }) {
   }
 
   const handleGridRowSelected = (gridElement, selectedRowData) => {
-    // --- 👇 [수정] 기본 슬롯 키를 'selectedRow'로 변경 ---
     const targetSlot = gridElement.selectSlot || 'selectedRow';
 
     const updatedSlots = {
@@ -518,7 +560,9 @@ export default function ScenarioBubble({ scenarioSessionId }) {
           <div className={styles.headerContent}>
             <ChevronDownIcon isRotated={isCollapsed} />
             <span className={styles.headerTitle}>
-              {t("scenarioTitle")(scenarioId)}
+              {/* --- 👇 [수정] 시나리오 제목도 보간 처리 --- */}
+              {t("scenarioTitle")(interpolateMessage(scenarioId, activeScenario?.slots))}
+              {/* --- 👆 [수정] --- */}
             </span>
           </div>
           <div className={styles.headerButtons}>
@@ -540,7 +584,7 @@ export default function ScenarioBubble({ scenarioSessionId }) {
         <div className={styles.history} ref={historyRef}>
           {/* Messages loop */}
           {scenarioMessages
-            .filter((msg) => msg.node?.type !== "set-slot")
+            .filter((msg) => msg.node?.type !== "set-slot") // set-slot 노드는 화면에 표시 X
             .map((msg, index) => (
               <div
                 key={`${msg.id}-${index}`}
@@ -573,7 +617,7 @@ export default function ScenarioBubble({ scenarioSessionId }) {
                        msg.node?.type === "iframe" ? (
                         <div className={styles.iframeContainer}>
                           <iframe
-                            src={msg.node.data.url}
+                            src={interpolateMessage(msg.node.data.url, activeScenario?.slots)}
                             width={msg.node.data.width || "100%"}
                             height={msg.node.data.height || "250"}
                             style={{ border: "none", borderRadius: "18px" }}
@@ -584,15 +628,15 @@ export default function ScenarioBubble({ scenarioSessionId }) {
                         <div>
                           <span>Opening link in a new tab: </span>
                           <a
-                            href={msg.node.data.content}
+                            href={interpolateMessage(msg.node.data.content, activeScenario?.slots)}
                             target="_blank"
                             rel="noopener noreferrer"
                           >
-                            {msg.node.data.display || msg.node.data.content}
+                            {interpolateMessage(msg.node.data.display || msg.node.data.content, activeScenario?.slots)}
                           </a>
                         </div>
                       ) : (
-                        <p>{msg.text || msg.node?.data.content}</p>
+                        <p>{interpolateMessage(msg.text || msg.node?.data.content, activeScenario?.slots)}</p>
                       )}
                       {msg.node?.type === "branch" && msg.node.data.replies && (
                         <div className={styles.scenarioList}>
@@ -600,6 +644,7 @@ export default function ScenarioBubble({ scenarioSessionId }) {
                             const selectedOption = msg.selectedOption;
                             const isSelected = selectedOption === reply.display;
                             const isDimmed = selectedOption && !isSelected;
+                            const interpolatedDisplayText = interpolateMessage(reply.display, activeScenario?.slots);
 
                             return (
                               <button
@@ -613,21 +658,21 @@ export default function ScenarioBubble({ scenarioSessionId }) {
                                   setScenarioSelectedOption(
                                     scenarioSessionId,
                                     msg.node.id,
-                                    reply.display
+                                    interpolatedDisplayText 
                                   );
                                   handleScenarioResponse({
                                     scenarioSessionId: scenarioSessionId,
                                     currentNodeId: msg.node.id,
                                     sourceHandle: reply.value,
-                                    userInput: reply.display,
+                                    userInput: interpolatedDisplayText, 
                                   });
                                 }}
                                 disabled={isCompleted || !!selectedOption}
                               >
                                 <span className={styles.optionButtonText}>
-                                  {reply.display}
+                                  {interpolatedDisplayText}
                                 </span>
-                                {reply.display
+                                {interpolatedDisplayText
                                   .toLowerCase()
                                   .includes("link") ? (
                                   <OpenInNewIcon />
@@ -647,17 +692,17 @@ export default function ScenarioBubble({ scenarioSessionId }) {
           {/* Loading indicator */}
            {isScenarioLoading && (
             <div className={styles.messageRow}>
-              <img
-                src="/images/avatar-loading.png"
-                alt="Avatar"
-                className={styles.avatar}
-              />
               <div className={`${styles.message} ${styles.botMessage}`}>
-                <img
-                  src="/images/Loading.gif"
-                  alt={t("loading")}
-                  style={{ width: "40px", height: "30px" }}
-                />
+                 <div className={styles.scenarioMessageContentWrapper}>
+                    <LogoIcon />
+                    <div className={styles.messageContent}>
+                      <img
+                        src="/images/Loading.gif"
+                        alt={t("loading")}
+                        style={{ width: "40px", height: "30px" }}
+                      />
+                    </div>
+                 </div>
               </div>
             </div>
           )}

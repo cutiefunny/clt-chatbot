@@ -10,7 +10,21 @@ import CheckCircle from "./icons/CheckCircle";
 import MoonIcon from "./icons/MoonIcon";
 import LogoIcon from "./icons/LogoIcon";
 import CopyIcon from "./icons/CopyIcon";
-import LikeIcon from "./icons/LikeIcon";
+
+// JSON 파싱 및 렌더링을 위한 헬퍼 함수
+const tryParseJson = (text) => {
+  try {
+    if (typeof text === 'string' && text.startsWith('{') && text.endsWith('}')) {
+      const parsed = JSON.parse(text);
+      if (parsed && typeof parsed === 'object') {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    // JSON 파싱 실패 시 무시
+  }
+  return null;
+};
 
 const MessageWithButtons = ({ text, messageId }) => {
   const { handleShortcutClick, scenarioCategories, selectedOptions } =
@@ -33,35 +47,78 @@ const MessageWithButtons = ({ text, messageId }) => {
 
   if (!text) return null;
 
+  // --- 👇 [수정] "Loop back to Supervisor" 포함 여부 확인 ---
+  const showLoadingGifForLoopback = typeof text === 'string' && text.includes("Loop back to Supervisor");
+  if (showLoadingGifForLoopback) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+        <span>init flow..</span>
+        <img
+          src="/images/Loading.gif"
+          alt="Loading..."
+          style={{ width: "60px", height: "45px", marginTop: '8px' }}
+        />
+      </div>
+    );
+  }
+  // --- 👆 [여기까지] ---
+
+  // JSON 메시지 처리 로직 (이전 로직 유지)
+  const jsonContent = tryParseJson(text);
+  if (jsonContent && jsonContent.next && jsonContent.instructions) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+        <span>{jsonContent.instructions}</span>
+        <img
+          src="/images/Loading.gif"
+          alt="Loading..."
+          style={{ width: "60px", height: "45px", marginTop: '8px' }}
+        />
+      </div>
+    );
+  }
+
+  // 버튼 파싱 및 렌더링 로직 (이전 로직 유지)
   const regex = /\[BUTTON:(.+?)\]/g;
   const parts = [];
   let lastIndex = 0;
   let match;
 
-  while ((match = regex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push({
-        type: "text",
-        content: text.substring(lastIndex, match.index),
-      });
+  // text가 문자열일 때만 정규식 실행
+  if (typeof text === 'string') {
+    while ((match = regex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push({
+          type: "text",
+          content: text.substring(lastIndex, match.index),
+        });
+      }
+      parts.push({ type: "button", content: match[1] });
+      lastIndex = regex.lastIndex;
     }
-    parts.push({ type: "button", content: match[1] });
-    lastIndex = regex.lastIndex;
+
+    if (lastIndex < text.length) {
+      parts.push({ type: "text", content: text.substring(lastIndex) });
+    }
+  } else {
+    // text가 문자열이 아니면 그대로 parts에 넣음 (예: 객체인데 파싱 실패한 경우)
+    parts.push({ type: "text", content: text });
   }
 
-  if (lastIndex < text.length) {
-    parts.push({ type: "text", content: text.substring(lastIndex) });
-  }
 
   if (parts.length === 0) {
-    return <p>{text}</p>;
+     // parts가 비어있고 text가 문자열이면 text 반환, 아니면 빈 Fragment
+    return typeof text === 'string' ? <>{text}</> : <></>;
   }
+
 
   return (
     <div>
       {parts.map((part, index) => {
         if (part.type === "text") {
-          return <span key={index}>{part.content}</span>;
+           // content가 객체일 수 있으므로 문자열로 변환 시도
+          const contentString = typeof part.content === 'string' ? part.content : JSON.stringify(part.content);
+          return <span key={index}>{contentString}</span>;
         } else if (part.type === "button") {
           const buttonText = part.content;
           const shortcutItem = findShortcutByTitle(buttonText);
@@ -76,20 +133,22 @@ const MessageWithButtons = ({ text, messageId }) => {
                   isSelected ? styles.selected : ""
                 } ${isDimmed ? styles.dimmed : ""}`}
                 style={{ margin: "4px 4px 4px 0", display: "block" }}
-                onClick={() => handleShortcutClick(shortcutItem, messageId)} // --- 👈 [수정] async/await 제거
+                onClick={() => handleShortcutClick(shortcutItem, messageId)}
                 disabled={!!selectedOption}
               >
                 {buttonText}
               </button>
             );
           }
-          return `[BUTTON:${part.content}]`;
+          return <span key={index}>{`[BUTTON:${part.content}]`}</span>;
         }
         return null;
       })}
     </div>
   );
 };
+
+// ... (Chat 컴포넌트의 나머지 부분은 이전과 동일)
 
 export default function Chat() {
   const {
@@ -240,9 +299,20 @@ export default function Chat() {
   }, [updateWasAtBottom]);
 
   const handleCopy = (text, id) => {
-    if (!text || text.trim() === "") return;
+    let textToCopy = text;
+    if (typeof text === 'object' && text !== null) {
+      try {
+        textToCopy = JSON.stringify(text, null, 2);
+      } catch (e) {
+        console.error("Failed to stringify object for copying:", e);
+        return;
+      }
+    }
 
-    navigator.clipboard.writeText(text).then(() => {
+    if (!textToCopy || (typeof textToCopy === 'string' && textToCopy.trim() === "")) return;
+
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
       setCopiedMessageId(id);
       setTimeout(() => setCopiedMessageId(null), 1500);
     });
@@ -294,17 +364,17 @@ export default function Chat() {
           <>
             {isFetchingMore && (
               <div className={styles.messageRow}>
-                <img
-                  src="/images/avatar-loading.png"
-                  alt="Avatar"
-                  className={styles.avatar}
-                />
                 <div className={`${styles.message} ${styles.botMessage}`}>
-                  <img
-                    src="/images/Loading.gif"
-                    alt={t("loading")}
-                    style={{ width: "40px", height: "30px" }}
-                  />
+                  <div className={styles.messageContentWrapper}>
+                    <LogoIcon />
+                    <div className={styles.messageContent}>
+                      <img
+                        src="/images/Loading.gif"
+                        alt={t("loading")}
+                        style={{ width: "40px", height: "30px" }}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -343,7 +413,7 @@ export default function Chat() {
                     <div className={styles.messageContentWrapper}>
                       {msg.sender === "bot" && <LogoIcon />}
                       <div className={styles.messageContent}>
-                        {msg.text && (
+                        {(msg.text !== undefined && msg.text !== null) && ( // msg.text 존재 여부 확인 강화
                           <MessageWithButtons
                             text={msg.text}
                             messageId={msg.id}
@@ -352,7 +422,6 @@ export default function Chat() {
                         {msg.sender === "bot" && msg.scenarios && (
                           <div className={styles.scenarioList}>
                             {msg.scenarios.map((name) => {
-                              // --- 👈 [수정] async 제거
                               const isSelected = selectedOption === name;
                               const isDimmed = selectedOption && !isSelected;
                               return (
@@ -362,7 +431,6 @@ export default function Chat() {
                                     isSelected ? styles.selected : ""
                                   } ${isDimmed ? styles.dimmed : ""}`}
                                   onClick={(e) => {
-                                    // --- 👈 [수정] async/await 제거
                                     e.stopPropagation();
                                     setSelectedOption(msg.id, name);
                                     openScenarioPanel(name);
@@ -386,7 +454,7 @@ export default function Chat() {
                           className={styles.actionButton}
                           onClick={() =>
                             handleCopy(
-                              msg.text || msg.node?.data.content,
+                              msg.text ?? msg.node?.data.content, // ?? 연산자로 node 내용도 고려
                               msg.id
                             )
                           }
@@ -399,19 +467,19 @@ export default function Chat() {
                 </div>
               );
             })}
-            {isLoading && (
+            {isLoading && !messages.some(m => m.isStreaming) && (
               <div className={styles.messageRow}>
-                <img
-                  src="/images/avatar-loading.png"
-                  alt="Avatar"
-                  className={styles.avatar}
-                />
                 <div className={`${styles.message} ${styles.botMessage}`}>
-                  <img
-                    src="/images/Loading.gif"
-                    alt={t("loading")}
-                    style={{ width: "40px", height: "30px" }}
-                  />
+                  <div className={styles.messageContentWrapper}>
+                     <LogoIcon />
+                     <div className={styles.messageContent}>
+                       <img
+                         src="/images/Loading.gif"
+                         alt={t("loading")}
+                         style={{ width: "40px", height: "30px" }}
+                       />
+                     </div>
+                  </div>
                 </div>
               </div>
             )}
