@@ -367,6 +367,18 @@ const ScenarioStatusBadge = ({ status, t }) => {
   );
 };
 
+//  --- 👇 [수정] hyh - link slot 새창이 아닌 현재창 링크 변경 함수 ---
+const PARENT_ORIGIN = "http://172.20.130.91:9110";
+const connectParentLink = (data) => {
+  try {
+    if (!window.parent) throw new Error('not parent window.');
+    const msg = { action: 'callScreenOpen', payload: { url: data } };
+    window.parent.postMessage(msg, PARENT_ORIGIN);
+  } catch (err) {
+    console.error('link faild:', err);
+  }
+}
+// --- 👆 [수정] ---
 
 export default function ScenarioBubble({ scenarioSessionId }) {
   const {
@@ -627,12 +639,29 @@ export default function ScenarioBubble({ scenarioSessionId }) {
                       ) : msg.node?.type === "link" ? (
                         <div>
                           <span>Opening link in a new tab: </span>
+                          {/*
                           <a
+                             // --- 👇 [수정] Link URL 및 표시 텍스트 보간 처리 ---
                             href={interpolateMessage(msg.node.data.content, activeScenario?.slots)}
+                             // --- 👆 [수정] ---
                             target="_blank"
                             rel="noopener noreferrer"
+                          > 
+                          */}
+                          {/* // --- 👇 [수정] hyh - Link slot 클릭 시 새 창이 아닌 현재 창 링크 변경 --- */}
+                          <a
+                            href="#"
+                            target="_self"
+                            rel="noopener noreferrer"
+                            onClick={(e) => {
+                              e.preventDefault();                 
+                              connectParentLink(interpolateMessage(msg.node.data.content, activeScenario?.slots));
+                            }}
                           >
+                          {/* // --- 👆 [수정] --- */}
+                             {/* --- 👇 [수정] Link URL 및 표시 텍스트 보간 처리 --- */}
                             {interpolateMessage(msg.node.data.display || msg.node.data.content, activeScenario?.slots)}
+                             {/* --- 👆 [수정] --- */}
                           </a>
                         </div>
                       ) : (
