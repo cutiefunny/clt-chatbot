@@ -7,1159 +7,378 @@ import {
   onSnapshot,
   getDocs,
   serverTimestamp,
-  deleteDoc,
+  // deleteDoc, // conversationSlice에서 사용
   doc,
   updateDoc,
   limit,
   startAfter,
-  where,
-  writeBatch,
+  // where, // 검색 슬라이스에서 사용
+  writeBatch, // 메시지 저장 관련 로직에서 필요할 수 있음
 } from "firebase/firestore";
 import { locales } from "../../lib/locales";
-import { getErrorKey } from "../../lib/errorHandler"; // --- 👈 [추가] ---
+import { getErrorKey } from "../../lib/errorHandler";
 
 const MESSAGE_LIMIT = 15;
 
+// 초기 메시지 함수 (chatSlice가 관리)
 const getInitialMessages = (lang = "ko") => {
-  // locales[lang]가 없을 경우 'en' 또는 기본값 사용
   const initialText = locales[lang]?.initialBotMessage || locales['en']?.initialBotMessage || "Hello! How can I help you?";
-  return [
-    { id: "initial", sender: "bot", text: initialText },
-  ];
+  return [{ id: "initial", sender: "bot", text: initialText }];
 };
 
-const responseHandlers = {
-  scenario_list: (data, get) => {
-    get().addMessage("bot", { text: data.message, scenarios: data.scenarios });
-  },
-  canvas_trigger: (data, get) => {
-    get().addMessage("bot", {
-      // --- 👇 [수정] locales 사용 ---
-      text: locales[get().language]?.scenarioStarted(data.scenarioId) || `Starting scenario '${data.scenarioId}'.`
-      // --- 👆 [수정] ---
-    });
-    get().openScenarioPanel(data.scenarioId);
-  },
-  toast: (data, get) => {
-    // --- 👇 [수정] showEphemeralToast 사용 ---
-    get().showEphemeralToast(data.message, data.toastType || 'info');
-    // --- 👆 [수정] ---
-  },
-  llm_response_with_slots: (data, get) => {
-    get().addMessage("bot", { text: data.message });
-    if (data.slots && Object.keys(data.slots).length > 0) {
-      get().setExtractedSlots(data.slots);
-    }
-  },
-};
 
-// --- 👇 [추가] Gemini 스트림 처리 제너레이터 함수 ---
+// 스트림 처리 헬퍼 함수들 (파일 상단 또는 별도 유틸)
 async function* processGeminiStream(reader, decoder, get) {
     let buffer = '';
     let slotsFound = false;
     let thinkingMessageReplaced = false;
-
     try {
         while (true) {
             const { value, done } = await reader.read();
             if (done) break;
             const chunk = decoder.decode(value);
-
             if (!slotsFound) {
                 buffer += chunk;
                 const separatorIndex = buffer.indexOf('|||');
                 if (separatorIndex !== -1) {
                     const jsonPart = buffer.substring(0, separatorIndex);
                     const textPart = buffer.substring(separatorIndex + 3);
-                    buffer = ''; // 구분자 이후 부분은 다음 처리로 넘김 (혹시 모르니 초기화)
-
+                    buffer = '';
                     try {
                         const parsed = JSON.parse(jsonPart);
-                        if (parsed.slots) {
-                            yield { type: 'slots', data: parsed.slots }; // 슬롯 정보 전달
-                            yield { type: 'rawResponse', data: parsed }; // 원본 응답 전달
-                        }
-                    } catch (e) {
-                        console.error("Failed to parse slots JSON from Gemini stream:", e, "JSON part:", jsonPart);
-                        yield { type: 'rawResponse', data: { error: "Failed to parse slots", data: jsonPart } };
-                    }
+                        if (parsed.slots) { yield { type: 'slots', data: parsed.slots }; yield { type: 'rawResponse', data: parsed }; }
+                    } catch (e) { console.error("Gemini stream slot parse error:", e, jsonPart); yield { type: 'rawResponse', data: { error: "Slot parse fail", data: jsonPart } }; }
                     slotsFound = true;
-                    if (textPart) {
-                         yield { type: 'text', data: textPart, replace: !thinkingMessageReplaced }; // 텍스트 청크 전달
-                         thinkingMessageReplaced = true;
-                    }
+                    if (textPart) { yield { type: 'text', data: textPart, replace: !thinkingMessageReplaced }; thinkingMessageReplaced = true; }
                 }
-            } else {
-                yield { type: 'text', data: chunk, replace: !thinkingMessageReplaced }; // 텍스트 청크 전달
-                thinkingMessageReplaced = true; // 슬롯 이후 첫 텍스트 청크도 replace 가능하게
-            }
+            } else { yield { type: 'text', data: chunk, replace: !thinkingMessageReplaced }; thinkingMessageReplaced = true; }
         }
-    } catch (streamError) {
-         console.error("Error reading Gemini stream:", streamError);
-         yield { type: 'error', data: streamError }; // 스트림 읽기 오류 전달
-    }
+    } catch (streamError) { console.error("Gemini stream read error:", streamError); yield { type: 'error', data: streamError }; }
 }
-// --- 👆 [추가] ---
-
-// --- 👇 [추가] Flowise 스트림 처리 제너레이터 함수 ---
 async function* processFlowiseStream(reader, decoder, get) {
     let buffer = '';
     let thinkingMessageReplaced = false;
-    let collectedText = ''; // 최종 텍스트 조립용
-    let buttonText = ''; // 버튼(시나리오 ID) 텍스트
-    let extractedSlots = {}; // 추출된 슬롯
-
+    let collectedText = '';
+    let buttonText = '';
+    let extractedSlots = {};
     try {
         while (true) {
             const { value, done } = await reader.read();
-            if (done) {
-                // 스트림 종료 시 남은 버퍼 처리
-                if (buffer) {
+            if (done) { /* final buffer processing */
+                 if (buffer) {
                     const lines = buffer.split('\n');
                     for (const line of lines) {
-                       // ... (기존 final buffer 처리 로직과 유사하게 파싱 및 yield) ...
-                       if (line.toLowerCase().startsWith('data:')) {
-                           const jsonString = line.substring(line.indexOf(':') + 1).trim();
-                           if (jsonString && jsonString !== "[DONE]") {
-                               try {
-                                   const data = JSON.parse(jsonString);
-                                   let textChunk = '';
-                                   if (data.event === 'agentFlowExecutedData' && Array.isArray(data.data)) {
-                                        const lastNodeExecution = data.data[data.data.length - 1];
-                                        if (lastNodeExecution?.data?.output?.content) {
-                                            textChunk = lastNodeExecution.data.output.content;
-                                            yield { type: 'text', data: textChunk, replace: true }; // 최종 텍스트 덮어쓰기
-                                            thinkingMessageReplaced = true;
-                                            collectedText = textChunk; // 최종 텍스트 기록
-                                        }
+                        if (line.toLowerCase().startsWith('data:')) {
+                            const jsonString = line.substring(line.indexOf(':') + 1).trim();
+                            if (jsonString && jsonString !== "[DONE]") {
+                                try {
+                                    const data = JSON.parse(jsonString); let textChunk = '';
+                                    if (data.event === 'agentFlowExecutedData' && Array.isArray(data.data) && data.data.length > 0 && data.data[data.data.length-1]?.data?.output?.content) {
+                                        textChunk = data.data[data.data.length-1].data.output.content;
+                                        yield { type: 'text', data: textChunk, replace: true }; thinkingMessageReplaced = true; collectedText = textChunk;
                                     } else if (data.event === 'usedTools' && Array.isArray(data.data) && data.data.length > 0 && data.data[0]?.toolOutput && !buttonText) {
                                         const match = data.data[0].toolOutput.match(/"scenarioId"\s*:\s*"([^"]+)"/);
                                         if (match && match[1]) buttonText = `\n\n[BUTTON:${match[1]}]`;
                                     }
-                                    // 기타 textChunk 추출 로직...
-                               } catch (e) { console.warn("Error parsing final Flowise buffer:", e); }
-                           }
-                       }
+                                } catch (e) { console.warn("Final Flowise buffer parse error:", e); }
+                            }
+                        }
                     }
-                }
-                break; // 루프 종료
+                 }
+                 break;
             }
-
-            if (!value) continue;
-            let chunk;
-            try { chunk = decoder.decode(value, { stream: true }); } catch(e) { chunk = ''; }
-            buffer += chunk;
-
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || ''; // 마지막 줄은 다음 처리를 위해 남김
-
+            if (!value) continue; let chunk; try { chunk = decoder.decode(value, { stream: true }); } catch(e) { chunk = ''; } buffer += chunk; const lines = buffer.split('\n'); buffer = lines.pop() || '';
             for (const line of lines) {
-                if (!line.trim() || line.toLowerCase().startsWith('message:')) continue;
-                let jsonString = '';
-                if (line.toLowerCase().startsWith('data:')) {
-                    jsonString = line.substring(line.indexOf(':') + 1).trim();
-                } else { jsonString = line.trim(); }
-                if (!jsonString || jsonString === "[DONE]") continue;
-
-                let data;
-                try { data = JSON.parse(jsonString); } catch (e) { buffer = line + (buffer ? '\n' + buffer : ''); continue; }
-
-                let textChunk = '';
-                 if (data.event === 'agentFlowExecutedData' && Array.isArray(data.data)) {
-                    const lastNodeExecution = data.data[data.data.length - 1];
-                    if (lastNodeExecution?.data?.output?.content) {
-                        textChunk = lastNodeExecution.data.output.content;
-                        yield { type: 'text', data: textChunk, replace: true }; // 최종 텍스트 덮어쓰기
-                        thinkingMessageReplaced = true;
-                        collectedText = textChunk; // 최종 텍스트 기록
-                    }
+                if (!line.trim() || line.toLowerCase().startsWith('message:')) continue; let jsonString = ''; if (line.toLowerCase().startsWith('data:')) jsonString = line.substring(line.indexOf(':') + 1).trim(); else jsonString = line.trim(); if (!jsonString || jsonString === "[DONE]") continue; let data; try { data = JSON.parse(jsonString); } catch (e) { buffer = line + (buffer ? '\n' + buffer : ''); continue; } let textChunk = '';
+                if (data.event === 'agentFlowExecutedData' && Array.isArray(data.data) && data.data.length > 0 && data.data[data.data.length-1]?.data?.output?.content) {
+                    textChunk = data.data[data.data.length-1].data.output.content;
+                    yield { type: 'text', data: textChunk, replace: true }; thinkingMessageReplaced = true; collectedText = textChunk;
                 } else if (data.event === 'usedTools' && Array.isArray(data.data) && data.data.length > 0 && data.data[0]?.toolOutput && !buttonText) {
                      const match = data.data[0].toolOutput.match(/"scenarioId"\s*:\s*"([^"]+)"/);
                      if (match && match[1]) buttonText = `\n\n[BUTTON:${match[1]}]`;
                 } else if (data.event === 'token' && typeof data.data === 'string') {
-                    textChunk = data.data;
-                    yield { type: 'text', data: textChunk, replace: !thinkingMessageReplaced };
-                    thinkingMessageReplaced = true;
-                    collectedText += textChunk; // 텍스트 누적
+                    textChunk = data.data; yield { type: 'text', data: textChunk, replace: !thinkingMessageReplaced }; thinkingMessageReplaced = true; collectedText += textChunk;
                 } else if (data.event === 'chunk' && data.data?.response) {
-                    textChunk = data.data.response;
-                    yield { type: 'text', data: textChunk, replace: !thinkingMessageReplaced };
-                    thinkingMessageReplaced = true;
-                    collectedText += textChunk;
+                    textChunk = data.data.response; yield { type: 'text', data: textChunk, replace: !thinkingMessageReplaced }; thinkingMessageReplaced = true; collectedText += textChunk;
                 }
-                // 기타 이벤트 처리...
-            } // end for lines
-        } // end while
-
-        // 스트림 종료 후 버튼 텍스트 전달
-        if (buttonText) {
-            yield { type: 'button', data: buttonText };
-            collectedText += buttonText; // 최종 텍스트에도 추가
+            }
         }
-
-        // 슬롯 추출 및 전달 (collectedText 기반)
-        const bookingNoRegex = /\b([A-Z]{2}\d{10})\b/i;
-        const match = collectedText.match(bookingNoRegex);
-        if (match && match[1]) {
-            extractedSlots.bkgNr = match[1];
-            yield { type: 'slots', data: extractedSlots };
-        }
-        // 최종 텍스트 전달 (혹시 누락된 경우 대비)
+        if (buttonText) { yield { type: 'button', data: buttonText }; collectedText += buttonText; }
+        const bookingNoRegex = /\b([A-Z]{2}\d{10})\b/i; const match = collectedText.match(bookingNoRegex); if (match && match[1]) { extractedSlots.bkgNr = match[1]; yield { type: 'slots', data: extractedSlots }; }
         yield { type: 'finalText', data: collectedText };
-
-    } catch (streamError) {
-        console.error("Error reading Flowise stream:", streamError);
-        yield { type: 'error', data: streamError }; // 스트림 읽기 오류 전달
-    }
+    } catch (streamError) { console.error("Flowise stream read error:", streamError); yield { type: 'error', data: streamError }; }
 }
-// --- 👆 [추가] ---
 
-export const createChatSlice = (set, get) => ({
-  messages: getInitialMessages("ko"),
-  conversations: [],
-  currentConversationId: null,
-  isLoading: false,
-  isSearching: false,
-  searchResults: [],
-  slots: {},
-  extractedSlots: {},
-  llmRawResponse: null,
-  selectedOptions: {},
-  unsubscribeMessages: null,
-  unsubscribeConversations: null,
-  lastVisibleMessage: null,
-  hasMoreMessages: true,
-  scenariosForConversation: {},
+export const createChatSlice = (set, get) => {
 
-  favorites: [],
-  unsubscribeFavorites: null,
+  // responseHandlers는 이 스코프 내에서만 사용되므로 여기에 정의
+  const responseHandlers = {
+    scenario_list: (data, getFn) => {
+      getFn().addMessage("bot", { text: data.message, scenarios: data.scenarios });
+    },
+    canvas_trigger: (data, getFn) => {
+      getFn().addMessage("bot", {
+        text: locales[getFn().language]?.scenarioStarted(data.scenarioId) || `Starting '${data.scenarioId}'.`
+      });
+      // scenarioSlice의 액션 호출 (getFn()으로 전체 스토어 접근)
+      getFn().openScenarioPanel(data.scenarioId);
+    },
+    toast: (data, getFn) => {
+      // uiSlice의 액션 호출 (getFn()으로 전체 스토어 접근)
+      getFn().showEphemeralToast(data.message, data.toastType || 'info');
+    },
+    llm_response_with_slots: (data, getFn) => {
+      getFn().addMessage("bot", { text: data.message });
+      if (data.slots && Object.keys(data.slots).length > 0) {
+        getFn().setExtractedSlots(data.slots);
+      }
+    },
+  };
 
+  return {
+  // State
+  messages: getInitialMessages("ko"), // 현재 대화의 메시지 목록
+  isLoading: false, // 메시지 로딩 또는 응답 대기 상태
+  slots: {}, // 시나리오 실행 시 사용될 슬롯 (scenarioSlice로 이동 고려)
+  extractedSlots: {}, // LLM이 추출한 슬롯
+  llmRawResponse: null, // LLM 원시 응답 (디버깅용)
+  selectedOptions: {}, // 메시지 내 버튼 선택 상태
+  unsubscribeMessages: null, // 현재 대화 메시지 리스너 해제 함수
+  lastVisibleMessage: null, // 메시지 페이징 커서
+  hasMoreMessages: true, // 추가 메시지 로드 가능 여부
+
+  // Actions
+  // 메시지 상태 초기화 (언어 변경, 새 대화 시작 시 호출됨)
+  resetMessages: (language) => {
+      set({
+          messages: getInitialMessages(language), // 해당 언어의 초기 메시지로 설정
+          lastVisibleMessage: null,
+          hasMoreMessages: true,
+          selectedOptions: {},
+          isLoading: false, // 로딩 상태 초기화
+      });
+      // 기존 메시지 리스너 해제
+      get().unsubscribeMessages?.();
+      set({ unsubscribeMessages: null });
+  },
+
+  // 초기 메시지 로드 및 실시간 구독 설정
+  loadInitialMessages: async (conversationId) => {
+      const { user, language, showEphemeralToast } = get();
+      if (!user || !conversationId) return;
+
+      const initialMessage = getInitialMessages(language)[0]; // 언어에 맞는 초기 메시지
+      // 로딩 시작 시 초기 메시지만 표시하도록 수정
+      set({ isLoading: true, messages: [initialMessage], lastVisibleMessage: null, hasMoreMessages: true, selectedOptions: {} });
+
+      try {
+          const messagesRef = collection( get().db, "chats", user.uid, "conversations", conversationId, "messages" );
+          const q = query( messagesRef, orderBy("createdAt", "desc"), limit(MESSAGE_LIMIT) );
+
+          get().unsubscribeMessages?.(); // 이전 리스너 해제
+
+          const unsubscribe = onSnapshot(q, (messagesSnapshot) => {
+              const newMessages = messagesSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })).reverse();
+              const lastVisible = messagesSnapshot.docs[messagesSnapshot.docs.length - 1];
+              const newSelectedOptions = {};
+              newMessages.forEach(msg => { if (msg.selectedOption) newSelectedOptions[msg.id] = msg.selectedOption; });
+
+              // 초기 메시지와 결합하여 상태 업데이트
+              set({
+                  messages: [initialMessage, ...newMessages],
+                  lastVisibleMessage: lastVisible,
+                  hasMoreMessages: messagesSnapshot.docs.length === MESSAGE_LIMIT,
+                  isLoading: false, // 로딩 완료
+                  selectedOptions: newSelectedOptions,
+              });
+          }, (error) => { // 리스너 오류 처리
+              console.error(`Error listening to initial messages for ${conversationId}:`, error);
+              const errorKey = getErrorKey(error);
+              const message = locales[language]?.[errorKey] || locales['en']?.errorUnexpected || 'Failed to load messages.';
+              showEphemeralToast(message, 'error');
+              set({ isLoading: false, hasMoreMessages: false });
+              unsubscribe();
+              set({ unsubscribeMessages: null });
+          });
+          set({ unsubscribeMessages: unsubscribe }); // 새 리스너 저장
+      } catch (error) { // onSnapshot 설정 자체의 오류 처리
+          console.error(`Error setting up initial message listener for ${conversationId}:`, error);
+          const errorKey = getErrorKey(error);
+          const message = locales[language]?.[errorKey] || locales['en']?.errorUnexpected || 'Failed to load messages.';
+          showEphemeralToast(message, 'error');
+          // 오류 발생 시 초기 메시지만 남기고 로딩 해제
+          set({ isLoading: false, hasMoreMessages: false, messages: [initialMessage] });
+      }
+  },
+
+  // 스트리밍 중 마지막 봇 메시지 업데이트
   updateLastMessage: (chunk, replace = false) => {
     set((state) => {
       const lastMessage = state.messages[state.messages.length - 1];
-      if (lastMessage && lastMessage.sender === 'bot' && lastMessage.isStreaming) { // 스트리밍 중일 때만 업데이트
+      if (lastMessage && lastMessage.sender === 'bot' && lastMessage.isStreaming) {
         const updatedText = replace ? chunk : (lastMessage.text || '') + chunk;
-        const updatedMessage = {
-          ...lastMessage,
-          text: updatedText,
-          // isStreaming: true, // isStreaming 상태는 유지
-        };
-        return {
-          messages: [...state.messages.slice(0, -1), updatedMessage],
-        };
+        const updatedMessage = { ...lastMessage, text: updatedText };
+        return { messages: [...state.messages.slice(0, -1), updatedMessage] };
       }
-      return state; // 스트리밍 중이 아니면 상태 변경 없음
+      return state;
     });
   },
 
+  // 메시지 내 버튼 선택 상태 업데이트
   setSelectedOption: async (messageId, optionValue) => {
-    // 1. 로컬 상태 우선 업데이트 (즉각적인 UI 반응)
-    const previousSelectedOptions = get().selectedOptions; // --- 👈 [추가] 롤백을 위해 이전 상태 저장
-    set((state) => ({
-      selectedOptions: {
-        ...state.selectedOptions,
-        [messageId]: optionValue,
-      },
-    }));
-
-    // 2. 임시 ID인지 확인
-    const isTemporaryId = String(messageId).startsWith('temp_'); // 임시 ID 형식 확인
+    // 임시 ID 체크: Firestore 업데이트 건너뛰기
+    const isTemporaryId = String(messageId).startsWith('temp_');
     if (isTemporaryId) {
-      console.warn("Optimistic update for temporary message ID:", messageId);
+      console.warn("setSelectedOption called with temporary ID, skipping Firestore update for now:", messageId);
+      // 로컬 상태만 우선 업데이트 (UI 피드백용)
+      set((state) => ({ selectedOptions: { ...state.selectedOptions, [messageId]: optionValue } }));
       return;
     }
 
-    // 3. Firestore에 비동기로 선택 상태 저장
-    const { user, currentConversationId, language, showEphemeralToast } = get(); // --- 👈 [추가] language, showEphemeralToast
-    if (!user || !currentConversationId || !messageId) return;
+    const previousSelectedOptions = get().selectedOptions;
+    set((state) => ({ selectedOptions: { ...state.selectedOptions, [messageId]: optionValue } })); // 낙관적 업데이트
+
+    const { user, language, showEphemeralToast, currentConversationId } = get(); // conversationSlice 상태 참조
+    if (!user || !currentConversationId || !messageId) return; // 필수 값 확인
 
     try {
       const messageRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "messages", String(messageId));
-      await updateDoc(messageRef, {
-        selectedOption: optionValue,
-      });
+      await updateDoc(messageRef, { selectedOption: optionValue }); // Firestore 업데이트
     } catch (error) {
       console.error("Error updating selected option in Firestore:", error);
-      // --- 👇 [수정] Firestore 업데이트 실패 시 롤백 ---
       const errorKey = getErrorKey(error);
       const message = locales[language]?.[errorKey] || locales['en']?.errorUnexpected || 'Failed to save selection.';
       showEphemeralToast(message, 'error');
-      set({ selectedOptions: previousSelectedOptions }); // 이전 상태로 롤백
-      // --- 👆 [수정] ---
+      set({ selectedOptions: previousSelectedOptions }); // 오류 시 롤백
     }
   },
 
+  // LLM 추출 슬롯 설정
   setExtractedSlots: (newSlots) => {
-      set((state) => ({
-      // 기존 슬롯과 새 슬롯 병합 (새 슬롯 우선)
-      extractedSlots: { ...state.extractedSlots, ...newSlots },
-    }));
+      set((state) => ({ extractedSlots: { ...state.extractedSlots, ...newSlots } }));
   },
 
+  // LLM 추출 슬롯 초기화
   clearExtractedSlots: () => {
      set({ extractedSlots: {} });
   },
 
+  // 메시지 및 시나리오 관련 모든 구독 해제 (다른 슬라이스 호출 포함)
   unsubscribeAllMessagesAndScenarios: () => {
       get().unsubscribeMessages?.();
-    const scenariosMap = get().unsubscribeScenariosMap;
-    // 안전하게 순회하며 구독 해제
-    Object.keys(scenariosMap).forEach(sessionId => {
-        try {
-            scenariosMap[sessionId]();
-        } catch (e) {
-            console.warn(`Error unsubscribing scenario session ${sessionId}:`, e);
-        }
-    });
-    set({
-      unsubscribeMessages: null,
-      unsubscribeScenariosMap: {}, // 비우기
-      scenarioStates: {}, // 시나리오 상태 초기화
-      activeScenarioSessions: [], // 활성 세션 목록 초기화
-      activeScenarioSessionId: null, // 활성 세션 ID 초기화
-      lastFocusedScenarioSessionId: null, // 마지막 포커스 ID 초기화
-      activePanel: "main", // 패널 초기화
-    });
+      set({ unsubscribeMessages: null });
+      // scenarioSlice의 구독 해제 함수 호출 (가정)
+      get().unsubscribeAllScenarioListeners?.();
   },
 
-  loadFavorites: (userId) => {
-      // --- 👇 [수정] Firestore 리스너 오류 처리 ---
-      if (get().unsubscribeFavorites) {
-           console.log("Favorites listener already active.");
-           return; // 이미 구독 중이면 중복 실행 방지
-      }
-
-      const q = query(
-        collection(get().db, "users", userId, "favorites"),
-        orderBy("order", "asc")
-      );
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const favorites = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        set({ favorites });
-      }, (error) => { // 오류 콜백 추가
-          console.error("Error listening to favorites changes:", error);
-          const { language, showEphemeralToast } = get();
-          const errorKey = getErrorKey(error);
-          const message = locales[language]?.[errorKey] || locales['en']?.errorUnexpected || 'Failed to load favorites.';
-          showEphemeralToast(message, 'error');
-          // 심각한 오류 시 리스너 구독 해제 (선택 사항)
-          // unsubscribe();
-          // set({ unsubscribeFavorites: null });
-      });
-      set({ unsubscribeFavorites: unsubscribe });
-      // --- 👆 [수정] ---
-  },
-
-  addFavorite: async (favoriteData) => {
-    const { user, favorites, maxFavorites, language, showEphemeralToast } = get();
-    if (!user) return;
-
-    if (favorites.length >= maxFavorites) {
-      showEphemeralToast(locales[language]?.['최대 즐겨찾기 개수에 도달했습니다.'] || "Favorite limit reached.", "error");
-      return;
-    }
-
-    // --- 👇 [수정] Firestore 작업 오류 처리 ---
-    try {
-        const favoritesCollection = collection(
-          get().db,
-          "users",
-          user.uid,
-          "favorites"
-        );
-        // order 필드를 현재 favorites 배열 길이로 설정
-        const currentOrder = get().favorites.length;
-        const dataToSave = {
-            ...favoriteData,
-            createdAt: serverTimestamp(),
-            order: currentOrder, // 현재 길이를 순서로 사용
-        };
-        await addDoc(favoritesCollection, dataToSave); // Firestore 추가 시도
-        // 성공 메시지는 toggleFavorite에서 표시
-
-        // Firestore 리스너가 상태를 업데이트하므로 여기서 set() 호출 불필요
-    } catch (error) {
-        console.error("Error adding favorite to Firestore:", error);
-        const errorKey = getErrorKey(error);
-        const message = locales[language]?.[errorKey] || locales['en']?.errorUnexpected || 'Failed to add favorite.';
-        showEphemeralToast(message, 'error');
-    }
-    // --- 👆 [수정] ---
-  },
-
-  updateFavoritesOrder: async (newOrder) => {
-    const { user, favorites: originalOrder, language, showEphemeralToast } = get();
-    if (!user) return;
-
-    // 낙관적 UI 업데이트
-    set({ favorites: newOrder });
-
-    // --- 👇 [수정] Firestore 작업 오류 처리 및 롤백 ---
-    const batch = writeBatch(get().db);
-    newOrder.forEach((fav, index) => {
-      // fav.id가 유효한지 확인
-      if (typeof fav.id !== 'string' || !fav.id) {
-         console.error("Invalid favorite item found during order update:", fav);
-         // 유효하지 않은 항목은 건너뛰거나 오류 처리
-         return; // 이 항목은 업데이트에서 제외
-      }
-      const favRef = doc(get().db, "users", user.uid, "favorites", fav.id);
-      batch.update(favRef, { order: index });
-    });
-
-    try {
-      await batch.commit(); // 일괄 업데이트 시도
-    } catch (error) {
-      console.error("Error updating favorites order:", error);
-      const errorKey = getErrorKey(error);
-      const message = locales[language]?.[errorKey] || locales['en']?.errorUnexpected || 'Failed to save new order.';
-      showEphemeralToast(message, 'error');
-      // 롤백: 이전 순서로 상태 복구
-      set({ favorites: originalOrder });
-    }
-    // --- 👆 [수정] ---
-  },
-
-  deleteFavorite: async (favoriteId) => {
-    const { user, favorites: originalFavorites, language, showEphemeralToast } = get();
-    if (!user) return;
-
-    const favoriteToDelete = originalFavorites.find(
-      (fav) => fav.id === favoriteId
-    );
-    if (!favoriteToDelete) {
-        console.warn(`Favorite with ID ${favoriteId} not found for deletion.`);
-        return; // 삭제할 항목 없으면 종료
-    }
-
-    // 낙관적 UI 업데이트: 삭제 및 순서 재정렬
-    const newFavorites = originalFavorites
-      .filter((fav) => fav.id !== favoriteId)
-      .map((fav, index) => ({ ...fav, order: index }));
-    set({ favorites: newFavorites });
-
-    // --- 👇 [수정] Firestore 작업 오류 처리 및 롤백 ---
-    try {
-      const favoriteRef = doc(
-        get().db,
-        "users",
-        user.uid,
-        "favorites",
-        favoriteId
-      );
-      await deleteDoc(favoriteRef); // Firestore 문서 삭제
-
-      // 삭제 후 순서 재정렬 Batch (데이터 정합성 유지)
-      const batch = writeBatch(get().db);
-      newFavorites.forEach((fav) => {
-         // fav.id 유효성 검사
-         if (typeof fav.id !== 'string' || !fav.id) {
-             console.error("Invalid favorite item found during reorder after delete:", fav);
-             return; // 이 항목은 건너뜀
-         }
-        const favRef = doc(get().db, "users", user.uid, "favorites", fav.id);
-        batch.update(favRef, { order: fav.order });
-      });
-      await batch.commit(); // 순서 업데이트 적용
-
-      // 성공 메시지는 toggleFavorite에서 표시
-
-    } catch (error) {
-      console.error("Error deleting favorite:", error);
-      const errorKey = getErrorKey(error);
-      const message = locales[language]?.[errorKey] || locales['en']?.errorUnexpected || 'Failed to delete favorite.';
-      showEphemeralToast(message, 'error');
-      // 롤백: 이전 상태로 복구
-      set({ favorites: originalFavorites });
-    }
-    // --- 👆 [수정] ---
-  },
-
-  toggleFavorite: async (item) => {
-      const {
-      user,
-      favorites,
-      addFavorite, // addFavorite 내부에서 오류 처리됨
-      deleteFavorite, // deleteFavorite 내부에서 오류 처리됨
-      showEphemeralToast,
-      maxFavorites,
-      language, // --- 👈 [추가] ---
-    } = get();
-    // item 또는 item.action 유효성 검사 강화
-    if (!user || !item?.action?.type || typeof item.action.value !== 'string' || !item.action.value.trim()) {
-        console.warn("Invalid item provided to toggleFavorite:", item);
-        return;
-    }
-
-    const valueToCompare = item.action.value.trim(); // 공백 제거 후 비교
-
-    // 이미 즐겨찾기에 있는지 확인
-    const favoriteToDelete = favorites.find(
-      (fav) =>
-        fav.action?.type === item.action.type &&
-        fav.action?.value?.trim() === valueToCompare // 공백 제거 후 비교
-    );
-
-    if (favoriteToDelete) {
-      // 삭제 시도
-      await deleteFavorite(favoriteToDelete.id);
-      // 삭제 성공 여부는 deleteFavorite 내부의 롤백 로직으로 확인 가능
-      // 약간의 딜레이 후 상태 확인 (리스너 반영 대기)
-      setTimeout(() => {
-          if (!get().favorites.find(f => f.id === favoriteToDelete.id)) { // 실제로 삭제되었는지 확인
-              showEphemeralToast(locales[language]?.['즐겨찾기에서 삭제되었습니다.'] || "Removed from favorites.", "info");
-          }
-      }, 300);
-    } else { // 추가 로직
-      if (favorites.length >= maxFavorites) {
-        showEphemeralToast(locales[language]?.['최대 즐겨찾기 개수에 도달했습니다.'] || "Favorite limit reached.", "error");
-        return;
-      }
-      // title 유효성 검사 추가
-      if (!item.title || typeof item.title !== 'string' || !item.title.trim()) {
-          console.warn("Cannot add favorite with empty title:", item);
-          showEphemeralToast("Cannot add favorite with empty title.", "error");
-          return;
-      }
-      const newFavorite = {
-        icon: "🌟", // 기본 아이콘
-        title: item.title.trim(),
-        description: item.description || "", // description 없으면 빈 문자열
-        action: { type: item.action.type, value: valueToCompare },
-      };
-      // 추가 시도
-      await addFavorite(newFavorite);
-      // 추가 성공 여부 확인 (딜레이 후)
-      setTimeout(() => {
-          if (get().favorites.some(fav => fav.action.value === newFavorite.action.value && fav.action.type === newFavorite.action.type)) {
-             showEphemeralToast(locales[language]?.['즐겨찾기에 추가되었습니다.'] || "Added to favorites.", "success");
-          }
-      }, 300);
-    }
-  },
-
+  // 바로가기(숏컷) 클릭 처리
   handleShortcutClick: async (item, messageId) => {
-        if (!item || !item.action) {
-            console.warn("handleShortcutClick called with invalid item:", item);
-            return;
-        }
+    if (!item || !item.action) return; // 유효성 검사
     const { extractedSlots, clearExtractedSlots, setSelectedOption, openScenarioPanel, handleResponse } = get();
 
-    // 메시지 ID가 있으면 옵션 선택 처리 (내부 오류 처리)
+    // 옵션 선택 상태 로컬 업데이트 (버튼 비활성화)
+    // Firestore 업데이트는 setSelectedOption에서 처리 (임시 ID 제외)
     if (messageId) {
-      await setSelectedOption(messageId, item.title);
+        set(state => ({ selectedOptions: { ...state.selectedOptions, [messageId]: item.title } }));
+        // 실제 Firestore 저장은 비동기로 진행
+        get().setSelectedOption(messageId, item.title);
     }
 
-    // 액션 타입에 따라 처리 (각 함수 내부에서 오류 처리)
-    if (item.action.type === "custom") {
-      await handleResponse({
-        text: item.action.value,
-        displayText: item.title,
-      });
-    } else if (item.action.type === "scenario") {
-      await openScenarioPanel(item.action.value, extractedSlots);
+    // 액션 타입에 따라 분기
+    if (item.action.type === "custom") { // 커스텀 액션 (메시지 전송)
+      await handleResponse({ text: item.action.value, displayText: item.title });
+    } else if (item.action.type === "scenario") { // 시나리오 시작
+      // openScenarioPanel은 scenarioSlice에 있어야 함
+      get().openScenarioPanel?.(item.action.value, extractedSlots); // scenarioSlice 호출 가정
     } else {
-        console.warn(`Unsupported shortcut action type: ${item.action.type}`);
+      console.warn(`Unsupported shortcut action type: ${item.action.type}`);
     }
-
-    // 액션 실행 후 슬롯 초기화
-    clearExtractedSlots();
+    clearExtractedSlots(); // 슬롯 초기화
   },
 
-  toggleConversationExpansion: (conversationId) => {
-         const { expandedConversationId, unsubscribeScenariosMap, user, language, showEphemeralToast } = get();
-
-    // 닫기
-    if (expandedConversationId === conversationId) {
-      unsubscribeScenariosMap[conversationId]?.(); // 리스너 해제
-      const newMap = { ...unsubscribeScenariosMap };
-      delete newMap[conversationId];
-      set({ expandedConversationId: null, unsubscribeScenariosMap: newMap });
-      // 시나리오 목록 데이터는 유지해도 무방 (다시 열 때 로드됨)
-      return;
-    }
-
-    // 다른 거 열려있으면 닫기
-    if (
-      expandedConversationId &&
-      unsubscribeScenariosMap[expandedConversationId]
-    ) {
-      unsubscribeScenariosMap[expandedConversationId]();
-      const newMap = { ...unsubscribeScenariosMap };
-      delete newMap[expandedConversationId];
-      set({ unsubscribeScenariosMap: newMap });
-    }
-
-    // 새로 열기 - UI 상태 먼저 업데이트
-    set({ expandedConversationId: conversationId });
-
-    if (!user) return; // 사용자 없으면 리스너 설정 불가
-
-    // Firestore 리스너 설정 (오류 처리 포함)
-    const scenariosRef = collection(
-      get().db,
-      "chats",
-      user.uid,
-      "conversations",
-      conversationId,
-      "scenario_sessions"
-    );
-    const q = query(scenariosRef, orderBy("createdAt", "desc"));
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const scenarios = snapshot.docs.map((doc) => ({
-        sessionId: doc.id,
-        ...doc.data(),
-      }));
-      set((state) => ({
-        scenariosForConversation: {
-          ...state.scenariosForConversation,
-          [conversationId]: scenarios,
-        },
-      }));
-    }, (error) => { // 오류 콜백
-        console.error(`Error listening to scenarios for conversation ${conversationId}:`, error);
-        const errorKey = getErrorKey(error);
-        const message = locales[language]?.[errorKey] || locales['en']?.errorUnexpected || 'Failed to load scenario list.';
-        showEphemeralToast(message, 'error');
-        // 오류 발생 시 확장된 상태 해제 및 리스너 정리
-        unsubscribe(); // 리스너 해제 시도
-        const newMap = { ...get().unsubscribeScenariosMap };
-        delete newMap[conversationId]; // 맵에서 제거
-        set((state) => {
-            // 현재 확장된 ID가 오류 발생 ID와 같은 경우에만 확장 해제
-            const shouldCloseExpansion = state.expandedConversationId === conversationId;
-            return {
-                ...(shouldCloseExpansion ? { expandedConversationId: null } : {}),
-                unsubscribeScenariosMap: newMap,
-                scenariosForConversation: {
-                    ...state.scenariosForConversation,
-                    [conversationId]: [], // 빈 목록으로 설정
-                },
-            };
-        });
-    });
-
-    // 구독 해제 함수 저장
-    set((state) => ({
-      unsubscribeScenariosMap: {
-        ...state.unsubscribeScenariosMap,
-        [conversationId]: unsubscribe,
-      },
-    }));
-  },
-
-  loadConversations: (userId) => {
-    // Firestore 리스너 오류 처리
-    if (get().unsubscribeConversations) {
-        console.log("Conversations listener already active.");
-        return; // 이미 구독 중이면 중복 실행 방지
-    }
-
-    const q = query(
-      collection(get().db, "chats", userId, "conversations"),
-      orderBy("pinned", "desc"),
-      orderBy("updatedAt", "desc")
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const conversations = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      set({ conversations });
-    }, (error) => { // 오류 콜백
-        console.error("Error listening to conversations changes:", error);
-        const { language, showEphemeralToast } = get();
-        const errorKey = getErrorKey(error);
-        const message = locales[language]?.[errorKey] || locales['en']?.errorUnexpected || 'Failed to load conversations.';
-        showEphemeralToast(message, 'error');
-        // 심각한 오류 시 리스너 구독 해제 (선택 사항)
-        // unsubscribe();
-        // set({ unsubscribeConversations: null });
-    });
-
-    set({ unsubscribeConversations: unsubscribe });
-  },
-
-  loadConversation: async (conversationId) => {
-    const user = get().user;
-    // conversationId 유효성 검사 추가
-    if (!user || get().currentConversationId === conversationId || typeof conversationId !== 'string' || !conversationId) {
-        console.warn(`loadConversation called with invalid params: user=${!!user}, currentId=${get().currentConversationId}, targetId=${conversationId}`);
-        return;
-    }
-
-    const { language, showEphemeralToast } = get();
-
-    // 기존 구독 해제
-    get().unsubscribeAllMessagesAndScenarios();
-
-    // 초기 상태 설정
-    const initialMessage = getInitialMessages(language)[0];
-    set({
-      currentConversationId: conversationId,
-      isLoading: true, // 로딩 시작
-      messages: [initialMessage],
-      lastVisibleMessage: null,
-      hasMoreMessages: true,
-      expandedConversationId: null, // 대화 변경 시 확장 닫기
-      selectedOptions: {}, // 선택 옵션 초기화
-      // lastFocusedScenarioSessionId: null, // 대화 변경 시 초기화 (선택적)
-    });
-
-    // Firestore 작업 오류 처리
-    try {
-        // 메시지 컬렉션 참조
-        const messagesRef = collection(
-          get().db,
-          "chats",
-          user.uid,
-          "conversations",
-          conversationId,
-          "messages"
-        );
-        // 첫 메시지 로드 쿼리
-        const q = query(
-          messagesRef,
-          orderBy("createdAt", "desc"),
-          limit(MESSAGE_LIMIT)
-        );
-
-        // 메시지 리스너 설정 (onSnapshot은 내부에서 구독 오류 처리)
-        const unsubscribeMessages = onSnapshot(q, (messagesSnapshot) => {
-          const newMessages = messagesSnapshot.docs
-            .map((doc) => ({ id: doc.id, ...doc.data() }))
-            .reverse(); // 시간 순서대로 정렬
-          const lastVisible = messagesSnapshot.docs[messagesSnapshot.docs.length - 1]; // 다음 페이지 커서
-
-          // 선택된 옵션 복원
-          const newSelectedOptions = {};
-          newMessages.forEach(msg => {
-            if (msg.selectedOption) {
-              newSelectedOptions[msg.id] = msg.selectedOption;
-            }
-          });
-
-          // 상태 업데이트
-          set((state) => ({
-            // 이미 로드된 메시지가 있는 경우 비교하여 업데이트 (중복 방지 - 필요 시)
-            messages: [initialMessage, ...newMessages], // 초기 메시지 + 로드된 메시지
-            lastVisibleMessage: lastVisible,
-            hasMoreMessages: messagesSnapshot.docs.length === MESSAGE_LIMIT,
-            isLoading: false, // 메시지 로드 완료 시 로딩 해제
-            selectedOptions: newSelectedOptions,
-          }));
-        }, (error) => { // 메시지 리스너 오류 콜백
-            console.error(`Error listening to messages for conversation ${conversationId}:`, error);
-            const errorKey = getErrorKey(error);
-            const message = locales[language]?.[errorKey] || locales['en']?.errorUnexpected || 'Failed to load messages.';
-            showEphemeralToast(message, 'error');
-            set({ isLoading: false }); // 오류 발생 시 로딩 해제
-            // 리스너 자동 재시도 또는 수동 해제 결정
-            // unsubscribeMessages();
-            // set({ unsubscribeMessages: null });
-        });
-
-        // 리스너 해제 함수 저장
-        set({ unsubscribeMessages });
-
-        // 시나리오 세션 구독 (getDocs 오류 처리)
-        const scenariosRef = collection(
-          get().db,
-          "chats",
-          user.uid,
-          "conversations",
-          conversationId,
-          "scenario_sessions"
-        );
-        const scenariosQuery = query(scenariosRef); // 필요 시 orderBy 추가
-        const scenariosSnapshot = await getDocs(scenariosQuery); // getDocs 실패 시 아래 catch로 이동
-
-        // 각 시나리오 세션 구독 시작 (subscribeToScenarioSession 내부에서 오류 처리)
-        scenariosSnapshot.forEach((doc) => {
-          get().subscribeToScenarioSession(doc.id);
-        });
-
-    } catch (error) { // getDocs 또는 기타 설정 오류 처리
-        console.error(`Error loading conversation ${conversationId}:`, error);
-        const errorKey = getErrorKey(error);
-        const message = locales[language]?.[errorKey] || locales['en']?.errorUnexpected || 'Failed to load conversation.';
-        showEphemeralToast(message, 'error');
-        // 오류 발생 시 상태 초기화
-        set({
-            isLoading: false,
-            currentConversationId: null, // 현재 대화 ID 초기화
-            messages: [initialMessage], // 초기 메시지만 남김
-            lastVisibleMessage: null,
-            hasMoreMessages: true,
-            selectedOptions: {},
-        });
-        get().unsubscribeAllMessagesAndScenarios(); // 모든 관련 리스너 정리
-    }
-  },
-
-  loadMoreMessages: async () => {
-        const user = get().user;
-    const {
-      currentConversationId,
-      lastVisibleMessage,
-      hasMoreMessages,
-      messages,
-      language,
-      showEphemeralToast
-    } = get();
-
-    // 중복 로딩 방지 및 조건 검사 강화
-    if (
-      !user ||
-      !currentConversationId ||
-      !hasMoreMessages ||
-      !lastVisibleMessage || // lastVisibleMessage가 있어야 추가 로드 가능
-      get().isLoading // 이미 로딩 중이면 실행하지 않음
-    )
-      return;
-
-    set({ isLoading: true }); // 로딩 시작
-
-    try {
-      const messagesRef = collection(
-        get().db,
-        "chats",
-        user.uid,
-        "conversations",
-        currentConversationId,
-        "messages"
-      );
-      const q = query(
-        messagesRef,
-        orderBy("createdAt", "desc"),
-        startAfter(lastVisibleMessage), // 이전 마지막 문서를 기준으로 다음 문서 로드
-        limit(MESSAGE_LIMIT)
-      );
-
-      const snapshot = await getDocs(q); // Firestore 읽기 (오류 발생 가능)
-      const newMessages = snapshot.docs
-        .map((doc) => ({ id: doc.id, ...doc.data() }))
-        .reverse(); // 시간 순서대로
-
-      // 추가 메시지가 없는 경우
-      if (snapshot.empty) {
-          set({ hasMoreMessages: false, isLoading: false });
-          return;
-      }
-
-      const newLastVisible = snapshot.docs[snapshot.docs.length - 1]; // 새 커서
-
-      const initialMessage = messages[0]; // 초기 메시지 유지
-      const existingMessages = messages.slice(1); // 기존 메시지 목록
-
-      // 선택 옵션 병합
-      const newSelectedOptions = { ...get().selectedOptions };
-      newMessages.forEach(msg => {
-        if (msg.selectedOption) {
-          newSelectedOptions[msg.id] = msg.selectedOption;
-        }
-      });
-
-      // 상태 업데이트
-      set({
-        messages: [initialMessage, ...newMessages, ...existingMessages], // 새 메시지를 기존 메시지 앞에 추가
-        lastVisibleMessage: newLastVisible, // 커서 업데이트
-        hasMoreMessages: snapshot.docs.length === MESSAGE_LIMIT, // 더 로드할 메시지 있는지 여부
-        selectedOptions: newSelectedOptions,
-      });
-    } catch (error) {
-      console.error("Error loading more messages:", error);
-      const errorKey = getErrorKey(error);
-      const message = locales[language]?.[errorKey] || locales['en']?.errorUnexpected || 'Failed to load more messages.';
-      showEphemeralToast(message, 'error');
-    } finally {
-      set({ isLoading: false }); // 로딩 종료
-    }
-  },
-
-  createNewConversation: async (returnId = false) => {
-    // 이미 새 대화 상태거나, ID 반환 목적이 아닌데 현재 대화 ID가 없으면 중복 실행 방지
-    if (get().currentConversationId === null && !returnId) return null;
-
-    get().unsubscribeAllMessagesAndScenarios(); // 기존 구독 해제
-
-    const { language, user, showEphemeralToast } = get();
-
-    // 새 대화 생성 (ID 반환 목적 또는 실제 사용자 로그인 상태)
-    if ((returnId || get().currentConversationId !== null) && user) {
-        try {
-            const conversationRef = await addDoc(
-              collection(get().db, "chats", user.uid, "conversations"),
-              {
-                title: locales[language]?.['newChat'] || "New Conversation",
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp(),
-                pinned: false,
-              }
-            );
-            // 새 대화 로드 (loadConversation 내부에서 오류 처리됨)
-            await get().loadConversation(conversationRef.id);
-            // ID 반환이 필요하면 반환
-            return returnId ? conversationRef.id : null;
-        } catch (error) {
-            console.error("Error creating new conversation:", error);
-            const errorKey = getErrorKey(error);
-            const message = locales[language]?.[errorKey] || locales['en']?.errorUnexpected || 'Failed to create new conversation.';
-            showEphemeralToast(message, 'error');
-            // 새 대화 상태로 되돌리기 (UI 초기화)
-            set({
-                messages: getInitialMessages(language),
-                currentConversationId: null,
-                lastVisibleMessage: null,
-                hasMoreMessages: true,
-                expandedConversationId: null,
-                isLoading: false,
-            });
-            return null; // ID 반환 불가
-        }
-    } else { // 로그아웃 상태 등에서 UI만 초기화
-      set({
-        messages: getInitialMessages(language),
-        currentConversationId: null,
-        lastVisibleMessage: null,
-        hasMoreMessages: true,
-        expandedConversationId: null,
-        isLoading: false,
-      });
-      return null;
-    }
-  },
-
-  deleteConversation: async (conversationId) => {
-    const { user, language, showEphemeralToast } = get();
-    if (!user) return;
-
-    // 대화 ID 유효성 검사
-     if (typeof conversationId !== 'string' || !conversationId) {
-        console.error("deleteConversation called with invalid ID:", conversationId);
-        showEphemeralToast(locales[language]?.errorUnexpected || 'Invalid operation.', 'error');
-        return;
-     }
-
-    const conversationRef = doc(
-      get().db,
-      "chats",
-      user.uid,
-      "conversations",
-      conversationId
-    );
-    const batch = writeBatch(get().db);
-
-    try {
-        // 하위 컬렉션 문서 삭제 (더 안전하게)
-        const scenariosRef = collection(conversationRef, "scenario_sessions");
-        const scenariosSnapshot = await getDocs(scenariosRef);
-        scenariosSnapshot.forEach((doc) => { batch.delete(doc.ref); });
-
-        const messagesRef = collection(conversationRef, "messages");
-        const messagesSnapshot = await getDocs(messagesRef);
-        messagesSnapshot.forEach((doc) => { batch.delete(doc.ref); });
-
-        // 대화 문서 삭제
-        batch.delete(conversationRef);
-
-        // 일괄 작업 실행
-        await batch.commit();
-
-        // 성공 시 UI 업데이트
-        // Firestore 리스너가 목록에서 제거할 것이므로 로컬 conversations 배열 직접 수정 불필요
-        console.log(`Conversation ${conversationId} deleted successfully.`);
-
-        // 현재 보고 있던 대화가 삭제되었다면 새 대화 상태로 전환
-        if (get().currentConversationId === conversationId) {
-          get().createNewConversation(); // 새 대화 로드 (내부 오류 처리)
-        }
-    } catch (error) {
-        console.error(`Error deleting conversation ${conversationId}:`, error);
-        const errorKey = getErrorKey(error);
-        const message = locales[language]?.[errorKey] || locales['en']?.errorUnexpected || 'Failed to delete conversation.';
-        showEphemeralToast(message, 'error');
-        // 롤백은 Firestore 리스너에 의존 (삭제 실패 시 리스너가 원래 상태 유지)
-    }
-  },
-
-  updateConversationTitle: async (conversationId, newTitle) => {
-    const { user, language, showEphemeralToast } = get();
-    // 파라미터 유효성 검사 강화
-    if (!user || typeof conversationId !== 'string' || !conversationId || typeof newTitle !== 'string' || !newTitle.trim()) {
-        console.warn("updateConversationTitle called with invalid parameters.");
-        if (typeof newTitle !== 'string' || !newTitle.trim()) {
-            showEphemeralToast("Title cannot be empty.", "error"); // 빈 제목 오류
-        }
-        return;
-    }
-
-    const trimmedTitle = newTitle.trim();
-
-    // Firestore 업데이트 오류 처리
-    try {
-        const conversationRef = doc(
-          get().db,
-          "chats",
-          user.uid,
-          "conversations",
-          conversationId
-        );
-        // 제목 길이 제한 (선택 사항)
-        const MAX_TITLE_LENGTH = 100;
-        await updateDoc(conversationRef, { title: trimmedTitle.substring(0, MAX_TITLE_LENGTH) });
-        // Firestore 리스너가 UI 업데이트를 처리함
-    } catch (error) {
-        console.error(`Error updating title for conversation ${conversationId}:`, error);
-        const errorKey = getErrorKey(error);
-        const message = locales[language]?.[errorKey] || locales['en']?.errorUnexpected || 'Failed to update conversation title.';
-        showEphemeralToast(message, 'error');
-    }
-  },
-
-  pinConversation: async (conversationId, pinned) => {
-    const { user, language, showEphemeralToast } = get();
-     // 파라미터 유효성 검사
-     if (!user || typeof conversationId !== 'string' || !conversationId || typeof pinned !== 'boolean') {
-        console.warn("pinConversation called with invalid parameters.");
-        return;
-     }
-
-    // Firestore 업데이트 오류 처리
-    try {
-        const conversationRef = doc(
-          get().db,
-          "chats",
-          user.uid,
-          "conversations",
-          conversationId
-        );
-        await updateDoc(conversationRef, { pinned });
-        // Firestore 리스너가 UI 업데이트를 처리함
-    } catch (error) {
-        console.error(`Error updating pin status for conversation ${conversationId}:`, error);
-        const errorKey = getErrorKey(error);
-        const message = locales[language]?.[errorKey] || locales['en']?.errorUnexpected || 'Failed to update pin status.';
-        showEphemeralToast(message, 'error');
-    }
-  },
-
+  // 메시지를 Firestore에 저장 (대화 생성 로직 포함)
   saveMessage: async (message) => {
-    const { user, language, showEphemeralToast } = get();
-    if (!user) return null; // 사용자 없으면 저장 불가
-    // message 객체 유효성 검사 (선택 사항)
-    if (!message || typeof message !== 'object') {
-        console.error("saveMessage called with invalid message object:", message);
+    const { user, language, showEphemeralToast, currentConversationId, createNewConversation } = get(); // conversationSlice 액션 참조
+    if (!user || !message || typeof message !== 'object') {
+        if(!message || typeof message !== 'object') console.error("saveMessage invalid message:", message);
         return null;
     }
 
-    let conversationId = get().currentConversationId;
+    let activeConversationId = currentConversationId; // conversationSlice 상태 참조
 
     try {
-        // 1. 대화 ID가 없으면 새로 생성
-        if (!conversationId) {
-          const firstMessageContent = message.text || "New Conversation";
-          const conversationRef = await addDoc(
-            collection(get().db, "chats", user.uid, "conversations"),
-            {
-              title: firstMessageContent.substring(0, 30), // 제목 길이 제한
-              createdAt: serverTimestamp(),
-              updatedAt: serverTimestamp(),
-              pinned: false,
+        // 현재 대화 ID 없으면 새로 생성하고 로드가 완료될 때까지 기다림
+        if (!activeConversationId) {
+            console.log("No active conversation, creating new one and waiting...");
+            activeConversationId = await createNewConversation(true); // conversationSlice 호출 (내부 await 포함)
+            if (!activeConversationId) {
+                throw new Error("Failed to get conversation ID after creation attempt (returned null).");
             }
-          );
-          conversationId = conversationRef.id;
-
-          // 새 대화 로드 (오류 처리는 loadConversation 내부에서)
-          // loadConversation이 완료될 때까지 기다림 (상태 변경 감지 방식 개선)
-          await new Promise((resolve, reject) => {
-              const timeout = setTimeout(() => reject(new Error("Timeout waiting for conversation load after creation")), 5000);
-              const unsubscribe = set(state => {
-                  if (state.currentConversationId === conversationId && !state.isLoading) {
-                      clearTimeout(timeout);
-                      // unsubscribe(); // Zustand의 set 내에서 unsubscribe 호출은 복잡할 수 있음, 외부 변수로 관리 필요
-                      resolve();
-                      return {}; // 상태 변경 없음
-                  }
-                  return {}; // 상태 변경 없음
-              });
-              // 상태 변경을 감지하는 더 안정적인 방법 필요 (Zustand 구독 활용 등)
-              // 임시로 loadConversation 호출 후 상태 확인
-              get().loadConversation(conversationId);
-          });
-          // 대화 로드 완료 후 activeConversationId를 다시 확인
-          conversationId = get().currentConversationId; // loadConversation이 성공적으로 ID를 설정했는지 확인
-          if (conversationId !== conversationRef.id) {
-              throw new Error("Failed to set active conversation ID after creation.");
-          }
+            console.log(`Using newly created and loaded conversation ID: ${activeConversationId}`);
+        } else {
+             console.log(`Using existing conversation ID: ${activeConversationId}`);
         }
 
-        // 2. 저장할 메시지 데이터 정리
+        // 저장할 메시지 데이터 정리
         const messageToSave = { ...message };
-        // Firestore에 저장할 수 없는 값 제거 (undefined)
-        Object.keys(messageToSave).forEach(
-          (key) => {
-              if (messageToSave[key] === undefined) {
-                  delete messageToSave[key];
-              }
-          }
-        );
-        // node.data 필터링 (필요한 속성만 저장)
-        if (messageToSave.node?.data) {
-          const { content, replies } = messageToSave.node.data;
-          messageToSave.node.data = { ...(content && { content }), ...(replies && { replies }) };
+        const tempId = String(messageToSave.id).startsWith('temp_') ? messageToSave.id : null; // 임시 ID 저장
+        Object.keys(messageToSave).forEach( (key) => { if (messageToSave[key] === undefined) delete messageToSave[key]; });
+        if (messageToSave.node?.data) { const { content, replies } = messageToSave.node.data; messageToSave.node.data = { ...(content && { content }), ...(replies && { replies }) }; }
+        if (tempId) delete messageToSave.id; // Firestore 저장 시 임시 ID 제거
+
+        // Firestore에 메시지 추가 및 대화 업데이트 시간 갱신
+        console.log(`Saving message to conversation: ${activeConversationId}`);
+        const messagesCollection = collection( get().db, "chats", user.uid, "conversations", activeConversationId, "messages" );
+        const messageRef = await addDoc(messagesCollection, { ...messageToSave, createdAt: serverTimestamp() });
+        await updateDoc( doc(get().db, "chats", user.uid, "conversations", activeConversationId), { updatedAt: serverTimestamp() });
+        console.log(`Message saved with ID: ${messageRef.id}`);
+
+        // 저장 성공 후, 임시 ID였던 경우 상태 업데이트 처리
+        if (tempId) {
+            let selectedOptionValue = null;
+            set(state => {
+                const newSelectedOptions = { ...state.selectedOptions };
+                if (newSelectedOptions[tempId]) {
+                    selectedOptionValue = newSelectedOptions[tempId];
+                    newSelectedOptions[messageRef.id] = selectedOptionValue;
+                    delete newSelectedOptions[tempId];
+                }
+                // 메시지 배열에서 ID 교체 (message 객체 사용)
+                return {
+                    messages: state.messages.map(msg => msg.id === tempId ? { ...message, id: messageRef.id, isStreaming: false } : msg), // isStreaming 확실히 false
+                    selectedOptions: newSelectedOptions
+                };
+            });
+            // Firestore에 selectedOption 업데이트 (setSelectedOption 호출)
+            if (selectedOptionValue) {
+                await get().setSelectedOption(messageRef.id, selectedOptionValue);
+            }
         }
-        // 임시 ID 제거 (실제 저장 시에는 ID 불필요)
-        if (String(messageToSave.id).startsWith('temp_')) {
-            delete messageToSave.id;
-        }
 
-        // 3. 메시지 저장 및 대화 업데이트 시간 갱신
-        const activeConversationId = conversationId; // 위에서 확보한 유효한 ID 사용
-
-        const messagesCollection = collection(
-          get().db,
-          "chats",
-          user.uid,
-          "conversations",
-          activeConversationId,
-          "messages"
-        );
-        // addDoc은 생성된 문서 참조를 반환
-        const messageRef = await addDoc(messagesCollection, {
-          ...messageToSave,
-          createdAt: serverTimestamp(), // 서버 시간으로 생성 시간 기록
-        });
-        // 대화 업데이트 시간 갱신
-        await updateDoc(
-          doc(get().db, "chats", user.uid, "conversations", activeConversationId),
-          { updatedAt: serverTimestamp() }
-        );
-
-        return messageRef.id; // 저장된 Firestore 문서 ID 반환
-
+        return messageRef.id; // 성공 시 Firestore 문서 ID 반환
     } catch (error) {
-        console.error("Error saving message:", error);
+        console.error("Error in saveMessage:", error);
         const errorKey = getErrorKey(error);
         const errorMessage = locales[language]?.[errorKey] || locales['en']?.errorUnexpected || 'Failed to save message.';
         showEphemeralToast(errorMessage, 'error');
+
+        // 저장 실패 시 임시 메시지 제거
+        if (String(message?.id).startsWith('temp_')) {
+            set(state => ({ messages: state.messages.filter(msg => msg.id !== message.id) }));
+        }
         return null; // 실패 시 null 반환
     }
   },
 
+  // 메시지를 상태에 추가하고 Firestore에 저장 요청
   addMessage: async (sender, messageData) => {
      let newMessage;
-     // 임시 ID 생성
-     const temporaryId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+     const temporaryId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`; // 임시 ID 생성
 
+     // 메시지 객체 생성
      if (sender === "user") {
        newMessage = { id: temporaryId, sender, ...messageData };
-     } else {
+     } else { // sender === 'bot'
        newMessage = {
          id: messageData.id || temporaryId, // 서버 ID 없으면 임시 ID
          sender: "bot",
@@ -1172,84 +391,102 @@ export const createChatSlice = (set, get) => ({
        };
      }
 
-     // 낙관적 UI 업데이트
+     // 낙관적 UI 업데이트: 상태에 임시 메시지 추가
      set((state) => ({ messages: [...state.messages, newMessage] }));
 
-     // 스트리밍 중이 아닐 때만 Firestore에 저장 시도
+     // 스트리밍 중이 아닐 때만 Firestore 저장 시도 (saveMessage에서 ID 교체 및 selectedOption 처리)
      if (!newMessage.isStreaming) {
-       const savedMessageId = await get().saveMessage(newMessage); // saveMessage 내부에서 오류 처리
-
-       if (savedMessageId) { // 저장 성공 시
-           let selectedOptionValue = null;
-           set((state) => {
-             const newSelectedOptions = { ...state.selectedOptions };
-             // 임시 ID -> 실제 ID로 selectedOptions 키 변경
-             if (newSelectedOptions[temporaryId]) {
-               selectedOptionValue = newSelectedOptions[temporaryId];
-               newSelectedOptions[savedMessageId] = selectedOptionValue;
-               delete newSelectedOptions[temporaryId];
-             }
-             // messages 배열에서 임시 ID -> 실제 ID로 교체
-             return {
-               messages: state.messages.map((msg) =>
-                 msg.id === temporaryId ? { ...msg, id: savedMessageId } : msg
-               ),
-               selectedOptions: newSelectedOptions,
-             };
-           });
-           // selectedOption이 있었다면 Firestore에도 업데이트 (내부 오류 처리)
-           if (selectedOptionValue) {
-             await get().setSelectedOption(savedMessageId, selectedOptionValue);
-           }
-       } else { // 저장 실패 시 (saveMessage가 null 반환)
-           // 낙관적 업데이트 롤백: UI에서 임시 메시지 제거
-           console.error(`Failed to save message, removing temporary message (ID: ${temporaryId})`);
-           set(state => ({
-               messages: state.messages.filter(msg => msg.id !== temporaryId)
-           }));
-           // 오류 메시지는 saveMessage 내부에서 표시됨
-       }
+       await get().saveMessage(newMessage); // await 추가하여 저장/롤백 완료 기다림
      }
-     // 스트리밍 메시지의 경우, 스트림 완료 후 handleResponse의 finally 블록에서 저장 시도
+     // 스트리밍 메시지는 handleResponse의 finally 블록에서 최종 저장 시도
   },
 
+  // 이전 메시지 더 로드하기
+  loadMoreMessages: async () => {
+    const { user, language, showEphemeralToast, currentConversationId, lastVisibleMessage, hasMoreMessages, messages } = get(); // conversationSlice 상태 참조
+    if (!user || !currentConversationId || !hasMoreMessages || !lastVisibleMessage || get().isLoading) return;
+
+    set({ isLoading: true }); // 로딩 시작
+
+    try {
+      const messagesRef = collection( get().db, "chats", user.uid, "conversations", currentConversationId, "messages" );
+      const q = query( messagesRef, orderBy("createdAt", "desc"), startAfter(lastVisibleMessage), limit(MESSAGE_LIMIT) );
+      const snapshot = await getDocs(q); // Firestore 읽기
+
+      if (snapshot.empty) { // 더 이상 메시지가 없으면
+          set({ hasMoreMessages: false });
+          return; // 로딩은 finally에서 해제
+      }
+
+      const newMessages = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })).reverse(); // 시간 순서대로
+      const newLastVisible = snapshot.docs[snapshot.docs.length - 1]; // 새 커서
+      const initialMessage = messages[0]; // 초기 메시지 유지
+      const existingMessages = messages.slice(1); // 기존 메시지
+
+      // 선택 옵션 병합
+      const newSelectedOptions = { ...get().selectedOptions };
+      newMessages.forEach(msg => { if (msg.selectedOption) newSelectedOptions[msg.id] = msg.selectedOption; });
+
+      // 상태 업데이트: 새 메시지를 기존 메시지 *앞에* 추가
+      set({
+        messages: [initialMessage, ...newMessages, ...existingMessages],
+        lastVisibleMessage: newLastVisible, // 커서 업데이트
+        hasMoreMessages: snapshot.docs.length === MESSAGE_LIMIT, // 더 있는지 여부 업데이트
+        selectedOptions: newSelectedOptions,
+      });
+    } catch (error) {
+      console.error("Error loading more messages:", error);
+      const errorKey = getErrorKey(error);
+      const message = locales[language]?.[errorKey] || locales['en']?.errorUnexpected || 'Failed to load more messages.';
+      showEphemeralToast(message, 'error');
+      set({ hasMoreMessages: false }); // 오류 시 더 로드 시도 중지
+    } finally {
+      set({ isLoading: false }); // 로딩 종료
+    }
+  },
+
+  // 사용자 메시지 처리 및 봇 응답 요청/처리
   handleResponse: async (messagePayload) => {
-    set({ isLoading: true, llmRawResponse: null });
+    set({ isLoading: true, llmRawResponse: null }); // 로딩 시작
     const { language, showEphemeralToast, addMessage, updateLastMessage, saveMessage, setExtractedSlots, llmProvider } = get();
 
+    // 사용자 메시지 추가 (UI 업데이트 및 저장 시도)
     const textForUser = messagePayload.displayText || messagePayload.text;
     if (textForUser) {
-      await addMessage("user", { text: textForUser }); // addMessage 내부 오류 처리
+        await addMessage("user", { text: textForUser }); // 내부에서 오류 처리 및 ID 교체
     }
 
     const thinkingText = locales[language]?.['statusGenerating'] || "Generating...";
-    let lastBotMessageId = null; // 마지막 봇 메시지 ID 저장 (임시 ID일 수 있음)
-    let lastBotMessageRef = null; // 저장 후 실제 ID 참조
+    let lastBotMessageId = null; // 봇 응답 메시지의 임시 ID 저장용
+    let finalMessageId = null; // 저장 후 실제 ID 저장용 (finally에서 사용)
+    let finalStreamText = ''; // 스트림 완료 후 최종 텍스트 (Flowise용)
 
     try {
+      // 백엔드 API 호출
       const response = await fetch("/api/chat", {
-         method: "POST",
-         headers: { "Content-Type": "application/json" },
+         method: "POST", headers: { "Content-Type": "application/json" },
          body: JSON.stringify({
-           message: { text: messagePayload.text },
-           scenarioState: null, // 일반 응답 요청 시 null
-           slots: get().slots, // 현재 슬롯 전달 (필요 시)
-           language: language,
-           llmProvider: llmProvider,
-           flowiseApiUrl: get().flowiseApiUrl,
+             message: { text: messagePayload.text }, // 실제 처리될 텍스트
+             scenarioState: null, // 일반 메시지 요청
+             slots: get().slots, // 현재 슬롯 전달
+             language: language,
+             llmProvider: llmProvider,
+             flowiseApiUrl: get().flowiseApiUrl,
          }),
       });
 
+      // API 응답 오류 처리
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: `Server error: ${response.statusText}` }));
         throw new Error(errorData.message || `Server error: ${response.statusText}`);
       }
 
-      // 스트림 처리
+      // 응답 타입(스트림/JSON)에 따른 처리
       if (response.headers.get("Content-Type")?.includes("text/event-stream")) {
-        console.log("[handleResponse] Detected text/event-stream response.");
+        // 스트림 응답 처리
+        console.log("[handleResponse] Processing text/event-stream response.");
 
-        // 초기 '생각중...' 메시지 추가 및 임시 ID 저장
+        // '생각중...' 메시지 추가 및 임시 ID 저장
         const tempBotMessage = { id: `temp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`, sender: 'bot', text: thinkingText, isStreaming: true };
         set(state => ({ messages: [...state.messages, tempBotMessage] }));
         lastBotMessageId = tempBotMessage.id;
@@ -1257,103 +494,89 @@ export const createChatSlice = (set, get) => ({
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let streamProcessor;
-        let finalStreamText = ''; // 스트림 완료 후 최종 텍스트
 
-        // Provider에 따라 제너레이터 선택
-        if (llmProvider === 'gemini') {
-          streamProcessor = processGeminiStream(reader, decoder, get);
-        } else if (llmProvider === 'flowise') {
-          streamProcessor = processFlowiseStream(reader, decoder, get);
-        } else {
-          throw new Error(`Unsupported LLM provider for streaming: ${llmProvider}`);
-        }
+        // Provider에 따라 스트림 처리기 선택
+        if (llmProvider === 'gemini') streamProcessor = processGeminiStream(reader, decoder, get);
+        else if (llmProvider === 'flowise') streamProcessor = processFlowiseStream(reader, decoder, get);
+        else throw new Error(`Unsupported LLM provider for streaming: ${llmProvider}`);
 
         // 스트림 결과 처리 루프
         for await (const result of streamProcessor) {
-            if (result.type === 'text') {
-                updateLastMessage(result.data, result.replace);
-                // 최종 텍스트는 제너레이터 내부 또는 finally에서 관리
-            } else if (result.type === 'slots') {
-                setExtractedSlots(result.data);
-            } else if (result.type === 'rawResponse') {
-                set({ llmRawResponse: result.data });
-            } else if (result.type === 'button') { // Flowise
-                updateLastMessage(result.data);
-            } else if (result.type === 'finalText') { // Flowise
-                 finalStreamText = result.data;
-            } else if (result.type === 'error') {
-                throw result.data; // 스트림 처리 중 오류 발생
-            }
+            if (result.type === 'text') updateLastMessage(result.data, result.replace);
+            else if (result.type === 'slots') setExtractedSlots(result.data);
+            else if (result.type === 'rawResponse') set({ llmRawResponse: result.data });
+            else if (result.type === 'button') updateLastMessage(result.data); // Flowise: 버튼 추가
+            else if (result.type === 'finalText') finalStreamText = result.data; // Flowise: 최종 텍스트
+            else if (result.type === 'error') throw result.data; // 스트림 처리 중 오류
         }
-        // 스트림 루프 정상 종료 (오류 없이)
+        // 스트림 정상 종료 -> finally 블록에서 최종 메시지 처리 및 저장
 
-      } else { // 비-스트림 응답 처리
+      } else { // JSON 응답 처리
         const data = await response.json();
-        set({ llmRawResponse: data });
-        const handler = responseHandlers[data.type];
+        set({ llmRawResponse: data }); // 원시 응답 저장 (디버깅용)
 
+        const handler = responseHandlers[data.type]; // 응답 타입에 맞는 핸들러 찾기
         if (handler) {
-          handler(data, get); // 핸들러 내부에서 addMessage 호출 (오류 처리 포함)
+          handler(data, get); // 핸들러 실행 (내부에서 addMessage 등 호출)
         } else {
+          // 기본 LLM 응답 처리
           if (data.response || data.text) {
-            // addMessage 내부에서 오류 처리됨
-            await addMessage("bot", { text: data.response || data.text });
-            if (data.slots && Object.keys(data.slots).length > 0) {
-              setExtractedSlots(data.slots);
-            }
-          } else { // 알 수 없는 응답 타입
+            await addMessage("bot", { text: data.response || data.text }); // 메시지 추가 (내부 오류 처리)
+            if (data.slots) setExtractedSlots(data.slots); // 슬롯 저장
+          } else { // 알 수 없는 타입 또는 빈 응답
             console.warn(`[ChatStore] Unhandled non-stream response type or empty response:`, data);
             await addMessage("bot", { text: locales[language]?.['errorUnexpected'] || "(No content)" });
           }
         }
-      } // end else (비-스트림)
-
-    } catch (error) { // 메인 try 블록의 catch (API 호출 실패, 스트림 오류 등)
-      console.error("[handleResponse] Error during fetch or processing:", error);
+        set({ isLoading: false }); // JSON 응답은 여기서 로딩 해제
+      }
+    } catch (error) { // 메인 try 블록의 catch (API 호출, 스트림, JSON 파싱 오류 등)
+      console.error("[handleResponse] Error:", error);
       const errorKey = getErrorKey(error);
-      const errorMessage = locales[language]?.[errorKey] || locales['en']?.errorUnexpected || 'An unexpected error occurred.';
+      const errorMessage = locales[language]?.[errorKey] || locales['en']?.errorUnexpected || 'An error occurred.';
 
+      // 오류 발생 시 마지막 메시지 상태 업데이트 (스트리밍 중이었는지 확인)
       set(state => {
           const lastMessageIndex = state.messages.length - 1;
           const lastMessage = state.messages[lastMessageIndex];
-          // 마지막 메시지가 스트리밍 중이던 '생각중...' 메시지인지 확인 (ID 비교)
+          // 마지막 메시지가 스트리밍 중이던 '생각중...' 메시지인지 ID로 확인
           if (lastMessage && lastMessage.id === lastBotMessageId && lastMessage.isStreaming) {
               const updatedMessage = { ...lastMessage, text: errorMessage, isStreaming: false };
-              // 오류 메시지 저장 시도 (saveMessage 내부 오류 처리)
+              // 오류 메시지 저장 시도 (ID는 여전히 임시 ID일 수 있음)
               saveMessage(updatedMessage).then(savedId => {
-                  lastBotMessageRef = savedId; // 실제 저장된 ID 참조 업데이트
+                  finalMessageId = savedId; // 저장 후 실제 ID 업데이트 (finally에서 사용)
                   if (savedId && savedId !== lastBotMessageId) {
                       // ID 변경 시 상태 업데이트
-                      set(s => ({
-                          messages: s.messages.map(m => m.id === lastBotMessageId ? { ...updatedMessage, id: savedId } : m)
-                      }));
+                      set(s => ({ messages: s.messages.map(m => m.id === lastBotMessageId ? { ...updatedMessage, id: savedId } : m) }));
                   }
               });
               return { messages: [...state.messages.slice(0, lastMessageIndex), updatedMessage] };
           }
-          // 스트리밍 중이 아니었다면 새 오류 메시지 추가 (addMessage 내부 오류 처리)
-          addMessage("bot", { text: errorMessage });
-          return state; // isLoading은 finally에서 해제됨
+          // 스트리밍 중 아니었으면 새 오류 메시지 추가
+          addMessage("bot", { text: errorMessage }); // addMessage 내부에서 저장 시도
+          return { isLoading: false }; // 로딩 해제
       });
 
-    } finally { // 메인 try 블록의 finally
+    } finally { // 메인 try 블록의 finally (스트림 성공/실패 무관 실행)
       set(state => {
           const lastMessageIndex = state.messages.length - 1;
           const lastMessage = state.messages[lastMessageIndex];
 
-          // 마지막 메시지가 스트리밍 완료 대기 상태인지 확인 (오류 없이 스트림 종료)
-          // ID 비교: 임시 ID 또는 오류 처리에서 업데이트된 실제 ID(lastBotMessageRef) 사용
-          if (lastMessage && (lastMessage.id === lastBotMessageId || lastMessage.id === lastBotMessageRef) && lastMessage.isStreaming) {
-               // 최종 텍스트 결정 (Flowise는 제너레이터에서, Gemini는 마지막 상태에서)
+          // 마지막 메시지가 스트리밍 완료 대기 상태인지 확인 (ID 비교 및 isStreaming 플래그)
+          // 오류 발생 시 이미 isStreaming=false로 변경되었으므로 이 조건은 정상 종료 시에만 해당
+          if (lastMessage && (lastMessage.id === lastBotMessageId || lastMessage.id === finalMessageId) && lastMessage.isStreaming) {
+               // 최종 텍스트 결정
                const finalText = (llmProvider === 'flowise' ? finalStreamText : lastMessage.text) || '';
+               // 비어있거나 '생각중...'이면 오류 메시지로 대체
                const finalMessageText = finalText.trim() === '' || finalText.trim() === thinkingText.trim()
                     ? locales[language]?.['errorUnexpected'] || "(No response received)"
                     : finalText;
 
                const finalMessage = { ...lastMessage, text: finalMessageText, isStreaming: false };
 
-               // 최종 메시지 저장 (saveMessage 내부 오류 처리)
+               // 최종 메시지 저장 (saveMessage 내부 오류 처리, ID 반환)
                saveMessage(finalMessage).then(savedId => {
+                    finalMessageId = savedId; // 최종 ID 업데이트
                     if (savedId && savedId !== lastMessage.id) {
                         // 저장 후 ID 변경 시 상태 업데이트
                          set(s => ({
@@ -1363,93 +586,16 @@ export const createChatSlice = (set, get) => ({
                });
 
                return {
-                   messages: [...state.messages.slice(0, lastMessageIndex), finalMessage],
+                   messages: [...state.messages.slice(0, lastMessageIndex), finalMessage], // 상태에 최종 메시지 반영
                    isLoading: false // 로딩 최종 해제
                 };
           }
-          // 스트리밍 아니었거나 이미 처리된 경우 로딩만 해제
+          // 스트리밍 아니었거나 이미 오류 처리된 경우 로딩만 해제
+          // isLoading 상태가 위 catch 블록에서 false로 설정되지 않았을 수 있으므로 여기서 확실히 해제
           return { isLoading: false };
       });
     } // end finally
   }, // end handleResponse
 
-  searchConversations: async (searchQuery) => {
-    // 검색 로직은 Firestore 읽기 위주이므로, 오류 발생 가능성은 낮지만 필요한 경우 try...catch 추가 가능
-    if (!searchQuery.trim()) {
-      set({ searchResults: [], isSearching: false });
-      return;
-    }
-    set({ isSearching: true, searchResults: [] }); // 검색 시작 시 결과 초기화
-    const { user, conversations, language, showEphemeralToast } = get(); // 오류 처리 위해 추가
-    if (!user || !conversations) {
-      set({ isSearching: false });
-      return;
-    }
-
-    try { // --- 👇 [추가] Firestore 검색 오류 처리 ---
-        const results = [];
-        const lowerCaseQuery = searchQuery.toLowerCase();
-
-        // 모든 대화에 대해 병렬로 메시지 검색 (성능 개선 가능성)
-        const searchPromises = conversations.map(async (convo) => {
-          try { // 개별 대화 검색 오류 처리
-              const messagesCollection = collection(
-                get().db,
-                "chats",
-                user.uid,
-                "conversations",
-                convo.id,
-                "messages"
-              );
-              // TODO: Firestore 텍스트 검색 기능 활용 고려 (현재는 클라이언트 필터링)
-              const messagesSnapshot = await getDocs(messagesCollection); // 오류 발생 가능
-              let foundInConvo = false;
-              const matchingMessages = [];
-              messagesSnapshot.forEach((doc) => {
-                const message = doc.data();
-                const content = message.text || ""; // text 필드가 없을 수 있음
-                if (typeof content === 'string' && content.toLowerCase().includes(lowerCaseQuery)) {
-                  foundInConvo = true;
-                  // 스니펫 생성 로직 (기존 유지)
-                  const snippetIndex = content.toLowerCase().indexOf(lowerCaseQuery);
-                  const start = Math.max(0, snippetIndex - 20);
-                  const end = Math.min(content.length, snippetIndex + lowerCaseQuery.length + 20); // 검색어 길이만큼 포함
-                  const snippet = `...${content.substring(start, end)}...`;
-                  // 최대 3개까지만 추가
-                  if (matchingMessages.length < 3) {
-                     matchingMessages.push(snippet);
-                  }
-                }
-              });
-              if (foundInConvo) {
-                return { // 검색 결과를 Promise 결과로 반환
-                  id: convo.id,
-                  title: convo.title || "Untitled Conversation",
-                  snippets: matchingMessages,
-                };
-              }
-          } catch (convoSearchError) {
-              console.error(`Error searching messages in conversation ${convo.id}:`, convoSearchError);
-              // 개별 대화 검색 실패 시 해당 대화는 결과에서 제외됨
-          }
-          return null; // 검색 결과 없거나 오류 시 null 반환
-        });
-
-        // 모든 검색 Promise 완료 기다림
-        const searchResultsRaw = await Promise.all(searchPromises);
-        // null 아닌 결과만 필터링하여 최종 결과 생성
-        results.push(...searchResultsRaw.filter(result => result !== null));
-
-        set({ searchResults: results });
-
-    } catch (error) { // --- 👆 [추가] ---
-      console.error("Error during conversation search:", error);
-      const errorKey = getErrorKey(error);
-      const message = locales[language]?.[errorKey] || locales['en']?.errorUnexpected || 'Failed to search conversations.';
-      showEphemeralToast(message, 'error');
-      set({ searchResults: [] }); // 오류 시 결과 비움
-    } finally {
-      set({ isSearching: false }); // 검색 종료 (성공/실패 무관)
-    }
-  }, // end searchConversations
-});
+ } // end return store object
+}; // end createChatSlice
