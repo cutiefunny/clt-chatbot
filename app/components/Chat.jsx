@@ -324,7 +324,9 @@ export default function Chat() {
     <div className={styles.chatContainer} ref={containerRef}>
       <div className={styles.header}>
         <div className={styles.headerButtons}>
-          <div className={styles.settingControl}>
+          {/* --- 👇 [수정] 스위치 감싸는 div에 style 추가 --- */}
+          <div className={styles.settingControl} style={{ display: 'none' }}>
+          {/* --- 👆 [수정] --- */}
             <span className={styles.settingLabel}>Large text</span>
             <label className={styles.switch}>
               <input
@@ -338,7 +340,9 @@ export default function Chat() {
             </label>
           </div>
 
-          <div className={styles.separator}></div>
+          {/* --- 👇 [수정] 구분선도 숨김 처리 --- */}
+          <div className={styles.separator} style={{ display: 'none' }}></div>
+          {/* --- 👆 [수정] --- */}
           <div>
             <button
               className={styles.themeToggleButton}
