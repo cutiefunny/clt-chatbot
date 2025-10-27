@@ -1,9 +1,38 @@
 // app/lib/nodeHandlers.js
-import { getGeminiResponseWithSlots } from './gemini';
-// chatbotEngine.js에서 필요한 함수들을 가져옵니다. (export 키워드가 추가되어야 함)
+import { getGeminiResponseWithSlots } from './gemini'; // 또는 getLlmResponse from './llm'
 import { getNextNode, interpolateMessage, getDeepValue } from './chatbotEngine';
+// --- 👇 [추가] llm.js 사용 시 ---
+// import { getLlmResponse } from './llm';
+// --- 👆 ---
 
-// --- 각 노드 핸들러 함수 정의 (chatbotEngine.js에서 이동) ---
+// --- 👇 [추가] JSON 내부 문자열 재귀 보간 함수 ---
+function interpolateObjectStrings(obj, slots) {
+  if (typeof obj !== 'object' || obj === null) {
+    return obj; // 객체가 아니면 그대로 반환
+  }
+
+  if (Array.isArray(obj)) {
+    // 배열이면 각 요소를 재귀적으로 처리
+    return obj.map(item => interpolateObjectStrings(item, slots));
+  }
+
+  // 객체면 각 속성 값을 재귀적으로 처리
+  const newObj = {};
+  for (const key in obj) {
+    if (Object.hasOwnProperty.call(obj, key)) {
+      const value = obj[key];
+      if (typeof value === 'string') {
+        newObj[key] = interpolateMessage(value, slots); // 문자열이면 보간
+      } else {
+        newObj[key] = interpolateObjectStrings(value, slots); // 객체/배열이면 재귀 호출
+      }
+    }
+  }
+  return newObj;
+}
+// --- 👆 ---
+
+// --- 각 노드 핸들러 함수 정의 ---
 
 async function handleToastNode(node, scenario, slots, scenarioSessionId) {
   const interpolatedToastMessage = interpolateMessage(node.data.message, slots);
@@ -44,7 +73,7 @@ async function handleInteractiveNode(node, scenario, slots, scenarioSessionId) {
     }
     // 대화형 노드(slotfilling, message, form, iframe, 조건 없는 branch)는
     // 사용자 입력을 기다려야 하므로, 다음 노드를 진행하지 않고 현재 노드를 반환합니다.
-    return { nextNode: node }; // nextNode를 현재 노드로 설정하여 루프 중단
+    return { nextNode: node, slots: slots, events: [] }; // nextNode를 현재 노드로 설정하여 루프 중단, slots/events 반환 추가
 }
 
 
@@ -70,94 +99,147 @@ async function handleLinkNode(node, scenario, slots) {
 
 
 async function handleApiNode(node, scenario, slots) {
-    const { method, url, headers, body, params, responseMapping } = node.data;
-    let interpolatedUrl = interpolateMessage(url, slots); // URL 보간
+    const { method, url, headers, body, params, responseMapping, isMulti, apis } = node.data;
 
-    // GET 요청 시 파라미터 처리
-    if (method === 'GET' && params) {
-        const queryParams = new URLSearchParams();
-        for (const key in params) {
-            if (Object.hasOwnProperty.call(params, key)) {
-                const value = interpolateMessage(params[key], slots); // 파라미터 값 보간
-                if (value) queryParams.append(key, value);
+    // 마지막 요청 본문 슬롯 저장용 변수
+    let lastRequestBodyForDebug = null;
+
+    // API 호출 처리 함수 (단일/다중 공통 로직)
+    const processApiCall = async (apiCallData) => {
+        // URL 보간 (GET 파라미터 포함)
+        let currentUrl = interpolateMessage(apiCallData.url, slots);
+        if (apiCallData.method === 'GET' && apiCallData.params) {
+            const queryParams = new URLSearchParams();
+            for (const key in apiCallData.params) {
+                if (Object.hasOwnProperty.call(apiCallData.params, key)) {
+                    const value = interpolateMessage(apiCallData.params[key], slots);
+                    if (value) queryParams.append(key, value);
+                }
+            }
+            const queryString = queryParams.toString();
+            if (queryString) {
+                currentUrl += (currentUrl.includes('?') ? '&' : '?') + queryString;
             }
         }
-        const queryString = queryParams.toString();
-        if (queryString) {
-            interpolatedUrl += (interpolatedUrl.includes('?') ? '&' : '?') + queryString;
+
+        // 상대 경로 처리
+        if (currentUrl.startsWith('/')) {
+            const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+            currentUrl = `${baseURL}${currentUrl}`;
         }
-    }
 
-    // 상대 경로 URL 처리 (환경 변수 사용)
-    if (interpolatedUrl.startsWith('/')) {
-        const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
-        interpolatedUrl = `${baseURL}${interpolatedUrl}`;
-    }
+        // 헤더 보간
+        const currentHeaders = JSON.parse(interpolateMessage(apiCallData.headers || '{}', slots));
+        let finalBody = undefined;
 
-    // 헤더 및 본문 보간
-    const interpolatedHeaders = JSON.parse(interpolateMessage(headers || '{}', slots));
-    const interpolatedBody = method !== 'GET' && body ? interpolateMessage(body, slots) : undefined;
+        // 본문 보간 (재귀적)
+        if (apiCallData.method !== 'GET' && apiCallData.body) {
+            try {
+                const bodyObject = JSON.parse(apiCallData.body);
+                const interpolatedBodyObject = interpolateObjectStrings(bodyObject, slots);
+                finalBody = JSON.stringify(interpolatedBodyObject);
+                lastRequestBodyForDebug = finalBody; // 디버깅용 저장
+            } catch (e) {
+                console.error("Error processing API body for interpolation:", e, "Original body:", apiCallData.body);
+                finalBody = interpolateMessage(apiCallData.body, slots); // Fallback
+                lastRequestBodyForDebug = finalBody;
+            }
+        }
 
-    // 마지막 요청 본문 슬롯 저장 (디버깅용)
-    if (interpolatedBody) {
-        slots['_lastApiRequestBody'] = interpolatedBody;
-    } else if (slots['_lastApiRequestBody']) {
-        delete slots['_lastApiRequestBody'];
-    }
-
-    let isSuccess = false; // API 호출 성공 여부 플래그
-    try {
         // fetch API 호출
-        const response = await fetch(interpolatedUrl, { method, headers: interpolatedHeaders, body: interpolatedBody });
-        if (!response.ok) { // 응답 상태 코드가 2xx가 아닌 경우 에러 처리
-            const errorBody = await response.text();
-            throw new Error(`API request failed with status ${response.status}. Body: ${errorBody}`);
+        const response = await fetch(currentUrl, {
+             method: apiCallData.method,
+             headers: { 'Content-Type': 'application/json', ...currentHeaders },
+             body: finalBody
+        });
+
+        // 응답 처리
+        const responseText = await response.text(); // 텍스트 먼저 받고
+        if (!response.ok) {
+            throw new Error(`API request failed with status ${response.status}. URL: ${currentUrl}. Body: ${responseText}`);
+        }
+        // 텍스트가 비어있지 않으면 JSON 파싱 시도
+        const result = responseText ? JSON.parse(responseText) : null;
+        return { result, mapping: apiCallData.responseMapping };
+    };
+
+
+    let isSuccess = false;
+    let currentSlots = { ...slots }; // 현재 슬롯 복사본 사용
+
+    try {
+        let results = [];
+        if (isMulti && Array.isArray(apis)) {
+             const settledResults = await Promise.allSettled(apis.map(api => processApiCall(api)));
+             const fulfilled = settledResults.filter(r => r.status === 'fulfilled').map(r => r.value);
+             const rejected = settledResults.filter(r => r.status === 'rejected');
+             if (rejected.length > 0) throw rejected[0].reason;
+             results = fulfilled;
+        } else if (!isMulti) {
+            results.push(await processApiCall({ url, method, headers, body, params, responseMapping }));
+        } else {
+             throw new Error("Invalid API node configuration: isMulti is true but 'apis' array is missing or invalid.");
         }
 
-        // 응답 JSON 파싱
-        const result = await response.json();
-        // 응답 매핑 설정에 따라 결과값을 슬롯에 저장
-        if (responseMapping && responseMapping.length > 0) {
-            responseMapping.forEach(mapping => {
-                const value = getDeepValue(result, mapping.path); // 중첩된 값 가져오기
-                if (value !== undefined) slots[mapping.slot] = value;
-            });
-        }
-        isSuccess = true; // 성공 플래그 설정
+        // 결과 매핑
+        const combinedNewSlots = {};
+        results.forEach(({ result, mapping }) => {
+            if (mapping && mapping.length > 0) {
+                mapping.forEach(m => {
+                    const value = getDeepValue(result, m.path);
+                    if (value !== undefined) combinedNewSlots[m.slot] = value;
+                });
+            }
+        });
+        currentSlots = { ...currentSlots, ...combinedNewSlots }; // 슬롯 업데이트
+
+        isSuccess = true;
     } catch (error) {
         console.error("API Node Error:", error);
-        // 에러 발생 시 관련 슬롯 설정
-        slots['apiError'] = error.message;
-        slots['apiFailed'] = true;
-        isSuccess = false; // 실패 플래그 설정
+        currentSlots['apiError'] = error.message;
+        currentSlots['apiFailed'] = true;
+        isSuccess = false;
+    } finally {
+        if (lastRequestBodyForDebug) {
+            currentSlots['_lastApiRequestBody'] = lastRequestBodyForDebug;
+        } else if (currentSlots['_lastApiRequestBody']) {
+            delete currentSlots['_lastApiRequestBody'];
+        }
     }
 
-    // 성공/실패 여부에 따라 다음 노드 결정 ('onSuccess' 또는 'onError' 핸들 사용)
-    const nextNode = getNextNode(scenario, node.id, isSuccess ? 'onSuccess' : 'onError', slots);
-    return { nextNode, slots, events: [] }; // 이벤트는 없음
+    const nextNode = getNextNode(scenario, node.id, isSuccess ? 'onSuccess' : 'onError', currentSlots); // 업데이트된 currentSlots 사용
+    return { nextNode, slots: currentSlots, events: [] }; // 최종 슬롯 반환
 }
 
-// language 파라미터 추가
+// language 파라미터 추가, scenarioSessionId 제거 (필요 없어 보임)
 async function handleLlmNode(node, scenario, slots, language) {
     const interpolatedPrompt = interpolateMessage(node.data.prompt, slots); // 프롬프트 보간
-    // Gemini API 호출 (슬롯 추출 기능 포함된 버전 사용)
-    const geminiData = await getGeminiResponseWithSlots(interpolatedPrompt, language);
 
-    const llmResponse = geminiData.response; // LLM 응답 텍스트
+    // getLlmResponse 사용 예시 (gemini.js 직접 사용 대신)
+    // const { llmProvider, flowiseApiUrl } = useChatStore.getState(); // 전역 설정 가져오기
+    // const llmResult = await getLlmResponse(interpolatedPrompt, language, [], llmProvider, flowiseApiUrl);
+    // let llmResponseText = llmResult.response;
+    // let extractedSlots = llmResult.slots || {};
+
+    // 현재 코드 유지 (gemini.js 직접 사용)
+    const geminiData = await getGeminiResponseWithSlots(interpolatedPrompt, language);
+    const llmResponseText = geminiData.response; // LLM 응답 텍스트
+    const extractedSlots = geminiData.slots || {};
+    let currentSlots = { ...slots }; // 슬롯 복사
 
     // LLM이 추출한 슬롯을 기존 슬롯에 병합
-    if (geminiData.slots) {
-        slots = { ...slots, ...geminiData.slots };
+    if (extractedSlots && Object.keys(extractedSlots).length > 0) {
+        currentSlots = { ...currentSlots, ...extractedSlots };
     }
 
     // LLM 응답을 특정 슬롯에 저장하도록 설정된 경우
     if (node.data.outputVar) {
-        slots[node.data.outputVar] = llmResponse;
+        currentSlots[node.data.outputVar] = llmResponseText;
     }
 
-    // 다음 노드 결정 (LLM 노드는 조건 분기를 가질 수 있음)
-    const nextNode = getNextNode(scenario, node.id, null, slots);
-    return { nextNode, slots, events: [] }; // 이벤트는 없음
+    // 다음 노드 결정 (getNextNode가 LLM 조건 분기 처리)
+    const nextNode = getNextNode(scenario, node.id, null, currentSlots); // 업데이트된 currentSlots 사용
+    return { nextNode, slots: currentSlots, events: [] }; // 최종 슬롯 반환
 }
 
 
@@ -167,8 +249,8 @@ async function handleBranchNode(node, scenario, slots) {
     const nextNode = getNextNode(scenario, node.id, null, slots);
     return { nextNode, slots, events: [] };
   } else {
-    // 일반 분기(REPLY) 타입의 경우, 사용자 입력을 기다려야 하므로 현재 노드 반환
-    return { nextNode: node };
+    // 일반 분기(REPLY/BUTTON) 타입의 경우, 사용자 입력을 기다려야 하므로 현재 노드 반환
+    return { nextNode: node, slots, events: [] }; // slots, events 추가
   }
 }
 
@@ -184,22 +266,34 @@ async function handleSetSlotNode(node, scenario, slots) {
       // 값 보간 (이전 할당 결과를 다음 보간에 사용 가능)
       let interpolatedValue = interpolateMessage(assignment.value, newSlots);
 
-      // 값이 JSON 형태의 문자열인지 확인 후 파싱 시도
-      if (typeof interpolatedValue === 'string' &&
-          ( (interpolatedValue.startsWith('{') && interpolatedValue.endsWith('}')) ||
-            (interpolatedValue.startsWith('[') && interpolatedValue.endsWith(']')) )
-      ) {
-        try {
-          const parsedJson = JSON.parse(interpolatedValue);
-          newSlots[assignment.key] = parsedJson; // 파싱 성공 시 객체/배열 저장
-        } catch (e) {
-          // 파싱 실패 시 문자열 그대로 저장
+      // --- 👇 [수정] 타입 변환 로직 (빌더 참조 구현과 유사) ---
+      try {
+          const trimmedValue = interpolatedValue.trim();
+          if ((trimmedValue.startsWith('{') && trimmedValue.endsWith('}')) || (trimmedValue.startsWith('[') && trimmedValue.endsWith(']'))) {
+              // JSON 파싱 시도
+              newSlots[assignment.key] = JSON.parse(trimmedValue);
+          } else if (trimmedValue.toLowerCase() === 'true') {
+              newSlots[assignment.key] = true;
+          } else if (trimmedValue.toLowerCase() === 'false') {
+              newSlots[assignment.key] = false;
+          } else if (!isNaN(trimmedValue) && trimmedValue !== '') {
+               // 숫자 변환 시도 (Number() 사용)
+               const num = Number(trimmedValue);
+               // Number('')는 0이 되므로, 빈 문자열은 숫자로 변환하지 않도록 체크
+               if (!isNaN(num)) {
+                   newSlots[assignment.key] = num;
+               } else {
+                   newSlots[assignment.key] = interpolatedValue; // 숫자 변환 실패 시 문자열 유지
+               }
+          } else {
+              newSlots[assignment.key] = interpolatedValue; // 다른 모든 경우는 문자열 유지
+          }
+      } catch (e) {
+          // JSON 파싱 실패 시 문자열 그대로 저장
+          console.warn(`[handleSetSlotNode] Failed to parse JSON for slot "${assignment.key}", saving as string. Value:`, interpolatedValue);
           newSlots[assignment.key] = interpolatedValue;
-        }
-      } else {
-        // JSON 형태 아니면 그대로 저장
-        newSlots[assignment.key] = interpolatedValue;
       }
+      // --- 👆 ---
     }
   }
 
@@ -220,4 +314,6 @@ export const nodeHandlers = {
   'api': handleApiNode,
   'llm': handleLlmNode,
   'setSlot': handleSetSlotNode,
+  // 'start' 노드는 runScenario 시작점에서 처리되므로 핸들러 불필요
+  // 'scenario' (그룹) 노드는 runScenario 내에서 진입 처리되므로 핸들러 불필요
 };

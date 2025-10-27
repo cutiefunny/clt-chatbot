@@ -2,11 +2,12 @@
 
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
-// --- 👇 [수정] getGeminiResponseWithSlots 임포트 제거 ---
-// import { getGeminiResponseWithSlots } from './gemini';
 import { locales } from './locales';
-// --- 👇 [수정] nodeHandlers 임포트 ---
 import { nodeHandlers } from './nodeHandlers';
+
+// --- 👇 [추가] 지원하는 스키마 버전 ---
+const SUPPORTED_SCHEMA_VERSION = "1.0";
+// --- 👆 ---
 
 let cachedScenarioCategories = null;
 let lastFetchTime = 0;
@@ -64,14 +65,6 @@ export async function findActionByTrigger(message) {
   return null; // 일치하는 아이템 없음
 }
 
-
-// findScenarioIdByTrigger 함수는 현재 사용되지 않는 것으로 보이므로 제거하거나 주석 처리합니다.
-/*
-export async function findScenarioIdByTrigger(message) {
-  // ... (이전 코드)
-}
-*/
-
 export const getScenarioList = async () => {
   const scenariosCollection = collection(db, 'scenarios');
   const querySnapshot = await getDocs(scenariosCollection);
@@ -87,7 +80,17 @@ export const getScenario = async (scenarioId) => {
   const scenarioSnap = await getDoc(scenarioRef);
 
   if (scenarioSnap.exists()) {
-    return scenarioSnap.data();
+    const scenarioData = scenarioSnap.data(); // 데이터 가져오기
+
+    // --- 👇 [수정] 스키마 버전 확인 ---
+    if (!scenarioData.version || scenarioData.version !== SUPPORTED_SCHEMA_VERSION) {
+        console.warn(`Scenario "${scenarioId}" has unsupported schema version "${scenarioData.version}". Expected "${SUPPORTED_SCHEMA_VERSION}". Proceeding with caution.`);
+        // 엄격하게 처리하려면 여기서 에러 발생
+        // throw new Error(`Unsupported schema version: ${scenarioData.version}`);
+    }
+    // --- 👆 ---
+
+    return scenarioData; // 시나리오 데이터 반환
   } else {
     // 시나리오를 찾지 못했을 때 더 명확한 에러 메시지
     console.error(`Scenario with ID "${scenarioId}" not found in Firestore.`);
@@ -96,7 +99,6 @@ export const getScenario = async (scenarioId) => {
 };
 
 const evaluateCondition = (slotValue, operator, conditionValue) => {
-  // ... (기존 코드 유지) ...
     const lowerCaseConditionValue = String(conditionValue ?? '').toLowerCase(); // null/undefined 방지
     const boolConditionValue = lowerCaseConditionValue === 'true';
     // slotValue도 null/undefined일 수 있으므로 안전하게 문자열 변환
@@ -125,8 +127,8 @@ const evaluateCondition = (slotValue, operator, conditionValue) => {
       case '>=': return bothAreNumbers && numSlotValue >= numConditionValue;
       case '<=': return bothAreNumbers && numSlotValue <= numConditionValue;
       // 문자열 포함 여부 비교 (slotValue가 문자열화 가능한지 확인)
-      case 'contains': return slotValue != null && slotValue.toString().includes(String(conditionValue ?? ''));
-      case '!contains': return slotValue == null || !slotValue.toString().includes(String(conditionValue ?? ''));
+      case 'contains': return slotValue != null && String(slotValue).includes(String(conditionValue ?? ''));
+      case '!contains': return slotValue == null || !String(slotValue).includes(String(conditionValue ?? ''));
       default:
         console.warn(`Unsupported operator used in condition: ${operator}`);
         return false;
@@ -134,9 +136,7 @@ const evaluateCondition = (slotValue, operator, conditionValue) => {
 };
 
 
-// --- 👇 [수정] export 추가 ---
 export const getNextNode = (scenario, currentNodeId, sourceHandleId = null, slots = {}) => {
-  // ... (기존 getNextNode 로직 유지) ...
     if (!scenario || !Array.isArray(scenario.nodes) || !Array.isArray(scenario.edges)) {
         console.error("Invalid scenario object passed to getNextNode:", scenario);
         return null; // 잘못된 시나리오 객체면 null 반환
@@ -185,15 +185,13 @@ export const getNextNode = (scenario, currentNodeId, sourceHandleId = null, slot
         const conditions = sourceNode.data.conditions || [];
         for (const condition of conditions) {
             // 조건 값 가져오기 (슬롯 값 또는 직접 입력 값)
-            const slotValue = slots[condition.slot];
-            const valueToCompare = condition.valueType === 'slot' ? slots[condition.value] : condition.value;
+            const slotValue = getDeepValue(slots, condition.slot); // getDeepValue 사용
+            const valueToCompare = condition.valueType === 'slot' ? getDeepValue(slots, condition.value) : condition.value; // getDeepValue 사용
 
             if (evaluateCondition(slotValue, condition.operator, valueToCompare)) {
                 // 조건 만족 시 해당 핸들 ID 찾기
                 const conditionIndex = conditions.indexOf(condition);
-                // replies 구조가 handleId를 직접 포함하도록 변경되었을 수 있음 (확인 필요)
-                // 현재 코드 기준: replies 배열의 인덱스로 핸들 ID 찾기
-                const handleId = sourceNode.data.replies?.[conditionIndex]?.value; // 예: { display: "Yes", value: "handle-yes" }
+                const handleId = sourceNode.data.replies?.[conditionIndex]?.value;
                 if (handleId) {
                     nextEdge = scenario.edges.find(edge => edge.source === currentNodeId && edge.sourceHandle === handleId);
                     if (nextEdge) {
@@ -203,7 +201,12 @@ export const getNextNode = (scenario, currentNodeId, sourceHandleId = null, slot
                 }
             }
         }
-        // 조건 만족하는 엣지 없으면 아래 기본/default 엣지 로직으로 넘어감
+        // 조건 만족하는 엣지 없으면 default 엣지 확인
+         if (!nextEdge) {
+             nextEdge = scenario.edges.find(edge => edge.source === currentNodeId && edge.sourceHandle === 'default');
+             if (nextEdge) console.log(`Branch default handle matched, Edge: ${nextEdge.id}`);
+         }
+        // default도 없으면 아래 기본/fallback 엣지 로직으로 넘어감
     }
 
     // 3. 명시적 sourceHandleId가 있는 엣지 찾기 (예: 버튼 클릭)
@@ -214,23 +217,20 @@ export const getNextNode = (scenario, currentNodeId, sourceHandleId = null, slot
         if (nextEdge) console.log(`Source handle matched: ${sourceHandleId}, Edge: ${nextEdge.id}`);
     }
 
-    // 4. sourceHandleId가 없고, 조건 분기 노드의 default 또는 핸들 없는 엣지 찾기
-    if (!nextEdge && !sourceHandleId && sourceNode.type === 'branch' && sourceNode.data.evaluationType === 'CONDITION') {
-        // 명시적 'default' 핸들 우선
-        nextEdge = scenario.edges.find(edge => edge.source === currentNodeId && edge.sourceHandle === 'default');
-        if (nextEdge) {
-             console.log(`Branch default handle matched, Edge: ${nextEdge.id}`);
-        } else {
-             // 'default' 핸들도 없으면 핸들 ID 없는 엣지 (Fallback)
-             nextEdge = scenario.edges.find(edge => edge.source === currentNodeId && !edge.sourceHandle);
-             if (nextEdge) console.log(`Branch no handle (fallback) matched, Edge: ${nextEdge.id}`);
-        }
+    // 4. sourceHandleId가 없고, 조건 분기 노드의 default 핸들 없는 엣지 찾기 (Fallback)
+    // (위 2번 로직에서 default 처리를 이미 했으므로 이 블록은 수정/제거 가능성 있음)
+    // 일단 유지: 조건부 분기가 아니거나, 조건/default 모두 매칭 안 된 경우 대비
+    if (!nextEdge && !sourceHandleId && sourceNode.type === 'branch') {
+        // 핸들 ID 없는 엣지 (Fallback)
+        nextEdge = scenario.edges.find(edge => edge.source === currentNodeId && !edge.sourceHandle);
+        if (nextEdge) console.log(`Branch no handle (fallback) matched, Edge: ${nextEdge.id}`);
     }
 
+
     // 5. 그 외 모든 노드 타입에서 핸들 ID 없는 엣지 찾기 (기본 경로)
-    if (!nextEdge && !sourceHandleId && !(sourceNode.type === 'branch' && sourceNode.data.evaluationType === 'CONDITION')) {
+    if (!nextEdge && !sourceHandleId && sourceNode.type !== 'branch') { // branch 아닌 경우만
         nextEdge = scenario.edges.find(edge => edge.source === currentNodeId && !edge.sourceHandle);
-        if (nextEdge) console.log(`Default edge (no handle) matched, Edge: ${nextEdge.id}`);
+        if (nextEdge) console.log(`Default edge (no handle) matched for node type ${sourceNode.type}, Edge: ${nextEdge.id}`);
     }
 
     // 찾은 엣지에 연결된 다음 노드 반환
@@ -243,17 +243,34 @@ export const getNextNode = (scenario, currentNodeId, sourceHandleId = null, slot
         return nextNode;
     }
 
-    // 다음 엣지를 찾지 못한 경우 (시나리오 분기 종료)
-    console.log(`No next edge found for node "${currentNodeId}" (handle: "${sourceHandleId}"). Ending branch.`);
-    return null; // 다음 노드 없음
+    // --- 👇 [수정] 다음 엣지를 찾지 못한 경우 그룹 노드 처리 추가 ---
+    // 다음 엣지를 찾지 못한 경우
+    console.log(`No explicit next edge found for node "${currentNodeId}" (handle: "${sourceHandleId}").`);
+
+    // 현재 노드가 그룹 내부에 있는지 확인 (parentNode 속성 확인)
+    if (sourceNode?.parentNode) {
+        console.log(`Node "${currentNodeId}" is inside group "${sourceNode.parentNode}". Checking parent node for outgoing edges.`);
+        // 부모 노드에서 나가는 엣지를 찾아 재귀적으로 다음 노드 탐색 시도
+        // 부모 노드의 sourceHandle은 null로 간주 (그룹 자체에는 핸들이 없음)
+        return getNextNode(scenario, sourceNode.parentNode, null, slots);
+    } else {
+        // 그룹 노드가 아니거나, 부모 노드에서도 엣지를 못 찾으면 시나리오 분기 종료
+        console.log(`Node "${currentNodeId}" is not in a group or parent has no outgoing edges. Ending branch.`);
+        return null; // 다음 노드 없음
+    }
+    // --- 👆 ---
 };
 
-// --- 👇 [수정] export 추가 ---
+
 export const getDeepValue = (obj, path) => {
-  // ... (기존 getDeepValue 로직 유지) ...
     if (!path || typeof path !== 'string' || !obj || typeof obj !== 'object') return undefined;
 
-    const keys = path.match(/[^.[\]]+|\[(?:(-?\d+)|(["'])((?:(?!\2)[^\\]|\\.)*?)\2)\]/g);
+    // 대괄호 안의 점을 임시 문자로 치환 (예: `a[b.c]` -> `a[b__DOT__c]`)
+    let tempPath = path.replace(/\[([^\]]+)\]/g, (match, key) => `[${key.replace(/\./g, '__DOT__')}]`);
+
+    // 점과 대괄호를 기준으로 경로 분리 (예: `a.b[c][0]` -> ['a', 'b', '[c]', '[0]'])
+    const keys = tempPath.match(/[^.[\]]+|\[[^\]]+\]/g);
+
     if (!keys) return undefined; // 경로 파싱 실패 시 undefined
 
     let value = obj;
@@ -261,17 +278,18 @@ export const getDeepValue = (obj, path) => {
         if (value === null || typeof value === 'undefined') return undefined; // 중간 경로 값 없음
 
         let actualKey = key;
-        const bracketMatch = key.match(/^\[(?:(-?\d+)|(["'])((?:(?!\2)[^\\]|\\.)*?)\2)\]$/);
+        // 임시 문자 복원
+        actualKey = actualKey.replace(/__DOT__/g, '.');
 
-        if (bracketMatch) { // 대괄호 표기법 처리
-            if (bracketMatch[1]) { // 숫자 인덱스
-                actualKey = parseInt(bracketMatch[1], 10);
-                if (isNaN(actualKey)) return undefined; // 유효하지 않은 숫자 인덱스
-            } else if (bracketMatch[3]) { // 따옴표 키
-                actualKey = bracketMatch[3].replace(/\\(['"\\])/g, '$1'); // 이스케이프 처리
-            } else {
-                return undefined; // 잘못된 대괄호 형식
-            }
+        const bracketMatch = actualKey.match(/^\[(['"]?)(.+)\1\]$/); // 대괄호 및 따옴표 제거
+
+        if (bracketMatch) {
+            actualKey = bracketMatch[2]; // 대괄호 안의 내용 추출
+             // 숫자로 변환 시도 (배열 인덱스 처리)
+             const index = parseInt(actualKey, 10);
+             if (!isNaN(index) && String(index) === actualKey) {
+                 actualKey = index; // 숫자인 경우 숫자로 사용
+             }
         }
 
         // 객체 속성 접근 또는 배열 인덱스 접근
@@ -282,7 +300,6 @@ export const getDeepValue = (obj, path) => {
                 return undefined; // 유효하지 않은 배열 인덱스
             }
         } else if (typeof value === 'object') {
-             // hasOwnProperty 체크는 프로토타입 체인 오염 방지에 도움될 수 있으나, 여기서는 in 연산자로 충분
             if (actualKey in value) {
                 value = value[actualKey];
             } else {
@@ -295,22 +312,39 @@ export const getDeepValue = (obj, path) => {
     return value; // 최종 값 반환
 };
 
-// --- 👇 [수정] export 추가 ---
+
 export const interpolateMessage = (message, slots) => {
-  // ... (기존 interpolateMessage 로직 유지) ...
-    if (!message || typeof message !== 'string') return String(message ?? '');
+    // null 또는 undefined 입력 시 빈 문자열 반환 강화
+    if (message === null || typeof message === 'undefined') return '';
+    // message가 문자열이 아니면 문자열로 변환 (예: 숫자)
+    if (typeof message !== 'string') message = String(message);
 
     let decodedMessage = message;
     try {
+        // URL 인코딩된 {{, }} 디코드 시도
         decodedMessage = decodedMessage.replace(/%7B%7B/g, '{{').replace(/%7D%7D/g, '}}');
     } catch (e) { console.error("URL decoding error in interpolateMessage:", e); }
 
     const result = decodedMessage.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
         const path = key.trim();
-        const value = getDeepValue(slots, path); // Use the safer getDeepValue
+        const value = getDeepValue(slots, path); // 중첩 값 가져오기
 
         if (value !== undefined && value !== null) {
-            const stringValue = String(value);
+            let stringValue;
+            // --- 👇 [수정] 객체/배열 타입 처리 ---
+            if (typeof value === 'object') {
+                try {
+                    stringValue = JSON.stringify(value); // JSON 문자열로 변환
+                } catch (e) {
+                    console.warn(`[interpolate] Failed to stringify object for slot "${path}". Using default string representation.`);
+                    stringValue = String(value); // 실패 시 기본 문자열 변환 ([object Object])
+                }
+            } else {
+                stringValue = String(value); // 다른 타입은 문자열로 변환
+            }
+            // --- 👆 ---
+
+            // URL 파라미터 값 인코딩 로직 (기존 유지)
             const matchIndex = decodedMessage.indexOf(match);
             const precedingChar = matchIndex > 0 ? decodedMessage[matchIndex - 1] : '';
             const isUrlParamValue = precedingChar === '=' || precedingChar === '&';
@@ -319,16 +353,16 @@ export const interpolateMessage = (message, slots) => {
                 try {
                     // 간단한 인코딩 확인 (완벽하지 않음)
                     let needsEncoding = true;
-                    try { if (decodeURIComponent(stringValue) !== stringValue) needsEncoding = false; }
-                    catch (decodeError) { needsEncoding = false; }
+                    try { if (decodeURIComponent(stringValue) === stringValue) needsEncoding = false; } // 이미 인코딩된 경우 확인
+                    catch (decodeError) { needsEncoding = true; } // 디코딩 실패 시 인코딩 필요 간주
 
                     return needsEncoding ? encodeURIComponent(stringValue) : stringValue;
                 } catch (encodeError) {
                     console.error(`Error encoding URL param "${path}":`, encodeError);
-                    return stringValue; // 인코딩 실패 시 원본 반환
+                    return stringValue; // 인코딩 실패 시 원본 문자열 반환
                 }
             } else {
-                return stringValue; // 일반 값은 그대로 반환
+                return stringValue; // 일반 값은 변환된 문자열 반환
             }
         } else {
             console.warn(`[interpolate] Slot value not found for key: "${path}". Returning placeholder.`);
@@ -340,7 +374,6 @@ export const interpolateMessage = (message, slots) => {
 
 
 export const validateInput = (value, validation, language = 'ko') => {
-  // ... (기존 validateInput 로직 유지) ...
     if (!validation) return { isValid: true }; // 유효성 검사 없으면 항상 유효
     // 언어별 메시지 함수
     const t = (key, ...args) => {
@@ -421,19 +454,6 @@ export const validateInput = (value, validation, language = 'ko') => {
     }
 };
 
-// --- 👇 [수정] 핸들러 함수들 및 nodeHandlers 객체 제거 ---
-/*
-async function handleToastNode(...) { ... }
-async function handleInteractiveNode(...) { ... }
-async function handleLinkNode(...) { ... }
-async function handleApiNode(...) { ... }
-async function handleLlmNode(...) { ... }
-async function handleBranchNode(...) { ... }
-async function handleSetSlotNode(...) { ... }
-
-const nodeHandlers = { ... };
-*/
-// --- 👆 [수정] ---
 
 export async function runScenario(scenario, scenarioState, message, slots, scenarioSessionId, language) {
     // scenario, scenarioState 유효성 검사 추가
@@ -486,15 +506,12 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
 
     // 3. 비대화형 노드 자동 진행 루프
     while (currentNode) {
-        // --- 👇 [수정] nodeHandlers 객체 사용 ---
         const handler = nodeHandlers[currentNode.type];
-        // --- 👆 [수정] ---
 
         if (handler) {
             try { // 핸들러 실행 오류 처리
                 // 핸들러 실행 (API 호출, 슬롯 설정 등)
-                // handleLlmNode에 language 전달
-                const result = await handler(currentNode, scenario, newSlots, scenarioSessionId, language);
+                const result = await handler(currentNode, scenario, newSlots, scenarioSessionId, language); // language 전달
 
                 if (!result) { // 핸들러가 유효하지 않은 결과 반환 시
                     throw new Error(`Handler for node type "${currentNode.type}" (ID: ${currentNode.id}) returned invalid result.`);
@@ -525,50 +542,84 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
 
     // 4. 최종 결과 반환 (대화형 노드에서 멈췄거나, 시나리오 종료)
     if (currentNode) { // 대화형 노드에서 멈춘 경우
-        // console.log(`[runScenario] Interactive node ${currentNode.id} reached. Awaiting input.`);
+        console.log(`[runScenario] Interactive node ${currentNode.id} reached. Awaiting input.`); // 로그 수정
 
-        // --- 👇 [수정] 반환 전 보간 로직 강화 ---
         try {
-            // 보간 전에 원본 데이터를 복사 (원본 시나리오 객체 변경 방지)
-            const nodeToReturn = JSON.parse(JSON.stringify(currentNode));
+            const nodeToReturn = JSON.parse(JSON.stringify(currentNode)); // 원본 복사
 
-            // 각 타입별 보간 처리
+            // --- 👇 [추가] Form 노드 기본값 슬롯 업데이트 로직 ---
+            if (nodeToReturn.type === 'form') {
+                let initialSlotsUpdate = {};
+                (nodeToReturn.data.elements || []).forEach(element => {
+                    // input, date, dropbox, checkbox 등 defaultValue가 의미 있는 요소 처리
+                    if (element.name && element.defaultValue !== undefined && element.defaultValue !== null && String(element.defaultValue).trim() !== '') { // 빈 문자열 제외
+                         // 현재 슬롯(newSlots) 기준으로 defaultValue 보간
+                         let resolvedValue = interpolateMessage(String(element.defaultValue), newSlots);
+
+                         // Checkbox는 배열일 수 있음
+                         if (element.type === 'checkbox' && !Array.isArray(element.defaultValue)) {
+                             // defaultValue가 배열이 아니면 배열로 감싸거나, 문자열이면 쉼표로 분리 시도
+                             resolvedValue = typeof element.defaultValue === 'string'
+                               ? element.defaultValue.split(',').map(s => s.trim())
+                               : [resolvedValue];
+                         }
+                         // TODO: 필요시 resolvedValue 타입 변환 (setSlot 노드처럼)
+
+                         // 현재 슬롯에 해당 값이 아직 없을 때만 기본값 적용 (사용자 입력/이전 노드 값 우선)
+                         if (newSlots[element.name] === undefined) {
+                            initialSlotsUpdate[element.name] = resolvedValue;
+                         }
+                    }
+                });
+                // 업데이트된 기본값들을 현재 슬롯(newSlots)에 병합
+                if (Object.keys(initialSlotsUpdate).length > 0) {
+                    newSlots = { ...newSlots, ...initialSlotsUpdate };
+                    console.log(`[runScenario] Applied default values for form node ${currentNode.id}. Updated slots:`, initialSlotsUpdate);
+                }
+            }
+            // --- 👆 ---
+
+            // --- 👇 [수정] 반환 전 보간 로직 강화 (업데이트된 newSlots 사용) ---
             if (nodeToReturn.data) {
+                // message, iframe, link, form title 등 보간
                 if (nodeToReturn.data.content) nodeToReturn.data.content = interpolateMessage(nodeToReturn.data.content, newSlots);
                 if (nodeToReturn.type === 'iframe' && nodeToReturn.data.url) nodeToReturn.data.url = interpolateMessage(nodeToReturn.data.url, newSlots);
+                if (nodeToReturn.type === 'link' && nodeToReturn.data.display) nodeToReturn.data.display = interpolateMessage(nodeToReturn.data.display, newSlots);
                 if (nodeToReturn.type === 'form' && nodeToReturn.data.title) nodeToReturn.data.title = interpolateMessage(nodeToReturn.data.title, newSlots);
+
+                // Form elements 보간 (label, placeholder, options)
                 if (nodeToReturn.type === 'form' && Array.isArray(nodeToReturn.data.elements)) {
                     nodeToReturn.data.elements.forEach(el => {
                         if (el.label) el.label = interpolateMessage(el.label, newSlots);
                         if (el.placeholder) el.placeholder = interpolateMessage(el.placeholder, newSlots);
-                        // 기본값 보간은 FormRenderer에서 처리하는 것이 더 적합할 수 있음 (상태 관리 용이)
-                        // if (el.type === 'input' && ...) newSlots[el.name] = interpolateMessage(...)
-                        if (el.type === 'dropbox' && Array.isArray(el.options)) el.options = el.options.map(opt => interpolateMessage(opt, newSlots));
-                        if (el.type === 'checkbox' && Array.isArray(el.options)) el.options = el.options.map(opt => interpolateMessage(opt, newSlots));
-                        // Grid 데이터 보간은 ScenarioBubble/FormRenderer에서 처리
+                        // defaultValue 보간은 여기서 하지 않음 (위에서 슬롯에 직접 반영)
+                        if ((el.type === 'dropbox' || el.type === 'checkbox') && Array.isArray(el.options)) {
+                           el.options = el.options.map(opt => typeof opt === 'string' ? interpolateMessage(opt, newSlots) : opt);
+                        }
+                        // Grid data 보간은 클라이언트 측(FormRenderer)에서 수행
                     });
                 }
+                // Branch replies 보간
                 if (nodeToReturn.type === 'branch' && Array.isArray(nodeToReturn.data.replies)) {
                      nodeToReturn.data.replies.forEach(reply => { if (reply.display) reply.display = interpolateMessage(reply.display, newSlots); });
                 }
             }
+            // --- 👆 ---
 
-            // awaitInput 결정: slotfilling 또는 form 타입일 때만 true
             const isAwaiting = nodeToReturn.type === 'slotfilling' || nodeToReturn.type === 'form';
 
             return {
                 type: 'scenario',
-                nextNode: nodeToReturn, // 보간된 노드 데이터 반환
+                nextNode: nodeToReturn, // 보간된 노드 데이터
                 scenarioState: { scenarioId, currentNodeId: nodeToReturn.id, awaitingInput: isAwaiting },
-                slots: newSlots,
+                slots: newSlots, // 기본값이 적용된 슬롯 반환
                 events: allEvents,
             };
-        } catch (interpolationError) {
-             console.error(`Error during node data interpolation for node ${currentNode.id}:`, interpolationError);
+        } catch (processingError) { // try 블록 전체 감싸기
+             console.error(`Error during interactive node processing for node ${currentNode.id}:`, processingError);
              const errorMsg = locales[language]?.errorUnexpected || 'Scenario data processing error.';
              return { type: 'scenario_end', message: errorMsg, scenarioState: null, slots: newSlots, events: allEvents, status: 'failed' };
         }
-        // --- 👆 [수정] ---
 
     } else { // 시나리오 종료
         console.log(`[runScenario] Scenario ${scenarioId} ended.`);
