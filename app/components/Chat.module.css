@@ -248,6 +248,10 @@ input:checked + .slider:before {
   position: relative;
 }
 
+.gridMessage {
+  max-width: 100%;
+}
+
 .botMessage .messageContentWrapper {
   padding: 16px 20px;
   display: flex;
@@ -258,7 +262,10 @@ input:checked + .slider:before {
 .botMessage .scenarioMessageContentWrapper {
   padding: 12px 20px;
   display: flex;
-  align-items: flex-start;
+  gap: 12px;
+}
+
+.botMessage .scenarioFormMessageContentWrapper {
   gap: 12px;
 }
 
@@ -427,10 +434,11 @@ input:checked + .slider:before {
 .formContainer {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  overflow: hidden;
 }
 
 .formContainer h3 {
+  padding: 12px 20px;
   font-size: 16px;
   font-weight: 600;
   line-height: 20px; /* 125% */
@@ -438,15 +446,24 @@ input:checked + .slider:before {
 }
 
 .formContainerSeparator {
+  position: relative;
   height: 1px;
+  overflow: hidden;
+}
+
+.formContainerSeparator::after {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 100%;
   background-color: var(--panel-border-color);
-  scale: 1.2;
 }
 
 .formElement {
   display: flex;
   flex-direction: column;
   gap: 5px;
+  padding: 12px 20px;
 }
 
 .formLabel {
