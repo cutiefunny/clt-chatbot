@@ -343,7 +343,7 @@ export default function Chat() {
           {/* --- 👇 [수정] 구분선도 숨김 처리 --- */}
           <div className={styles.separator} style={{ display: 'none' }}></div>
           {/* --- 👆 [수정] --- */}
-          <div>
+          <div style={{ display: 'none' }}>
             <button
               className={styles.themeToggleButton}
               onClick={() => setTheme(theme === "light" ? "dark" : "light")}
