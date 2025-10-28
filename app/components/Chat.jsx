@@ -5,7 +5,8 @@ import { useChatStore } from "../store";
 import { useTranslations } from "../hooks/useTranslations";
 import styles from "./Chat.module.css";
 import FavoritePanel from "./FavoritePanel";
-import ScenarioBubble from "./ScenarioBubble";
+// --- 👇 [삭제] ScenarioBubble 임포트 제거 ---
+// import ScenarioBubble from "./ScenarioBubble";
 import CheckCircle from "./icons/CheckCircle";
 import MoonIcon from "./icons/MoonIcon";
 import LogoIcon from "./icons/LogoIcon";
@@ -158,6 +159,7 @@ const MessageWithButtons = ({ text, messageId }) => {
               </button>
             );
           }
+          // 찾지 못한 버튼은 텍스트로 표시 (또는 다른 처리)
           return <span key={index}>{`[BUTTON:${part.content}]`}</span>;
         }
         return null;
@@ -166,7 +168,6 @@ const MessageWithButtons = ({ text, messageId }) => {
   );
 };
 
-// ... (Chat 컴포넌트의 나머지 부분은 이전과 동일)
 
 export default function Chat() {
   const {
@@ -204,7 +205,7 @@ export default function Chat() {
       scrollContainer.scrollHeight -
       scrollContainer.clientHeight -
       scrollContainer.scrollTop;
-    wasAtBottomRef.current = scrollableDistance <= 100;
+    wasAtBottomRef.current = scrollableDistance <= 100; // 스크롤 하단 감지 여유 추가
   }, []);
 
   const handleScroll = useCallback(async () => {
@@ -214,7 +215,13 @@ export default function Chat() {
       !isFetchingMore
     ) {
       setIsFetchingMore(true);
+      const initialHeight = historyRef.current.scrollHeight; // 로드 전 높이 저장
       await loadMoreMessages();
+       // 로드 후 높이 변화 감지 및 스크롤 위치 조정
+      if (historyRef.current) {
+        const newHeight = historyRef.current.scrollHeight;
+        historyRef.current.scrollTop = newHeight - initialHeight; // 이전 위치 유지
+      }
       setIsFetchingMore(false);
     }
   }, [hasMoreMessages, isFetchingMore, loadMoreMessages]);
@@ -222,6 +229,7 @@ export default function Chat() {
   useEffect(() => {
     if (forceScrollToBottom && historyRef.current) {
       const scrollContainer = historyRef.current;
+      // 비동기 렌더링 후 스크롤 보장
       setTimeout(() => {
         scrollContainer.scrollTop = scrollContainer.scrollHeight;
         setForceScrollToBottom(false);
@@ -234,45 +242,50 @@ export default function Chat() {
     if (scrollAmount && historyRef.current) {
       historyRef.current.scrollBy({
         top: scrollAmount,
-        behavior: "smooth",
+        behavior: "smooth", // 부드러운 스크롤
       });
-      updateWasAtBottom();
-      resetScroll();
+      updateWasAtBottom(); // 스크롤 후 하단 위치 재확인
+      resetScroll(); // 스크롤 양 초기화
     }
   }, [scrollAmount, resetScroll, updateWasAtBottom]);
 
+  // 스크롤 이벤트 리스너 등록 및 해제
   useEffect(() => {
     const scrollContainer = historyRef.current;
     if (!scrollContainer) return;
     const handleScrollEvent = () => {
-      updateWasAtBottom();
-      handleScroll();
+      updateWasAtBottom(); // 스크롤 시 하단 위치 업데이트
+      handleScroll(); // 스크롤 맨 위 도달 시 추가 로드
     };
 
-    updateWasAtBottom();
+    updateWasAtBottom(); // 초기 하단 위치 확인
     scrollContainer.addEventListener("scroll", handleScrollEvent);
     return () => {
       scrollContainer.removeEventListener("scroll", handleScrollEvent);
     };
   }, [handleScroll, updateWasAtBottom]);
 
-  useEffect(() => {
+  // 새 메시지 추가 시 자동 스크롤
+   useEffect(() => {
+    const scrollContainer = historyRef.current;
+    if (!scrollContainer) return;
+
+    // 마지막 메시지 또는 wasAtBottomRef 상태에 따라 자동 스크롤 결정
     const lastMessage = messages[messages.length - 1];
-    const shouldAutoScroll =
-      lastMessage?.sender === "user" || wasAtBottomRef.current;
+    const shouldAutoScroll = lastMessage?.sender === 'user' || wasAtBottomRef.current;
 
-    if (!shouldAutoScroll) return;
+    if (!shouldAutoScroll) return; // 사용자가 위로 스크롤한 상태면 자동 스크롤 안 함
 
-    const scrollToBottom = () => {
-      const scrollContainer = historyRef.current;
-      if (!scrollContainer) return;
-      scrollContainer.scrollTop = scrollContainer.scrollHeight;
-      wasAtBottomRef.current = true;
-    };
+    // 다음 렌더링 프레임에서 스크롤 실행
+    requestAnimationFrame(() => {
+        if (scrollContainer) { // 컴포넌트 언마운트 대비
+            scrollContainer.scrollTop = scrollContainer.scrollHeight;
+            wasAtBottomRef.current = true; // 스크롤 후 하단 상태 업데이트
+        }
+    });
+  }, [messages]); // messages 배열이 변경될 때마다 실행
 
-    requestAnimationFrame(scrollToBottom);
-  }, [messages]);
-
+  // 특정 메시지로 스크롤 (검색 결과 등)
   useEffect(() => {
     if (scrollToMessageId && historyRef.current) {
       const element = historyRef.current.querySelector(
@@ -280,34 +293,39 @@ export default function Chat() {
       );
       if (element) {
         element.scrollIntoView({ behavior: "smooth", block: "center" });
+        // 하이라이트 효과 (선택 사항)
         element.classList.add(styles.highlightedMessage);
         setTimeout(() => {
           element.classList.remove(styles.highlightedMessage);
         }, 800);
-        setScrollToMessageId(null);
+        setScrollToMessageId(null); // 스크롤 후 상태 초기화
       }
     }
-  }, [scrollToMessageId, messages, setScrollToMessageId]);
+  }, [scrollToMessageId, messages, setScrollToMessageId]); // messages 변경 시에도 재시도
 
+  // Chat 영역 외부 스크롤 시 Chat 내부 스크롤 제어
   useEffect(() => {
     const container = containerRef.current;
     const scrollTarget = historyRef.current;
     if (!container || !scrollTarget) return;
 
     const handleWheelOutsideHistory = (event) => {
-      if (event.defaultPrevented) return;
+      if (event.defaultPrevented) return; // 이미 처리된 이벤트 무시
+      // 이벤트 발생 지점이 history 내부에 있는지 확인
       const withinHistory = event.target.closest(`.${styles.history}`);
-      if (withinHistory) return;
+      if (withinHistory) return; // history 내부 스크롤은 기본 동작 따름
 
+      // history 외부 스크롤이면 history 내부 스크롤 실행
       scrollTarget.scrollBy({
         top: event.deltaY,
         left: event.deltaX,
-        behavior: "auto",
+        behavior: "auto", // 즉시 스크롤
       });
-      updateWasAtBottom();
-      event.preventDefault();
+      updateWasAtBottom(); // 스크롤 후 하단 위치 재확인
+      event.preventDefault(); // 기본 페이지 스크롤 방지
     };
 
+    // wheel 이벤트 리스너 추가 (passive: false로 preventDefault 가능하도록)
     container.addEventListener("wheel", handleWheelOutsideHistory, {
       passive: false,
     });
@@ -317,25 +335,23 @@ export default function Chat() {
   }, [updateWasAtBottom]);
 
   const handleCopy = (text, id) => {
+    // 텍스트 유효성 검사 및 복사 로직 (기존과 동일)
     let textToCopy = text;
-    if (typeof text === "object" && text !== null) {
+    if (typeof text === 'object' && text !== null) {
       try {
         textToCopy = JSON.stringify(text, null, 2);
       } catch (e) {
         console.error("Failed to stringify object for copying:", e);
-        return;
+        return; // 복사 실패
       }
     }
 
-    if (
-      !textToCopy ||
-      (typeof textToCopy === "string" && textToCopy.trim() === "")
-    )
-      return;
+    // 빈 텍스트 복사 방지
+    if (!textToCopy || (typeof textToCopy === 'string' && textToCopy.trim() === '')) return;
 
     navigator.clipboard.writeText(textToCopy).then(() => {
-      setCopiedMessageId(id);
-      setTimeout(() => setCopiedMessageId(null), 1500);
+      setCopiedMessageId(id); // 복사 성공 피드백 상태 설정
+      setTimeout(() => setCopiedMessageId(null), 1500); // 1.5초 후 피드백 제거
     });
   };
 
@@ -345,48 +361,35 @@ export default function Chat() {
     <div className={styles.chatContainer} ref={containerRef}>
       <div className={styles.header}>
         <div className={styles.headerButtons}>
-          {/* --- 👇 [수정] 스위치 감싸는 div에 style 추가 --- */}
+          {/* 테마, 폰트 크기 설정 버튼들 (기존 코드 유지) */}
           <div className={styles.settingControl} style={{ display: 'none' }}>
-          {/* --- 👆 [수정] --- */}
-            <span className={styles.settingLabel}>Large text</span>
-            <label className={styles.switch}>
-              <input
-                type="checkbox"
-                checked={fontSize === "default"}
-                onChange={() =>
-                  setFontSize(fontSize === "default" ? "small" : "default")
-                }
-              />
-              <span className={styles.slider}></span>
-            </label>
-          </div>
-
-          {/* --- 👇 [수정] 구분선도 숨김 처리 --- */}
-          <div className={styles.separator} style={{ display: 'none' }}></div>
-          {/* --- 👆 [수정] --- */}
-          <div style={{ display: 'none' }}>
-            <button
-              className={styles.themeToggleButton}
-              onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-            >
-              <MoonIcon />
-            </button>
-          </div>
+             <span className={styles.settingLabel}>Large text</span>
+             <label className={styles.switch}>
+               <input type="checkbox" checked={fontSize === "default"} onChange={() => setFontSize(fontSize === "default" ? "small" : "default")} />
+               <span className={styles.slider}></span>
+             </label>
+           </div>
+           <div className={styles.separator} style={{ display: 'none' }}></div>
+           <div style={{ display: 'none' }}>
+             <button className={styles.themeToggleButton} onClick={() => setTheme(theme === "light" ? "dark" : "light")}>
+               <MoonIcon />
+             </button>
+           </div>
         </div>
       </div>
 
       <div
         className={`${styles.history} ${
-          activePanel === "scenario" && dimUnfocusedPanels
-            ? styles.mainChatDimmed
-            : ""
+          // 시나리오 패널 활성화 시 메인 채팅 흐리게 처리
+          activePanel === "scenario" && dimUnfocusedPanels ? styles.mainChatDimmed : ""
         }`}
         ref={historyRef}
       >
         {!hasMessages ? (
-          <FavoritePanel />
+          <FavoritePanel /> // 메시지 없으면 즐겨찾기 패널 표시
         ) : (
           <>
+            {/* 이전 메시지 로딩 중 인디케이터 */}
             {isFetchingMore && (
               <div className={styles.messageRow}>
                 <div className={`${styles.message} ${styles.botMessage}`}>
@@ -403,16 +406,15 @@ export default function Chat() {
                 </div>
               </div>
             )}
+            {/* 메시지 목록 렌더링 */}
             {messages.map((msg) => {
-              if (msg.id === "initial") return null;
+              if (msg.id === "initial") return null; // 초기 메시지 제외
 
+              // --- 👇 [수정] scenario_bubble 타입 렌더링 제거 ---
               if (msg.type === "scenario_bubble") {
-                return (
-                  <div key={msg.id} data-message-id={msg.scenarioSessionId}>
-                    <ScenarioBubble scenarioSessionId={msg.scenarioSessionId} />
-                  </div>
-                );
+                 return null; // 시나리오 버블은 Chat.jsx에서 렌더링하지 않음
               }
+              // --- 👆 [수정] ---
 
               const selectedOption = selectedOptions[msg.id];
 
@@ -422,30 +424,27 @@ export default function Chat() {
                   className={`${styles.messageRow} ${
                     msg.sender === "user" ? styles.userRow : ""
                   }`}
-                  data-message-id={msg.id}
+                  data-message-id={msg.id} // 스크롤 대상 식별자
                 >
                   <div
                     className={`GlassEffect ${styles.message} ${
-                      msg.sender === "bot"
-                        ? styles.botMessage
-                        : styles.userMessage
+                      msg.sender === "bot" ? styles.botMessage : styles.userMessage
                     } `}
                   >
+                    {/* 복사 성공 피드백 */}
                     {copiedMessageId === msg.id && (
                       <div className={styles.copyFeedback}>{t("copied")}</div>
                     )}
 
+                    {/* 메시지 내용 */}
                     <div className={styles.messageContentWrapper}>
                       {msg.sender === "bot" && <LogoIcon />}
                       <div className={styles.messageContent}>
-                        {msg.text !== undefined &&
-                          msg.text !== null && ( // msg.text 존재 여부 확인 강화
-                            <MessageWithButtons
-                              text={msg.text}
-                              messageId={msg.id}
-                            />
-                          )}
-                        {msg.sender === "bot" && msg.scenarios && (
+                        {msg.text !== undefined && msg.text !== null && (
+                          <MessageWithButtons text={msg.text} messageId={msg.id} />
+                        )}
+                        {/* 시나리오 목록 버튼 (MessageWithButtons 내부 또는 별도 컴포넌트에서 처리됨) */}
+                         {msg.sender === "bot" && msg.scenarios && (
                           <div className={styles.scenarioList}>
                             {msg.scenarios.map((name) => {
                               const isSelected = selectedOption === name;
@@ -458,10 +457,10 @@ export default function Chat() {
                                   } ${isDimmed ? styles.dimmed : ""}`}
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setSelectedOption(msg.id, name);
-                                    openScenarioPanel(name);
+                                    setSelectedOption(msg.id, name); // 선택 상태 업데이트
+                                    openScenarioPanel(name); // 시나리오 패널 열기
                                   }}
-                                  disabled={!!selectedOption}
+                                  disabled={!!selectedOption} // 이미 선택된 경우 비활성화
                                 >
                                   <span className={styles.optionButtonText}>
                                     {name}
@@ -474,16 +473,13 @@ export default function Chat() {
                         )}
                       </div>
                     </div>
-                    {msg.sender === "bot" && (
+
+                    {/* 봇 메시지 액션 (복사 등) */}
+                    {msg.sender === "bot" && msg.text && ( // 텍스트가 있을 때만 복사 버튼 표시
                       <div className={styles.messageActionArea}>
                         <button
                           className={styles.actionButton}
-                          onClick={() =>
-                            handleCopy(
-                              msg.text ?? msg.node?.data.content, // ?? 연산자로 node 내용도 고려
-                              msg.id
-                            )
-                          }
+                          onClick={() => handleCopy(msg.text, msg.id)}
                         >
                           <CopyIcon />
                         </button>
@@ -493,7 +489,8 @@ export default function Chat() {
                 </div>
               );
             })}
-            {isLoading && !messages.some((m) => m.isStreaming) && (
+            {/* 봇 응답 로딩 인디케이터 */}
+            {isLoading && !messages.some(m => m.isStreaming) && ( // 스트리밍 중 아닐 때만 표시
               <div className={styles.messageRow}>
                 <div className={`${styles.message} ${styles.botMessage}`}>
                   <div className={styles.messageContentWrapper}>

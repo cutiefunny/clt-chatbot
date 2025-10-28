@@ -8,20 +8,63 @@
 }
 
 .chatLayout {
-  display: flex;
+  display: flex; /* 자식 요소들을 가로로 배치 */
   width: 100%;
   height: 100%;
+  position: relative; /* 시나리오 패널 absolute 배치의 기준 */
+  overflow: hidden; /* 슬라이드 애니메이션을 위해 추가 */
 }
 
 .contentAndInputWrapper {
-  flex: 1;
+  flex-grow: 1; /* 남은 공간을 모두 차지하도록 */
   display: flex;
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-  transition: padding-left 0.3s ease-in-out;
+  /* padding-left 대신 width와 HistoryPanel 상태로 위치 조정 */
+  position: relative; /* z-index 적용 위해 */
+  left: 0; /* 초기 위치 */
+  transition: width 0.3s ease-in-out, transform 0.3s ease-in-out; /* transform 추가 */
+  z-index: 1; /* 시나리오 패널보다 아래 */
+  /* width 계산 방식은 page.js의 style 속성에서 처리 */
 }
 
+/* --- 👇 [수정] 시나리오 패널 열릴 때 메인 패널 이동 스타일 --- */
+/* 시나리오 패널 너비를 변수로 정의 (예: 40%) */
+:root {
+  --scenario-panel-width: 40%;
+}
+
+.mainPanelShiftedLeft {
+  /* 시나리오 패널 너비만큼 width를 줄임 */
+  width: calc(100% - var(--scenario-panel-width) - var(--history-panel-width, 60px)) !important;
+  /* transform: translateX(calc(-1 * var(--scenario-panel-width))); */ /* 왼쪽으로 이동 - 필요하면 사용 */
+}
+
+/* --- 👇 [추가] 시나리오 패널 스타일 --- */
+.scenarioPanel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: var(--scenario-panel-width); /* 변수 사용 */
+  height: 100%;
+  background-color: var(--panel-bg-color); /* 배경색 지정 */
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1); /* 왼쪽에 그림자 효과 */
+  transform: translateX(100%); /* 초기 상태: 화면 오른쪽에 숨김 */
+  transition: transform 0.3s ease-in-out; /* 슬라이드 애니메이션 */
+  z-index: 2; /* 메인 패널보다 위에 */
+  display: flex; /* 내부 ScenarioChat 컴포넌트가 잘 보이도록 */
+  flex-direction: column;
+  overflow: hidden; /* 내부 스크롤은 ScenarioChat에서 처리 */
+  border-left: 1px solid var(--panel-border-color); /* 구분선 */
+}
+
+.scenarioPanelOpen {
+  transform: translateX(0); /* 열린 상태: 제자리로 이동 */
+}
+/* --- 👆 [추가] --- */
+
+/* 기존 스타일 유지 */
 .panelsWrapper {
   display: flex;
   flex: 1;
@@ -38,4 +81,13 @@
 .inactivePanel {
   opacity: 0.6;
   transition: opacity 0.3s ease-in-out;
+}
+
+/* HistoryPanel 너비 변수 정의 (기존 스타일 유지 또는 추가) */
+body {
+  --history-panel-width: 60px; /* 기본값 */
+}
+/* HistoryPanel이 열렸을 때 body에 클래스를 추가하는 로직이 있다면 사용 */
+body.history-panel-open {
+  --history-panel-width: 320px;
 }
