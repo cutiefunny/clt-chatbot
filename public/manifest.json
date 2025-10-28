@@ -1,0 +1,35 @@
+{
+    "name": "CLT-chatbot",
+    "short_name": "CLT-chatbot",
+    "description": "CLT-chatbot",
+    "orientation": "portrait",
+    "start_url": "/",
+    "display": "standalone",
+    "theme_color": "#000000",
+    "background_color": "#ffffff",
+    "icons": [
+      {
+        "src": "/images/icon-20.png",
+        "sizes": "120x120",
+        "type": "image/png"
+      },
+      {
+        "src": "/images/icon-144.png",
+        "sizes": "144x144",
+        "type": "image/png"
+      },
+      {
+        "src": "/images/icon-144.png",
+        "sizes": "512x512",
+        "type": "image/png"
+      }
+    ],
+    "screenshots": [
+      {
+        "src":"/images/screenshot.png",
+        "sizes":"525x687",
+        "type":"image/png",
+        "description":"홈 화면"
+      }
+    ]
+}

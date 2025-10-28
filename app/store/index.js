@@ -6,242 +6,227 @@ import {
   onAuthStateChanged,
   doc,
   getDoc,
-  collection,
-  getDocs,
-  writeBatch,
-  serverTimestamp,
-  addDoc,
-} from "../lib/firebase";
+  collection, // 하위 슬라이스에서 사용될 수 있으므로 유지
+  getDocs, // 하위 슬라이스에서 사용될 수 있으므로 유지
+  writeBatch, // 하위 슬라이스에서 사용될 수 있으므로 유지
+  serverTimestamp, // 하위 슬라이스에서 사용될 수 있으므로 유지
+  addDoc, // 하위 슬라이스에서 사용될 수 있으므로 유지
+} from "../lib/firebase"; // 필요한 firebase 함수 임포트 유지
 import { locales } from "../lib/locales";
 
+// 슬라이스 임포트
 import { createAuthSlice } from "./slices/authSlice";
 import { createUISlice } from "./slices/uiSlice";
-import { createChatSlice } from "./slices/chatSlice";
+import { createChatSlice } from "./slices/chatSlice"; // 대화 관리 및 검색 로직 제거됨
 import { createScenarioSlice } from "./slices/scenarioSlice";
 import { createDevBoardSlice } from "./slices/devBoardSlice";
 import { createNotificationSlice } from "./slices/notificationSlice";
+import { createFavoritesSlice } from "./slices/favoritesSlice";
+import { createConversationSlice } from "./slices/conversationSlice";
+import { createSearchSlice } from "./slices/searchSlice"; // --- 👈 [추가] ---
 
+// 초기 메시지 함수 (chatSlice 또는 유틸리티로 이동 고려)
 const getInitialMessages = (lang = "ko") => {
-  return [
-    { id: "initial", sender: "bot", text: locales[lang].initialBotMessage },
-  ];
+    const initialText = locales[lang]?.initialBotMessage || locales['en']?.initialBotMessage || "Hello! How can I help you?";
+    // chatSlice에서 초기 메시지를 관리하므로 여기서는 빈 배열 반환 또는 chatSlice 호출
+    // return [{ id: "initial", sender: "bot", text: initialText }];
+    // chatSlice의 초기 상태를 직접 참조하기 어려우므로, chatSlice 내부에서 관리하도록 위임
+    return []; // chatSlice에서 처리하도록 비움
 };
 
+// 메인 스토어 생성
 export const useChatStore = create((set, get) => ({
+  // Firebase 인스턴스
   db,
   auth,
 
+  // 각 슬라이스 결합
   ...createAuthSlice(set, get),
   ...createUISlice(set, get),
-  ...createChatSlice(set, get),
+  ...createChatSlice(set, get), // 대화 관리 및 검색 로직 제거됨
   ...createScenarioSlice(set, get),
   ...createDevBoardSlice(set, get),
   ...createNotificationSlice(set, get),
+  ...createFavoritesSlice(set, get),
+  ...createConversationSlice(set, get),
+  ...createSearchSlice(set, get), // --- 👈 [추가] ---
 
+  // 여러 슬라이스에 걸쳐 동작하는 액션들
   handleNotificationNavigation: async (notification) => {
-    get().closeNotificationModal();
-    get().markNotificationAsRead(notification.id);
+    // 알림 클릭 시 대화 로드 및 스크롤 처리
+    get().closeNotificationModal(); // uiSlice
+    get().markNotificationAsRead(notification.id); // notificationSlice
 
-    if (notification.conversationId && notification.scenarioSessionId) {
-      if (get().currentConversationId !== notification.conversationId) {
-        await get().loadConversation(notification.conversationId);
+    if (notification.conversationId) { // 대화 ID가 있는 경우
+      if (get().currentConversationId !== notification.conversationId) { // conversationSlice 상태 참조
+        await get().loadConversation(notification.conversationId); // conversationSlice 액션 호출
       }
-
-      setTimeout(() => {
-        get().setScrollToMessageId(notification.scenarioSessionId);
-      }, 300);
+      // 시나리오 세션 ID가 있으면 해당 메시지로 스크롤
+      if (notification.scenarioSessionId) {
+        // 약간의 지연 후 스크롤 시도 (대화 로딩 완료 시간 확보)
+        setTimeout(() => { get().setScrollToMessageId(notification.scenarioSessionId); }, 300); // uiSlice 액션 호출
+      }
     }
   },
 
   setUserAndLoadData: async (user) => {
+    // 사용자 정보 설정 (authSlice)
     set({ user });
 
+    // 대화 마이그레이션 (임시 유지, 추후 conversationSlice 이동 고려)
     try {
       console.log("Checking for conversation migration...");
-      const conversationsRef = collection(
-        get().db,
-        "chats",
-        user.uid,
-        "conversations"
-      );
+      const conversationsRef = collection( get().db, "chats", user.uid, "conversations" );
       const snapshot = await getDocs(conversationsRef);
       const batch = writeBatch(get().db);
       let updatesNeeded = 0;
-      snapshot.forEach((doc) => {
-        if (doc.data().pinned === undefined) {
-          batch.update(doc.ref, { pinned: false });
-          updatesNeeded++;
-        }
-      });
-      if (updatesNeeded > 0) {
-        await batch.commit();
-        console.log(
-          `Migration complete: ${updatesNeeded} conversations updated.`
-        );
-      } else {
-        console.log("No conversation migration needed.");
-      }
-    } catch (error) {
-      console.error("Conversation migration failed:", error);
-    }
+      snapshot.forEach((doc) => { if (doc.data().pinned === undefined) { batch.update(doc.ref, { pinned: false }); updatesNeeded++; } });
+      if (updatesNeeded > 0) { await batch.commit(); console.log(`Migration complete: ${updatesNeeded} conversations updated.`); }
+      else { console.log("No conversation migration needed."); }
+    } catch (error) { console.error("Conversation migration failed:", error); }
 
+    // 사용자 설정 로드 (uiSlice)
+    let theme = 'light', fontSize = 'default', language = 'ko'; // 기본값
     try {
       const userSettingsRef = doc(get().db, "settings", user.uid);
       const docSnap = await getDoc(userSettingsRef);
       const settings = docSnap.exists() ? docSnap.data() : {};
-
-      const theme = settings.theme || localStorage.getItem("theme") || "light";
-      const fontSize =
-        settings.fontSize || localStorage.getItem("fontSize") || "default";
-      const language =
-        settings.language || localStorage.getItem("language") || "ko";
-
-      set({
-        theme,
-        fontSize,
-        language,
-        messages: getInitialMessages(language),
-      });
+      theme = settings.theme || localStorage.getItem("theme") || theme;
+      fontSize = settings.fontSize || localStorage.getItem("fontSize") || fontSize;
+      language = settings.language || localStorage.getItem("language") || language;
     } catch (error) {
       console.error("Error loading settings from Firestore:", error);
-      const theme = localStorage.getItem("theme") || "light";
-      const fontSize = localStorage.getItem("fontSize") || "default";
-      const language = localStorage.getItem("language") || "ko";
-      set({
-        theme,
-        fontSize,
-        language,
-        messages: getInitialMessages(language),
-      });
+      theme = localStorage.getItem("theme") || theme;
+      fontSize = localStorage.getItem("fontSize") || fontSize;
+      language = localStorage.getItem("language") || language;
+    } finally {
+        set({ theme, fontSize, language }); // uiSlice 상태 설정
+        // chatSlice의 메시지 상태 초기화 (언어 적용)
+        get().resetMessages?.(language); // chatSlice 액션 호출
     }
 
-    get().unsubscribeAll();
-    get().loadConversations(user.uid);
-    get().loadDevMemos();
-    get().subscribeToUnreadStatus(user.uid);
-    get().subscribeToUnreadScenarioNotifications(user.uid);
-    get().loadFavorites(user.uid);
+    // 데이터 로드 및 구독 시작
+    get().unsubscribeAll(); // 모든 이전 구독 해제
+    get().loadConversations(user.uid); // conversationSlice
+    get().loadDevMemos(); // devBoardSlice
+    get().subscribeToUnreadStatus(user.uid); // notificationSlice
+    get().subscribeToUnreadScenarioNotifications(user.uid); // notificationSlice
+    get().loadFavorites(user.uid); // favoritesSlice
   },
 
   clearUserAndData: () => {
+    // 모든 구독 해제
     get().unsubscribeAll();
 
-    let theme = "light";
-    let fontSize = "default";
-    let language = "ko";
+    // 기본 설정값 로드
+    let theme = "light", fontSize = "default", language = "ko";
     if (typeof window !== "undefined") {
       theme = localStorage.getItem("theme") || "light";
       fontSize = localStorage.getItem("fontSize") || "default";
       language = localStorage.getItem("language") || "ko";
     }
 
+    // 모든 슬라이스 상태 초기화 (각 슬라이스의 초기 상태 값 사용 권장)
     set({
-      user: null,
-      messages: getInitialMessages(language),
-      conversations: [],
-      currentConversationId: null,
-      scenarioStates: {},
-      activeScenarioSessionId: null,
-      activeScenarioSessions: [],
-      hasUnreadNotifications: false,
-      unreadScenarioSessions: new Set(),
-      unreadConversations: new Set(),
-      theme,
-      fontSize,
-      language,
+      user: null, // authSlice
+      theme, fontSize, language, // uiSlice
+      messages: getInitialMessages(language), // chatSlice 초기화 (getInitialMessages는 chatSlice 내부에서 관리하도록 수정 필요)
+      conversations: [], currentConversationId: null, expandedConversationId: null, scenariosForConversation: {}, // conversationSlice 초기화
+      favorites: [], // favoritesSlice 초기화
+      devMemos: [], // devBoardSlice 초기화
+      toastHistory: [], hasUnreadNotifications: false, unreadScenarioSessions: new Set(), unreadConversations: new Set(), // notificationSlice 초기화
+      scenarioStates: {}, activeScenarioSessionId: null, activeScenarioSessions: [], lastFocusedScenarioSessionId: null, // scenarioSlice 초기화
+      isSearching: false, searchResults: [], // --- 👈 [추가] searchSlice 초기화 ---
+      // 기타 상태 초기화
+      isLoading: false, // chatSlice 또는 uiSlice
+      slots: {}, extractedSlots: {}, llmRawResponse: null, selectedOptions: {}, // chatSlice
+      lastVisibleMessage: null, hasMoreMessages: true, // chatSlice
+      // 모달 상태 등 UI 관련 상태 초기화는 uiSlice의 초기 상태값 활용
+      isProfileModalOpen: false, isSearchModalOpen: false, isScenarioModalOpen: false, /* ... 등등 ... */ // uiSlice
+      confirmModal: { isOpen: false, /* ... */ }, // uiSlice
+      activePanel: 'main', // uiSlice
     });
+    // chatSlice의 초기 메시지를 명시적으로 설정 (getInitialMessages 호출 방식 개선 필요)
+    get().resetMessages?.(language);
   },
 
   initAuth: () => {
-    get().loadScenarioCategories();
-    get().loadGeneralConfig();
+    // 초기 설정 로드
+    get().loadScenarioCategories?.(); // scenarioSlice (또는 별도 configSlice)
+    get().loadGeneralConfig?.(); // uiSlice (또는 별도 configSlice)
 
-    // URL 쿼리 파라미터 확인 및 자동 테스트 로그인
+    // URL 파라미터 테스트 로그인
     if (typeof window !== "undefined") {
       const urlParams = new URLSearchParams(window.location.search);
       const testId = urlParams.get("id");
       if (testId) {
         console.log(`Attempting auto login with test ID: ${testId}`);
-        // Zustand 스토어가 완전히 초기화된 후 실행되도록 setTimeout 사용
         setTimeout(() => {
-          // Firebase Auth 상태 확인 전에 테스트 로그인을 시도
-          if (!get().user) { // 이미 로그인된 사용자가 없는 경우에만 실행
-            get().loginWithTestId(testId);
-          } else {
-            console.log("User already logged in, skipping auto test login.");
+          if (!get().user) {
+            get().loginWithTestId?.(testId); // authSlice
           }
         }, 0);
-        // 자동 로그인 후 URL에서 id 파라미터 제거 (선택 사항)
-        // urlParams.delete('id');
-        // window.history.replaceState({}, document.title, `${window.location.pathname}?${urlParams.toString()}`);
       }
     }
 
+    // Firebase Auth 상태 변경 리스너
     onAuthStateChanged(get().auth, async (user) => {
-      // 이미 테스트 사용자로 로그인되어 있으면 Firebase Auth 상태 변경 무시
-      if (get().user?.isTestUser) {
-        console.log("Already logged in as test user, ignoring Firebase Auth state change.");
-        return;
-      }
-
+      if (get().user?.isTestUser) return; // 테스트 유저면 무시 (authSlice 상태 참조)
       if (user) {
-        get().setUserAndLoadData(user);
+        get().setUserAndLoadData(user); // 실제 사용자 로그인 시 데이터 로드
       } else {
-        // 로그아웃 시에도 URL 파라미터 체크 로직을 다시 타지 않도록 clearUserAndData만 호출
-        get().clearUserAndData();
+        get().clearUserAndData(); // 로그아웃 시 데이터 클리어
       }
     });
   },
 
-  // --- 👇 [수정된 부분 시작] ---
   handleScenarioItemClick: (conversationId, scenario) => {
-    // 1. Load conversation if different
-    if (get().currentConversationId !== conversationId) {
-      // 대화 로드가 완료될 때까지 기다릴 필요는 없지만, 비동기 로드를 시작합니다.
-      get().loadConversation(conversationId);
+    // 시나리오 아이템 클릭 시 대화 로드, 스크롤, 패널 활성화 처리
+    if (get().currentConversationId !== conversationId) { // conversationSlice 상태 참조
+      get().loadConversation(conversationId); // conversationSlice 액션 호출
     }
+    get().setScrollToMessageId(scenario.sessionId); // uiSlice 액션 호출
 
-    // 2. Scroll to the message in the main chat
-    get().setScrollToMessageId(scenario.sessionId);
-
-    // 3. Decide which *panel* to make visually active
-    //    BUT always update activeScenarioSessionId to reflect the selection.
-    if (scenario.status === "completed" || scenario.status === "failed" || scenario.status === "canceled") {
-      // Keep main panel visually active, but record the selection
-      get().setActivePanel("main"); // This might nullify activeScenarioSessionId internally
-      set({ activeScenarioSessionId: scenario.sessionId }); // Explicitly set/overwrite it *after* setActivePanel('main')
+    // 시나리오 상태에 따라 패널 활성화 결정
+    if (["completed", "failed", "canceled"].includes(scenario.status)) {
+      get().setActivePanel("main"); // uiSlice 액션 호출
+      // scenarioSlice 상태 업데이트 (activeId는 null이지만 lastFocused는 유지)
+      set({ activeScenarioSessionId: null, lastFocusedScenarioSessionId: scenario.sessionId });
     } else {
-      // Make scenario panel visually active (this also sets activeScenarioSessionId)
-      get().setActivePanel("scenario", scenario.sessionId);
+      get().setActivePanel("scenario", scenario.sessionId); // uiSlice (내부에서 scenarioSlice 상태도 업데이트)
     }
-
-    // 4. Subscribe if needed (existing logic)
-    if (!get().scenarioStates[scenario.sessionId]) {
-      get().subscribeToScenarioSession(scenario.sessionId);
+    // 필요 시 시나리오 구독 시작 (scenarioSlice)
+    if (!get().scenarioStates[scenario.sessionId]) { // scenarioSlice 상태 참조
+      get().subscribeToScenarioSession?.(scenario.sessionId); // scenarioSlice 액션 호출
     }
   },
-  // --- 👆 [수정된 부분 끝] ---
-
 
   unsubscribeAll: () => {
-    get().unsubscribeConversations?.();
-    get().unsubscribeAllMessagesAndScenarios();
-    get().unsubscribeDevMemos?.();
-    get().unsubscribeNotifications?.();
-    get().unsubscribeUnreadStatus?.();
-    get().unsubscribeUnreadScenarioNotifications?.();
-    get().unsubscribeFavorites?.();
+    // 모든 슬라이스의 구독 해제 함수 호출
+    get().unsubscribeConversations?.(); // conversationSlice
+    get().unsubscribeMessages?.(); // chatSlice
+    // scenarioSlice의 모든 시나리오 리스너 해제 호출 (scenarioSlice 내부에 구현 필요)
+    get().unsubscribeAllScenarioListeners?.(); // scenarioSlice 가정
+    get().unsubscribeDevMemos?.(); // devBoardSlice
+    get().unsubscribeNotifications?.(); // notificationSlice
+    get().unsubscribeUnreadStatus?.(); // notificationSlice
+    get().unsubscribeUnreadScenarioNotifications?.(); // notificationSlice
+    get().unsubscribeFavorites?.(); // favoritesSlice
 
+    // 각 슬라이스의 해제 함수 상태 초기화
     set({
-      unsubscribeConversations: null,
-      unsubscribeDevMemos: null,
-      unsubscribeNotifications: null,
-      unsubscribeUnreadStatus: null,
-      unsubscribeUnreadScenarioNotifications: null,
-      unsubscribeFavorites: null,
+      unsubscribeConversations: null, // conversationSlice
+      unsubscribeMessages: null, // chatSlice
+      // unsubscribeScenariosMap는 scenarioSlice에서 관리/초기화
+      unsubscribeDevMemos: null, // devBoardSlice
+      unsubscribeNotifications: null, // notificationSlice
+      unsubscribeUnreadStatus: null, // notificationSlice
+      unsubscribeUnreadScenarioNotifications: null, // notificationSlice
+      unsubscribeFavorites: null, // favoritesSlice
+      // 검색 관련 리스너는 없으므로 초기화 불필요
     });
   },
 }));
 
-// 초기화 로직은 스토어 생성 후 바로 호출
+// 초기화 로직 호출 (애플리케이션 시작 시 한 번 실행)
 useChatStore.getState().initAuth();
