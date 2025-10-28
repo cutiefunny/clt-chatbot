@@ -14,9 +14,13 @@ import CopyIcon from "./icons/CopyIcon";
 // JSON 파싱 및 렌더링을 위한 헬퍼 함수
 const tryParseJson = (text) => {
   try {
-    if (typeof text === 'string' && text.startsWith('{') && text.endsWith('}')) {
+    if (
+      typeof text === "string" &&
+      text.startsWith("{") &&
+      text.endsWith("}")
+    ) {
       const parsed = JSON.parse(text);
-      if (parsed && typeof parsed === 'object') {
+      if (parsed && typeof parsed === "object") {
         return parsed;
       }
     }
@@ -48,15 +52,22 @@ const MessageWithButtons = ({ text, messageId }) => {
   if (!text) return null;
 
   // --- 👇 [수정] "Loop back to Supervisor" 포함 여부 확인 ---
-  const showLoadingGifForLoopback = typeof text === 'string' && text.includes("Loop back to Supervisor");
+  const showLoadingGifForLoopback =
+    typeof text === "string" && text.includes("Loop back to Supervisor");
   if (showLoadingGifForLoopback) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "flex-start",
+        }}
+      >
         <span>init flow..</span>
         <img
           src="/images/Loading.gif"
           alt="Loading..."
-          style={{ width: "60px", height: "45px", marginTop: '8px' }}
+          style={{ width: "60px", height: "45px", marginTop: "8px" }}
         />
       </div>
     );
@@ -67,12 +78,18 @@ const MessageWithButtons = ({ text, messageId }) => {
   const jsonContent = tryParseJson(text);
   if (jsonContent && jsonContent.next && jsonContent.instructions) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "flex-start",
+        }}
+      >
         <span>{jsonContent.instructions}</span>
         <img
           src="/images/Loading.gif"
           alt="Loading..."
-          style={{ width: "60px", height: "45px", marginTop: '8px' }}
+          style={{ width: "60px", height: "45px", marginTop: "8px" }}
         />
       </div>
     );
@@ -85,7 +102,7 @@ const MessageWithButtons = ({ text, messageId }) => {
   let match;
 
   // text가 문자열일 때만 정규식 실행
-  if (typeof text === 'string') {
+  if (typeof text === "string") {
     while ((match = regex.exec(text)) !== null) {
       if (match.index > lastIndex) {
         parts.push({
@@ -105,19 +122,20 @@ const MessageWithButtons = ({ text, messageId }) => {
     parts.push({ type: "text", content: text });
   }
 
-
   if (parts.length === 0) {
-     // parts가 비어있고 text가 문자열이면 text 반환, 아니면 빈 Fragment
-    return typeof text === 'string' ? <>{text}</> : <></>;
+    // parts가 비어있고 text가 문자열이면 text 반환, 아니면 빈 Fragment
+    return typeof text === "string" ? <>{text}</> : <></>;
   }
-
 
   return (
     <div>
       {parts.map((part, index) => {
         if (part.type === "text") {
-           // content가 객체일 수 있으므로 문자열로 변환 시도
-          const contentString = typeof part.content === 'string' ? part.content : JSON.stringify(part.content);
+          // content가 객체일 수 있으므로 문자열로 변환 시도
+          const contentString =
+            typeof part.content === "string"
+              ? part.content
+              : JSON.stringify(part.content);
           return <span key={index}>{contentString}</span>;
         } else if (part.type === "button") {
           const buttonText = part.content;
@@ -300,7 +318,7 @@ export default function Chat() {
 
   const handleCopy = (text, id) => {
     let textToCopy = text;
-    if (typeof text === 'object' && text !== null) {
+    if (typeof text === "object" && text !== null) {
       try {
         textToCopy = JSON.stringify(text, null, 2);
       } catch (e) {
@@ -309,8 +327,11 @@ export default function Chat() {
       }
     }
 
-    if (!textToCopy || (typeof textToCopy === 'string' && textToCopy.trim() === "")) return;
-
+    if (
+      !textToCopy ||
+      (typeof textToCopy === "string" && textToCopy.trim() === "")
+    )
+      return;
 
     navigator.clipboard.writeText(textToCopy).then(() => {
       setCopiedMessageId(id);
@@ -408,7 +429,7 @@ export default function Chat() {
                       msg.sender === "bot"
                         ? styles.botMessage
                         : styles.userMessage
-                    }`}
+                    } `}
                   >
                     {copiedMessageId === msg.id && (
                       <div className={styles.copyFeedback}>{t("copied")}</div>
@@ -417,12 +438,13 @@ export default function Chat() {
                     <div className={styles.messageContentWrapper}>
                       {msg.sender === "bot" && <LogoIcon />}
                       <div className={styles.messageContent}>
-                        {(msg.text !== undefined && msg.text !== null) && ( // msg.text 존재 여부 확인 강화
-                          <MessageWithButtons
-                            text={msg.text}
-                            messageId={msg.id}
-                          />
-                        )}
+                        {msg.text !== undefined &&
+                          msg.text !== null && ( // msg.text 존재 여부 확인 강화
+                            <MessageWithButtons
+                              text={msg.text}
+                              messageId={msg.id}
+                            />
+                          )}
                         {msg.sender === "bot" && msg.scenarios && (
                           <div className={styles.scenarioList}>
                             {msg.scenarios.map((name) => {
@@ -471,18 +493,18 @@ export default function Chat() {
                 </div>
               );
             })}
-            {isLoading && !messages.some(m => m.isStreaming) && (
+            {isLoading && !messages.some((m) => m.isStreaming) && (
               <div className={styles.messageRow}>
                 <div className={`${styles.message} ${styles.botMessage}`}>
                   <div className={styles.messageContentWrapper}>
-                     <LogoIcon />
-                     <div className={styles.messageContent}>
-                       <img
-                         src="/images/Loading.gif"
-                         alt={t("loading")}
-                         style={{ width: "40px", height: "30px" }}
-                       />
-                     </div>
+                    <LogoIcon />
+                    <div className={styles.messageContent}>
+                      <img
+                        src="/images/Loading.gif"
+                        alt={t("loading")}
+                        style={{ width: "40px", height: "30px" }}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>

@@ -248,6 +248,10 @@ input:checked + .slider:before {
   position: relative;
 }
 
+.gridMessage {
+  max-width: 100%;
+}
+
 .botMessage .messageContentWrapper {
   padding: 16px 20px;
   display: flex;
@@ -258,7 +262,10 @@ input:checked + .slider:before {
 .botMessage .scenarioMessageContentWrapper {
   padding: 12px 20px;
   display: flex;
-  align-items: flex-start;
+  gap: 12px;
+}
+
+.botMessage .scenarioFormMessageContentWrapper {
   gap: 12px;
 }
 
@@ -427,10 +434,11 @@ input:checked + .slider:before {
 .formContainer {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  overflow: hidden;
 }
 
 .formContainer h3 {
+  padding: 12px 20px;
   font-size: 16px;
   font-weight: 600;
   line-height: 20px; /* 125% */
@@ -438,15 +446,24 @@ input:checked + .slider:before {
 }
 
 .formContainerSeparator {
+  position: relative;
   height: 1px;
+  overflow: hidden;
+}
+
+.formContainerSeparator::after {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 100%;
   background-color: var(--panel-border-color);
-  scale: 1.2;
 }
 
 .formElement {
   display: flex;
   flex-direction: column;
   gap: 5px;
+  padding: 12px 20px;
 }
 
 .formLabel {
@@ -662,8 +679,8 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
 }
 
 .scenarioBubbleContainer.collapsed {
-  height: 60px;
-  max-height: 60px;
+  height: 48px;
+  max-height: 48px;
   cursor: pointer;
 }
 
@@ -730,15 +747,29 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
 
 .formGridTable th {
   /* 헤더 스타일 추가 */
-  background-color: var(--panel-bg-color); /* 헤더 배경색 */
   font-weight: 600; /* 헤더 폰트 두께 */
   color: var(--text-color);
   border-bottom: 1px solid var(--panel-border-color);
+  position: relative;
+}
+
+.formGridTable th:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+  height: 16px;
+  background-color: var(--panel-border-color);
 }
 
 .formGridTable tr {
-  border-bottom: 1px solid var(--panel-border-color);
   transition: background-color 0.2s ease-out; /* hover 효과 트랜지션 */
+}
+
+.formGridTable tbody tr:hover {
+  background-color: var(--button-hover-bg);
 }
 
 .formGridTable tr:last-child {
@@ -747,16 +778,15 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
 
 /* --- 👇 [수정] 행 hover 효과 --- */
 .formGridTable tbody tr:hover {
-  background-color: var(--button-hover-bg); /* hover 시 배경색 변경 */
 }
 /* --- 👆 [여기까지] --- */
 
 .formGridTable td,
 .formGridTable th {
   /* th 스타일도 함께 적용 */
-  padding: 10px 12px;
-  background-color: var(--bot-message-bg);
+  padding: 6px 4px 6px 10px;
   text-align: left; /* 기본 정렬 왼쪽으로 변경 */
+  font-size: 13px;
 }
 
 body.dark .formGridTable th {
