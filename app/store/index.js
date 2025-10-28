@@ -11,19 +11,28 @@ import {
   writeBatch, // 하위 슬라이스에서 사용될 수 있으므로 유지
   serverTimestamp, // 하위 슬라이스에서 사용될 수 있으므로 유지
   addDoc, // 하위 슬라이스에서 사용될 수 있으므로 유지
+  updateDoc, // 추가
+  deleteDoc, // 추가
+  limit,     // 추가
+  startAfter,// 추가
+  query,     // 추가
+  orderBy,   // 추가
+  where,     // 추가
+  onSnapshot,// 추가
+  setDoc,    // 추가
 } from "../lib/firebase"; // 필요한 firebase 함수 임포트 유지
 import { locales } from "../lib/locales";
 
 // 슬라이스 임포트
 import { createAuthSlice } from "./slices/authSlice";
 import { createUISlice } from "./slices/uiSlice";
-import { createChatSlice } from "./slices/chatSlice"; // 대화 관리 및 검색 로직 제거됨
+import { createChatSlice } from "./slices/chatSlice";
 import { createScenarioSlice } from "./slices/scenarioSlice";
 import { createDevBoardSlice } from "./slices/devBoardSlice";
 import { createNotificationSlice } from "./slices/notificationSlice";
 import { createFavoritesSlice } from "./slices/favoritesSlice";
 import { createConversationSlice } from "./slices/conversationSlice";
-import { createSearchSlice } from "./slices/searchSlice"; // --- 👈 [추가] ---
+import { createSearchSlice } from "./slices/searchSlice";
 
 // 초기 메시지 함수 (chatSlice 또는 유틸리티로 이동 고려)
 const getInitialMessages = (lang = "ko") => {
@@ -43,13 +52,13 @@ export const useChatStore = create((set, get) => ({
   // 각 슬라이스 결합
   ...createAuthSlice(set, get),
   ...createUISlice(set, get),
-  ...createChatSlice(set, get), // 대화 관리 및 검색 로직 제거됨
+  ...createChatSlice(set, get),
   ...createScenarioSlice(set, get),
   ...createDevBoardSlice(set, get),
   ...createNotificationSlice(set, get),
   ...createFavoritesSlice(set, get),
   ...createConversationSlice(set, get),
-  ...createSearchSlice(set, get), // --- 👈 [추가] ---
+  ...createSearchSlice(set, get),
 
   // 여러 슬라이스에 걸쳐 동작하는 액션들
   handleNotificationNavigation: async (notification) => {
@@ -62,10 +71,12 @@ export const useChatStore = create((set, get) => ({
         await get().loadConversation(notification.conversationId); // conversationSlice 액션 호출
       }
       // 시나리오 세션 ID가 있으면 해당 메시지로 스크롤
+       // --- 👇 [수정] 스크롤 대상 ID를 scenarioSessionId로 변경 ---
       if (notification.scenarioSessionId) {
         // 약간의 지연 후 스크롤 시도 (대화 로딩 완료 시간 확보)
         setTimeout(() => { get().setScrollToMessageId(notification.scenarioSessionId); }, 300); // uiSlice 액션 호출
       }
+       // --- 👆 [수정] ---
     }
   },
 
@@ -130,23 +141,23 @@ export const useChatStore = create((set, get) => ({
     set({
       user: null, // authSlice
       theme, fontSize, language, // uiSlice
-      messages: getInitialMessages(language), // chatSlice 초기화 (getInitialMessages는 chatSlice 내부에서 관리하도록 수정 필요)
+      // messages: getInitialMessages(language), // chatSlice 초기화는 resetMessages에서 처리
       conversations: [], currentConversationId: null, expandedConversationId: null, scenariosForConversation: {}, // conversationSlice 초기화
       favorites: [], // favoritesSlice 초기화
       devMemos: [], // devBoardSlice 초기화
       toastHistory: [], hasUnreadNotifications: false, unreadScenarioSessions: new Set(), unreadConversations: new Set(), // notificationSlice 초기화
       scenarioStates: {}, activeScenarioSessionId: null, activeScenarioSessions: [], lastFocusedScenarioSessionId: null, // scenarioSlice 초기화
-      isSearching: false, searchResults: [], // --- 👈 [추가] searchSlice 초기화 ---
+      isSearching: false, searchResults: [], // searchSlice 초기화
       // 기타 상태 초기화
       isLoading: false, // chatSlice 또는 uiSlice
       slots: {}, extractedSlots: {}, llmRawResponse: null, selectedOptions: {}, // chatSlice
       lastVisibleMessage: null, hasMoreMessages: true, // chatSlice
       // 모달 상태 등 UI 관련 상태 초기화는 uiSlice의 초기 상태값 활용
-      isProfileModalOpen: false, isSearchModalOpen: false, isScenarioModalOpen: false, /* ... 등등 ... */ // uiSlice
-      confirmModal: { isOpen: false, /* ... */ }, // uiSlice
+      isProfileModalOpen: false, isSearchModalOpen: false, isScenarioModalOpen: false, isDevBoardModalOpen: false, isNotificationModalOpen: false, isManualModalOpen: false, // uiSlice
+      confirmModal: { isOpen: false, title: "", message: "", confirmText: "Confirm", cancelText: "Cancel", onConfirm: () => {}, confirmVariant: "default" }, // uiSlice 초기화 보강
       activePanel: 'main', // uiSlice
     });
-    // chatSlice의 초기 메시지를 명시적으로 설정 (getInitialMessages 호출 방식 개선 필요)
+    // chatSlice의 초기 메시지를 명시적으로 설정
     get().resetMessages?.(language);
   },
 
@@ -185,7 +196,9 @@ export const useChatStore = create((set, get) => ({
     if (get().currentConversationId !== conversationId) { // conversationSlice 상태 참조
       get().loadConversation(conversationId); // conversationSlice 액션 호출
     }
+     // --- 👇 [수정] 스크롤 대상 ID를 scenarioSessionId로 변경 ---
     get().setScrollToMessageId(scenario.sessionId); // uiSlice 액션 호출
+     // --- 👆 [수정] ---
 
     // 시나리오 상태에 따라 패널 활성화 결정
     if (["completed", "failed", "canceled"].includes(scenario.status)) {
@@ -205,8 +218,9 @@ export const useChatStore = create((set, get) => ({
     // 모든 슬라이스의 구독 해제 함수 호출
     get().unsubscribeConversations?.(); // conversationSlice
     get().unsubscribeMessages?.(); // chatSlice
-    // scenarioSlice의 모든 시나리오 리스너 해제 호출 (scenarioSlice 내부에 구현 필요)
-    get().unsubscribeAllScenarioListeners?.(); // scenarioSlice 가정
+    // --- 👇 [수정] scenarioSlice의 모든 리스너 해제 함수 호출 ---
+    get().unsubscribeAllScenarioListeners?.(); // scenarioSlice에 해당 함수 구현 필요
+    // --- 👆 [수정] ---
     get().unsubscribeDevMemos?.(); // devBoardSlice
     get().unsubscribeNotifications?.(); // notificationSlice
     get().unsubscribeUnreadStatus?.(); // notificationSlice
