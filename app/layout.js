@@ -14,8 +14,39 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "CLT Chatbot",
-  description: "CLT Chatbot",
+  applicationName: "CLT-chatbot",
+  title: {
+    default: "CLT-chatbot",
+    template: "CLT-chatbot",
+  },
+  description: "CLT-chatbot",
+  keywords: ["development", "CLT", "chatbot", "software", "web", "app"],
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "CLT-chatbot",
+    // startUpImage: [],
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  openGraph: {
+    type: "website",
+    siteName: "CLT-chatbot",
+    title: {
+      default: "CLT-chatbot",
+      template: "CLT-chatbot",
+    },
+    description: "CLT-chatbot",
+  }
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: "#FFFFFF",
 };
 
 export default function RootLayout({ children }) {
