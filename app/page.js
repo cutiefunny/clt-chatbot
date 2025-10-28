@@ -6,7 +6,6 @@ import Login from "../app/components/Login";
 import HistoryPanel from "../app/components/HistoryPanel";
 import ChatInput from "../app/components/ChatInput";
 import ScenarioModal from "../app/components/ScenarioModal";
-// --- 👇 [수정] ScenarioChat 임포트 ---
 import ScenarioChat from "../app/components/ScenarioChat";
 import Toast from "../app/components/Toast";
 import styles from "./page.module.css";
@@ -21,8 +20,7 @@ export default function HomePage() {
     confirmModal,
     closeConfirmModal,
     isDevMode,
-    // --- 👇 [수정] activePanel 상태 가져오기 ---
-    activePanel,
+    activePanel, // activePanel 상태 가져오기
   } = useChatStore();
 
   const handleConfirm = () => {
@@ -32,23 +30,26 @@ export default function HomePage() {
     closeConfirmModal();
   };
 
+  // --- 👇 [수정] 히스토리 패널 너비 계산 로직 분리 ---
+  const historyPanelWidth = isHistoryPanelOpen ? "320px" : "60px";
+  // --- 👆 [수정] ---
+
   return (
     <main className={styles.main}>
       <Toast />
       {user ? (
         <>
-          {/* --- 👇 [수정] chatLayout 구조 변경 --- */}
           <div className={styles.chatLayout}>
             <HistoryPanel />
             {/* 메인 채팅 영역 */}
             <div
-              className={`${styles.contentAndInputWrapper} ${
-                activePanel === "scenario" ? styles.mainPanelShiftedLeft : "" // 시나리오 열릴 때 왼쪽으로 이동하는 클래스 추가
-              }`}
+              className={styles.contentAndInputWrapper}
               style={{
-                paddingLeft: isHistoryPanelOpen ? "320px" : "60px",
-                // width 계산 방식 변경 (padding 대신)
-                width: `calc(100% - ${isHistoryPanelOpen ? "320px" : "60px"})`, // HistoryPanel 너비 고려
+                // --- 👇 [수정] paddingLeft만 동적으로 설정 ---
+                paddingLeft: historyPanelWidth,
+                // width는 flex-grow: 1에 의해 자동으로 계산되므로 제거
+                // width: `calc(100% - ${historyPanelWidth})`,
+                // --- 👆 [수정] ---
               }}
             >
               <Chat />
@@ -63,10 +64,8 @@ export default function HomePage() {
               {/* ScenarioChat 컴포넌트를 여기에 렌더링 */}
               {activePanel === "scenario" && <ScenarioChat />}
             </div>
-            {/* --- 👆 [수정] --- */}
-
-            {isScenarioModalOpen && <ScenarioModal />}
           </div>
+          {isScenarioModalOpen && <ScenarioModal />}
           {isDevMode && <DevStateDisplay />}
         </>
       ) : (

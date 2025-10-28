@@ -650,27 +650,49 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
   flex-direction: column;
   width: 100%;
   max-width: 75%;
-  height: auto;
-  max-height: 500px;
+  /* --- 👇 [수정] 높이 고정 및 max-height 제거 --- */
+  height: 48px; /* 헤더 높이와 동일하게 고정 */
+  /* max-height: 500px; 제거 */
+  /* --- 👆 [수정] --- */
   border-radius: 18px;
   border-top-right-radius: 4px;
   overflow: hidden;
-  transition: max-height 0.4s ease-out, height 0.4s ease-out,
-    opacity 0.4s ease-out, border-color 0.2s ease-out;
+  /* --- 👇 [수정] height 관련 transition 제거 --- */
+  transition: opacity 0.4s ease-out, border-color 0.2s ease-out;
+  /* --- 👆 [수정] --- */
+  cursor: pointer; /* 클릭 가능하도록 커서 변경 */
 }
 
+/* --- 👇 [삭제] .scenarioBubbleContainer.collapsed 관련 스타일 제거 ---
+.scenarioBubbleContainer.collapsed {
+  height: 48px;
+  max-height: 48px;
+  cursor: pointer;
+}
+--- 👆 [삭제] --- */
+
+/* --- 👇 [수정] 포커스 스타일 유지 --- */
 .focusedBubble {
   border: var(--stroke-weight-1, 1px) solid
     var(--Color-Light-Gradation-03, #3051ea);
 }
+/* --- 👆 [수정] --- */
 
 .scenarioBubbleContainer .header {
   flex-shrink: 0;
   padding: 12px 20px;
-  height: 48px;
-  border-bottom: 1px solid var(--panel-border-color);
+  height: 48px; /* 헤더 높이 유지 */
+  /* --- 👇 [수정] border-bottom 제거 (항상 접혀있으므로 불필요) --- */
+  /* border-bottom: 1px solid var(--panel-border-color); */
+  /* --- 👆 [수정] --- */
+  /* --- 👇 [추가] 헤더 내부 요소 정렬을 위해 flex 추가 --- */
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* 양 끝 정렬 */
+  /* --- 👆 [추가] --- */
 }
 
+/* --- 👇 [삭제] scenarioBubbleContainer .history 관련 스타일 제거 ---
 .scenarioBubbleContainer .history {
   flex-grow: 1;
   mask-image: none;
@@ -678,25 +700,25 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
   padding: 16px 20px;
 }
 
-.scenarioBubbleContainer.collapsed {
-  height: 48px;
-  max-height: 48px;
-  cursor: pointer;
-}
-
 .scenarioBubbleContainer.collapsed .history {
   opacity: 0;
   pointer-events: none;
 }
+--- 👆 [삭제] --- */
+
 
 .scenarioBubbleContainer.dimmed {
   opacity: 0.4;
-  pointer-events: none; /* 내부 클릭 방지 */
+  /* --- 👇 [수정] dimmed 상태에서도 클릭 가능하도록 pointer-events 제거 --- */
+  /* pointer-events: none; */
+  /* --- 👆 [수정] --- */
 }
 
+/* --- 👇 [삭제] dimmed 상태에서 header만 클릭 가능하게 하는 로직 제거 ---
 .scenarioBubbleContainer.dimmed .header {
-  pointer-events: auto; /* 헤더는 다시 클릭 가능하도록 설정 */
+  pointer-events: auto;
 }
+--- 👆 [삭제] --- */
 
 .scenarioBadge {
   margin-left: auto;
