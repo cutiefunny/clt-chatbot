@@ -221,7 +221,7 @@ export const createUISlice = (set, get) => ({
         {
           action: "callHistoryPanelClose",
           payload: {
-            expanded: false,
+            width: -264,
           },
         },
         PARENT_ORIGIN
@@ -232,7 +232,7 @@ export const createUISlice = (set, get) => ({
         {
           action: "callHistoryPanelOpen",
           payload: {
-            expanded: true,
+            width: 264,
           },
         },
         PARENT_ORIGIN
