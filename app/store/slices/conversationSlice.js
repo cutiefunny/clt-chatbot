@@ -17,8 +17,6 @@ import {
 import { locales } from "../../lib/locales";
 import { getErrorKey } from "../../lib/errorHandler";
 
-const PARENT_ORIGIN = "http://202.20.84.65:10000";
-
 // getInitialMessages는 chatSlice 또는 별도 유틸로 이동 고려
 // 여기서는 conversationSlice가 직접 chatSlice의 초기 메시지 상태를 알 필요는 없음
 // const getInitialMessages = (lang = "ko") => { ... };
@@ -350,16 +348,6 @@ export const createConversationSlice = (set, get) => ({
       set({ expandedConversationId: null });
       // scenariosForConversation 데이터는 유지해도 무방
 
-      // 상위 브라우저로 메시지 전달
-      window.postMessage(
-        {
-          type: "conversationExpansion",
-          payload: {
-            expanded: false,
-          },
-        },
-        PARENT_ORIGIN
-      );
       return;
     }
 
@@ -371,17 +359,6 @@ export const createConversationSlice = (set, get) => ({
     // 새로 열기 - UI 상태 먼저 업데이트
     set({ expandedConversationId: conversationId });
     if (!user) return;
-
-    //새로 열때도 상위 브라우저로 메시지 전달
-    window.postMessage(
-      {
-        type: "conversationExpansion",
-        payload: {
-          expanded: true,
-        },
-      },
-      PARENT_ORIGIN
-    );
 
     // 시나리오 목록 로드 리스너 (Firestore 직접 접근)
     const scenariosRef = collection(
