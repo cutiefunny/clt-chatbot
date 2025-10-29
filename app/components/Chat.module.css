@@ -664,6 +664,17 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
   background-color: #555;
 }
 
+.scenarioChatContainer {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background-color: transparent;
+}
+
 .scenarioHeader {
   border-bottom: 1px solid var(--panel-border-color);
   padding: 10px 15px;
@@ -683,8 +694,7 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
   height: 48px; /* 헤더 높이와 동일하게 고정 */
   /* max-height: 500px; 제거 */
   /* --- 👆 [수정] --- */
-  border-radius: 18px;
-  border-top-right-radius: 4px;
+  border-radius: 16px;
   overflow: hidden;
   /* --- 👇 [수정] height 관련 transition 제거 --- */
   transition: opacity 0.4s ease-out, border-color 0.2s ease-out;

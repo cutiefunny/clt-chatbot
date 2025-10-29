@@ -790,7 +790,7 @@ export default function ScenarioChat() {
                   <img
                     src="/images/Loading.gif"
                     alt={t("loading")}
-                    style={{ width: "40px", height: "30px" }}
+                    style={{ width: "40px", height: "20px" }}
                   />
                 </div>
               </div>
