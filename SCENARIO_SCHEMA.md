@@ -1,10 +1,8 @@
-Markdown
-
 # Chatbot Scenario Schema v1.0
 
 This document defines the structure of the JSON data used for chatbot scenarios.
 
-**Last Updated:** 2025-10-27
+**Last Updated:** 2025-10-28
 **Current Version:** "1.0"
 
 ## Root Structure
@@ -24,10 +22,11 @@ The root object of a scenario JSON contains the following properties:
 Node Object Structure
 Each node object has the following base structure:
 
-```json
+JSON
+
 {
   "id": "string",         // Unique node ID
-  "type": "string",       // Node type (e.g., "message", "form", "api")
+  "type": "string",       // Node type (e.g., "message", "form", "api", "delay")
   "position": {           // Position on the canvas
     "x": "number",
     "y": "number"
@@ -40,7 +39,8 @@ Each node object has the following base structure:
 }
 Node Data Schemas (data object)
 1. message Node
-```json
+JSON
+
 {
   "content": "string", // Text content of the message
   "replies": [         // Optional quick replies
@@ -49,16 +49,17 @@ Node Data Schemas (data object)
   ]
 }
 2. form Node
-```json
+JSON
+
 {
   "title": "string",   // Title displayed above the form
   "elements": [        // Array of form elements
     // See Form Element Schemas below
-  ],
-  // Note: dataSourceType and dataSource seem unused, confirm if needed
+  ]
 }
 3. api Node
-```json
+JSON
+
 {
   "isMulti": "boolean", // Whether multiple API calls are enabled
   // --- Single API Call Properties (used if isMulti is false) ---
@@ -84,11 +85,18 @@ Node Data Schemas (data object)
     ...
   ]
 }
-(... 다른 노드 타입 (branch, slotfilling, llm, setSlot 등)의 data 스키마도 유사하게 정의합니다 ...)
+(... other node types like branch, slotfilling, llm, setSlot, fixedmenu, link, toast, iframe, scenario would be defined here ...)
 
+N. delay Node (New)
+JSON
+
+{
+  "duration": "number" // Delay duration in milliseconds (e.g., 1000 for 1 second)
+}
 Form Element Schemas (within form node data.elements)
 1. input Element
-```json
+JSON
+
 {
   "id": "string",
   "type": "input",
@@ -102,7 +110,8 @@ Form Element Schemas (within form node data.elements)
   }
 }
 2. grid Element
-```json
+JSON
+
 {
   "id": "string",
   "type": "grid",
@@ -116,10 +125,11 @@ Form Element Schemas (within form node data.elements)
   "columns": "number | undefined",
   "data": "string[] | undefined" // Flat array of cell values (row by row)
 }
-(... 다른 폼 요소 타입 (date, checkbox, dropbox) 스키마도 정의 ...)
+(... other form element types like date, checkbox, dropbox would be defined here ...)
 
 Edge Object Structure
-```json
+JSON
+
 {
   "id": "string",             // Unique edge ID
   "source": "string",         // Source node ID
@@ -127,47 +137,9 @@ Edge Object Structure
   "sourceHandle": "string | null" // ID of the specific source handle (e.g., "onSuccess", reply value, condition ID)
 }
 
-### 2. 버전 정보 필드 추가 및 저장 로직 수정
+**주요 변경 사항:**
 
-빌더에서 시나리오를 저장할 때 정의된 스키마 버전을 포함하도록 `saveScenarioData` 함수를 수정합니다.
+* **Node Data Schemas** 섹션에 `delay` 노드 타입을 위한 정의를 추가했습니다.
+* `delay` 노드의 `data` 객체에는 `duration` (number 타입, 밀리초 단위) 필드가 포함됩니다.
 
-**`src/firebaseApi.js` 수정:**
-
-```javascript
-import { db } from './firebase';
-import {
-  collection,
-  getDocs,
-  doc,
-  getDoc,
-  setDoc,
-  deleteDoc,
-  writeBatch,
-  addDoc,
-  updateDoc,
-} from 'firebase/firestore';
-
-// --- 👇 스키마 버전 정의 (상단 또는 설정 파일) ---
-const CURRENT_SCHEMA_VERSION = "1.0";
-// --- 👆 ---
-
-// ... (fetchScenarios, createScenario 등 기존 함수들) ...
-
-export const saveScenarioData = async ({ scenario, data }) => {
-  if (!scenario || !scenario.id) {
-    throw new Error('No scenario selected to save.');
-  }
-  const scenarioDocRef = doc(db, "scenarios", scenario.id);
-
-  // --- 👇 저장 데이터에 버전 정보 추가 ---
-  const dataToSave = {
-    ...data,
-    version: CURRENT_SCHEMA_VERSION // 스키마 버전 명시
-  };
-  // --- 👆 ---
-
-  // data 객체에 nodes, edges, startNodeId가 모두 포함됨
-  await setDoc(scenarioDocRef, dataToSave, { merge: true }); // merge: true 옵션으로 기존 필드 유지
-};
-
-// ... (템플릿 관련 함수 등 나머지 코드) ...
+이제 이 스키마를 사용하여 챗봇 클라이언트에서 딜레이 노드의 동작을 구현하거나 동기화할 수 있습니다.

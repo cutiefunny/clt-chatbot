@@ -1,11 +1,9 @@
 // app/lib/nodeHandlers.js
 import { getGeminiResponseWithSlots } from './gemini'; // 또는 getLlmResponse from './llm'
 import { getNextNode, interpolateMessage, getDeepValue } from './chatbotEngine';
-// --- 👇 [추가] llm.js 사용 시 ---
 // import { getLlmResponse } from './llm';
-// --- 👆 ---
 
-// --- 👇 [추가] JSON 내부 문자열 재귀 보간 함수 ---
+// JSON 내부 문자열 재귀 보간 함수
 function interpolateObjectStrings(obj, slots) {
   if (typeof obj !== 'object' || obj === null) {
     return obj; // 객체가 아니면 그대로 반환
@@ -30,7 +28,7 @@ function interpolateObjectStrings(obj, slots) {
   }
   return newObj;
 }
-// --- 👆 ---
+
 
 // --- 각 노드 핸들러 함수 정의 ---
 
@@ -211,7 +209,7 @@ async function handleApiNode(node, scenario, slots) {
     return { nextNode, slots: currentSlots, events: [] }; // 최종 슬롯 반환
 }
 
-// language 파라미터 추가, scenarioSessionId 제거 (필요 없어 보임)
+
 async function handleLlmNode(node, scenario, slots, language) {
     const interpolatedPrompt = interpolateMessage(node.data.prompt, slots); // 프롬프트 보간
 
@@ -266,7 +264,7 @@ async function handleSetSlotNode(node, scenario, slots) {
       // 값 보간 (이전 할당 결과를 다음 보간에 사용 가능)
       let interpolatedValue = interpolateMessage(assignment.value, newSlots);
 
-      // --- 👇 [수정] 타입 변환 로직 (빌더 참조 구현과 유사) ---
+      // 타입 변환 로직
       try {
           const trimmedValue = interpolatedValue.trim();
           if ((trimmedValue.startsWith('{') && trimmedValue.endsWith('}')) || (trimmedValue.startsWith('[') && trimmedValue.endsWith(']'))) {
@@ -293,13 +291,30 @@ async function handleSetSlotNode(node, scenario, slots) {
           console.warn(`[handleSetSlotNode] Failed to parse JSON for slot "${assignment.key}", saving as string. Value:`, interpolatedValue);
           newSlots[assignment.key] = interpolatedValue;
       }
-      // --- 👆 ---
     }
   }
 
   // 다음 노드 결정
   const nextNode = getNextNode(scenario, node.id, null, newSlots);
   return { nextNode, slots: newSlots, events: [] }; // 업데이트된 슬롯 반환
+}
+
+// Delay 노드 핸들러
+async function handleDelayNode(node, scenario, slots) {
+  const duration = node.data?.duration; // data 객체 확인
+  // duration 유효성 검사 (숫자이고 0 이상)
+  if (typeof duration !== 'number' || duration < 0) {
+    console.warn(`Invalid or missing duration in delay node ${node.id}: ${duration}. Skipping delay.`);
+  } else {
+    console.log(`[handleDelayNode] Delaying for ${duration}ms...`);
+    // 지정된 시간만큼 대기 (Promise 사용)
+    await new Promise(resolve => setTimeout(resolve, duration));
+    console.log(`[handleDelayNode] Delay finished.`);
+  }
+  // 딜레이 후 다음 노드 결정
+  const nextNode = getNextNode(scenario, node.id, null, slots);
+  // 다음 노드 정보와 현재 슬롯 반환 (슬롯 변경 없음)
+  return { nextNode, slots, events: [] };
 }
 
 // --- nodeHandlers 객체 정의 및 export ---
@@ -314,6 +329,5 @@ export const nodeHandlers = {
   'api': handleApiNode,
   'llm': handleLlmNode,
   'setSlot': handleSetSlotNode,
-  // 'start' 노드는 runScenario 시작점에서 처리되므로 핸들러 불필요
-  // 'scenario' (그룹) 노드는 runScenario 내에서 진입 처리되므로 핸들러 불필요
+  'delay': handleDelayNode, // delay 핸들러 등록
 };
