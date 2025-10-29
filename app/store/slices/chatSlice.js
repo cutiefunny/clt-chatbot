@@ -546,188 +546,167 @@ export const createChatSlice = (set, get) => {
   // --- 👇 [수정된 부분 시작]: handleResponse 개선 ---
   // 사용자 메시지 처리 및 봇 응답 요청/처리
   handleResponse: async (messagePayload) => {
-    set({ isLoading: true, llmRawResponse: null }); // 로딩 시작
-    const { language, showEphemeralToast, addMessage, updateLastMessage, saveMessage, setExtractedSlots, llmProvider } = get();
+      set({ isLoading: true, llmRawResponse: null });
+      const { language, showEphemeralToast, addMessage, updateLastMessage, saveMessage, setExtractedSlots, llmProvider } = get();
 
-    // 사용자 메시지 추가 (UI 업데이트 및 저장 시도)
-    const textForUser = messagePayload.displayText || messagePayload.text;
-    if (textForUser) {
-        // addMessage는 내부적으로 saveMessage를 호출하고 ID 교체 등을 처리
-        await addMessage("user", { text: textForUser });
-    }
-
-    const thinkingText = locales[language]?.['statusGenerating'] || "Generating...";
-    let lastBotMessageId = null; // 봇 응답 메시지의 임시 ID 저장용
-    let finalMessageId = null; // 저장 후 실제 ID 저장용 (finally에서 사용)
-    let finalStreamText = ''; // 스트림 완료 후 최종 텍스트
-
-    try {
-      // 백엔드 API 호출
-      const response = await fetch("/api/chat", {
-         method: "POST", headers: { "Content-Type": "application/json" },
-         body: JSON.stringify({
-             message: { text: messagePayload.text }, // 실제 처리될 텍스트
-             scenarioState: null, // 일반 메시지 요청
-             slots: get().slots, // 현재 슬롯 전달
-             language: language,
-             llmProvider: llmProvider,
-             flowiseApiUrl: get().flowiseApiUrl,
-         }),
-      });
-
-      // API 응답 오류 처리 (스트림 여부와 관계없이 공통 처리)
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: `Server error: ${response.statusText}` }));
-        // API 라우트에서 반환한 표준 오류 메시지 사용, 없으면 HTTP 상태 기반 메시지 사용
-        throw new Error(errorData.message || `Server error: ${response.status}`);
+      const textForUser = messagePayload.displayText || messagePayload.text;
+      if (textForUser) {
+          await addMessage("user", { text: textForUser });
       }
 
-      // 응답 타입(스트림/JSON)에 따른 처리
-      if (response.headers.get("Content-Type")?.includes("text/event-stream")) {
-        // --- 스트림 응답 처리 ---
-        console.log("[handleResponse] Processing text/event-stream response.");
+      const thinkingText = locales[language]?.['statusGenerating'] || "Generating...";
+      let lastBotMessageId = null;
+      let finalMessageId = null;
+      let finalStreamText = '';
 
-        // '생각중...' 메시지 추가 및 임시 ID 저장
-        const tempBotMessage = { id: `temp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`, sender: 'bot', text: thinkingText, isStreaming: true };
-        set(state => ({ messages: [...state.messages, tempBotMessage] }));
-        lastBotMessageId = tempBotMessage.id;
+      try {
+        const response = await fetch("/api/chat", {
+           method: "POST", headers: { "Content-Type": "application/json" },
+           body: JSON.stringify({
+               message: { text: messagePayload.text },
+               scenarioState: null,
+               slots: get().slots,
+               language: language,
+               llmProvider: llmProvider,
+               flowiseApiUrl: get().flowiseApiUrl,
+           }),
+        });
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let streamProcessor;
-
-        // Provider에 따라 스트림 처리기 선택
-        if (llmProvider === 'gemini') streamProcessor = processGeminiStream(reader, decoder, get);
-        else if (llmProvider === 'flowise') streamProcessor = processFlowiseStream(reader, decoder, get);
-        else throw new Error(`Unsupported LLM provider for streaming: ${llmProvider}`); // 지원하지 않는 Provider
-
-        // 스트림 결과 처리 루프
-        for await (const result of streamProcessor) {
-            if (result.type === 'text') updateLastMessage(result.data, result.replace);
-            else if (result.type === 'slots') setExtractedSlots(result.data);
-            else if (result.type === 'rawResponse') set({ llmRawResponse: result.data });
-            else if (result.type === 'button') updateLastMessage(result.data); // Flowise: 버튼 추가
-            else if (result.type === 'finalText') finalStreamText = result.data; // Flowise: 최종 텍스트 수집
-            else if (result.type === 'error') throw result.data; // 스트림 처리 중 오류 발생 시 throw
-        }
-        // 스트림 정상 종료 -> finally 블록에서 최종 메시지 처리 및 저장
-
-      } else { // --- JSON 응답 처리 ---
-        const data = await response.json();
-        set({ llmRawResponse: data }); // 원시 응답 저장 (디버깅용)
-
-        // API 라우트에서 표준 오류 객체 반환 시 처리
-        if (data.type === 'error') {
-            throw new Error(data.message || 'API returned an unknown error.');
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ message: `Server error: ${response.status}` }));
+          throw new Error(errorData.message || `Server error: ${response.status}`);
         }
 
-        const handler = responseHandlers[data.type]; // 응답 타입에 맞는 핸들러 찾기
-        if (handler) {
-          handler(data, get); // 핸들러 실행 (내부에서 addMessage 등 호출)
-        } else {
-          // 기본 LLM 응답 처리
-          const responseText = data.response || data.text || data.message; // 다양한 키 확인
-          if (responseText) {
-            await addMessage("bot", { text: responseText }); // 메시지 추가 (내부 오류 처리)
-            if (data.slots) setExtractedSlots(data.slots); // 슬롯 저장
-          } else { // 알 수 없는 타입 또는 빈 응답
-            console.warn(`[ChatStore] Unhandled non-stream response type or empty response:`, data);
-            await addMessage("bot", { text: locales[language]?.['errorUnexpected'] || "(No content)" });
+        if (response.headers.get("Content-Type")?.includes("text/event-stream")) {
+          // --- 스트림 응답 처리 (이전과 동일) ---
+          console.log("[handleResponse] Processing text/event-stream response.");
+          const tempBotMessage = { id: `temp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`, sender: 'bot', text: thinkingText, isStreaming: true };
+          set(state => ({ messages: [...state.messages, tempBotMessage] }));
+          lastBotMessageId = tempBotMessage.id;
+
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let streamProcessor;
+
+          if (llmProvider === 'gemini') streamProcessor = processGeminiStream(reader, decoder, get);
+          else if (llmProvider === 'flowise') streamProcessor = processFlowiseStream(reader, decoder, get);
+          else throw new Error(`Unsupported LLM provider for streaming: ${llmProvider}`);
+
+          for await (const result of streamProcessor) {
+              if (result.type === 'text') updateLastMessage(result.data, result.replace);
+              else if (result.type === 'slots') setExtractedSlots(result.data);
+              else if (result.type === 'rawResponse') set({ llmRawResponse: result.data });
+              else if (result.type === 'button') updateLastMessage(result.data);
+              else if (result.type === 'finalText') finalStreamText = result.data;
+              else if (result.type === 'error') throw result.data;
           }
-        }
-        // JSON 응답 처리가 완료되었으므로 로딩 상태 해제
-        set({ isLoading: false });
-      }
-    } catch (error) { // 메인 try 블록의 catch (API 호출, 스트림, JSON 파싱 오류 등)
-      console.error("[handleResponse] Error:", error);
-      const errorKey = getErrorKey(error); // 중앙 집중식 오류 키 생성
-      // API 오류 메시지(error.message)와 locales 메시지 중 더 구체적인 것 사용
-      const errorMessage = error.message && !error.message.startsWith('Server error:') // 서버 오류 메시지는 일반 메시지로 대체
-          ? error.message
-          : locales[language]?.[errorKey] || locales['en']?.[errorKey] || 'An error occurred.';
+           // 스트림 정상 종료 -> finally 블록에서 최종 메시지 처리 및 저장
 
-      // 오류 발생 시 마지막 메시지 상태 업데이트 (스트리밍 중이었는지 확인)
-      let messageSaved = false;
-      set(state => {
-          const lastMessageIndex = state.messages.length - 1;
-          const lastMessage = state.messages[lastMessageIndex];
+        } else { // --- JSON 응답 처리 ---
+          const data = await response.json();
+          set({ llmRawResponse: data });
 
-          // 마지막 메시지가 스트리밍 중이던 '생각중...' 메시지인지 ID로 확인
-          if (lastMessage && lastMessage.id === lastBotMessageId && lastMessage.isStreaming) {
-              const updatedMessage = { ...lastMessage, text: errorMessage, isStreaming: false };
-              // 오류 메시지 저장 시도 (ID는 여전히 임시 ID일 수 있음)
-              saveMessage(updatedMessage).then(savedId => {
-                  finalMessageId = savedId; // 저장 후 실제 ID 업데이트 (finally에서 사용될 수 있음)
-                  if (savedId && savedId !== lastBotMessageId) {
-                      // ID 변경 시 상태 업데이트
-                      set(s => ({
-                           messages: s.messages.map(m => m.id === lastBotMessageId ? { ...updatedMessage, id: savedId } : m),
-                           isLoading: false // 여기서 로딩 해제
-                        }));
-                      messageSaved = true;
-                  } else if (savedId) { // ID 변경 없어도 저장 성공 시
-                      set(s => ({ isLoading: false })); // 여기서 로딩 해제
-                      messageSaved = true;
-                  }
-              });
-              // 메시지 배열 업데이트는 즉시 반영
-              return { messages: [...state.messages.slice(0, lastMessageIndex), updatedMessage] };
+          // API 라우트에서 표준 오류 객체 반환 시 처리
+          if (data.type === 'error') {
+              throw new Error(data.message || 'API returned an unknown error.');
           }
 
-          // 스트리밍 중 아니었으면 (또는 이미 오류 처리된 경우) 새 오류 메시지 추가
-          // 이 경우는 addMessage 내부에서 saveMessage 호출 및 로딩 상태 처리
-          addMessage("bot", { text: errorMessage });
-          return { isLoading: false }; // 즉시 로딩 해제
-      });
-
-      // saveMessage 비동기 호출 후 로딩 상태 재확인 (혹시 모를 경쟁 상태 방지)
-      if (!messageSaved) {
+          const handler = responseHandlers[data.type];
+          if (handler) {
+            handler(data, get);
+          } else {
+            const responseText = data.response || data.text || data.message;
+            if (responseText) {
+              await addMessage("bot", { text: responseText });
+              if (data.slots) setExtractedSlots(data.slots);
+            } else {
+              console.warn(`[ChatStore] Unhandled non-stream response type or empty response:`, data);
+              await addMessage("bot", { text: locales[language]?.['errorUnexpected'] || "(No content)" });
+            }
+          }
           set({ isLoading: false });
-      }
+        }
+      } catch (error) { // 메인 try 블록의 catch
+        console.error("[handleResponse] Error:", error);
+        // --- 👇 [수정] errorLLMFail 메시지 키 사용 및 error.message 우선 사용 ---
+        // API 에러 메시지(error.message)가 있으면 사용, 없으면 errorLLMFail 사용
+        const errorMessage = error.message || locales[language]?.['errorLLMFail'] || locales['en']?.['errorLLMFail'] || 'There was a problem with the response. Please try again later.';
+        // --- 👆 [수정] ---
 
-    } finally { // 메인 try 블록의 finally (스트림 성공 종료 시 최종 처리)
-      set(state => {
-          const lastMessageIndex = state.messages.length - 1;
-          const lastMessage = state.messages[lastMessageIndex];
+        let messageSaved = false;
+        set(state => {
+            const lastMessageIndex = state.messages.length - 1;
+            const lastMessage = state.messages[lastMessageIndex];
 
-          // 마지막 메시지가 스트리밍 완료 대기 상태인지 확인 (ID 비교 및 isStreaming 플래그)
-          // 오류 발생 시 이미 isStreaming=false로 변경되었으므로 이 조건은 정상 종료 시에만 해당
-          if (lastMessage && (lastMessage.id === lastBotMessageId || lastMessage.id === finalMessageId) && lastMessage.isStreaming) {
-               // 최종 텍스트 결정 (Flowise는 finalStreamText 사용, Gemini는 lastMessage.text 사용)
-               const finalText = (llmProvider === 'flowise' ? finalStreamText : lastMessage.text) || '';
-               // 최종 텍스트가 비어있거나 '생각중...'이면 오류 메시지로 대체
-               const finalMessageText = finalText.trim() === '' || finalText.trim() === thinkingText.trim()
-                    ? locales[language]?.['errorUnexpected'] || "(No response received)"
-                    : finalText;
-
-               const finalMessage = { ...lastMessage, text: finalMessageText, isStreaming: false };
-
-               // 최종 메시지 저장 (saveMessage 내부 오류 처리, ID 반환)
-               saveMessage(finalMessage).then(savedId => {
-                    finalMessageId = savedId; // 최종 ID 업데이트
-                    if (savedId && savedId !== lastMessage.id) {
-                        // 저장 후 ID 변경 시 상태 업데이트
-                         set(s => ({
-                            messages: s.messages.map(m => m.id === lastMessage.id ? { ...finalMessage, id: savedId } : m),
-                            isLoading: false // 비동기 완료 후 로딩 해제
-                        }));
-                    } else if (savedId) { // ID 변경 없어도 저장 성공 시
-                         set(s => ({ isLoading: false })); // 비동기 완료 후 로딩 해제
+            if (lastMessage && lastMessage.id === lastBotMessageId && lastMessage.isStreaming) {
+                const updatedMessage = { ...lastMessage, text: errorMessage, isStreaming: false };
+                saveMessage(updatedMessage).then(savedId => {
+                    finalMessageId = savedId;
+                    if (savedId && savedId !== lastBotMessageId) {
+                        set(s => ({
+                             messages: s.messages.map(m => m.id === lastBotMessageId ? { ...updatedMessage, id: savedId } : m),
+                             isLoading: false
+                          }));
+                        messageSaved = true;
+                    } else if (savedId) {
+                        set(s => ({ isLoading: false }));
+                        messageSaved = true;
                     }
-               });
+                });
+                return { messages: [...state.messages.slice(0, lastMessageIndex), updatedMessage] };
+            }
+            addMessage("bot", { text: errorMessage });
+            return { isLoading: false };
+        });
 
-               // 메시지 배열 업데이트는 즉시 반영, 로딩 상태는 비동기 완료 후 해제될 것임
-               return {
-                   messages: [...state.messages.slice(0, lastMessageIndex), finalMessage]
-                };
-          }
-          // 스트리밍 아니었거나 이미 오류 처리/로딩 해제된 경우 상태 변경 없음
-          // isLoading 상태가 위 catch 블록이나 비동기 saveMessage 콜백에서 false로 설정될 것이므로 여기서 다시 설정하지 않음
-          return {}; // 상태 변경 없음
-      });
-    } // end finally
-  }, // end handleResponse
-  // --- 👆 [수정된 부분 끝] ---
+        if (!messageSaved) {
+            set({ isLoading: false });
+        }
 
- } // end return store object
+      } finally { // 메인 try 블록의 finally (스트림 성공 종료 시)
+        set(state => {
+            const lastMessageIndex = state.messages.length - 1;
+            const lastMessage = state.messages[lastMessageIndex];
+
+            if (lastMessage && (lastMessage.id === lastBotMessageId || lastMessage.id === finalMessageId) && lastMessage.isStreaming) {
+                 const finalText = (llmProvider === 'flowise' ? finalStreamText : lastMessage.text) || '';
+                 // --- 👇 [수정] 최종 텍스트 비어있거나 thinkingText와 같으면 errorLLMFail 메시지 사용 ---
+                 const finalMessageText = finalText.trim() === '' || finalText.trim() === thinkingText.trim()
+                      ? locales[language]?.['errorLLMFail'] || "(Response failed. Please try again later.)"
+                      : finalText;
+                  // --- 👆 [수정] ---
+
+                 const finalMessage = { ...lastMessage, text: finalMessageText, isStreaming: false };
+
+                 saveMessage(finalMessage).then(savedId => {
+                      finalMessageId = savedId;
+                      if (savedId && savedId !== lastMessage.id) {
+                           set(s => ({
+                              messages: s.messages.map(m => m.id === lastMessage.id ? { ...finalMessage, id: savedId } : m),
+                              isLoading: false
+                          }));
+                      } else if (savedId) {
+                           set(s => ({ isLoading: false }));
+                      } else {
+                          // saveMessage 실패 시 (이미 토스트 표시됨), 로딩 상태만 해제
+                           set(s => ({ isLoading: false }));
+                      }
+                 });
+
+                 return {
+                     messages: [...state.messages.slice(0, lastMessageIndex), finalMessage]
+                  };
+            }
+            // 스트리밍 아니었거나 이미 처리된 경우, isLoading 상태가 false가 아닐 수 있으므로 여기서 확실히 false로 설정
+            if (state.isLoading) {
+                 return { isLoading: false };
+            }
+            return {}; // 상태 변경 없음
+        });
+      } // end finally
+    }, // end handleResponse
+    // --- 👆 [수정된 부분 끝] ---
+
+    // ... (rest of the chatSlice functions remain the same) ...
+   } // end return store object
 }; // end createChatSlice

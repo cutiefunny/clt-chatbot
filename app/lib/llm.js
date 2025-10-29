@@ -1,13 +1,14 @@
 // app/lib/llm.js
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { locales } from './locales'; // 오류 메시지를 위해 추가
-import { getErrorKey } from './errorHandler'; // 오류 키 생성을 위해 추가
+// --- 👇 [수정] getErrorKey 임포트 제거 (직접 키 사용) ---
+// import { getErrorKey } from './errorHandler';
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY);
 
 // JSON 응답 전용 모델
 const model = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash",
+    model: "gemini-1.5-flash", // 모델명 확인 필요 (gemini-2.0-flash?)
     generationConfig: {
         responseMimeType: "application/json",
     }
@@ -15,7 +16,7 @@ const model = genAI.getGenerativeModel({
 
 // 스트리밍 응답 전용 모델
 const streamingModel = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash"
+    model: "gemini-1.5-flash" // 모델명 확인 필요 (gemini-2.0-flash?)
 });
 
 
@@ -31,9 +32,7 @@ const streamingModel = genAI.getGenerativeModel({
 export async function getLlmResponse(prompt, language = 'ko', shortcuts = [], llmProvider, flowiseApiUrl) {
     console.log(`[getLlmResponse] Provider selected: ${llmProvider}`);
     if (llmProvider === 'flowise') {
-        // --- 👇 [수정] getFlowiseStreamingResponse 호출 시 language 전달 ---
         return getFlowiseStreamingResponse(prompt, flowiseApiUrl, language);
-        // --- 👆 [수정] ---
     }
 
     // Gemini 스트리밍 응답을 기본으로 사용
@@ -51,16 +50,16 @@ export async function getLlmResponse(prompt, language = 'ko', shortcuts = [], ll
 async function getFlowiseStreamingResponse(prompt, apiUrl, language = 'ko') {
     console.log(`[getFlowiseStreamingResponse] Called with apiUrl: ${apiUrl}`);
 
-    // --- 👇 [수정] URL 부재 시 표준 에러 객체 반환 ---
     if (!apiUrl) {
         console.error("[getFlowiseStreamingResponse] Error: Flowise API URL is not set.");
-        const message = locales[language]?.['errorServer'] || 'Flowise API URL is not configured.'; // 좀 더 구체적인 메시지
+        // --- 👇 [수정] URL 부재 시 errorLLMFail 메시지 사용 ---
+        const message = locales[language]?.['errorLLMFail'] || 'Flowise API is not configured. Please try again later.';
         return {
             type: 'error',
             message: message
         };
+        // --- 👆 [수정] ---
     }
-    // --- 👆 [수정] ---
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30초 타임아웃 설정
@@ -73,48 +72,38 @@ async function getFlowiseStreamingResponse(prompt, apiUrl, language = 'ko') {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody),
-            signal: controller.signal // 타임아웃 컨트롤러 연결
+            signal: controller.signal
         });
 
-        clearTimeout(timeoutId); // 타임아웃 해제
+        clearTimeout(timeoutId);
 
         console.log(`[getFlowiseStreamingResponse] Received response status: ${response.status}`);
 
-        // --- 👇 [수정] HTTP 오류 시 표준 에러 객체 반환 ---
         if (!response.ok) {
             let errorBody = await response.text();
             try {
-                // Flowise 오류 응답이 JSON 형태일 수 있음
                 const errorJson = JSON.parse(errorBody);
-                errorBody = errorJson.message || errorBody; // JSON 메시지 우선 사용
+                errorBody = errorJson.message || errorBody;
             } catch (e) { /* ignore json parse error */ }
             console.error(`[getFlowiseStreamingResponse] Flowise API Error (${response.status}):`, errorBody);
-            // HTTP 상태 코드 기반 에러 키 생성 시도
-            const errorKey = response.status >= 500 ? 'errorServer' : 'errorUnexpected';
-            const message = locales[language]?.[errorKey] || `Flowise API request failed (Status: ${response.status}).`;
+            // --- 👇 [수정] HTTP 오류 시 errorLLMFail 메시지 사용 ---
+            const message = locales[language]?.['errorLLMFail'] || 'Flowise API request failed. Please try again later.';
             return {
                 type: 'error',
                 message: message
             };
+            // --- 👆 [수정] ---
         }
-        // --- 👆 [수정] ---
 
         console.log("[getFlowiseStreamingResponse] Response OK. Returning response body (stream).");
-        // response.body (ReadableStream) 반환
         return response.body;
 
     } catch (error) {
-        clearTimeout(timeoutId); // 오류 발생 시에도 타임아웃 해제
+        clearTimeout(timeoutId);
         console.error("[getFlowiseStreamingResponse] API call failed:", error);
 
-        // --- 👇 [수정] fetch 오류(네트워크, 타임아웃 등) 시 표준 에러 객체 반환 ---
-        let errorKey = 'errorUnexpected';
-        if (error.name === 'AbortError') {
-             errorKey = 'errorServer'; // 타임아웃은 서버 문제로 간주
-        } else if (error instanceof TypeError) { // fetch 자체가 실패 (네트워크 등)
-             errorKey = 'errorNetwork';
-        }
-        const message = locales[language]?.[errorKey] || 'Failed to call Flowise API.';
+        // --- 👇 [수정] fetch 오류 시 errorLLMFail 메시지 사용 ---
+        const message = locales[language]?.['errorLLMFail'] || 'Failed to call Flowise API. Please try again later.';
         return {
             type: 'error',
             message: message
@@ -124,7 +113,7 @@ async function getFlowiseStreamingResponse(prompt, apiUrl, language = 'ko') {
 }
 
 
-// Gemini 스트리밍 응답 함수 (기존 유지, 오류 시 표준 에러 객체 반환하도록 수정)
+// Gemini 스트리밍 응답 함수
 async function getGeminiStreamingResponse(prompt, language = 'ko', shortcuts = []) {
   console.log(`[getGeminiStreamingResponse] Called.`);
   try {
@@ -159,18 +148,16 @@ ${shortcutList}
     const stream = new ReadableStream({
       async start(controller) {
         console.log("[getGeminiStreamingResponse] ReadableStream started. Reading chunks...");
-        try { // 스트림 읽기 오류 처리 추가
+        try {
           for await (const chunk of result.stream) {
-            // chunk 유효성 검사 (text() 메서드 존재 여부)
             const chunkText = chunk && typeof chunk.text === 'function' ? chunk.text() : '';
-            // console.log("[getGeminiStreamingResponse] Enqueuing chunk:", chunkText); // Chunk 로그는 너무 많을 수 있어 주석 처리
             controller.enqueue(new TextEncoder().encode(chunkText));
           }
           console.log("[getGeminiStreamingResponse] Finished reading chunks. Closing controller.");
           controller.close();
         } catch (streamReadError) {
              console.error("[getGeminiStreamingResponse] Error reading stream:", streamReadError);
-             controller.error(streamReadError); // 스트림에 오류 전파
+             controller.error(streamReadError);
         }
       }
     });
@@ -179,9 +166,8 @@ ${shortcutList}
 
   } catch (error) {
     console.error("[getGeminiStreamingResponse] Gemini API Error:", error);
-    // --- 👇 [수정] Gemini API 오류 시 표준 에러 객체 반환 ---
-    const errorKey = getErrorKey(error); // 오류 키 생성
-    const message = locales[language]?.[errorKey] || 'Failed to call Gemini API.';
+    // --- 👇 [수정] Gemini API 오류 시 errorLLMFail 메시지 사용 ---
+    const message = locales[language]?.['errorLLMFail'] || 'Failed to call Gemini API. Please try again later.';
     return {
         type: 'error',
         message: message
@@ -190,4 +176,59 @@ ${shortcutList}
   }
 }
 
-// getGeminiResponseWithSlots 함수는 스트리밍 로직과 직접 관련 없으므로 수정 생략 (필요 시 별도 요청)
+// getGeminiResponseWithSlots 함수 (JSON 응답)
+export async function getGeminiResponseWithSlots(prompt, language = 'ko', shortcuts = []) {
+  try {
+    const languageInstruction = language === 'en'
+        ? "Please construct your 'response' field in English."
+        : "반드시 'response' 필드는 한국어로 작성해주세요.";
+
+    const shortcutList = shortcuts.length > 0
+      ? `Here is a list of available shortcuts the user can use:\n${JSON.stringify(shortcuts, null, 2)}`
+      : "There are no shortcuts available.";
+
+    const systemInstruction = `You are a powerful AI assistant that analyzes user input, extracts key information (slots), and generates a response. Your output MUST be a valid JSON object with two fields: "response" and "slots".
+
+1.  **Analyze the user's prompt**: Identify key entities like locations, dates, times, names, numbers, etc.
+2.  **Populate the "slots" object**: Create a key-value pair for each extracted entity. For example, if the user says "I want to go to Jeju Island on November 5th", the slots should be \`{ "destination": "Jeju Island", "date": "November 5th" }\`. If no specific entities are found, return an empty object \`{}\`.
+3.  **Generate the "response" string**:
+    * If the user's prompt is strongly related to a shortcut from the list below, recommend it using the format: "혹시 아래와 같은 기능이 필요하신가요?\\n\\n[BUTTON:{shortcut.title}]".
+    * If it relates to multiple shortcuts, use the format: "혹시 아래와 같은 기능이 필요하신가요?\\n[BUTTON:Shortcut 1]\\n\\n[BUTTON:Shortcut 2]".
+    * Otherwise, provide a general, helpful conversational response.
+4.  **Combine into a single JSON object** and return it.
+
+**Available Shortcuts**:
+${shortcutList}
+`;
+
+    const fullPrompt = `${systemInstruction}\n\n${languageInstruction}\n\nUser: ${prompt}`;
+
+    const result = await model.generateContent(fullPrompt);
+    const responseText = result.response.text();
+
+    // --- 👇 [수정] 응답 유효성 검사 및 오류 처리 추가 ---
+    try {
+        const parsedResponse = JSON.parse(responseText);
+        // "response" 필드가 문자열인지, "slots" 필드가 객체인지 기본적인 검사
+        if (typeof parsedResponse.response === 'string' && typeof parsedResponse.slots === 'object' && parsedResponse.slots !== null) {
+            return parsedResponse;
+        } else {
+            console.error("Gemini API returned invalid JSON structure:", responseText);
+            throw new Error("Invalid JSON structure received from LLM.");
+        }
+    } catch (parseError) {
+        console.error("Error parsing Gemini JSON response:", parseError, "Raw response:", responseText);
+        throw new Error("Failed to parse LLM response."); // 에러를 다시 던져서 상위 catch 블록에서 처리
+    }
+    // --- 👆 [수정] ---
+
+  } catch (error) {
+    console.error("Gemini API Error (getGeminiResponseWithSlots):", error);
+    // --- 👇 [수정] Gemini 오류 시 errorLLMFail 메시지 사용 ---
+    return {
+        response: locales[language]?.['errorLLMFail'] || "Sorry, there was a problem generating the response. Please try again later.",
+        slots: {}
+    };
+    // --- 👆 [수정] ---
+  }
+}
