@@ -713,6 +713,12 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
   background-color: transparent;
 }
 
+.scenarioChatContainer .history {
+  min-width: 0;
+  max-width: none;
+  width: 100%;
+}
+
 .scenarioHeader {
   border-bottom: 1px solid var(--panel-border-color);
   padding: 10px 15px;
