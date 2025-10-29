@@ -59,10 +59,7 @@
 }
 
 .scenarioPanelOpen {
-  width: var(
-    --scenario-panel-width,
-    40%
-  ); /* 열린 상태: 설정된 너비 (기본값 40%) */
+  width: 784px;
   /* transform: translateX(0); 제거 */
 }
 /* --- 👆 [수정] --- */
