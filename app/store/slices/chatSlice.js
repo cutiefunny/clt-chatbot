@@ -27,7 +27,145 @@ const getInitialMessages = (lang = "ko") => {
 };
 
 
-// 스트림 처리 헬퍼 함수들 (파일 상단 또는 별도 유틸)
+// --- 👇 [수정된 부분 시작]: processFlowiseStream 개선 ---
+async function* processFlowiseStream(reader, decoder, get) {
+    let buffer = '';
+    let thinkingMessageReplaced = false;
+    let collectedText = ''; // 스트림 전체 텍스트 수집
+    let buttonText = ''; // 추출된 버튼 텍스트
+    let extractedSlots = {}; // 추출된 슬롯
+    const { language } = get(); // 오류 메시지를 위해 언어 설정 가져오기
+
+    try {
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break; // 스트림 종료
+            if (!value) continue;
+
+            let chunk;
+            try {
+                // stream: true 옵션으로 부분적인 UTF-8 시퀀스 처리
+                chunk = decoder.decode(value, { stream: true });
+            } catch (e) {
+                console.warn("Flowise stream decoding error:", e);
+                chunk = ''; // 디코딩 오류 시 빈 문자열로 처리
+            }
+
+            buffer += chunk;
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || ''; // 마지막 라인은 불완전할 수 있으므로 버퍼에 남김
+
+            for (const line of lines) {
+                if (!line.trim() || line.toLowerCase().startsWith('message:')) continue; // 빈 줄이나 주석 무시
+
+                let jsonString = '';
+                if (line.toLowerCase().startsWith('data:')) {
+                    jsonString = line.substring(line.indexOf(':') + 1).trim();
+                } else {
+                    jsonString = line.trim(); // 'data:' 접두사 없는 경우 대비
+                }
+
+                if (!jsonString || jsonString === "[DONE]") continue; // 빈 데이터나 종료 마커 무시
+
+                let data;
+                try {
+                    data = JSON.parse(jsonString); // JSON 파싱 시도
+                } catch (e) {
+                    // console.warn("Flowise stream JSON parse error:", e, "Line:", line);
+                    // 파싱 실패 시 해당 라인을 다음 청크와 합치기 위해 버퍼에 다시 추가
+                    buffer = line + (buffer ? '\n' + buffer : '');
+                    continue; // 다음 라인 처리
+                }
+
+                let textChunk = '';
+
+                // Flowise 이벤트 타입별 처리
+                if (data.event === 'agentFlowExecutedData' && Array.isArray(data.data) && data.data.length > 0) {
+                    // 마지막 데이터 객체의 output.content 확인 (구조 검증 강화)
+                    const lastData = data.data[data.data.length - 1];
+                    if (lastData?.data?.output?.content) {
+                        textChunk = lastData.data.output.content;
+                        // 첫 응답 시 thinking 메시지 대체, 이후엔 기존 텍스트 완전히 대체
+                        yield { type: 'text', data: textChunk, replace: true };
+                        thinkingMessageReplaced = true;
+                        collectedText = textChunk; // 전체 텍스트 업데이트
+                    }
+                } else if (data.event === 'usedTools' && Array.isArray(data.data) && data.data.length > 0) {
+                     // toolOutput 구조 및 scenarioId 존재 여부 확인 (구조 검증 강화)
+                    const toolOutput = data.data[0]?.toolOutput;
+                    if (toolOutput && typeof toolOutput === 'string' && !buttonText) { // 버튼은 한 번만 추출
+                         const match = toolOutput.match(/"scenarioId"\s*:\s*"([^"]+)"/);
+                         if (match && match[1]) {
+                             buttonText = `\n\n[BUTTON:${match[1]}]`;
+                             // 버튼 텍스트는 바로 UI 업데이트하지 않고 마지막에 추가
+                         }
+                    }
+                } else if (data.event === 'token' && typeof data.data === 'string') {
+                    // 일반 텍스트 토큰 스트리밍
+                    textChunk = data.data;
+                    yield { type: 'text', data: textChunk, replace: !thinkingMessageReplaced };
+                    thinkingMessageReplaced = true;
+                    collectedText += textChunk; // 전체 텍스트 누적
+                } else if (data.event === 'chunk' && data.data?.response) {
+                    // 일부 Flowise 버전의 텍스트 청크 스트리밍
+                    textChunk = data.data.response;
+                    yield { type: 'text', data: textChunk, replace: !thinkingMessageReplaced };
+                    thinkingMessageReplaced = true;
+                    collectedText += textChunk; // 전체 텍스트 누적
+                }
+                // 다른 이벤트 타입은 필요에 따라 추가
+            }
+        } // end while
+
+        // 스트림 종료 후 버퍼에 남은 데이터 처리 (예: 마지막 JSON 조각)
+        if (buffer.trim()) {
+            try {
+                const data = JSON.parse(buffer.trim());
+                // 필요시 마지막 데이터 처리 로직 추가 (위의 이벤트 처리 로직과 유사하게)
+                 let textChunk = '';
+                if (data.event === 'agentFlowExecutedData' /*...*/) {
+                    // ... 처리 ...
+                    // yield { type: 'text', data: textChunk, replace: true };
+                    // collectedText = textChunk;
+                } else if (data.event === 'token' /*...*/) {
+                   // ... 처리 ...
+                   // yield { type: 'text', data: textChunk, replace: !thinkingMessageReplaced };
+                   // collectedText += textChunk;
+                }
+                // ... 기타 등등 ...
+            } catch (e) {
+                console.warn("Error parsing final Flowise stream buffer:", e, "Buffer:", buffer);
+            }
+        }
+
+        // 수집된 버튼 텍스트가 있으면 UI 업데이트 및 전체 텍스트에 추가
+        if (buttonText) {
+            yield { type: 'button', data: buttonText };
+            collectedText += buttonText;
+        }
+
+        // 슬롯 추출 시도 (현재는 예약번호만, 개선 필요)
+        // TODO: 더 일반적인 슬롯 추출 로직 필요 (Flowise 응답 형식 정의 필요)
+        const bookingNoRegex = /\b([A-Z]{2}\d{10})\b/i;
+        const match = collectedText.match(bookingNoRegex);
+        if (match && match[1]) {
+            extractedSlots.bkgNr = match[1];
+            yield { type: 'slots', data: extractedSlots }; // 추출된 슬롯 전달
+        }
+
+        // 최종 수집된 텍스트 전달 (finally 블록에서 사용됨)
+        yield { type: 'finalText', data: collectedText };
+
+    } catch (streamError) {
+        console.error("Flowise stream processing error:", streamError);
+        // 스트림 처리 중 오류 발생 시 에러 객체 전달
+        yield { type: 'error', data: new Error(locales[language]?.errorUnexpected || 'Error processing stream.') };
+    }
+}
+// --- 👆 [수정된 부분 끝] ---
+
+
+// Gemini 스트림 처리 헬퍼 함수 (기존 유지)
 async function* processGeminiStream(reader, decoder, get) {
     let buffer = '';
     let slotsFound = false;
@@ -55,59 +193,6 @@ async function* processGeminiStream(reader, decoder, get) {
         }
     } catch (streamError) { console.error("Gemini stream read error:", streamError); yield { type: 'error', data: streamError }; }
 }
-async function* processFlowiseStream(reader, decoder, get) {
-    let buffer = '';
-    let thinkingMessageReplaced = false;
-    let collectedText = '';
-    let buttonText = '';
-    let extractedSlots = {};
-    try {
-        while (true) {
-            const { value, done } = await reader.read();
-            if (done) { /* final buffer processing */
-                 if (buffer) {
-                    const lines = buffer.split('\n');
-                    for (const line of lines) {
-                        if (line.toLowerCase().startsWith('data:')) {
-                            const jsonString = line.substring(line.indexOf(':') + 1).trim();
-                            if (jsonString && jsonString !== "[DONE]") {
-                                try {
-                                    const data = JSON.parse(jsonString); let textChunk = '';
-                                    if (data.event === 'agentFlowExecutedData' && Array.isArray(data.data) && data.data.length > 0 && data.data[data.data.length-1]?.data?.output?.content) {
-                                        textChunk = data.data[data.data.length-1].data.output.content;
-                                        yield { type: 'text', data: textChunk, replace: true }; thinkingMessageReplaced = true; collectedText = textChunk;
-                                    } else if (data.event === 'usedTools' && Array.isArray(data.data) && data.data.length > 0 && data.data[0]?.toolOutput && !buttonText) {
-                                        const match = data.data[0].toolOutput.match(/"scenarioId"\s*:\s*"([^"]+)"/);
-                                        if (match && match[1]) buttonText = `\n\n[BUTTON:${match[1]}]`;
-                                    }
-                                } catch (e) { console.warn("Final Flowise buffer parse error:", e); }
-                            }
-                        }
-                    }
-                 }
-                 break;
-            }
-            if (!value) continue; let chunk; try { chunk = decoder.decode(value, { stream: true }); } catch(e) { chunk = ''; } buffer += chunk; const lines = buffer.split('\n'); buffer = lines.pop() || '';
-            for (const line of lines) {
-                if (!line.trim() || line.toLowerCase().startsWith('message:')) continue; let jsonString = ''; if (line.toLowerCase().startsWith('data:')) jsonString = line.substring(line.indexOf(':') + 1).trim(); else jsonString = line.trim(); if (!jsonString || jsonString === "[DONE]") continue; let data; try { data = JSON.parse(jsonString); } catch (e) { buffer = line + (buffer ? '\n' + buffer : ''); continue; } let textChunk = '';
-                if (data.event === 'agentFlowExecutedData' && Array.isArray(data.data) && data.data.length > 0 && data.data[data.data.length-1]?.data?.output?.content) {
-                    textChunk = data.data[data.data.length-1].data.output.content;
-                    yield { type: 'text', data: textChunk, replace: true }; thinkingMessageReplaced = true; collectedText = textChunk;
-                } else if (data.event === 'usedTools' && Array.isArray(data.data) && data.data.length > 0 && data.data[0]?.toolOutput && !buttonText) {
-                     const match = data.data[0].toolOutput.match(/"scenarioId"\s*:\s*"([^"]+)"/);
-                     if (match && match[1]) buttonText = `\n\n[BUTTON:${match[1]}]`;
-                } else if (data.event === 'token' && typeof data.data === 'string') {
-                    textChunk = data.data; yield { type: 'text', data: textChunk, replace: !thinkingMessageReplaced }; thinkingMessageReplaced = true; collectedText += textChunk;
-                } else if (data.event === 'chunk' && data.data?.response) {
-                    textChunk = data.data.response; yield { type: 'text', data: textChunk, replace: !thinkingMessageReplaced }; thinkingMessageReplaced = true; collectedText += textChunk;
-                }
-            }
-        }
-        if (buttonText) { yield { type: 'button', data: buttonText }; collectedText += buttonText; }
-        const bookingNoRegex = /\b([A-Z]{2}\d{10})\b/i; const match = collectedText.match(bookingNoRegex); if (match && match[1]) { extractedSlots.bkgNr = match[1]; yield { type: 'slots', data: extractedSlots }; }
-        yield { type: 'finalText', data: collectedText };
-    } catch (streamError) { console.error("Flowise stream read error:", streamError); yield { type: 'error', data: streamError }; }
-}
 
 export const createChatSlice = (set, get) => {
 
@@ -133,6 +218,12 @@ export const createChatSlice = (set, get) => {
         getFn().setExtractedSlots(data.slots);
       }
     },
+     // --- 👇 [추가] API 연동 실패 시 오류 메시지 처리 ---
+    error: (data, getFn) => {
+        // 이미 getLlmResponse 에서 오류 메시지를 생성하므로 그대로 사용
+        getFn().addMessage("bot", { text: data.message || locales[getFn().language]?.errorUnexpected || "An error occurred." });
+    },
+     // --- 👆 [추가] ---
   };
 
   return {
@@ -220,6 +311,13 @@ export const createChatSlice = (set, get) => {
         const updatedMessage = { ...lastMessage, text: updatedText };
         return { messages: [...state.messages.slice(0, -1), updatedMessage] };
       }
+      // 스트리밍 메시지가 아니면 새 메시지로 추가 (Flowise 버튼 처리 등)
+      // else if (chunk && chunk.trim()) {
+      //     const newId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      //     const newMessage = { id: newId, sender: 'bot', text: chunk, isStreaming: false };
+      //     get().saveMessage(newMessage); // 저장 시도
+      //     return { messages: [...state.messages, newMessage] };
+      // }
       return state;
     });
   },
@@ -445,6 +543,7 @@ export const createChatSlice = (set, get) => {
     }
   },
 
+  // --- 👇 [수정된 부분 시작]: handleResponse 개선 ---
   // 사용자 메시지 처리 및 봇 응답 요청/처리
   handleResponse: async (messagePayload) => {
     set({ isLoading: true, llmRawResponse: null }); // 로딩 시작
@@ -453,13 +552,14 @@ export const createChatSlice = (set, get) => {
     // 사용자 메시지 추가 (UI 업데이트 및 저장 시도)
     const textForUser = messagePayload.displayText || messagePayload.text;
     if (textForUser) {
-        await addMessage("user", { text: textForUser }); // 내부에서 오류 처리 및 ID 교체
+        // addMessage는 내부적으로 saveMessage를 호출하고 ID 교체 등을 처리
+        await addMessage("user", { text: textForUser });
     }
 
     const thinkingText = locales[language]?.['statusGenerating'] || "Generating...";
     let lastBotMessageId = null; // 봇 응답 메시지의 임시 ID 저장용
     let finalMessageId = null; // 저장 후 실제 ID 저장용 (finally에서 사용)
-    let finalStreamText = ''; // 스트림 완료 후 최종 텍스트 (Flowise용)
+    let finalStreamText = ''; // 스트림 완료 후 최종 텍스트
 
     try {
       // 백엔드 API 호출
@@ -475,15 +575,16 @@ export const createChatSlice = (set, get) => {
          }),
       });
 
-      // API 응답 오류 처리
+      // API 응답 오류 처리 (스트림 여부와 관계없이 공통 처리)
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: `Server error: ${response.statusText}` }));
-        throw new Error(errorData.message || `Server error: ${response.statusText}`);
+        // API 라우트에서 반환한 표준 오류 메시지 사용, 없으면 HTTP 상태 기반 메시지 사용
+        throw new Error(errorData.message || `Server error: ${response.status}`);
       }
 
       // 응답 타입(스트림/JSON)에 따른 처리
       if (response.headers.get("Content-Type")?.includes("text/event-stream")) {
-        // 스트림 응답 처리
+        // --- 스트림 응답 처리 ---
         console.log("[handleResponse] Processing text/event-stream response.");
 
         // '생각중...' 메시지 추가 및 임시 ID 저장
@@ -498,7 +599,7 @@ export const createChatSlice = (set, get) => {
         // Provider에 따라 스트림 처리기 선택
         if (llmProvider === 'gemini') streamProcessor = processGeminiStream(reader, decoder, get);
         else if (llmProvider === 'flowise') streamProcessor = processFlowiseStream(reader, decoder, get);
-        else throw new Error(`Unsupported LLM provider for streaming: ${llmProvider}`);
+        else throw new Error(`Unsupported LLM provider for streaming: ${llmProvider}`); // 지원하지 않는 Provider
 
         // 스트림 결과 처리 루프
         for await (const result of streamProcessor) {
@@ -506,58 +607,85 @@ export const createChatSlice = (set, get) => {
             else if (result.type === 'slots') setExtractedSlots(result.data);
             else if (result.type === 'rawResponse') set({ llmRawResponse: result.data });
             else if (result.type === 'button') updateLastMessage(result.data); // Flowise: 버튼 추가
-            else if (result.type === 'finalText') finalStreamText = result.data; // Flowise: 최종 텍스트
-            else if (result.type === 'error') throw result.data; // 스트림 처리 중 오류
+            else if (result.type === 'finalText') finalStreamText = result.data; // Flowise: 최종 텍스트 수집
+            else if (result.type === 'error') throw result.data; // 스트림 처리 중 오류 발생 시 throw
         }
         // 스트림 정상 종료 -> finally 블록에서 최종 메시지 처리 및 저장
 
-      } else { // JSON 응답 처리
+      } else { // --- JSON 응답 처리 ---
         const data = await response.json();
         set({ llmRawResponse: data }); // 원시 응답 저장 (디버깅용)
+
+        // API 라우트에서 표준 오류 객체 반환 시 처리
+        if (data.type === 'error') {
+            throw new Error(data.message || 'API returned an unknown error.');
+        }
 
         const handler = responseHandlers[data.type]; // 응답 타입에 맞는 핸들러 찾기
         if (handler) {
           handler(data, get); // 핸들러 실행 (내부에서 addMessage 등 호출)
         } else {
           // 기본 LLM 응답 처리
-          if (data.response || data.text) {
-            await addMessage("bot", { text: data.response || data.text }); // 메시지 추가 (내부 오류 처리)
+          const responseText = data.response || data.text || data.message; // 다양한 키 확인
+          if (responseText) {
+            await addMessage("bot", { text: responseText }); // 메시지 추가 (내부 오류 처리)
             if (data.slots) setExtractedSlots(data.slots); // 슬롯 저장
           } else { // 알 수 없는 타입 또는 빈 응답
             console.warn(`[ChatStore] Unhandled non-stream response type or empty response:`, data);
             await addMessage("bot", { text: locales[language]?.['errorUnexpected'] || "(No content)" });
           }
         }
-        set({ isLoading: false }); // JSON 응답은 여기서 로딩 해제
+        // JSON 응답 처리가 완료되었으므로 로딩 상태 해제
+        set({ isLoading: false });
       }
     } catch (error) { // 메인 try 블록의 catch (API 호출, 스트림, JSON 파싱 오류 등)
       console.error("[handleResponse] Error:", error);
-      const errorKey = getErrorKey(error);
-      const errorMessage = locales[language]?.[errorKey] || locales['en']?.errorUnexpected || 'An error occurred.';
+      const errorKey = getErrorKey(error); // 중앙 집중식 오류 키 생성
+      // API 오류 메시지(error.message)와 locales 메시지 중 더 구체적인 것 사용
+      const errorMessage = error.message && !error.message.startsWith('Server error:') // 서버 오류 메시지는 일반 메시지로 대체
+          ? error.message
+          : locales[language]?.[errorKey] || locales['en']?.[errorKey] || 'An error occurred.';
 
       // 오류 발생 시 마지막 메시지 상태 업데이트 (스트리밍 중이었는지 확인)
+      let messageSaved = false;
       set(state => {
           const lastMessageIndex = state.messages.length - 1;
           const lastMessage = state.messages[lastMessageIndex];
+
           // 마지막 메시지가 스트리밍 중이던 '생각중...' 메시지인지 ID로 확인
           if (lastMessage && lastMessage.id === lastBotMessageId && lastMessage.isStreaming) {
               const updatedMessage = { ...lastMessage, text: errorMessage, isStreaming: false };
               // 오류 메시지 저장 시도 (ID는 여전히 임시 ID일 수 있음)
               saveMessage(updatedMessage).then(savedId => {
-                  finalMessageId = savedId; // 저장 후 실제 ID 업데이트 (finally에서 사용)
+                  finalMessageId = savedId; // 저장 후 실제 ID 업데이트 (finally에서 사용될 수 있음)
                   if (savedId && savedId !== lastBotMessageId) {
                       // ID 변경 시 상태 업데이트
-                      set(s => ({ messages: s.messages.map(m => m.id === lastBotMessageId ? { ...updatedMessage, id: savedId } : m) }));
+                      set(s => ({
+                           messages: s.messages.map(m => m.id === lastBotMessageId ? { ...updatedMessage, id: savedId } : m),
+                           isLoading: false // 여기서 로딩 해제
+                        }));
+                      messageSaved = true;
+                  } else if (savedId) { // ID 변경 없어도 저장 성공 시
+                      set(s => ({ isLoading: false })); // 여기서 로딩 해제
+                      messageSaved = true;
                   }
               });
+              // 메시지 배열 업데이트는 즉시 반영
               return { messages: [...state.messages.slice(0, lastMessageIndex), updatedMessage] };
           }
-          // 스트리밍 중 아니었으면 새 오류 메시지 추가
-          addMessage("bot", { text: errorMessage }); // addMessage 내부에서 저장 시도
-          return { isLoading: false }; // 로딩 해제
+
+          // 스트리밍 중 아니었으면 (또는 이미 오류 처리된 경우) 새 오류 메시지 추가
+          // 이 경우는 addMessage 내부에서 saveMessage 호출 및 로딩 상태 처리
+          addMessage("bot", { text: errorMessage });
+          return { isLoading: false }; // 즉시 로딩 해제
       });
 
-    } finally { // 메인 try 블록의 finally (스트림 성공/실패 무관 실행)
+      // saveMessage 비동기 호출 후 로딩 상태 재확인 (혹시 모를 경쟁 상태 방지)
+      if (!messageSaved) {
+          set({ isLoading: false });
+      }
+
+    } finally { // 메인 try 블록의 finally (스트림 성공 종료 시 최종 처리)
       set(state => {
           const lastMessageIndex = state.messages.length - 1;
           const lastMessage = state.messages[lastMessageIndex];
@@ -565,9 +693,9 @@ export const createChatSlice = (set, get) => {
           // 마지막 메시지가 스트리밍 완료 대기 상태인지 확인 (ID 비교 및 isStreaming 플래그)
           // 오류 발생 시 이미 isStreaming=false로 변경되었으므로 이 조건은 정상 종료 시에만 해당
           if (lastMessage && (lastMessage.id === lastBotMessageId || lastMessage.id === finalMessageId) && lastMessage.isStreaming) {
-               // 최종 텍스트 결정
+               // 최종 텍스트 결정 (Flowise는 finalStreamText 사용, Gemini는 lastMessage.text 사용)
                const finalText = (llmProvider === 'flowise' ? finalStreamText : lastMessage.text) || '';
-               // 비어있거나 '생각중...'이면 오류 메시지로 대체
+               // 최종 텍스트가 비어있거나 '생각중...'이면 오류 메시지로 대체
                const finalMessageText = finalText.trim() === '' || finalText.trim() === thinkingText.trim()
                     ? locales[language]?.['errorUnexpected'] || "(No response received)"
                     : finalText;
@@ -580,22 +708,26 @@ export const createChatSlice = (set, get) => {
                     if (savedId && savedId !== lastMessage.id) {
                         // 저장 후 ID 변경 시 상태 업데이트
                          set(s => ({
-                            messages: s.messages.map(m => m.id === lastMessage.id ? { ...finalMessage, id: savedId } : m)
+                            messages: s.messages.map(m => m.id === lastMessage.id ? { ...finalMessage, id: savedId } : m),
+                            isLoading: false // 비동기 완료 후 로딩 해제
                         }));
+                    } else if (savedId) { // ID 변경 없어도 저장 성공 시
+                         set(s => ({ isLoading: false })); // 비동기 완료 후 로딩 해제
                     }
                });
 
+               // 메시지 배열 업데이트는 즉시 반영, 로딩 상태는 비동기 완료 후 해제될 것임
                return {
-                   messages: [...state.messages.slice(0, lastMessageIndex), finalMessage], // 상태에 최종 메시지 반영
-                   isLoading: false // 로딩 최종 해제
+                   messages: [...state.messages.slice(0, lastMessageIndex), finalMessage]
                 };
           }
-          // 스트리밍 아니었거나 이미 오류 처리된 경우 로딩만 해제
-          // isLoading 상태가 위 catch 블록에서 false로 설정되지 않았을 수 있으므로 여기서 확실히 해제
-          return { isLoading: false };
+          // 스트리밍 아니었거나 이미 오류 처리/로딩 해제된 경우 상태 변경 없음
+          // isLoading 상태가 위 catch 블록이나 비동기 saveMessage 콜백에서 false로 설정될 것이므로 여기서 다시 설정하지 않음
+          return {}; // 상태 변경 없음
       });
     } // end finally
   }, // end handleResponse
+  // --- 👆 [수정된 부분 끝] ---
 
  } // end return store object
 }; // end createChatSlice

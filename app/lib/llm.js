@@ -1,9 +1,12 @@
+// app/lib/llm.js
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { locales } from './locales'; // 오류 메시지를 위해 추가
+import { getErrorKey } from './errorHandler'; // 오류 키 생성을 위해 추가
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY);
 
 // JSON 응답 전용 모델
-const model = genAI.getGenerativeModel({ 
+const model = genAI.getGenerativeModel({
     model: "gemini-2.0-flash",
     generationConfig: {
         responseMimeType: "application/json",
@@ -11,7 +14,7 @@ const model = genAI.getGenerativeModel({
 });
 
 // 스트리밍 응답 전용 모델
-const streamingModel = genAI.getGenerativeModel({ 
+const streamingModel = genAI.getGenerativeModel({
     model: "gemini-2.0-flash"
 });
 
@@ -23,16 +26,16 @@ const streamingModel = genAI.getGenerativeModel({
  * @param {Array} shortcuts - 숏컷 목록
  * @param {string} llmProvider - 사용할 LLM ('gemini' or 'flowise')
  * @param {string} flowiseApiUrl - Flowise API URL
- * @returns {Promise<object|ReadableStream>} - Gemini/Flowise 스트림의 경우 ReadableStream, 에러 시 JSON 객체를 반환
+ * @returns {Promise<ReadableStream|object>} - Gemini/Flowise 스트림의 경우 ReadableStream, 에러 시 표준 에러 JSON 객체({ type: 'error', message: '...' })를 반환
  */
 export async function getLlmResponse(prompt, language = 'ko', shortcuts = [], llmProvider, flowiseApiUrl) {
-    // --- 👇 [로그 추가] ---
     console.log(`[getLlmResponse] Provider selected: ${llmProvider}`);
-    // --- 👆 [여기까지] ---
     if (llmProvider === 'flowise') {
-        return getFlowiseStreamingResponse(prompt, flowiseApiUrl);
+        // --- 👇 [수정] getFlowiseStreamingResponse 호출 시 language 전달 ---
+        return getFlowiseStreamingResponse(prompt, flowiseApiUrl, language);
+        // --- 👆 [수정] ---
     }
-    
+
     // Gemini 스트리밍 응답을 기본으로 사용
     return getGeminiStreamingResponse(prompt, language, shortcuts);
 }
@@ -42,67 +45,91 @@ export async function getLlmResponse(prompt, language = 'ko', shortcuts = [], ll
  * Flowise API에 스트리밍 요청을 보내고, 응답 스트림(ReadableStream)을 반환합니다.
  * @param {string} prompt - 사용자 입력 메시지
  * @param {string} apiUrl - Flowise API URL
- * @returns {Promise<ReadableStream|object>} - Flowise의 SSE 스트림 또는 에러 객체
+ * @param {string} language - 오류 메시지 언어 설정용
+ * @returns {Promise<ReadableStream|object>} - Flowise의 SSE 스트림 또는 표준 에러 객체 { type: 'error', message: '...' }
  */
-async function getFlowiseStreamingResponse(prompt, apiUrl) {
-    // --- 👇 [로그 추가] ---
+async function getFlowiseStreamingResponse(prompt, apiUrl, language = 'ko') {
     console.log(`[getFlowiseStreamingResponse] Called with apiUrl: ${apiUrl}`);
-    // --- 👆 [여기까지] ---
+
+    // --- 👇 [수정] URL 부재 시 표준 에러 객체 반환 ---
     if (!apiUrl) {
-        // --- 👇 [로그 추가] ---
         console.error("[getFlowiseStreamingResponse] Error: Flowise API URL is not set.");
-        // --- 👆 [여기까지] ---
+        const message = locales[language]?.['errorServer'] || 'Flowise API URL is not configured.'; // 좀 더 구체적인 메시지
         return {
-            response: "Flowise API URL이 설정되지 않았습니다. 관리자 설정에서 URL을 입력해주세요.",
-            slots: {}
+            type: 'error',
+            message: message
         };
     }
+    // --- 👆 [수정] ---
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30초 타임아웃 설정
 
     try {
         const requestBody = { question: prompt, streaming: true };
-        // --- 👇 [로그 추가] ---
         console.log(`[getFlowiseStreamingResponse] Sending request to Flowise: ${apiUrl}`, requestBody);
-        // --- 👆 [여기까지] ---
+
         const response = await fetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody),
+            signal: controller.signal // 타임아웃 컨트롤러 연결
         });
 
-        // --- 👇 [로그 추가] ---
-        console.log(`[getFlowiseStreamingResponse] Received response status: ${response.status}`);
-        // --- 👆 [여기까지] ---
+        clearTimeout(timeoutId); // 타임아웃 해제
 
+        console.log(`[getFlowiseStreamingResponse] Received response status: ${response.status}`);
+
+        // --- 👇 [수정] HTTP 오류 시 표준 에러 객체 반환 ---
         if (!response.ok) {
-            const errorBody = await response.text();
+            let errorBody = await response.text();
+            try {
+                // Flowise 오류 응답이 JSON 형태일 수 있음
+                const errorJson = JSON.parse(errorBody);
+                errorBody = errorJson.message || errorBody; // JSON 메시지 우선 사용
+            } catch (e) { /* ignore json parse error */ }
             console.error(`[getFlowiseStreamingResponse] Flowise API Error (${response.status}):`, errorBody);
-            throw new Error(`Flowise API request failed with status ${response.status}`);
+            // HTTP 상태 코드 기반 에러 키 생성 시도
+            const errorKey = response.status >= 500 ? 'errorServer' : 'errorUnexpected';
+            const message = locales[language]?.[errorKey] || `Flowise API request failed (Status: ${response.status}).`;
+            return {
+                type: 'error',
+                message: message
+            };
         }
-        
-        // --- 👇 [로그 추가] ---
+        // --- 👆 [수정] ---
+
         console.log("[getFlowiseStreamingResponse] Response OK. Returning response body (stream).");
-        // --- 👆 [여기까지] ---
-        // response.json()을 기다리지 않고 스트림 본문(body)을 즉시 반환
+        // response.body (ReadableStream) 반환
         return response.body;
 
     } catch (error) {
+        clearTimeout(timeoutId); // 오류 발생 시에도 타임아웃 해제
         console.error("[getFlowiseStreamingResponse] API call failed:", error);
-        // 스트림 대신 에러 객체를 반환
+
+        // --- 👇 [수정] fetch 오류(네트워크, 타임아웃 등) 시 표준 에러 객체 반환 ---
+        let errorKey = 'errorUnexpected';
+        if (error.name === 'AbortError') {
+             errorKey = 'errorServer'; // 타임아웃은 서버 문제로 간주
+        } else if (error instanceof TypeError) { // fetch 자체가 실패 (네트워크 등)
+             errorKey = 'errorNetwork';
+        }
+        const message = locales[language]?.[errorKey] || 'Failed to call Flowise API.';
         return {
-            response: "죄송합니다, Flowise API 호출 중 문제가 발생했습니다.",
-            slots: {}
+            type: 'error',
+            message: message
         };
+        // --- 👆 [수정] ---
     }
 }
 
 
+// Gemini 스트리밍 응답 함수 (기존 유지, 오류 시 표준 에러 객체 반환하도록 수정)
 async function getGeminiStreamingResponse(prompt, language = 'ko', shortcuts = []) {
-  // --- 👇 [로그 추가] ---
   console.log(`[getGeminiStreamingResponse] Called.`);
-  // --- 👆 [여기까지] ---
   try {
-    const languageInstruction = language === 'en' 
-        ? "Please construct your 'response' field in English." 
+    const languageInstruction = language === 'en'
+        ? "Please construct your 'response' field in English."
         : "반드시 'response' 필드는 한국어로 작성해주세요.";
 
     const shortcutList = shortcuts.length > 0
@@ -122,31 +149,29 @@ async function getGeminiStreamingResponse(prompt, language = 'ko', shortcuts = [
 **Available Shortcuts**:
 ${shortcutList}
 `;
-    
+
     const fullPrompt = `${systemInstruction}\n\n${languageInstruction}\n\nUser: ${prompt}`;
-    
-    // --- 👇 [로그 추가] ---
+
     console.log("[getGeminiStreamingResponse] Sending request to Gemini...");
-    // --- 👆 [여기까지] ---
     const result = await streamingModel.generateContentStream(fullPrompt);
-    
-    // --- 👇 [로그 추가] ---
+
     console.log("[getGeminiStreamingResponse] Received stream from Gemini. Creating ReadableStream...");
-    // --- 👆 [여기까지] ---
     const stream = new ReadableStream({
       async start(controller) {
-        // --- 👇 [로그 추가] ---
         console.log("[getGeminiStreamingResponse] ReadableStream started. Reading chunks...");
-        // --- 👆 [여기까지] ---
-        for await (const chunk of result.stream) {
-          const chunkText = chunk.text();
-          // console.log("[getGeminiStreamingResponse] Enqueuing chunk:", chunkText); // Chunk 로그는 너무 많을 수 있어 주석 처리
-          controller.enqueue(new TextEncoder().encode(chunkText));
+        try { // 스트림 읽기 오류 처리 추가
+          for await (const chunk of result.stream) {
+            // chunk 유효성 검사 (text() 메서드 존재 여부)
+            const chunkText = chunk && typeof chunk.text === 'function' ? chunk.text() : '';
+            // console.log("[getGeminiStreamingResponse] Enqueuing chunk:", chunkText); // Chunk 로그는 너무 많을 수 있어 주석 처리
+            controller.enqueue(new TextEncoder().encode(chunkText));
+          }
+          console.log("[getGeminiStreamingResponse] Finished reading chunks. Closing controller.");
+          controller.close();
+        } catch (streamReadError) {
+             console.error("[getGeminiStreamingResponse] Error reading stream:", streamReadError);
+             controller.error(streamReadError); // 스트림에 오류 전파
         }
-        // --- 👇 [로그 추가] ---
-        console.log("[getGeminiStreamingResponse] Finished reading chunks. Closing controller.");
-        // --- 👆 [여기까지] ---
-        controller.close();
       }
     });
 
@@ -154,10 +179,15 @@ ${shortcutList}
 
   } catch (error) {
     console.error("[getGeminiStreamingResponse] Gemini API Error:", error);
-    // 스트리밍 API 실패 시, JSON 객체로 에러 응답 반환
+    // --- 👇 [수정] Gemini API 오류 시 표준 에러 객체 반환 ---
+    const errorKey = getErrorKey(error); // 오류 키 생성
+    const message = locales[language]?.[errorKey] || 'Failed to call Gemini API.';
     return {
-        response: "죄송합니다, 답변을 생성하는 데 문제가 발생했습니다.",
-        slots: {}
+        type: 'error',
+        message: message
     };
+    // --- 👆 [수정] ---
   }
 }
+
+// getGeminiResponseWithSlots 함수는 스트리밍 로직과 직접 관련 없으므로 수정 생략 (필요 시 별도 요청)
