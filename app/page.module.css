@@ -44,7 +44,7 @@
   width: 0; /* 초기 상태: 너비 0 */
   height: calc(100% - 32px);
   background-color: rgba(255, 255, 255, 0.64);
-  margin: 16px;
+  margin: 16px 16px 16px 0;
   border-radius: 16px;
   background: var(--White-Opacity-64, rgba(255, 255, 255, 0.64));
   /* Shadow_Glass/Light/Shadow_Glass 01 */
@@ -62,6 +62,11 @@
   width: 784px;
   /* transform: translateX(0); 제거 */
 }
+
+.scenarioPanelExpanded {
+  width: 1064px;
+}
+
 /* --- 👆 [수정] --- */
 
 /* 기존 스타일 유지 */

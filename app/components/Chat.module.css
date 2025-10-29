@@ -21,7 +21,7 @@
 .headerContent {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   flex-grow: 1;
 }
 
@@ -39,6 +39,14 @@
 .headerTitle {
   font-weight: bold;
   font-size: 16px;
+  color: var(--text-color); /* Themed */
+  line-height: 1.2;
+  flex-grow: 1;
+}
+
+.scenarioHeaderTitle {
+  font-weight: bold;
+  font-size: 14px;
   color: var(--text-color); /* Themed */
   line-height: 1.2;
   flex-grow: 1;
@@ -81,6 +89,14 @@
 
 .headerCloseButton:hover {
   background-color: var(--button-hover-bg);
+}
+
+.headerExpandButton svg {
+  transition: transform 0.2s ease-in-out;
+}
+
+.headerExpandButtonActive svg {
+  transform: rotate(180deg);
 }
 
 .headerRestartButton:hover {
@@ -194,6 +210,7 @@ input:checked + .slider:before {
   flex-direction: column;
   gap: 16px;
   width: 100%;
+  min-width: 480px;
   box-sizing: border-box;
   margin-left: auto;
   margin-right: auto;
@@ -262,8 +279,13 @@ input:checked + .slider:before {
   position: relative;
 }
 
-.gridMessage {
-  max-width: 100%;
+.gridMessage,
+.iframeMessage {
+  width: 90%;
+  max-width: 90%;
+  min-width: 248px;
+  flex: 0 0 90%;
+  box-sizing: border-box;
 }
 
 .botMessage .messageContentWrapper {
@@ -578,19 +600,14 @@ input:checked + .slider:before {
 .iframeContainer {
   padding: 0;
   background-color: transparent;
-  width: 100%;
   /* max-width: 450px; 제거 */
   /* aspect-ratio: 16 / 10; 제거 */
   overflow: hidden; /* 추가: 내용이 넘칠 경우 숨김 */
-  display: flex; /* 추가: iframe 정렬 */
-  justify-content: center; /* 추가: iframe 가운데 정렬 (선택 사항) */
-  align-items: center; /* 추가: iframe 가운데 정렬 (선택 사항) */
 }
 /* --- 👆 [여기까지] --- */
 
 .iframeContainer iframe {
   display: block; /* 기본 스타일 유지 */
-  max-width: 100%; /* 추가: 컨테이너 너비를 넘지 않도록 */
 }
 
 @keyframes wobble {
@@ -709,8 +726,8 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
 .scenarioBubbleContainer {
   display: flex;
   flex-direction: column;
-  width: 100%;
-  max-width: 75%;
+  width: 496;
+  max-width: 496px;
   /* --- 👇 [수정] 높이 고정 및 max-height 제거 --- */
   height: 48px; /* 헤더 높이와 동일하게 고정 */
   /* max-height: 500px; 제거 */

@@ -10,6 +10,7 @@ import ArrowDropDownIcon from "./icons/ArrowDropDownIcon";
 import CheckCircle from "./icons/CheckCircle";
 import OpenInNewIcon from "./icons/OpenInNew";
 import CloseIcon from "./icons/CloseIcon";
+import ScenarioExpandIcon from "./icons/ScenarioExpandIcon";
 // ChevronDownIcon은 버블에서만 사용하므로 여기서는 필요 없을 수 있음
 // import ChevronDownIcon from "./icons/ChevronDownIcon";
 
@@ -483,6 +484,8 @@ export default function ScenarioChat() {
     endScenario,
     setActivePanel,
     setScenarioSelectedOption,
+    isScenarioPanelExpanded,
+    toggleScenarioPanelExpanded,
   } = useChatStore();
   const { t, language } = useTranslations();
 
@@ -612,13 +615,34 @@ export default function ScenarioChat() {
               {t("cancel")}
             </button>
           )}
+          <button
+            className={`${styles.headerCloseButton} ${
+              styles.headerExpandButton
+            } ${
+              isScenarioPanelExpanded ? styles.headerExpandButtonActive : ""
+            }`}
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleScenarioPanelExpanded();
+            }}
+            aria-pressed={isScenarioPanelExpanded}
+          >
+            <ScenarioExpandIcon />
+          </button>
 
           {/* --- 👇 [수정] "숨기기" 버튼 클릭 시 setActivePanel('main') 호출 --- */}
           <button
             className={styles.headerCloseButton}
             onClick={(e) => {
               e.stopPropagation();
+              const widthToSend = isScenarioPanelExpanded ? -1064 : -784;
               setActivePanel("main"); // 메인 패널로 전환 (포커스 이동 포함)
+              console.log("call postMessage to parent window");
+              const msg = {
+                action: "callChatbotResize",
+                payload: { width: widthToSend },
+              };
+              window.parent.postMessage(msg, PARENT_ORIGIN);
             }}
           >
             <CloseIcon />
@@ -646,7 +670,7 @@ export default function ScenarioChat() {
                   msg.node?.data?.elements?.some((el) => el.type === "grid")
                     ? styles.gridMessage
                     : ""
-                }`}
+                } ${msg.node?.type === "iframe" ? styles.iframeMessage : ""}`}
               >
                 <div
                   className={
@@ -677,7 +701,7 @@ export default function ScenarioChat() {
                             msg.node.data.url,
                             activeScenario.slots
                           )}
-                          width={msg.node.data.width || "100%"}
+                          width={msg.node.data.width || "604px"}
                           height={msg.node.data.height || "250"}
                           style={{ border: "none", borderRadius: "8px" }}
                           title="chatbot-iframe"

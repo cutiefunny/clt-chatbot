@@ -509,6 +509,11 @@ export default function ScenarioBubble({ scenarioSessionId }) {
       }
       return;
     }
+
+    console.log("call postMessage to parent window");
+    const msg = { action: "callChatbotResize", payload: { width: 784 } };
+    window.parent.postMessage(msg, PARENT_ORIGIN);
+
     e.stopPropagation();
     setActivePanel("scenario", scenarioSessionId);
   };
@@ -530,7 +535,13 @@ export default function ScenarioBubble({ scenarioSessionId }) {
       >
         <div className={styles.header} style={{ cursor: "pointer" }}>
           <div className={styles.headerContent}>
-            <span className={styles.headerTitle}>
+            <ScenarioStatusBadge
+              status={activeScenario?.status}
+              t={t}
+              isSelected={isFocused}
+            />
+
+            <span className={styles.scenarioHeaderTitle}>
               {/* --- 👇 [수정] interpolateMessage 함수 사용 --- */}
               {t("scenarioTitle")(
                 interpolateMessage(
@@ -542,12 +553,10 @@ export default function ScenarioBubble({ scenarioSessionId }) {
             </span>
           </div>
           <div className={styles.headerButtons}>
-            <ScenarioStatusBadge
-              status={activeScenario?.status}
-              t={t}
-              isSelected={isFocused}
-            />
-            {!isCompleted && (
+            <div style={{ rotate: "270deg" }}>
+              <ChevronDownIcon />
+            </div>
+            {/* {!isCompleted && (
               <button
                 className={`${styles.headerRestartButton}`}
                 onClick={(e) => {
@@ -557,7 +566,7 @@ export default function ScenarioBubble({ scenarioSessionId }) {
               >
                 {t("cancel")}
               </button>
-            )}
+            )} */}
           </div>
         </div>
       </div>
