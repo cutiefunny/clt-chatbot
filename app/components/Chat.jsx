@@ -116,16 +116,14 @@ const MessageWithButtons = ({ text, messageId, isStreaming }) => {
     }
     // 남은 텍스트 추가 (빈 문자열일 수도 있음)
     parts.push({ type: "text", content: text.substring(lastIndex) });
-
   } else {
     // 텍스트가 문자열이 아닌 경우 (예: 오류 객체 등), 문자열로 변환하여 표시
-     try {
-       parts.push({ type: "text", content: JSON.stringify(text) });
-     } catch (e) {
-       parts.push({ type: "text", content: String(text) });
-     }
+    try {
+      parts.push({ type: "text", content: JSON.stringify(text) });
+    } catch (e) {
+      parts.push({ type: "text", content: String(text) });
+    }
   }
-
 
   return (
     <div>
@@ -165,13 +163,17 @@ const MessageWithButtons = ({ text, messageId, isStreaming }) => {
         <img
           src="/images/Loading.gif"
           alt="Loading..."
-          style={{ width: "60px", height: "45px", marginLeft: "8px", verticalAlign: "middle" }}
+          style={{
+            width: "60px",
+            height: "45px",
+            marginLeft: "8px",
+            verticalAlign: "middle",
+          }}
         />
       )}
     </div>
   );
 };
-
 
 export default function Chat() {
   const {
@@ -234,7 +236,8 @@ export default function Chat() {
   useEffect(() => {
     if (forceScrollToBottom && historyRef.current) {
       const scrollContainer = historyRef.current;
-      setTimeout(() => { // DOM 업데이트 후 스크롤 실행 보장
+      setTimeout(() => {
+        // DOM 업데이트 후 스크롤 실행 보장
         scrollContainer.scrollTop = scrollContainer.scrollHeight;
         setForceScrollToBottom(false);
         wasAtBottomRef.current = true; // 강제 스크롤 후엔 맨 아래에 있는 것으로 간주
@@ -264,20 +267,21 @@ export default function Chat() {
     };
   }, [handleScroll, updateWasAtBottom]);
 
-   useEffect(() => {
+  useEffect(() => {
     const scrollContainer = historyRef.current;
     if (!scrollContainer) return;
     const lastMessage = messages[messages.length - 1];
     // 사용자가 입력했거나, 맨 아래에 있었을 경우 자동 스크롤
-    const shouldAutoScroll = lastMessage?.sender === 'user' || wasAtBottomRef.current;
+    const shouldAutoScroll =
+      lastMessage?.sender === "user" || wasAtBottomRef.current;
     if (!shouldAutoScroll) return;
 
     // requestAnimationFrame 사용하여 다음 렌더링 프레임에서 스크롤 실행
     requestAnimationFrame(() => {
-        if (scrollContainer) {
-            scrollContainer.scrollTop = scrollContainer.scrollHeight;
-            wasAtBottomRef.current = true; // 자동 스크롤 후엔 맨 아래에 있는 것으로 간주
-        }
+      if (scrollContainer) {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+        wasAtBottomRef.current = true; // 자동 스크롤 후엔 맨 아래에 있는 것으로 간주
+      }
     });
   }, [messages]); // messages 배열이 변경될 때마다 실행
 
@@ -295,8 +299,10 @@ export default function Chat() {
         }, 800); // 애니메이션 시간과 일치
         setScrollToMessageId(null); // 처리 후 초기화
       } else {
-          console.warn(`Element with data-message-id="${scrollToMessageId}" not found in main chat.`);
-          setScrollToMessageId(null); // 못 찾았어도 초기화
+        console.warn(
+          `Element with data-message-id="${scrollToMessageId}" not found in main chat.`
+        );
+        setScrollToMessageId(null); // 못 찾았어도 초기화
       }
     }
   }, [scrollToMessageId, messages, setScrollToMessageId]); // messages도 의존성에 추가
@@ -314,25 +320,41 @@ export default function Chat() {
       if (withinHistory) return;
 
       // history 영역 스크롤
-      scrollTarget.scrollBy({ top: event.deltaY, left: event.deltaX, behavior: "auto" });
+      scrollTarget.scrollBy({
+        top: event.deltaY,
+        left: event.deltaX,
+        behavior: "auto",
+      });
       updateWasAtBottom(); // 스크롤 후 위치 업데이트
       event.preventDefault(); // 기본 스크롤 동작 방지
     };
 
-    container.addEventListener("wheel", handleWheelOutsideHistory, { passive: false });
-    return () => { container.removeEventListener("wheel", handleWheelOutsideHistory); };
+    container.addEventListener("wheel", handleWheelOutsideHistory, {
+      passive: false,
+    });
+    return () => {
+      container.removeEventListener("wheel", handleWheelOutsideHistory);
+    };
   }, [updateWasAtBottom]); // 의존성 배열 업데이트
 
   // 텍스트 복사 핸들러
   const handleCopy = (text, id) => {
     let textToCopy = text;
     // 객체면 JSON 문자열로 변환 시도
-    if (typeof text === 'object' && text !== null) {
-      try { textToCopy = JSON.stringify(text, null, 2); }
-      catch (e) { console.error("Failed to stringify object for copying:", e); return; }
+    if (typeof text === "object" && text !== null) {
+      try {
+        textToCopy = JSON.stringify(text, null, 2);
+      } catch (e) {
+        console.error("Failed to stringify object for copying:", e);
+        return;
+      }
     }
     // 복사할 텍스트 없으면 중단
-    if (!textToCopy || (typeof textToCopy === 'string' && textToCopy.trim() === '')) return;
+    if (
+      !textToCopy ||
+      (typeof textToCopy === "string" && textToCopy.trim() === "")
+    )
+      return;
 
     navigator.clipboard.writeText(textToCopy).then(() => {
       setCopiedMessageId(id);
@@ -346,27 +368,38 @@ export default function Chat() {
   return (
     <div className={styles.chatContainer} ref={containerRef}>
       <div className={styles.header}>
-         <div className={styles.headerButtons}>
-           {/* 테마 및 폰트 크기 버튼 (현재 숨김 처리됨) */}
-           <div className={styles.settingControl} style={{ display: 'none' }}>
-             <span className={styles.settingLabel}>Large text</span>
-             <label className={styles.switch}>
-               <input type="checkbox" checked={fontSize === "default"} onChange={() => setFontSize(fontSize === "default" ? "small" : "default")} />
-               <span className={styles.slider}></span>
-             </label>
-           </div>
-           <div className={styles.separator} style={{ display: 'none' }}></div>
-           <div style={{ display: 'none' }}>
-             <button className={styles.themeToggleButton} onClick={() => setTheme(theme === "light" ? "dark" : "light")}>
-               <MoonIcon />
-             </button>
-           </div>
+        <div className={styles.headerButtons}>
+          {/* 테마 및 폰트 크기 버튼 (현재 숨김 처리됨) */}
+          <div className={styles.settingControl} style={{ display: "none" }}>
+            <span className={styles.settingLabel}>Large text</span>
+            <label className={styles.switch}>
+              <input
+                type="checkbox"
+                checked={fontSize === "default"}
+                onChange={() =>
+                  setFontSize(fontSize === "default" ? "small" : "default")
+                }
+              />
+              <span className={styles.slider}></span>
+            </label>
+          </div>
+          <div className={styles.separator} style={{ display: "none" }}></div>
+          <div style={{ display: "none" }}>
+            <button
+              className={styles.themeToggleButton}
+              onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+            >
+              <MoonIcon />
+            </button>
+          </div>
         </div>
       </div>
 
       <div
         className={`${styles.history} ${
-          activePanel === "scenario" && dimUnfocusedPanels ? styles.mainChatDimmed : ""
+          activePanel === "scenario" && dimUnfocusedPanels
+            ? styles.mainChatDimmed
+            : ""
         }`}
         ref={historyRef}
       >
@@ -383,7 +416,7 @@ export default function Chat() {
                     <div className={styles.messageContent}>
                       <img
                         src="/images/Loading.gif"
-                        alt={("loading")}
+                        alt={"loading"}
                         style={{ width: "60px", height: "45px" }}
                       />
                     </div>
@@ -392,7 +425,8 @@ export default function Chat() {
               </div>
             )}
             {/* 메시지 목록 렌더링 */}
-            {messages.map((msg, index) => { // index 추가
+            {messages.map((msg, index) => {
+              // index 추가
               if (msg.id === "initial") return null; // 초기 메시지 건너뛰기
 
               // 시나리오 버블 메시지 처리
@@ -407,7 +441,52 @@ export default function Chat() {
                 // 일반 메시지 렌더링
                 const selectedOption = selectedOptions[msg.id];
                 // 마지막 메시지이고, 봇 메시지이며, 스트리밍 중인지 확인
-                const isStreaming = index === messages.length - 1 && msg.sender === 'bot' && msg.isStreaming === true;
+                const isStreaming =
+                  index === messages.length - 1 &&
+                  msg.sender === "bot" &&
+                  msg.isStreaming === true;
+                const isBotMessage = msg.sender === "bot";
+                const hasRichContent =
+                  isBotMessage &&
+                  ((Array.isArray(msg.scenarios) && msg.scenarios.length > 0) ||
+                    msg.hasRichContent === true ||
+                    msg.contentLayout === "rich" ||
+                    msg.containsRichContent === true ||
+                    msg.type === "rich_content" ||
+                    (Array.isArray(msg.contentBlocks) &&
+                      msg.contentBlocks.length > 0) ||
+                    (Array.isArray(msg.attachments) &&
+                      msg.attachments.length > 0));
+                const richContentMinWidthRaw =
+                  msg.minWidth ??
+                  msg.contentMinWidth ??
+                  msg.richContentMinWidth;
+                const shouldApplyMinWidth =
+                  richContentMinWidthRaw !== null &&
+                  richContentMinWidthRaw !== undefined &&
+                  richContentMinWidthRaw !== "";
+                const resolvedMinWidth = shouldApplyMinWidth
+                  ? typeof richContentMinWidthRaw === "number"
+                    ? `${richContentMinWidthRaw}px`
+                    : richContentMinWidthRaw
+                  : undefined;
+                const messageClassName = [
+                  "GlassEffect",
+                  styles.message,
+                  isBotMessage ? styles.botMessage : styles.userMessage,
+                  isBotMessage && hasRichContent
+                    ? styles.botMessageRichContent
+                    : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ");
+                const messageInlineStyle =
+                  isBotMessage &&
+                  hasRichContent &&
+                  shouldApplyMinWidth &&
+                  resolvedMinWidth
+                    ? { minWidth: resolvedMinWidth }
+                    : undefined;
                 return (
                   <div
                     key={msg.id}
@@ -417,11 +496,8 @@ export default function Chat() {
                     data-message-id={msg.id} // 스크롤 타겟을 위한 ID
                   >
                     <div
-                      className={`GlassEffect ${styles.message} ${
-                        msg.sender === "bot"
-                          ? styles.botMessage
-                          : styles.userMessage
-                      } `}
+                      className={messageClassName}
+                      style={messageInlineStyle}
                     >
                       {/* 복사 완료 피드백 */}
                       {copiedMessageId === msg.id && (
@@ -436,9 +512,9 @@ export default function Chat() {
                             messageId={msg.id}
                             isStreaming={isStreaming}
                           />
-                           {/* 시나리오 목록 버튼 (봇 메시지이고 scenarios 있을 때) */}
-                           {msg.sender === "bot" && msg.scenarios && (
-                             <div className={styles.scenarioList}>
+                          {/* 시나리오 목록 버튼 (봇 메시지이고 scenarios 있을 때) */}
+                          {msg.sender === "bot" && msg.scenarios && (
+                            <div className={styles.scenarioList}>
                               {msg.scenarios.map((name) => {
                                 const isSelected = selectedOption === name;
                                 const isDimmed = selectedOption && !isSelected;
@@ -492,7 +568,7 @@ export default function Chat() {
                     <div className={styles.messageContent}>
                       <img
                         src="/images/Loading.gif"
-                        alt={("loading")}
+                        alt={"loading"}
                         style={{ width: "60px", height: "45px" }}
                       />
                     </div>
