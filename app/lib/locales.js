@@ -13,6 +13,7 @@ export const locales = {
     errorNetwork: "네트워크 연결을 확인해주세요. 인터넷이 불안정한 것 같아요.",
     errorServer:
       "서버에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요.",
+    errorLLMFail: "응답에 문제가 발생했습니다. 잠시 후 다시 시도해주세요.",
     errorUnexpected: "예상치 못한 오류가 발생했습니다. 다시 시도해주세요.",
 
     // Validation Messages
@@ -148,6 +149,7 @@ export const locales = {
     // Error Messages
     errorNetwork: "Network error. Please check your internet connection.",
     errorServer: "There was a problem with the server. Please try again later.",
+    errorLLMFail: "There was a problem with the response. Please try again later.",
     errorUnexpected: "An unexpected error occurred. Please try again.",
 
     // Validation Messages
