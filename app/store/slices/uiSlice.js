@@ -219,7 +219,7 @@ export const createUISlice = (set, get) => ({
       console.log("calling history panel close");
       window.parent.postMessage(
         {
-          action: "callHistoryPanelClose",
+          action: "callChatbotResize",
           payload: {
             width: -264,
           },
@@ -230,7 +230,7 @@ export const createUISlice = (set, get) => ({
       console.log("calling history panel open");
       window.parent.postMessage(
         {
-          action: "callHistoryPanelOpen",
+          action: "callChatbotResize",
           payload: {
             width: 264,
           },

@@ -41,6 +41,7 @@
   font-size: 16px;
   color: var(--text-color); /* Themed */
   line-height: 1.2;
+  flex-grow: 1;
 }
 
 .headerSubtitle {
@@ -68,6 +69,18 @@
   border-radius: 8px;
   border: 1px solid var(--Gray-04, #babcd1);
   background: var(--White-Opacity-48, rgba(255, 255, 255, 0.48));
+}
+
+.headerCloseButton {
+  padding: 5px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  border-radius: 100px;
+  background: transparent;
+}
+
+.headerCloseButton:hover {
+  background-color: var(--button-hover-bg);
 }
 
 .headerRestartButton:hover {
@@ -466,6 +479,12 @@ input:checked + .slider:before {
   padding: 12px 20px;
 }
 
+.formActionArea {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0px 20px 12px 20px;
+}
+
 .formLabel {
   color: var(--Gray-05, #8d9eba);
   font-size: 12px;
@@ -645,6 +664,16 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
   background-color: #555;
 }
 
+.scenarioHeader {
+  border-bottom: 1px solid var(--panel-border-color);
+  padding: 10px 15px;
+  background-color: transparent;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-shrink: 0;
+}
+
 .scenarioBubbleContainer {
   display: flex;
   flex-direction: column;
@@ -705,7 +734,6 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
   pointer-events: none;
 }
 --- 👆 [삭제] --- */
-
 
 .scenarioBubbleContainer.dimmed {
   opacity: 0.4;
