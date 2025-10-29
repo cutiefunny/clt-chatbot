@@ -203,7 +203,7 @@ export default function ConversationItem({
     <div className={styles.conversationItemWrapper}>
       <div
         className={`${styles.conversationItem} ${
-          isActive ? styles.active : ""
+          isExpanded ? styles.active : ""
         }`}
         onClick={() => {
           if (isEditing) return;

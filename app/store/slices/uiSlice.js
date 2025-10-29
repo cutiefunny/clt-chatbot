@@ -31,6 +31,7 @@ export const createUISlice = (set, get) => ({
   isNotificationModalOpen: false,
   isManualModalOpen: false,
   isHistoryPanelOpen: false,
+  isScenarioPanelExpanded: false,
   confirmModal: {
     isOpen: false,
     title: "",
@@ -219,9 +220,9 @@ export const createUISlice = (set, get) => ({
       console.log("calling history panel close");
       window.parent.postMessage(
         {
-          action: "callHistoryPanelClose",
+          action: "callChatbotResize",
           payload: {
-            expanded: false,
+            width: -264,
           },
         },
         PARENT_ORIGIN
@@ -230,9 +231,9 @@ export const createUISlice = (set, get) => ({
       console.log("calling history panel open");
       window.parent.postMessage(
         {
-          action: "callHistoryPanelOpen",
+          action: "callChatbotResize",
           payload: {
-            expanded: true,
+            width: 264,
           },
         },
         PARENT_ORIGIN
@@ -240,18 +241,43 @@ export const createUISlice = (set, get) => ({
     }
   },
 
+  toggleScenarioPanelExpanded: () => {
+    if (get().activePanel !== "scenario") return;
+    const wasExpanded = get().isScenarioPanelExpanded;
+    const widthDelta = wasExpanded ? -280 : 280;
+    window.parent.postMessage(
+      {
+        action: "callChatbotResize",
+        payload: {
+          width: widthDelta,
+        },
+      },
+      PARENT_ORIGIN
+    );
+    set({ isScenarioPanelExpanded: !wasExpanded });
+  },
+
+  resetScenarioPanelExpansion: () => set({ isScenarioPanelExpanded: false }),
+
   // --- 👇 [수정된 부분 시작]: setActivePanel 수정 ---
   setActivePanel: (panel, sessionId = null) => {
+    const wasScenarioPanelActive = get().activePanel === "scenario";
+    const wasExpanded = get().isScenarioPanelExpanded;
     if (panel === "scenario") {
       // 시나리오 패널 활성화 시, active 및 lastFocused 모두 업데이트
       set({
         activePanel: panel,
         activeScenarioSessionId: sessionId,
         lastFocusedScenarioSessionId: sessionId,
+        isScenarioPanelExpanded: wasScenarioPanelActive ? wasExpanded : false,
       });
     } else {
       // 메인 패널 활성화 시, active만 업데이트하고 lastFocused는 유지
-      set({ activePanel: "main", activeScenarioSessionId: null });
+      set({
+        activePanel: "main",
+        activeScenarioSessionId: null,
+        isScenarioPanelExpanded: false,
+      });
     }
     get().focusChatInput();
   },

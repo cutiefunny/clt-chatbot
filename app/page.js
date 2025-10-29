@@ -21,6 +21,7 @@ export default function HomePage() {
     closeConfirmModal,
     isDevMode,
     activePanel, // activePanel 상태 가져오기
+    isScenarioPanelExpanded,
   } = useChatStore();
 
   const handleConfirm = () => {
@@ -33,6 +34,14 @@ export default function HomePage() {
   // --- 👇 [수정] 히스토리 패널 너비 계산 로직 분리 ---
   const historyPanelWidth = isHistoryPanelOpen ? "320px" : "60px";
   // --- 👆 [수정] ---
+
+  const scenarioPanelClasses = [styles.scenarioPanel];
+  if (activePanel === "scenario") {
+    scenarioPanelClasses.push(styles.scenarioPanelOpen);
+    if (isScenarioPanelExpanded) {
+      scenarioPanelClasses.push(styles.scenarioPanelExpanded);
+    }
+  }
 
   return (
     <main className={styles.main}>
@@ -56,11 +65,7 @@ export default function HomePage() {
               <ChatInput />
             </div>
             {/* 시나리오 패널 영역 */}
-            <div
-              className={`${styles.scenarioPanel} ${
-                activePanel === "scenario" ? styles.scenarioPanelOpen : "" // 열림/닫힘 클래스 제어
-              }`}
-            >
+            <div className={scenarioPanelClasses.join(" ")}>
               {/* ScenarioChat 컴포넌트를 여기에 렌더링 */}
               {activePanel === "scenario" && <ScenarioChat />}
             </div>

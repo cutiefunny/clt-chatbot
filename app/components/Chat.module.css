@@ -21,7 +21,7 @@
 .headerContent {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   flex-grow: 1;
 }
 
@@ -41,6 +41,15 @@
   font-size: 16px;
   color: var(--text-color); /* Themed */
   line-height: 1.2;
+  flex-grow: 1;
+}
+
+.scenarioHeaderTitle {
+  font-weight: bold;
+  font-size: 14px;
+  color: var(--text-color); /* Themed */
+  line-height: 1.2;
+  flex-grow: 1;
 }
 
 .headerSubtitle {
@@ -68,6 +77,26 @@
   border-radius: 8px;
   border: 1px solid var(--Gray-04, #babcd1);
   background: var(--White-Opacity-48, rgba(255, 255, 255, 0.48));
+}
+
+.headerCloseButton {
+  padding: 5px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  border-radius: 100px;
+  background: transparent;
+}
+
+.headerCloseButton:hover {
+  background-color: var(--button-hover-bg);
+}
+
+.headerExpandButton svg {
+  transition: transform 0.2s ease-in-out;
+}
+
+.headerExpandButtonActive svg {
+  transform: rotate(180deg);
 }
 
 .headerRestartButton:hover {
@@ -181,6 +210,7 @@ input:checked + .slider:before {
   flex-direction: column;
   gap: 16px;
   width: 100%;
+  min-width: 480px;
   box-sizing: border-box;
   margin-left: auto;
   margin-right: auto;
@@ -239,6 +269,7 @@ input:checked + .slider:before {
 
 .message {
   border-radius: 16px;
+  width: fit-content;
   max-width: 70%;
   word-wrap: break-word;
   line-height: 1.4;
@@ -248,8 +279,13 @@ input:checked + .slider:before {
   position: relative;
 }
 
-.gridMessage {
-  max-width: 100%;
+.gridMessage,
+.iframeMessage {
+  width: 90%;
+  max-width: 90%;
+  min-width: 248px;
+  flex: 0 0 90%;
+  box-sizing: border-box;
 }
 
 .botMessage .messageContentWrapper {
@@ -281,6 +317,18 @@ input:checked + .slider:before {
 .botMessage {
   color: var(--text-color); /* Themed */
   transition: background-color 0.2s;
+}
+
+.botMessageRichContent {
+  width: 90%;
+  max-width: 90%;
+  flex: 0 0 90%;
+  min-width: var(--bot-rich-content-min-width, 0);
+}
+
+.botMessageRichContent .messageContentWrapper,
+.botMessageRichContent .messageContent {
+  width: 100%;
 }
 
 .botMessage svg {
@@ -363,12 +411,13 @@ input:checked + .slider:before {
 }
 
 .scenarioList {
+  --option-button-min-width: 160px;
   margin-top: 10px;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  @media (max-width: 1024px) {
-    grid-template-columns: 1fr;
-  }
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(var(--option-button-min-width, 160px), 1fr)
+  );
   gap: 8px;
 }
 
@@ -377,6 +426,8 @@ input:checked + .slider:before {
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+  min-width: var(--option-button-min-width, 160px);
+  width: 100%;
   padding: 12px 16px 12px 24px;
   border-radius: 12px;
   border: 1px solid var(--panel-border-color); /* Themed */
@@ -390,6 +441,8 @@ input:checked + .slider:before {
   transition: background-color 0.2s, border-color 0.2s;
   white-space: nowrap;
   text-align: center; /* 버튼 텍스트 중앙 정렬 */
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .optionButton svg {
@@ -400,6 +453,9 @@ input:checked + .slider:before {
 .optionButtonText {
   flex-grow: 1;
   text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .optionButton:hover {
@@ -464,6 +520,12 @@ input:checked + .slider:before {
   flex-direction: column;
   gap: 5px;
   padding: 12px 20px;
+}
+
+.formActionArea {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0px 20px 12px 20px;
 }
 
 .formLabel {
@@ -538,19 +600,14 @@ input:checked + .slider:before {
 .iframeContainer {
   padding: 0;
   background-color: transparent;
-  width: 100%;
   /* max-width: 450px; 제거 */
   /* aspect-ratio: 16 / 10; 제거 */
   overflow: hidden; /* 추가: 내용이 넘칠 경우 숨김 */
-  display: flex; /* 추가: iframe 정렬 */
-  justify-content: center; /* 추가: iframe 가운데 정렬 (선택 사항) */
-  align-items: center; /* 추가: iframe 가운데 정렬 (선택 사항) */
 }
 /* --- 👆 [여기까지] --- */
 
 .iframeContainer iframe {
   display: block; /* 기본 스타일 유지 */
-  max-width: 100%; /* 추가: 컨테이너 너비를 넘지 않도록 */
 }
 
 @keyframes wobble {
@@ -645,17 +702,43 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
   background-color: #555;
 }
 
+.scenarioChatContainer {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background-color: transparent;
+}
+
+.scenarioChatContainer .history {
+  min-width: 0;
+  max-width: none;
+  width: 100%;
+}
+
+.scenarioHeader {
+  border-bottom: 1px solid var(--panel-border-color);
+  padding: 10px 15px;
+  background-color: transparent;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-shrink: 0;
+}
+
 .scenarioBubbleContainer {
   display: flex;
   flex-direction: column;
-  width: 100%;
-  max-width: 75%;
+  width: 496;
+  max-width: 496px;
   /* --- 👇 [수정] 높이 고정 및 max-height 제거 --- */
   height: 48px; /* 헤더 높이와 동일하게 고정 */
   /* max-height: 500px; 제거 */
   /* --- 👆 [수정] --- */
-  border-radius: 18px;
-  border-top-right-radius: 4px;
+  border-radius: 16px;
   overflow: hidden;
   /* --- 👇 [수정] height 관련 transition 제거 --- */
   transition: opacity 0.4s ease-out, border-color 0.2s ease-out;
@@ -705,7 +788,6 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
   pointer-events: none;
 }
 --- 👆 [삭제] --- */
-
 
 .scenarioBubbleContainer.dimmed {
   opacity: 0.4;
