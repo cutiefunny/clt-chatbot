@@ -141,7 +141,17 @@ export const createNotificationSlice = (set, get) => ({
           get().showToast(event.message, event.toastType, scenarioSessionId, conversationId);
         } else if (event.type === 'open_link' && event.url) { // 'open_link' 이벤트 처리 추가
           if (typeof window !== 'undefined') {
-            window.open(event.url, '_blank', 'noopener,noreferrer');
+            // window.open(event.url, '_blank', 'noopener,noreferrer');
+            //  --- 👇 [수정] hyh - link slot 새창이 아닌 현재창 링크 변경 ---
+            const PARENT_ORIGIN = "http://172.20.130.91:9110";
+            try {
+              if (!window.parent) throw new Error('not parent window.');
+              const msg = { action: 'callScreenOpen', payload: { url: event.url } };
+              window.parent.postMessage(msg, PARENT_ORIGIN);
+            } catch (err) {
+              console.error('link faild:', err);
+            }
+            // --- 👆 [수정] ---
             console.log(`[handleEvents] Opened link: ${event.url}`);
           } else {
              console.warn("[handleEvents] Cannot open link: window object not available.");
