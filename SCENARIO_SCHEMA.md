@@ -2,7 +2,7 @@
 
 This document defines the structure of the JSON data used for chatbot scenarios.
 
-**Last Updated:** 2025-10-28
+**Last Updated:** 2025-10-29
 **Current Version:** "1.0"
 
 ## Root Structure
@@ -15,6 +15,9 @@ The root object of a scenario JSON contains the following properties:
   "id": "string",       // Scenario ID (usually matches the document/file name)
   "name": "string",     // Scenario display name
   "job": "string",      // Scenario job type ("Batch", "Process", "Long Transaction")
+  // --- 👇 [추가] description 필드 ---
+  "description": "string | null", // Optional scenario description
+  // --- 👆 [추가 끝] ---
   "nodes": [ ... ],     // Array of Node objects
   "edges": [ ... ],     // Array of Edge objects
   "startNodeId": "string | null" // ID of the node where the simulation should start
@@ -26,7 +29,7 @@ JSON
 
 {
   "id": "string",         // Unique node ID
-  "type": "string",       // Node type (e.g., "message", "form", "api", "delay")
+  "type": "string",       // Node type (e.g., "message", "form", "api", "llm", "delay")
   "position": {           // Position on the canvas
     "x": "number",
     "y": "number"
@@ -85,13 +88,108 @@ JSON
     ...
   ]
 }
-(... other node types like branch, slotfilling, llm, setSlot, fixedmenu, link, toast, iframe, scenario would be defined here ...)
+4. branch Node
+JSON
 
-N. delay Node (New)
+{
+  "content": "string", // Text displayed before options/conditions
+  "evaluationType": "'BUTTON' | 'CONDITION'", // How to branch
+  // --- Used if evaluationType is 'CONDITION' ---
+  "conditions": [
+    {
+      "id": "string", // Unique ID for this condition (used for edge sourceHandle)
+      "slot": "string", // Slot name to check
+      "operator": "'==' | '!=' | '>' | '<' | '>=' | '<=' | 'contains' | '!contains'",
+      "value": "string", // Value to compare against
+      "valueType": "'value' | 'slot'" // Whether 'value' is a literal or another slot name
+    },
+    ...
+  ],
+  // --- Used for button text (BUTTON) or condition handle mapping (CONDITION) ---
+  "replies": [ // Array length must match conditions array length if CONDITION type
+    { "display": "string", "value": "string" }, // 'value' is used for edge sourceHandle
+    ...
+  ]
+}
+5. slotfilling Node
+JSON
+
+{
+  "content": "string", // Question asked to the user
+  "slot": "string",    // Slot name to store the user's input/choice
+  "replies": [         // Optional quick replies (if provided, input is chosen from these)
+    { "display": "string", "value": "string" },
+    ...
+  ]
+}
+6. llm Node
+JSON
+
+{
+  "prompt": "string",        // Prompt template sent to the LLM (can include {slotName})
+  "outputVar": "string | null", // Slot name to store the full LLM response text (optional)
+  "conditions": [            // Optional conditions for branching based on LLM response
+    {
+      "id": "string",        // Unique ID for this condition (used for edge sourceHandle)
+      "keyword": "string"    // Keyword to search for in the LLM response (case-insensitive)
+    },
+    ...
+  ]
+}
+7. setSlot Node
+JSON
+
+{
+  "assignments": [
+    { "key": "string", "value": "string" }, // 'value' can be literal or "{slotName}"
+    ... // Supports multiple assignments
+  ]
+}
+8. delay Node
 JSON
 
 {
   "duration": "number" // Delay duration in milliseconds (e.g., 1000 for 1 second)
+}
+9. fixedmenu Node
+JSON
+
+{
+  "content": "string", // Title or instruction for the fixed menu
+  "replies": [         // Menu buttons
+    { "display": "string", "value": "string" }, // 'value' is used for edge sourceHandle
+    ...
+  ]
+}
+10. link Node
+JSON
+
+{
+  "content": "string", // URL of the link
+  "display": "string"  // Text to display for the link
+}
+11. toast Node
+JSON
+
+{
+  "message": "string",      // Message content for the toast
+  "toastType": "'info' | 'success' | 'error'" // Type of toast (affects appearance/icon)
+}
+12. iframe Node
+JSON
+
+{
+  "url": "string",       // URL to load in the iframe
+  "width": "string",     // Width in pixels (e.g., "300")
+  "height": "string"     // Height in pixels (e.g., "250")
+}
+13. scenario Node (Group Node)
+JSON
+
+{
+  "label": "string",       // Display name of the imported scenario
+  "scenarioId": "string",  // ID of the imported scenario
+  "isCollapsed": "boolean" // Whether the group node is currently collapsed
 }
 Form Element Schemas (within form node data.elements)
 1. input Element
@@ -103,43 +201,73 @@ JSON
   "name": "string",        // Slot name to store the value
   "label": "string",
   "placeholder": "string | undefined",
-  "defaultValue": "string | undefined", // Default value (can be literal or "{slotName}")
+  "defaultValue": "string | undefined", // Default value (literal or "{slotName}")
   "validation": {
     "type": "'text' | 'email' | 'phone number' | 'custom'",
     "regex": "string | undefined" // Only if type is 'custom'
   }
 }
-2. grid Element
+2. date Element
+JSON
+
+{
+  "id": "string",
+  "type": "date",
+  "name": "string",
+  "label": "string",
+  "defaultValue": "string | undefined", // e.g., "2025-12-31"
+  "validation": { // Optional date range validation
+    "type": "'today after' | 'today before' | 'custom'",
+    "startDate": "string | undefined", // YYYY-MM-DD format, only if type is 'custom'
+    "endDate": "string | undefined"    // YYYY-MM-DD format, only if type is 'custom'
+  }
+}
+
+3. grid Element
 JSON
 
 {
   "id": "string",
   "type": "grid",
-  "name": "string | undefined", // Slot name (maybe less relevant for grid display?)
+  "name": "string | undefined",         // Optional slot name (less common for display grids)
   "label": "string",
-  "optionsSlot": "string | undefined", // Slot containing array data to display
-  "displayKeys": "string[] | undefined", // Keys to display when using optionsSlot with objects
-  "hideNullColumns": "boolean | undefined", // Whether to hide columns where all values are null/undefined/empty
+  "optionsSlot": "string | undefined", // Slot containing array data (usually objects)
+  "displayKeys": "string[] | undefined", // Keys (column headers) to display when using optionsSlot
+  "hideNullColumns": "boolean | undefined", // Whether to hide columns if all values are null/empty
   // --- Fallback if optionsSlot is not used ---
   "rows": "number | undefined",
   "columns": "number | undefined",
-  "data": "string[] | undefined" // Flat array of cell values (row by row)
+  "data": "string[] | undefined"        // Flat array of cell values (row by row)
 }
-(... other form element types like date, checkbox, dropbox would be defined here ...)
+4. checkbox Element
+JSON
 
+{
+  "id": "string",
+  "type": "checkbox",
+  "name": "string",        // Slot name to store the array of selected values
+  "label": "string",
+  "options": "string[]",   // Array of checkbox option labels/values
+  "defaultValue": "string[] | undefined" // Array of initially checked values
+}
+5. dropbox Element
+JSON
+
+{
+  "id": "string",
+  "type": "dropbox",
+  "name": "string",        // Slot name to store the selected value
+  "label": "string",
+  "optionsSlot": "string | undefined", // Slot containing array data (strings or {label, value} objects)
+  "options": "(string | {label: string, value: string})[] | undefined", // Fallback options
+  "defaultValue": "string | undefined" // Initially selected value
+}
 Edge Object Structure
 JSON
 
 {
-  "id": "string",             // Unique edge ID
+  "id": "string",             // Unique edge ID (often auto-generated)
   "source": "string",         // Source node ID
   "target": "string",         // Target node ID
-  "sourceHandle": "string | null" // ID of the specific source handle (e.g., "onSuccess", reply value, condition ID)
+  "sourceHandle": "string | null" // ID of the specific source handle (e.g., "onSuccess", reply value, condition ID, "default")
 }
-
-**주요 변경 사항:**
-
-* **Node Data Schemas** 섹션에 `delay` 노드 타입을 위한 정의를 추가했습니다.
-* `delay` 노드의 `data` 객체에는 `duration` (number 타입, 밀리초 단위) 필드가 포함됩니다.
-
-이제 이 스키마를 사용하여 챗봇 클라이언트에서 딜레이 노드의 동작을 구현하거나 동기화할 수 있습니다.

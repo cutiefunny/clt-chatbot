@@ -2,7 +2,6 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // API 키를 사용하여 Gemini 클라이언트 초기화
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY);
-// JSON 출력을 위해 모델을 gemini-1.5-flash로 변경하고 responseMimeType을 설정합니다.
 const model = genAI.getGenerativeModel({ 
     model: "gemini-2.0-flash",
     generationConfig: {

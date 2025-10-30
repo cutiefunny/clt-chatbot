@@ -8,7 +8,7 @@ const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY);
 
 // JSON 응답 전용 모델
 const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash", // 모델명 확인 필요 (gemini-2.0-flash?)
+    model: "gemini-2.0-flash",
     generationConfig: {
         responseMimeType: "application/json",
     }
@@ -16,7 +16,7 @@ const model = genAI.getGenerativeModel({
 
 // 스트리밍 응답 전용 모델
 const streamingModel = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash" // 모델명 확인 필요 (gemini-2.0-flash?)
+    model: "gemini-2.0-flash"
 });
 
 
