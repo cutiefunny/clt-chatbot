@@ -113,6 +113,22 @@ export const createScenarioSlice = (set, get) => ({
     let newScenarioSessionId = null; // 세션 ID 저장용 변수
 
     try {
+      // --- 👇 [추가] 시나리오 호출 시, scenarios 컬렉션의 lastUsedAt 타임스탬프 업데이트 ---
+      try {
+        const scenarioRef = doc(get().db, "scenarios", scenarioId);
+        await updateDoc(scenarioRef, {
+          lastUsedAt: serverTimestamp(),
+        });
+        console.log(`Updated lastUsedAt for scenario: ${scenarioId}`);
+      } catch (error) {
+        // 이 작업이 실패하더라도 시나리오 진행 자체를 막지는 않음 (권한 문제 등이 있을 수 있음)
+        console.warn(
+          `[openScenarioPanel] Failed to update lastUsedAt for scenario ${scenarioId}:`,
+          error
+        );
+      }
+      // --- 👆 [추가] ---
+
       // 1. 현재 대화 ID 없으면 새로 생성 (createNewConversation 내부에서 오류 처리됨)
       if (!conversationId) {
         const newConversationId = await get().createNewConversation(true);
