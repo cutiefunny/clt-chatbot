@@ -11,6 +11,7 @@ import CheckCircle from "./icons/CheckCircle";
 import OpenInNewIcon from "./icons/OpenInNew";
 import CloseIcon from "./icons/CloseIcon";
 import ScenarioExpandIcon from "./icons/ScenarioExpandIcon";
+import ScenarioCollapseIcon from "./icons/ScenarioCollapseIcon";
 // ChevronDownIcon은 버블에서만 사용하므로 여기서는 필요 없을 수 있음
 // import ChevronDownIcon from "./icons/ChevronDownIcon";
 
@@ -141,7 +142,8 @@ const FormRenderer = ({
 
     // 'input', 'date', 'dropbox' 타입인지 확인하는 헬퍼 함수
     const isSimpleInput = (el) =>
-      el && (el.type === "input" || el.type === "date" || el.type === "dropbox");
+      el &&
+      (el.type === "input" || el.type === "date" || el.type === "dropbox");
 
     while (i < elements.length) {
       const currentEl = elements[i];
@@ -687,7 +689,11 @@ export default function ScenarioChat() {
             }}
             aria-pressed={isScenarioPanelExpanded}
           >
-            <ScenarioExpandIcon />
+            {isScenarioPanelExpanded ? (
+              <ScenarioCollapseIcon />
+            ) : (
+              <ScenarioExpandIcon />
+            )}
           </button>
 
           {/* "숨기기" 버튼 (기존 코드 유지) */}
