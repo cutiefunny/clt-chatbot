@@ -253,6 +253,10 @@
   box-shadow: 0 6px 16px 0 #dfe2fe;
 }
 
+.inputForm.deactive {
+  border-color: #8d9eba;
+}
+
 .textInput {
   flex-grow: 1;
   border: none;

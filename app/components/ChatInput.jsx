@@ -72,6 +72,9 @@ export default function ChatInput() {
   const setShortcutMenuOpen = useChatStore(
     (state) => state.setShortcutMenuOpen
   );
+  const isScenarioPanelExpanded = useChatStore(
+    (state) => state.isScenarioPanelExpanded
+  );
 
   const { t } = useTranslations();
   const inputRef = useRef(null);
@@ -204,7 +207,12 @@ export default function ChatInput() {
         ))}
       </div>
 
-      <form className={styles.inputForm} onSubmit={handleSubmit}>
+      <form
+        className={`${styles.inputForm} ${
+          activePanel === "scenario" ? styles.deactive : ""
+        }`}
+        onSubmit={handleSubmit}
+      >
         <input
           ref={inputRef}
           name="userInput"

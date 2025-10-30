@@ -59,6 +59,8 @@
   background-color: rgba(255, 255, 255, 0.64);
   margin: 0 16px 16px 0;
   border-radius: 16px;
+  border: var(--stroke-weight-2, 2 px) solid
+    var(--Color-Light-Gradation-03, #3051ea);
   background: var(--White-Opacity-64, rgba(255, 255, 255, 0.64));
   /* Shadow_Glass/Light/Shadow_Glass 01 */
   box-shadow: 0 6px 16px 0 #dfe2fe;
