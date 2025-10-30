@@ -756,7 +756,7 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
 /* --- 👇 [수정] 포커스 스타일 유지 --- */
 .focusedBubble {
   border: var(--stroke-weight-1, 1px) solid
-    var(--Color-Light-Gradation-03, #3051ea);
+    var(--Color-Light-Gradation-03, #3051ea) !important;
 }
 /* --- 👆 [수정] --- */
 
