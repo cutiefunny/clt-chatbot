@@ -27,7 +27,7 @@
 
 .sharedHeader {
   flex-shrink: 0;
-  padding: 8px 8px 0px 8px;
+  padding: 8px;
 }
 
 .contentAndInputWrapper {
@@ -55,9 +55,9 @@
   /* right: 0; 제거 */
   flex-shrink: 0; /* 너비가 줄어들지 않도록 */
   width: 0; /* 초기 상태: 너비 0 */
-  height: calc(100% - 32px);
+  height: calc(100% - 16px);
   background-color: rgba(255, 255, 255, 0.64);
-  margin: 16px 16px 16px 0;
+  margin: 0 16px 16px 0;
   border-radius: 16px;
   background: var(--White-Opacity-64, rgba(255, 255, 255, 0.64));
   /* Shadow_Glass/Light/Shadow_Glass 01 */
