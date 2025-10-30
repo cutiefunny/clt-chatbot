@@ -11,11 +11,10 @@ import CheckCircle from "./icons/CheckCircle";
 import OpenInNewIcon from "./icons/OpenInNew";
 import CloseIcon from "./icons/CloseIcon";
 import ScenarioExpandIcon from "./icons/ScenarioExpandIcon";
-import ScenarioCollapseIcon from "./icons/ScenarioCollapseIcon";
 // ChevronDownIcon은 버블에서만 사용하므로 여기서는 필요 없을 수 있음
 // import ChevronDownIcon from "./icons/ChevronDownIcon";
 
-// FormRenderer 컴포넌트 (변경 없음 - 코드 생략)
+// FormRenderer 컴포넌트
 const FormRenderer = ({
   node,
   onFormSubmit,
@@ -24,9 +23,10 @@ const FormRenderer = ({
   slots,
   onGridRowClick,
 }) => {
-  // ... (기존 FormRenderer 코드 유지) ...
   const [formData, setFormData] = useState({});
-  const dateInputRef = useRef(null);
+  // --- 👇 [수정] 단일 ref 대신, 클릭 이벤트에서 직접 처리하도록 변경 ---
+  // const dateInputRef = useRef(null);
+  // --- 👆 [수정] ---
   const { t } = useTranslations();
 
   // useEffect를 사용하여 defaultValue로 formData 초기화
@@ -111,13 +111,16 @@ const FormRenderer = ({
     onFormSubmit(finalSubmissionData); // 최종 데이터 제출
   };
 
-  const handleDateInputClick = () => {
+  // --- 👇 [수정] ref를 사용하지 않고 이벤트 타겟으로 피커 표시 ---
+  const handleDateInputClick = (e) => {
+    e.stopPropagation();
     try {
-      dateInputRef.current?.showPicker();
+      e.currentTarget.showPicker();
     } catch (error) {
       console.error("Failed to show date picker:", error);
     }
   };
+  // --- 👆 [수정] ---
 
   // 슬롯 데이터를 사용하는 그리드 요소가 있는지 확인
   const hasSlotBoundGrid = node.data.elements?.some(
@@ -130,41 +133,138 @@ const FormRenderer = ({
       slots[el.optionsSlot][0] !== null
   );
 
-  return (
-    <form onSubmit={handleSubmit} className={styles.formContainer}>
-      <h3>{interpolateMessage(node.data.title || "Form", slots)}</h3>
-      <div className={styles.formContainerSeparator} />
-      {node.data.elements?.map((el) => {
-        const dateProps = {};
-        if (el.type === "date" && el.validation) {
-          if (el.validation.type === "today after")
-            dateProps.min = new Date().toISOString().split("T")[0];
-          else if (el.validation.type === "today before")
-            dateProps.max = new Date().toISOString().split("T")[0];
-          else if (el.validation.type === "custom") {
-            if (el.validation.startDate)
-              dateProps.min = el.validation.startDate;
-            if (el.validation.endDate) dateProps.max = el.validation.endDate;
-          }
+  // --- 👇 [수정] 폼 요소 렌더링 로직 (그룹화 추가) ---
+  const renderFormElements = () => {
+    const renderedElements = [];
+    let i = 0;
+    const elements = node.data.elements || [];
+
+    // 'input', 'date', 'dropbox' 타입인지 확인하는 헬퍼 함수
+    const isSimpleInput = (el) =>
+      el && (el.type === "input" || el.type === "date" || el.type === "dropbox");
+
+    while (i < elements.length) {
+      const currentEl = elements[i];
+
+      // 1. 단순 입력 필드 그룹 처리
+      if (isSimpleInput(currentEl)) {
+        const group = [];
+        // 연속되는 단순 입력 필드를 그룹에 추가
+        while (i < elements.length && isSimpleInput(elements[i])) {
+          group.push(elements[i]);
+          i++;
         }
 
-        let dropboxOptions = [];
-        if (el.type === "dropbox") {
-          if (el.optionsSlot && Array.isArray(slots[el.optionsSlot])) {
-            dropboxOptions = slots[el.optionsSlot].map((opt) =>
-              typeof opt === "object" && opt !== null
-                ? JSON.stringify(opt)
-                : String(opt)
-            );
-          } else if (Array.isArray(el.options)) {
-            dropboxOptions = el.options;
-          }
-        }
+        // 그룹을 .formInputGroup 래퍼로 감싸서 렌더링
+        renderedElements.push(
+          <div key={`group-${i}`} className={styles.formInputGroup}>
+            {group.map((el) => {
+              // --- (기존 input, date, dropbox 렌더링 로직 복사) ---
+              const dateProps = {};
+              if (el.type === "date" && el.validation) {
+                if (el.validation.type === "today after")
+                  dateProps.min = new Date().toISOString().split("T")[0];
+                else if (el.validation.type === "today before")
+                  dateProps.max = new Date().toISOString().split("T")[0];
+                else if (el.validation.type === "custom") {
+                  if (el.validation.startDate)
+                    dateProps.min = el.validation.startDate;
+                  if (el.validation.endDate)
+                    dateProps.max = el.validation.endDate;
+                }
+              }
 
-        return (
+              let dropboxOptions = [];
+              if (el.type === "dropbox") {
+                if (el.optionsSlot && Array.isArray(slots[el.optionsSlot])) {
+                  dropboxOptions = slots[el.optionsSlot].map((opt) =>
+                    typeof opt === "object" && opt !== null
+                      ? JSON.stringify(opt)
+                      : String(opt)
+                  );
+                } else if (Array.isArray(el.options)) {
+                  dropboxOptions = el.options;
+                }
+              }
+              // --- (여기까지 렌더링 로직 복사) ---
+
+              return (
+                <div key={el.id} className={styles.formElement}>
+                  <label className={styles.formLabel}>
+                    {interpolateMessage(el.label, slots)}
+                  </label>
+                  {el.type === "input" && (
+                    <input
+                      className={styles.formInput}
+                      type="text"
+                      placeholder={interpolateMessage(
+                        el.placeholder || "",
+                        slots
+                      )}
+                      value={
+                        formData[el.name] ??
+                        interpolateMessage(String(el.defaultValue ?? ""), slots)
+                      }
+                      onChange={(e) =>
+                        handleInputChange(el.name, e.target.value)
+                      }
+                      disabled={disabled}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  )}
+                  {el.type === "date" && (
+                    <input
+                      // ref={dateInputRef} // ref 제거
+                      className={styles.formInput}
+                      type="date"
+                      value={formData[el.name] || ""}
+                      onChange={(e) =>
+                        handleInputChange(el.name, e.target.value)
+                      }
+                      onClick={handleDateInputClick} // 수정된 핸들러 사용
+                      disabled={disabled}
+                      {...dateProps}
+                    />
+                  )}
+                  {el.type === "dropbox" && (
+                    <div className={styles.selectWrapper}>
+                      <select
+                        className={styles.formInput}
+                        value={formData[el.name] || ""}
+                        onChange={(e) =>
+                          handleInputChange(el.name, e.target.value)
+                        }
+                        disabled={disabled}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <option value="" disabled>
+                          {t("select")}
+                        </option>
+                        {dropboxOptions.map((opt, idx) => (
+                          <option key={`${opt}-${idx}`} value={opt}>
+                            {interpolateMessage(opt, slots)}
+                          </option>
+                        ))}
+                      </select>
+                      <ArrowDropDownIcon
+                        style={{ color: "var(--Gray-07, #5E7599)" }}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        );
+      }
+      // 2. 단순 입력 필드가 아닌 (grid, checkbox 등) 요소 처리
+      else {
+        const el = currentEl;
+        renderedElements.push(
           <div key={el.id} className={styles.formElement}>
             {el.type === "grid" ? (
               (() => {
+                // ... (기존 grid 렌더링 로직) ...
                 const gridDataFromSlot = el.optionsSlot
                   ? slots[el.optionsSlot]
                   : null;
@@ -307,63 +407,6 @@ const FormRenderer = ({
                 <label className={styles.formLabel}>
                   {interpolateMessage(el.label, slots)}
                 </label>
-                {el.type === "input" && (
-                  <input
-                    className={styles.formInput}
-                    type="text"
-                    placeholder={interpolateMessage(
-                      el.placeholder || "",
-                      slots
-                    )}
-                    value={
-                      formData[el.name] ??
-                      interpolateMessage(String(el.defaultValue ?? ""), slots)
-                    }
-                    onChange={(e) => handleInputChange(el.name, e.target.value)}
-                    disabled={disabled}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                )}
-                {el.type === "date" && (
-                  <input
-                    ref={dateInputRef}
-                    className={styles.formInput}
-                    type="date"
-                    value={formData[el.name] || ""}
-                    onChange={(e) => handleInputChange(el.name, e.target.value)}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDateInputClick();
-                    }}
-                    disabled={disabled}
-                    {...dateProps}
-                  />
-                )}
-                {el.type === "dropbox" && (
-                  <div className={styles.selectWrapper}>
-                    <select
-                      className={styles.formInput}
-                      value={formData[el.name] || ""}
-                      onChange={(e) =>
-                        handleInputChange(el.name, e.target.value)
-                      }
-                      disabled={disabled}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <option value="" disabled>
-                        {t("select")}
-                      </option>
-                      {dropboxOptions.map((opt, idx) => (
-                        <option key={`${opt}-${idx}`} value={opt}>
-                          {interpolateMessage(opt, slots)}
-                        </option>
-                      ))}
-                    </select>
-                    <ArrowDropDownIcon
-                      style={{ color: "var(--Gray-07, #5E7599)" }}
-                    />
-                  </div>
-                )}
                 {el.type === "checkbox" &&
                   (el.options || []).map((opt) => (
                     <div
@@ -390,11 +433,27 @@ const FormRenderer = ({
                       </label>
                     </div>
                   ))}
+                {/* (기타 다른 타입 'input', 'date', 'dropbox'는 위에서 처리됨) */}
               </>
             )}
           </div>
         );
-      })}
+        i++; // 다음 요소로 이동
+      }
+    }
+    return renderedElements;
+  };
+  // --- 👆 [수정] ---
+
+  return (
+    <form onSubmit={handleSubmit} className={styles.formContainer}>
+      <h3>{interpolateMessage(node.data.title || "Form", slots)}</h3>
+      <div className={styles.formContainerSeparator} />
+
+      {/* --- 👇 [수정] 그룹화된 요소 렌더링 --- */}
+      {renderFormElements()}
+      {/* --- 👆 [수정] --- */}
+
       {!hasSlotBoundGrid && !disabled && (
         <div className={styles.formActionArea}>
           <button
@@ -628,14 +687,10 @@ export default function ScenarioChat() {
             }}
             aria-pressed={isScenarioPanelExpanded}
           >
-            {isScenarioPanelExpanded ? (
-              <ScenarioCollapseIcon />
-            ) : (
-              <ScenarioExpandIcon />
-            )}
+            <ScenarioExpandIcon />
           </button>
 
-          {/* --- 👇 [수정] "숨기기" 버튼 클릭 시 setActivePanel('main') 호출 --- */}
+          {/* "숨기기" 버튼 (기존 코드 유지) */}
           <button
             className={styles.headerCloseButton}
             onClick={(e) => {
@@ -652,7 +707,6 @@ export default function ScenarioChat() {
           >
             <CloseIcon />
           </button>
-          {/* --- 👆 [수정] --- */}
           {/* 종료 버튼 (기존 코드 유지) */}
         </div>
       </div>
@@ -672,10 +726,14 @@ export default function ScenarioChat() {
                 className={`GlassEffect ${styles.message} ${
                   msg.sender === "bot" ? styles.botMessage : styles.userMessage
                 } ${
-                  msg.node?.data?.elements?.some((el) => el.type === "grid")
+                  // --- 👇 [수정] 폼(form)일 경우에도 .gridMessage 클래스(width 90%) 적용 ---
+                  msg.node?.type === "form" ||
+                  msg.node?.data?.elements?.some((el) => el.type === "grid") ||
+                  msg.node?.type === "iframe"
                     ? styles.gridMessage
                     : ""
-                } ${msg.node?.type === "iframe" ? styles.iframeMessage : ""}`}
+                  // --- 👆 [수정] ---
+                }`}
               >
                 <div
                   className={
