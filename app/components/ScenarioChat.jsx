@@ -11,6 +11,7 @@ import CheckCircle from "./icons/CheckCircle";
 import OpenInNewIcon from "./icons/OpenInNew";
 import CloseIcon from "./icons/CloseIcon";
 import ScenarioExpandIcon from "./icons/ScenarioExpandIcon";
+import ScenarioCollapseIcon from "./icons/ScenarioCollapseIcon";
 // ChevronDownIcon은 버블에서만 사용하므로 여기서는 필요 없을 수 있음
 // import ChevronDownIcon from "./icons/ChevronDownIcon";
 
@@ -627,7 +628,11 @@ export default function ScenarioChat() {
             }}
             aria-pressed={isScenarioPanelExpanded}
           >
-            <ScenarioExpandIcon />
+            {isScenarioPanelExpanded ? (
+              <ScenarioCollapseIcon />
+            ) : (
+              <ScenarioExpandIcon />
+            )}
           </button>
 
           {/* --- 👇 [수정] "숨기기" 버튼 클릭 시 setActivePanel('main') 호출 --- */}

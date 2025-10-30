@@ -2,7 +2,7 @@
   width: 100%;
   min-width: 480px;
   margin: 0 auto;
-  padding: 0rem 1rem 2rem 1rem;
+  padding: 0rem 1rem 1rem 1rem;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -251,6 +251,10 @@
     var(--Color-Light-Gradation-03, #3051ea);
   background: var(--White-Opacity-64, rgba(255, 255, 255, 0.64));
   box-shadow: 0 6px 16px 0 #dfe2fe;
+}
+
+.inputForm.deactive {
+  border-color: #8d9eba;
 }
 
 .textInput {

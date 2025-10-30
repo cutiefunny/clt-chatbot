@@ -103,15 +103,13 @@ export default function HistoryPanel() {
         </button>
         {/* --- 👇 [수정된 부분 시작] --- */}
         {/* currentConversationId가 null이 아닐 때만 (즉, 대화가 로드되었을 때만) 버튼 표시 */}
-        {currentConversationId !== null && (
-          <button
-            className={styles.newChatButton}
-            onClick={createNewConversation}
-          >
-            <NewChatIcon />
-          </button>
-        )}
         {/* --- 👆 [수정된 부분 끝] --- */}
+        <button
+          className={styles.newChatButton}
+          onClick={createNewConversation}
+        >
+          <NewChatIcon />
+        </button>
         <button className={styles.historyButton} onClick={toggleHistoryPanel}>
           <HistoryIcon />
         </button>
@@ -137,15 +135,13 @@ export default function HistoryPanel() {
 
           <div className={styles.panelContent}>
             {/* currentConversationId가 null이 아닐 때만 (즉, 대화가 로드되었을 때만) 버튼 표시 */}
-            {currentConversationId !== null && (
-              <button
-                className={styles.sidePanelButton}
-                onClick={createNewConversation}
-              >
-                <EditIcon />
-                <span className={styles.newChatText}>{t("newChat")}</span>
-              </button>
-            )}
+            <button
+              className={styles.sidePanelButton}
+              onClick={createNewConversation}
+            >
+              <EditIcon />
+              <span className={styles.newChatText}>{t("newChat")}</span>
+            </button>
             <span className={styles.commonText}>{t("History")}</span>
             <div className={styles.conversationList}>
               {conversations.length > 0 &&
