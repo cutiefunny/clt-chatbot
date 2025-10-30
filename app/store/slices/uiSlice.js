@@ -2,7 +2,7 @@
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { locales } from "../../lib/locales";
 
-const PARENT_ORIGIN = "http://172.20.130.91:9110/";
+const PARENT_ORIGIN = process.env.NEXT_PUBLIC_PARENT_ORIGIN || "http://localhost:3000"; // NEXT_PUBLIC_PARENT_ORIGIN 환경 변수 사용
 
 const getInitialMessages = (lang = "ko") => {
   return [
@@ -12,7 +12,9 @@ const getInitialMessages = (lang = "ko") => {
 
 export const createUISlice = (set, get) => ({
   // State
+  // --- 👇 [수정] theme 초기값을 'light'로 고정 ---
   theme: "light",
+  // --- 👆 [수정] ---
   fontSize: "default", // 'default' or 'small'
   language: "ko",
   maxFavorites: 10,
@@ -42,9 +44,7 @@ export const createUISlice = (set, get) => ({
     confirmVariant: "default",
   },
   activePanel: "main",
-  // --- 👇 [수정된 부분 시작] ---
-  lastFocusedScenarioSessionId: null, // 마지막 포커스된 시나리오 ID 추가
-  // --- 👆 [수정된 부분 끝] ---
+  lastFocusedScenarioSessionId: null,
   focusRequest: 0,
   shortcutMenuOpen: null,
   ephemeralToast: {
@@ -55,14 +55,8 @@ export const createUISlice = (set, get) => ({
   scrollToMessageId: null,
   forceScrollToBottom: false,
   scrollAmount: 0,
-  // --- 👇 [삭제] selectedRow 제거 ---
-  // selectedRow: null,
 
   // Actions
-  // --- 👇 [삭제] setSelectedRow 제거 ---
-  // setSelectedRow: (rowData) => set({ selectedRow: rowData }),
-
-  // --- 기존 코드 생략 ---
   loadGeneralConfig: async () => {
     try {
       const configRef = doc(get().db, "config", "general");
@@ -131,27 +125,24 @@ export const createUISlice = (set, get) => ({
     }));
   },
 
+  // --- 👇 [수정] setTheme: 항상 'light'로 설정하고 저장 로직 제거 ---
   setTheme: async (newTheme) => {
-    if (get().theme === newTheme) return;
-    set({ theme: newTheme });
+    // newTheme 인자를 무시하고 항상 'light'로 설정
+    set({ theme: "light" });
     if (typeof window !== "undefined") {
-      localStorage.setItem("theme", newTheme);
+      // 로컬 스토리지에서도 'light'로 강제
+      localStorage.setItem("theme", "light");
     }
-    const user = get().user;
-    if (user) {
-      try {
-        const userSettingsRef = doc(get().db, "settings", user.uid);
-        await setDoc(userSettingsRef, { theme: newTheme }, { merge: true });
-      } catch (error) {
-        console.error("Error saving theme to Firestore:", error);
-      }
-    }
+    // Firestore 저장 로직 제거
   },
 
+  // --- 👇 [수정] toggleTheme: 기능 비활성화 (호출해도 아무것도 안 함) ---
   toggleTheme: async () => {
-    const newTheme = get().theme === "light" ? "dark" : "light";
-    await get().setTheme(newTheme);
+    // 테마 토글 기능을 비활성화
+    console.log("Theme toggling is disabled.");
+    // set({ theme: "light" }); // 필요 시 강제로 light로 설정
   },
+  // --- 👆 [수정] ---
 
   setFontSize: async (size) => {
     set({ fontSize: size });
@@ -259,12 +250,10 @@ export const createUISlice = (set, get) => ({
 
   resetScenarioPanelExpansion: () => set({ isScenarioPanelExpanded: false }),
 
-  // --- 👇 [수정된 부분 시작]: setActivePanel 수정 ---
   setActivePanel: (panel, sessionId = null) => {
     const wasScenarioPanelActive = get().activePanel === "scenario";
     const wasExpanded = get().isScenarioPanelExpanded;
     if (panel === "scenario") {
-      // 시나리오 패널 활성화 시, active 및 lastFocused 모두 업데이트
       set({
         activePanel: panel,
         activeScenarioSessionId: sessionId,
@@ -272,7 +261,6 @@ export const createUISlice = (set, get) => ({
         isScenarioPanelExpanded: wasScenarioPanelActive ? wasExpanded : false,
       });
     } else {
-      // 메인 패널 활성화 시, active만 업데이트하고 lastFocused는 유지
       set({
         activePanel: "main",
         activeScenarioSessionId: null,
@@ -281,7 +269,6 @@ export const createUISlice = (set, get) => ({
     }
     get().focusChatInput();
   },
-  // --- 👆 [수정된 부분 끝] ---
 
   focusChatInput: () =>
     set((state) => ({ focusRequest: state.focusRequest + 1 })),

@@ -96,25 +96,27 @@ export const useChatStore = create((set, get) => ({
       else { console.log("No conversation migration needed."); }
     } catch (error) { console.error("Conversation migration failed:", error); }
 
-    // 사용자 설정 로드 (uiSlice)
-    let theme = 'light', fontSize = 'default', language = 'ko'; // 기본값
+    // --- 👇 [수정] 사용자 설정 로드 시 theme을 'light'로 고정 ---
+    let fontSize = 'default', language = 'ko'; // 기본값 (theme 제거)
     try {
       const userSettingsRef = doc(get().db, "settings", user.uid);
       const docSnap = await getDoc(userSettingsRef);
       const settings = docSnap.exists() ? docSnap.data() : {};
-      theme = settings.theme || localStorage.getItem("theme") || theme;
+      // theme 로드 로직 제거
       fontSize = settings.fontSize || localStorage.getItem("fontSize") || fontSize;
       language = settings.language || localStorage.getItem("language") || language;
     } catch (error) {
       console.error("Error loading settings from Firestore:", error);
-      theme = localStorage.getItem("theme") || theme;
+      // theme 로드 로직 제거
       fontSize = localStorage.getItem("fontSize") || fontSize;
       language = localStorage.getItem("language") || language;
     } finally {
-        set({ theme, fontSize, language }); // uiSlice 상태 설정
+        // set 호출 시 theme: 'light' 명시적 전달
+        set({ theme: 'light', fontSize, language }); // uiSlice 상태 설정
         // chatSlice의 메시지 상태 초기화 (언어 적용)
         get().resetMessages?.(language); // chatSlice 액션 호출
     }
+    // --- 👆 [수정] ---
 
     // 데이터 로드 및 구독 시작
     get().unsubscribeAll(); // 모든 이전 구독 해제
@@ -125,14 +127,15 @@ export const useChatStore = create((set, get) => ({
     get().loadFavorites(user.uid); // favoritesSlice
   },
 
+  // --- 👇 [수정] clearUserAndData 에서도 theme을 'light'로 고정 ---
   clearUserAndData: () => {
     // 모든 구독 해제
     get().unsubscribeAll();
 
     // 기본 설정값 로드
-    let theme = "light", fontSize = "default", language = "ko";
+    let fontSize = "default", language = "ko"; // theme 제거
     if (typeof window !== "undefined") {
-      theme = localStorage.getItem("theme") || "light";
+      // theme 로드 로직 제거
       fontSize = localStorage.getItem("fontSize") || "default";
       language = localStorage.getItem("language") || "ko";
     }
@@ -140,7 +143,8 @@ export const useChatStore = create((set, get) => ({
     // 모든 슬라이스 상태 초기화 (각 슬라이스의 초기 상태 값 사용 권장)
     set({
       user: null, // authSlice
-      theme, fontSize, language, // uiSlice
+      theme: 'light', // uiSlice - 'light' 고정
+      fontSize, language, // uiSlice
       // messages: getInitialMessages(language), // chatSlice 초기화는 resetMessages에서 처리
       conversations: [], currentConversationId: null, expandedConversationId: null, scenariosForConversation: {}, // conversationSlice 초기화
       favorites: [], // favoritesSlice 초기화
@@ -160,6 +164,7 @@ export const useChatStore = create((set, get) => ({
     // chatSlice의 초기 메시지를 명시적으로 설정
     get().resetMessages?.(language);
   },
+  // --- 👆 [수정] ---
 
   initAuth: () => {
     // 초기 설정 로드
