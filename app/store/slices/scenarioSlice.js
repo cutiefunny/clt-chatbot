@@ -491,43 +491,58 @@ export const createScenarioSlice = (set, get) => ({
   // --- 👆 [추가] ---
 
 
+  // --- 👇 [수정된 부분 시작]: endScenario에 2초 딜레이 추가 ---
   endScenario: async (scenarioSessionId, status = 'completed') => {
-    const { user, currentConversationId, language, showEphemeralToast } = get(); // --- 👈 [추가] ---
+    const { user, currentConversationId, language, showEphemeralToast, setActivePanel } = get(); 
     if (!user || !currentConversationId || !scenarioSessionId) return;
 
-    // --- 👇 [수정] Firestore 작업 오류 처리 ---
     const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", scenarioSessionId);
+    
     try {
-        await updateDoc(sessionRef, { status, state: null, updatedAt: serverTimestamp() }); // state도 null로 초기화, 오류 발생 가능
-        // 로컬 상태 즉시 업데이트 (선택 사항, Firestore 구독이 처리할 수도 있음)
+        // 1. Firestore 상태 즉시 업데이트 (완료/실패)
+        await updateDoc(sessionRef, { status, state: null, updatedAt: serverTimestamp() }); 
+        
+        // 2. 로컬 상태 즉시 업데이트 (UI에 '완료' 배지 표시)
         set(state => {
             const updatedState = state.scenarioStates[scenarioSessionId]
-                ? { ...state.scenarioStates[scenarioSessionId], status: status, state: null } // state: null 추가
-                : { status: status, state: null }; // 만약 로컬 상태에 없다면 기본 정보만 설정
-
-            // 현재 활성 패널/세션 ID가 종료된 세션이면 초기화
-            const shouldResetActivePanel = state.activeScenarioSessionId === scenarioSessionId || state.lastFocusedScenarioSessionId === scenarioSessionId;
+                ? { ...state.scenarioStates[scenarioSessionId], status: status, state: null } 
+                : { status: status, state: null }; 
 
             return {
                 scenarioStates: {
                     ...state.scenarioStates,
                     [scenarioSessionId]: updatedState
                 },
-                ...(shouldResetActivePanel ? {
-                    activeScenarioSessionId: null,
-                    lastFocusedScenarioSessionId: null, // lastFocused도 초기화
-                    activePanel: 'main'
-                 } : {})
+                // activePanel 변경 로직 제거
             };
         });
+
+        // 3. 2초 딜레이 후 패널 닫기
+        setTimeout(() => {
+            // 2초 후, 닫으려는 패널이 여전히 활성/포커스 상태인지 확인
+            const { activeScenarioSessionId, lastFocusedScenarioSessionId } = get();
+            
+            const panelIsStillRelevant = activeScenarioSessionId === scenarioSessionId || 
+                                          lastFocusedScenarioSessionId === scenarioSessionId;
+
+            if (panelIsStillRelevant) {
+                console.log(`Delay complete. Closing scenario panel for ${scenarioSessionId}.`);
+                setActivePanel('main'); // uiSlice의 setActivePanel 호출하여 패널 닫기
+            } else {
+                 console.log(`Delay complete. Scenario panel for ${scenarioSessionId} is no longer active, not closing.`);
+            }
+        }, 2000); // 2000ms = 2초
+
     } catch (error) {
         console.error(`Error ending scenario ${scenarioSessionId} with status ${status}:`, error);
         const errorKey = getErrorKey(error);
         const message = locales[language]?.[errorKey] || 'Failed to update scenario status.';
         showEphemeralToast(message, 'error');
+        // Firestore 업데이트 실패 시에도 패널은 닫아서 혼동 방지
+        setActivePanel('main');
     }
-    // --- 👆 [수정] ---
   },
+  // --- 👆 [수정된 부분 끝] ---
 
   handleScenarioResponse: async (payload) => {
     const { scenarioSessionId } = payload;
@@ -618,8 +633,11 @@ export const createScenarioSlice = (set, get) => ({
             updatePayload.state = null; // 시나리오 종료 시 상태 초기화
             updatePayload.slots = data.slots || currentScenario.slots; // 최종 슬롯 업데이트
             await updateDoc(sessionRef, updatePayload); // Firestore 업데이트 먼저 (오류 발생 가능)
-            endScenario(scenarioSessionId, finalStatus); // 로컬 상태 변경 (내부 오류 처리)
-            // 종료 시에는 isLoading을 false로 설정할 필요 없음 (리스너가 처리)
+            
+            // --- 👇 [수정] endScenario 호출 (내부에 딜레이 포함됨) ---
+            endScenario(scenarioSessionId, finalStatus); 
+            // --- 👆 [수정] ---
+            
             return; // 자동 진행 불필요
         } else if (data.type === 'scenario') { // 진행 중
             updatePayload.status = 'active';
@@ -654,8 +672,11 @@ export const createScenarioSlice = (set, get) => ({
         // 오류 메시지를 시나리오 메시지 목록에 추가하고 상태를 failed로 업데이트
         const errorMessages = [...existingMessages, { id: `bot-error-${Date.now()}`, sender: 'bot', text: errorMessage }];
         try {
+            // --- 👇 [수정] endScenario 호출 (내부에 딜레이 포함됨) ---
+            // Firestore 업데이트는 endScenario 내부에서 처리하도록 맡기거나, 여기서 먼저 하고 endScenario 호출
             await updateDoc(sessionRef, { messages: errorMessages, status: 'failed', state: null, updatedAt: serverTimestamp() });
-            endScenario(scenarioSessionId, 'failed'); // 로컬 상태도 실패로 변경
+            endScenario(scenarioSessionId, 'failed'); // 로컬 상태 변경 및 딜레이 후 패널 닫기
+            // --- 👆 [수정] ---
         } catch (updateError) {
              console.error(`Failed to update scenario status to failed for ${scenarioSessionId}:`, updateError);
              // 추가적인 오류 처리 (예: UI 강제 업데이트)
@@ -671,6 +692,8 @@ export const createScenarioSlice = (set, get) => ({
                     }
                 }
              }));
+             // 이 경우에도 딜레이 후 닫기를 시도
+             endScenario(scenarioSessionId, 'failed');
         }
     } finally {
       // 로딩 상태 해제 (Firestore 구독이 최종 상태를 반영하지만, 즉각적인 해제를 위해 추가)
