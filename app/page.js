@@ -1,16 +1,14 @@
 "use client";
 
 import { useChatStore } from "../app/store";
-import Chat from "../app/components/Chat";
 import Login from "../app/components/Login";
 import HistoryPanel from "../app/components/HistoryPanel";
-import ChatInput from "../app/components/ChatInput";
 import ScenarioModal from "../app/components/ScenarioModal";
-import ScenarioChat from "../app/components/ScenarioChat";
 import Toast from "../app/components/Toast";
 import styles from "./page.module.css";
 import ConfirmModal from "../app/components/ConfirmModal";
 import DevStateDisplay from "../app/components/DevStateDisplay";
+import MainAreaLayout from "../app/components/MainAreaLayout";
 
 export default function HomePage() {
   const {
@@ -22,6 +20,10 @@ export default function HomePage() {
     isDevMode,
     activePanel, // activePanel 상태 가져오기
     isScenarioPanelExpanded,
+    theme,
+    setTheme,
+    fontSize,
+    setFontSize,
   } = useChatStore();
 
   const handleConfirm = () => {
@@ -50,25 +52,15 @@ export default function HomePage() {
         <>
           <div className={styles.chatLayout}>
             <HistoryPanel />
-            {/* 메인 채팅 영역 */}
-            <div
-              className={styles.contentAndInputWrapper}
-              style={{
-                // --- 👇 [수정] paddingLeft만 동적으로 설정 ---
-                paddingLeft: historyPanelWidth,
-                // width는 flex-grow: 1에 의해 자동으로 계산되므로 제거
-                // width: `calc(100% - ${historyPanelWidth})`,
-                // --- 👆 [수정] ---
-              }}
-            >
-              <Chat />
-              <ChatInput />
-            </div>
-            {/* 시나리오 패널 영역 */}
-            <div className={scenarioPanelClasses.join(" ")}>
-              {/* ScenarioChat 컴포넌트를 여기에 렌더링 */}
-              {activePanel === "scenario" && <ScenarioChat />}
-            </div>
+            <MainAreaLayout
+              historyPanelWidth={historyPanelWidth}
+              scenarioPanelClasses={scenarioPanelClasses}
+              activePanel={activePanel}
+              fontSize={fontSize}
+              setFontSize={setFontSize}
+              theme={theme}
+              setTheme={setTheme}
+            />
           </div>
           {isScenarioModalOpen && <ScenarioModal />}
           {isDevMode && <DevStateDisplay />}
