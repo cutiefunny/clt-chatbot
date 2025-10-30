@@ -102,25 +102,18 @@ export default function ChatInput() {
     }
   }, [isInputDisabled, focusRequest, activePanel]);
 
+  // --- 👇 [수정된 부분 시작] ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     const input = e.target.elements.userInput.value;
     if (!input.trim() || isLoading) return;
 
-    if (activePanel === "scenario" && activeScenarioSessionId) {
-      // 시나리오 패널이 활성화 상태일 때 시나리오 응답 함수 호출
-      await handleScenarioResponse({
-        scenarioSessionId: activeScenarioSessionId,
-        currentNodeId: currentScenarioNodeId,
-        userInput: input,
-      });
-    } else {
-      // 메인 패널이 활성화 상태일 때 일반 응답 함수 호출
-      await handleResponse({ text: input });
-    }
+    // activePanel 조건 제거하고 항상 메인 응답 함수(handleResponse) 호출
+    await handleResponse({ text: input });
 
     e.target.reset();
   };
+  // --- 👆 [수정된 부분 끝] ---
 
   const handleItemClick = (item) => {
     handleShortcutClick(item);

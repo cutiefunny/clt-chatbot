@@ -8,6 +8,7 @@ import styles from "./Chat.module.css";
 import FavoritePanel from "./FavoritePanel";
 import ScenarioBubble from "./ScenarioBubble";
 import CheckCircle from "./icons/CheckCircle";
+import MoonIcon from "./icons/MoonIcon";
 import LogoIcon from "./icons/LogoIcon";
 import CopyIcon from "./icons/CopyIcon";
 
@@ -181,10 +182,16 @@ export default function Chat() {
     openScenarioPanel,
     loadMoreMessages,
     hasMoreMessages,
+    theme,
+    setTheme,
+    fontSize,
+    setFontSize,
     scrollToMessageId,
     setScrollToMessageId,
     activePanel,
-    setActivePanel, // --- 👈 [추가] ---
+    // --- 👇 [수정] setActivePanel 대신 focusChatInput 가져오기 ---
+    focusChatInput,
+    // --- 👆 [수정] ---
     forceScrollToBottom,
     setForceScrollToBottom,
     scrollAmount,
@@ -200,15 +207,14 @@ export default function Chat() {
   const wasAtBottomRef = useRef(true);
   const { t } = useTranslations();
 
-  // --- 👇 [추가] 시나리오 패널 닫기 핸들러 ---
+  // --- 👇 [수정] 시나리오 패널 닫기 핸들러 -> 포커스 핸들러로 변경 ---
   const handleHistoryClick = () => {
     if (activePanel === "scenario") {
-      setActivePanel("main");
-      // setActivePanel('main')이 focusChatInput()을 호출하므로
-      // 포커스도 자동으로 메인 입력창으로 이동합니다.
+      // setActivePanel("main"); // 패널을 닫는 대신
+      focusChatInput(); // 포커스만 이동
     }
   };
-  // --- 👆 [추가] ---
+  // --- 👆 [수정] ---
 
   // 스크롤 관련 함수 및 useEffect들
   const updateWasAtBottom = useCallback(() => {
@@ -373,6 +379,34 @@ export default function Chat() {
 
   return (
     <div className={styles.chatContainer} ref={containerRef}>
+      <div className={styles.header}>
+        <div className={styles.headerButtons}>
+          {/* 테마 및 폰트 크기 버튼 (현재 숨김 처리됨) */}
+          <div className={styles.settingControl} style={{ display: "none" }}>
+            <span className={styles.settingLabel}>Large text</span>
+            <label className={styles.switch}>
+              <input
+                type="checkbox"
+                checked={fontSize === "default"}
+                onChange={() =>
+                  setFontSize(fontSize === "default" ? "small" : "default")
+                }
+              />
+              <span className={styles.slider}></span>
+            </label>
+          </div>
+          <div className={styles.separator} style={{ display: "none" }}></div>
+          <div style={{ display: "none" }}>
+            <button
+              className={styles.themeToggleButton}
+              onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+            >
+              <MoonIcon />
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div
         className={`${styles.history} ${
           activePanel === "scenario" && dimUnfocusedPanels
@@ -380,7 +414,7 @@ export default function Chat() {
             : ""
         }`}
         ref={historyRef}
-        onClick={handleHistoryClick} // --- 👈 [추가] ---
+        onClick={handleHistoryClick} // --- 👈 [수정] ---
       >
         {!hasMessages ? (
           <FavoritePanel /> // 메시지 없으면 즐겨찾기 패널 표시
