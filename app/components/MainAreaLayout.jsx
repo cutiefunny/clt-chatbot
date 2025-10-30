@@ -6,6 +6,7 @@ import ScenarioChat from "./ScenarioChat";
 import styles from "../page.module.css";
 import chatStyles from "./Chat.module.css";
 import MoonIcon from "./icons/MoonIcon";
+import CloseIcon from "./icons/CloseIcon";
 
 export default function MainAreaLayout({
   historyPanelWidth,
@@ -16,6 +17,8 @@ export default function MainAreaLayout({
   theme,
   setTheme,
 }) {
+  const PARENT_ORIGIN = "http://172.20.130.91:9110/";
+
   return (
     <div
       className={styles.mainArea}
@@ -55,6 +58,21 @@ export default function MainAreaLayout({
                 <MoonIcon />
               </button>
             </div>
+            <button
+              className={chatStyles.headerCloseButton}
+              onClick={() => {
+                console.log("close button clicked");
+                window.parent.postMessage(
+                  {
+                    action: "closeChatbot",
+                    payload: {},
+                  },
+                  PARENT_ORIGIN
+                );
+              }}
+            >
+              <CloseIcon />
+            </button>
           </div>
         </div>
       </div>
