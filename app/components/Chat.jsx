@@ -8,7 +8,6 @@ import styles from "./Chat.module.css";
 import FavoritePanel from "./FavoritePanel";
 import ScenarioBubble from "./ScenarioBubble";
 import CheckCircle from "./icons/CheckCircle";
-import MoonIcon from "./icons/MoonIcon";
 import LogoIcon from "./icons/LogoIcon";
 import CopyIcon from "./icons/CopyIcon";
 
@@ -182,10 +181,6 @@ export default function Chat() {
     openScenarioPanel,
     loadMoreMessages,
     hasMoreMessages,
-    theme,
-    setTheme,
-    fontSize,
-    setFontSize,
     scrollToMessageId,
     setScrollToMessageId,
     activePanel,
@@ -367,34 +362,6 @@ export default function Chat() {
 
   return (
     <div className={styles.chatContainer} ref={containerRef}>
-      <div className={styles.header}>
-        <div className={styles.headerButtons}>
-          {/* 테마 및 폰트 크기 버튼 (현재 숨김 처리됨) */}
-          <div className={styles.settingControl} style={{ display: "none" }}>
-            <span className={styles.settingLabel}>Large text</span>
-            <label className={styles.switch}>
-              <input
-                type="checkbox"
-                checked={fontSize === "default"}
-                onChange={() =>
-                  setFontSize(fontSize === "default" ? "small" : "default")
-                }
-              />
-              <span className={styles.slider}></span>
-            </label>
-          </div>
-          <div className={styles.separator} style={{ display: "none" }}></div>
-          <div style={{ display: "none" }}>
-            <button
-              className={styles.themeToggleButton}
-              onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-            >
-              <MoonIcon />
-            </button>
-          </div>
-        </div>
-      </div>
-
       <div
         className={`${styles.history} ${
           activePanel === "scenario" && dimUnfocusedPanels

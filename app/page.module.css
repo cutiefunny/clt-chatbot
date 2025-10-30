@@ -16,6 +16,19 @@
   overflow: hidden;
 }
 
+.mainArea {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  transition: padding-left 0.3s ease-in-out;
+  overflow: hidden;
+}
+
+.sharedHeader {
+  flex-shrink: 0;
+}
+
 .contentAndInputWrapper {
   flex-grow: 1; /* 남은 공간을 모두 차지하도록 */
   display: flex;
@@ -24,11 +37,10 @@
   overflow: hidden;
   position: relative;
   /* --- 👇 [수정] left 와 transform 제거, width transition 유지 --- */
-  transition: width 0.3s ease-in-out, padding-left 0.3s ease-in-out; /* padding-left transition 추가 */
+  transition: width 0.3s ease-in-out;
   /* --- 👆 [수정] --- */
   z-index: 1;
-  /* width 계산 방식은 page.js의 style 속성에서 처리 */
-  /* padding-left는 page.js style에서 설정 */
+  /* width 계산 방식은 page.js의 레이아웃에서 처리 */
 }
 
 /* --- 👇 [삭제] .mainPanelShiftedLeft 클래스 제거 --- */
