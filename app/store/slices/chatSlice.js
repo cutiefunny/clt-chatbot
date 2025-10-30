@@ -27,7 +27,7 @@ const getInitialMessages = (lang = "ko") => {
 };
 
 
-// --- 👇 [수정된 부분 시작]: processFlowiseStream 개선 ---
+// --- 👇 [수정된 부분 시작]: processFlowiseStream 수정 ---
 async function* processFlowiseStream(reader, decoder, get) {
     let buffer = '';
     let thinkingMessageReplaced = false;
@@ -77,19 +77,49 @@ async function* processFlowiseStream(reader, decoder, get) {
                     continue; // 다음 라인 처리
                 }
 
+                // 모든 파싱된 데이터 객체 로깅
+                console.log("[Flowise Stream Event]", data);
+
                 let textChunk = '';
 
                 // Flowise 이벤트 타입별 처리
                 if (data.event === 'agentFlowExecutedData' && Array.isArray(data.data) && data.data.length > 0) {
-                    // 마지막 데이터 객체의 output.content 확인 (구조 검증 강화)
+                    
+                    // --- 👇 [수정] ---
+                    // 이 이벤트는 "C"나 JSON 배열 같은 중간 데이터를 포함하는 것으로 보입니다.
+                    // 실제 텍스트 스트림은 'token' 이벤트로 처리되므로,
+                    // 'agentFlowExecutedData'는 UI 업데이트(yield)를 하지 않도록 수정합니다.
+                    
                     const lastData = data.data[data.data.length - 1];
                     if (lastData?.data?.output?.content) {
                         textChunk = lastData.data.output.content;
-                        // 첫 응답 시 thinking 메시지 대체, 이후엔 기존 텍스트 완전히 대체
-                        yield { type: 'text', data: textChunk, replace: true };
-                        thinkingMessageReplaced = true;
-                        collectedText = textChunk; // 전체 텍스트 업데이트
+
+                        if (typeof textChunk === 'string') {
+                            let isJsonString = false;
+                            try {
+                                const parsed = JSON.parse(textChunk);
+                                if (parsed && typeof parsed === 'object') {
+                                    isJsonString = true;
+                                }
+                            } catch (e) {
+                                isJsonString = false;
+                            }
+
+                            if (isJsonString) {
+                                console.log("[Flowise Stream] Ignoring JSON 'output.content':", textChunk);
+                            } else {
+                                // "C"와 같은 순수 텍스트 중간 데이터도 무시합니다.
+                                console.log("[Flowise Stream] Ignoring non-JSON string 'output.content' (intermediate data):", textChunk);
+                                // [REMOVED] yield { type: 'text', data: textChunk, replace: true };
+                                // [REMOVED] thinkingMessageReplaced = true;
+                                // [REMOVED] collectedText = textChunk; 
+                            }
+                        } else {
+                            console.log("[Flowise Stream] Ignoring non-string 'output.content':", textChunk);
+                        }
                     }
+                    // --- 👆 [수정] ---
+
                 } else if (data.event === 'usedTools' && Array.isArray(data.data) && data.data.length > 0) {
                      // toolOutput 구조 및 scenarioId 존재 여부 확인 (구조 검증 강화)
                     const toolOutput = data.data[0]?.toolOutput;
@@ -100,35 +130,47 @@ async function* processFlowiseStream(reader, decoder, get) {
                              const matchScenarioId = toolOutput.match(/"scenarioId"\s*:\s*"([^"]+)"/);
                              if (matchScenarioId && matchScenarioId[1]) {
                                  buttonText = `\n\n[BUTTON:${matchScenarioId[1]}]`;
-                                 // 버튼 텍스트는 바로 UI 업데이트하지 않고 마지막에 추가
                              }
                         }
 
-                        // --- 👇 [개발자님 요청 추가 사항] ---
                         // question 추출 (toolOutput이 업데이트될 때마다 시도)
                         const matchQuestion = toolOutput.match(/"question"\s*:\s*"([^"]+)"/);
                         if (matchQuestion && matchQuestion[1]) {
                             const extractedQuestion = matchQuestion[1];
-                            // extractedSlots는 processFlowiseStream 함수 상단에 정의되어 있음
                             if (extractedSlots.question !== extractedQuestion) {
                                 extractedSlots.question = extractedQuestion; 
                                 console.log(`[Flowise Stream] Extracted question: ${extractedQuestion}`);
                             }
-                            // (참고: extractedSlots는 스트림 후반부에 yield { type: 'slots', ... } 로 전달됩니다)
                         }
-                        // --- 👆 [개발자님 요청 추가 사항] ---
                     }
                 } else if (data.event === 'token' && typeof data.data === 'string') {
-                    // 일반 텍스트 토큰 스트리밍
+                    // 일반 텍스트 토큰 스트리밍 (실제 응답)
                     textChunk = data.data;
-                    yield { type: 'text', data: textChunk, replace: !thinkingMessageReplaced };
-                    thinkingMessageReplaced = true;
+                    
+                    // --- 👇 [수정] 비어있지 않은 첫 토큰이 "생성중..."을 대체하도록 함 ---
+                    if (textChunk.trim().length > 0 && !thinkingMessageReplaced) {
+                       yield { type: 'text', data: textChunk, replace: true };
+                       thinkingMessageReplaced = true;
+                    } else if (thinkingMessageReplaced) {
+                       // 이후 토큰들은 추가
+                       yield { type: 'text', data: textChunk, replace: false };
+                    }
+                    // --- 👆 [수정] ---
+                    
                     collectedText += textChunk; // 전체 텍스트 누적
                 } else if (data.event === 'chunk' && data.data?.response) {
-                    // 일부 Flowise 버전의 텍스트 청크 스트리밍
+                    // 일부 Flowise 버전의 텍스트 청크 스트리밍 (실제 응답)
                     textChunk = data.data.response;
-                    yield { type: 'text', data: textChunk, replace: !thinkingMessageReplaced };
-                    thinkingMessageReplaced = true;
+
+                    // --- 👇 [수정] 비어있지 않은 첫 청크가 "생성중..."을 대체하도록 함 ---
+                     if (textChunk.trim().length > 0 && !thinkingMessageReplaced) {
+                       yield { type: 'text', data: textChunk, replace: true };
+                       thinkingMessageReplaced = true;
+                    } else if (thinkingMessageReplaced) {
+                       yield { type: 'text', data: textChunk, replace: false };
+                    }
+                    // --- 👆 [수정] ---
+                    
                     collectedText += textChunk; // 전체 텍스트 누적
                 }
                 // 다른 이벤트 타입은 필요에 따라 추가
@@ -139,18 +181,13 @@ async function* processFlowiseStream(reader, decoder, get) {
         if (buffer.trim()) {
             try {
                 const data = JSON.parse(buffer.trim());
-                // 필요시 마지막 데이터 처리 로직 추가 (위의 이벤트 처리 로직과 유사하게)
+                console.log("[Flowise Stream Event] (Final Buffer)", data);
                  let textChunk = '';
                 if (data.event === 'agentFlowExecutedData' /*...*/) {
-                    // ... 처리 ...
-                    // yield { type: 'text', data: textChunk, replace: true };
-                    // collectedText = textChunk;
+                    // ...
                 } else if (data.event === 'token' /*...*/) {
-                   // ... 처리 ...
-                   // yield { type: 'text', data: textChunk, replace: !thinkingMessageReplaced };
-                   // collectedText += textChunk;
+                   // ...
                 }
-                // ... 기타 등등 ...
             } catch (e) {
                 console.warn("Error parsing final Flowise stream buffer:", e, "Buffer:", buffer);
             }
@@ -162,19 +199,16 @@ async function* processFlowiseStream(reader, decoder, get) {
             collectedText += buttonText;
         }
 
-        // 슬롯 추출 시도 (현재는 예약번호만, 개선 필요)
-        // TODO: 더 일반적인 슬롯 추출 로직 필요 (Flowise 응답 형식 정의 필요)
+        // 슬롯 추출 시도
         const bookingNoRegex = /\b([A-Z]{2}\d{10})\b/i;
         const match = collectedText.match(bookingNoRegex);
         if (match && match[1]) {
             extractedSlots.bkgNr = match[1];
         }
 
-        // --- 👇 [수정] 추출된 슬롯이 하나라도 있으면 yield ---
         if (Object.keys(extractedSlots).length > 0) {
             yield { type: 'slots', data: extractedSlots }; // 추출된 슬롯 전달
         }
-        // --- 👆 [수정] ---
 
         // 최종 수집된 텍스트 전달 (finally 블록에서 사용됨)
         yield { type: 'finalText', data: collectedText };
@@ -334,13 +368,6 @@ export const createChatSlice = (set, get) => {
         const updatedMessage = { ...lastMessage, text: updatedText };
         return { messages: [...state.messages.slice(0, -1), updatedMessage] };
       }
-      // 스트리밍 메시지가 아니면 새 메시지로 추가 (Flowise 버튼 처리 등)
-      // else if (chunk && chunk.trim()) {
-      //     const newId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-      //     const newMessage = { id: newId, sender: 'bot', text: chunk, isStreaming: false };
-      //     get().saveMessage(newMessage); // 저장 시도
-      //     return { messages: [...state.messages, newMessage] };
-      // }
       return state;
     });
   },
@@ -376,6 +403,7 @@ export const createChatSlice = (set, get) => {
 
   // LLM 추출 슬롯 설정
   setExtractedSlots: (newSlots) => {
+      console.log("[ChatStore] Setting extracted slots:", newSlots);
       set((state) => ({ extractedSlots: { ...state.extractedSlots, ...newSlots } }));
   },
 
@@ -452,11 +480,8 @@ export const createChatSlice = (set, get) => {
         const messagesCollection = collection( get().db, "chats", user.uid, "conversations", activeConversationId, "messages" );
         const messageRef = await addDoc(messagesCollection, { ...messageToSave, createdAt: serverTimestamp() });
         
-        // --- 👇 [수정] 제목 업데이트 로직을 handleResponse로 이동 ---
-        // saveMessage는 단순히 메시지 저장과 timestamp 업데이트만 수행하도록 수정
         await updateDoc( doc(get().db, "chats", user.uid, "conversations", activeConversationId), { updatedAt: serverTimestamp() });
         console.log(`Message saved with ID: ${messageRef.id}`);
-        // --- 👆 [수정] ---
 
         // 저장 성공 후, 임시 ID였던 경우 상태 업데이트 처리
         if (tempId) {
@@ -582,17 +607,14 @@ export const createChatSlice = (set, get) => {
           saveMessage, 
           setExtractedSlots, 
           llmProvider,
-          // --- 👇 [추가] ---
           messages,
           currentConversationId,
           conversations,
           updateConversationTitle
-          // --- 👆 [추가] ---
       } = get();
 
       const textForUser = messagePayload.displayText || messagePayload.text;
 
-      // --- 👇 [추가] 제목 자동 업데이트 로직 ---
       const defaultTitle = locales[language]?.["newChat"] || "New Conversation";
       // addMessage 호출 전 상태 확인
       const isFirstUserMessage = messages.filter(m => m.id !== 'initial').length === 0;
@@ -613,7 +635,6 @@ export const createChatSlice = (set, get) => {
               }
           }
       }
-      // --- 👆 [추가] ---
 
       const thinkingText = locales[language]?.['statusGenerating'] || "Generating...";
       let lastBotMessageId = null;
@@ -768,6 +789,5 @@ export const createChatSlice = (set, get) => {
     }, // end handleResponse
     // --- 👆 [수정된 부분 끝] ---
 
-    // ... (rest of the chatSlice functions remain the same) ...
    } // end return store object
 }; // end createChatSlice
