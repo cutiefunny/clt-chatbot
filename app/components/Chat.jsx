@@ -189,6 +189,7 @@ export default function Chat() {
     scrollToMessageId,
     setScrollToMessageId,
     activePanel,
+    setActivePanel, // --- 👈 [추가] ---
     forceScrollToBottom,
     setForceScrollToBottom,
     scrollAmount,
@@ -203,6 +204,16 @@ export default function Chat() {
   const containerRef = useRef(null);
   const wasAtBottomRef = useRef(true);
   const { t } = useTranslations();
+
+  // --- 👇 [추가] 시나리오 패널 닫기 핸들러 ---
+  const handleHistoryClick = () => {
+    if (activePanel === "scenario") {
+      setActivePanel("main");
+      // setActivePanel('main')이 focusChatInput()을 호출하므로
+      // 포커스도 자동으로 메인 입력창으로 이동합니다.
+    }
+  };
+  // --- 👆 [추가] ---
 
   // 스크롤 관련 함수 및 useEffect들
   const updateWasAtBottom = useCallback(() => {
@@ -402,6 +413,7 @@ export default function Chat() {
             : ""
         }`}
         ref={historyRef}
+        onClick={handleHistoryClick} // --- 👈 [추가] ---
       >
         {!hasMessages ? (
           <FavoritePanel /> // 메시지 없으면 즐겨찾기 패널 표시
