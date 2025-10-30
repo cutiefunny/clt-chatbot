@@ -245,10 +245,21 @@ export const createConversationSlice = (set, get) => ({
 
       console.log(`Conversation ${conversationId} deleted successfully.`);
 
-      // 현재 대화가 삭제되었다면 새 대화 상태로 전환
+      // --- 👇 [수정된 부분 시작] ---
+      // 현재 대화가 삭제되었다면 (로컬) 상태를 초기화 (새 대화 생성 방지)
       if (get().currentConversationId === conversationId) {
-        get().createNewConversation(); // 내부에서 다른 슬라이스 초기화 호출
+        // get().createNewConversation(); // <- 이 코드가 버그의 원인입니다.
+        
+        // 새 대화 생성 대신, 로컬 상태만 초기화합니다.
+        get().unsubscribeAllMessagesAndScenarios?.(); // 구독 해제
+        get().resetMessages?.(get().language); // 메시지 패널 초기화 (chatSlice)
+        set({ 
+          currentConversationId: null, 
+          expandedConversationId: null 
+        }); // 현재 대화 ID 제거
+        // isLoading 상태는 resetMessages에서 false로 설정됨
       }
+      // --- 👆 [수정된 부분 끝] ---
       // Firestore 리스너가 conversations 목록 업데이트 처리
     } catch (error) {
       console.error(`Error deleting conversation ${conversationId}:`, error);

@@ -428,8 +428,12 @@ export const createChatSlice = (set, get) => {
         console.log(`Saving message to conversation: ${activeConversationId}`);
         const messagesCollection = collection( get().db, "chats", user.uid, "conversations", activeConversationId, "messages" );
         const messageRef = await addDoc(messagesCollection, { ...messageToSave, createdAt: serverTimestamp() });
+        
+        // --- 👇 [수정] 제목 업데이트 로직을 handleResponse로 이동 ---
+        // saveMessage는 단순히 메시지 저장과 timestamp 업데이트만 수행하도록 수정
         await updateDoc( doc(get().db, "chats", user.uid, "conversations", activeConversationId), { updatedAt: serverTimestamp() });
         console.log(`Message saved with ID: ${messageRef.id}`);
+        // --- 👆 [수정] ---
 
         // 저장 성공 후, 임시 ID였던 경우 상태 업데이트 처리
         if (tempId) {
@@ -547,12 +551,46 @@ export const createChatSlice = (set, get) => {
   // 사용자 메시지 처리 및 봇 응답 요청/처리
   handleResponse: async (messagePayload) => {
       set({ isLoading: true, llmRawResponse: null });
-      const { language, showEphemeralToast, addMessage, updateLastMessage, saveMessage, setExtractedSlots, llmProvider } = get();
+      const { 
+          language, 
+          showEphemeralToast, 
+          addMessage, 
+          updateLastMessage, 
+          saveMessage, 
+          setExtractedSlots, 
+          llmProvider,
+          // --- 👇 [추가] ---
+          messages,
+          currentConversationId,
+          conversations,
+          updateConversationTitle
+          // --- 👆 [추가] ---
+      } = get();
 
       const textForUser = messagePayload.displayText || messagePayload.text;
+
+      // --- 👇 [추가] 제목 자동 업데이트 로직 ---
+      const defaultTitle = locales[language]?.["newChat"] || "New Conversation";
+      // addMessage 호출 전 상태 확인
+      const isFirstUserMessage = messages.filter(m => m.id !== 'initial').length === 0;
+      const currentConvo = currentConversationId ? conversations.find(c => c.id === currentConversationId) : null;
+      // 새 대화 버튼을 눌러 C.ID가 있어도, 제목이 기본값이면 업데이트 대상
+      const needsTitleUpdate = isFirstUserMessage && textForUser && (!currentConvo || currentConvo.title === defaultTitle);
+      
       if (textForUser) {
+          // 1. 메시지 추가 (이 안에서 saveMessage 호출 -> C.ID 없으면 생성)
           await addMessage("user", { text: textForUser });
+
+          // 2. 제목 업데이트 필요 시
+          if (needsTitleUpdate) {
+              const finalConversationId = get().currentConversationId; // addMessage/saveMessage를 거치며 ID가 확정됨
+              if (finalConversationId) {
+                  const newTitle = textForUser.substring(0, 100); // 100자 제한
+                  await updateConversationTitle(finalConversationId, newTitle); // conversationSlice의 액션 호출
+              }
+          }
       }
+      // --- 👆 [추가] ---
 
       const thinkingText = locales[language]?.['statusGenerating'] || "Generating...";
       let lastBotMessageId = null;
