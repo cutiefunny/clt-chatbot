@@ -93,12 +93,30 @@ async function* processFlowiseStream(reader, decoder, get) {
                 } else if (data.event === 'usedTools' && Array.isArray(data.data) && data.data.length > 0) {
                      // toolOutput 구조 및 scenarioId 존재 여부 확인 (구조 검증 강화)
                     const toolOutput = data.data[0]?.toolOutput;
-                    if (toolOutput && typeof toolOutput === 'string' && !buttonText) { // 버튼은 한 번만 추출
-                         const match = toolOutput.match(/"scenarioId"\s*:\s*"([^"]+)"/);
-                         if (match && match[1]) {
-                             buttonText = `\n\n[BUTTON:${match[1]}]`;
-                             // 버튼 텍스트는 바로 UI 업데이트하지 않고 마지막에 추가
-                         }
+                    
+                    if (toolOutput && typeof toolOutput === 'string') {
+                        // 버튼 추출 (한 번만)
+                        if (!buttonText) {
+                             const matchScenarioId = toolOutput.match(/"scenarioId"\s*:\s*"([^"]+)"/);
+                             if (matchScenarioId && matchScenarioId[1]) {
+                                 buttonText = `\n\n[BUTTON:${matchScenarioId[1]}]`;
+                                 // 버튼 텍스트는 바로 UI 업데이트하지 않고 마지막에 추가
+                             }
+                        }
+
+                        // --- 👇 [개발자님 요청 추가 사항] ---
+                        // question 추출 (toolOutput이 업데이트될 때마다 시도)
+                        const matchQuestion = toolOutput.match(/"question"\s*:\s*"([^"]+)"/);
+                        if (matchQuestion && matchQuestion[1]) {
+                            const extractedQuestion = matchQuestion[1];
+                            // extractedSlots는 processFlowiseStream 함수 상단에 정의되어 있음
+                            if (extractedSlots.question !== extractedQuestion) {
+                                extractedSlots.question = extractedQuestion; 
+                                console.log(`[Flowise Stream] Extracted question: ${extractedQuestion}`);
+                            }
+                            // (참고: extractedSlots는 스트림 후반부에 yield { type: 'slots', ... } 로 전달됩니다)
+                        }
+                        // --- 👆 [개발자님 요청 추가 사항] ---
                     }
                 } else if (data.event === 'token' && typeof data.data === 'string') {
                     // 일반 텍스트 토큰 스트리밍
@@ -150,8 +168,13 @@ async function* processFlowiseStream(reader, decoder, get) {
         const match = collectedText.match(bookingNoRegex);
         if (match && match[1]) {
             extractedSlots.bkgNr = match[1];
+        }
+
+        // --- 👇 [수정] 추출된 슬롯이 하나라도 있으면 yield ---
+        if (Object.keys(extractedSlots).length > 0) {
             yield { type: 'slots', data: extractedSlots }; // 추출된 슬롯 전달
         }
+        // --- 👆 [수정] ---
 
         // 최종 수집된 텍스트 전달 (finally 블록에서 사용됨)
         yield { type: 'finalText', data: collectedText };
