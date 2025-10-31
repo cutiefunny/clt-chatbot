@@ -12,8 +12,9 @@ import OpenInNewIcon from "./icons/OpenInNew";
 import CloseIcon from "./icons/CloseIcon";
 import ScenarioExpandIcon from "./icons/ScenarioExpandIcon";
 import ScenarioCollapseIcon from "./icons/ScenarioCollapseIcon";
-// ChevronDownIcon은 버블에서만 사용하므로 여기서는 필요 없을 수 있음
-// import ChevronDownIcon from "./icons/ChevronDownIcon";
+// --- 👇 [수정] MarkdownRenderer 임포트 추가 ---
+import MarkdownRenderer from "./MarkdownRenderer";
+// --- 👆 [수정] ---
 
 // FormRenderer 컴포넌트
 const FormRenderer = ({
@@ -808,12 +809,14 @@ export default function ScenarioChat() {
                         </a>
                       </div>
                     ) : (
-                      <p>
-                        {interpolateMessage(
+                      // --- 👇 [수정] <p> 태그를 <MarkdownRenderer>로 변경 ---
+                      <MarkdownRenderer
+                        content={interpolateMessage(
                           msg.text || msg.node?.data?.content,
                           activeScenario.slots
                         )}
-                      </p>
+                      />
+                      // --- 👆 [수정] ---
                     )}
                     {msg.node?.type === "branch" && msg.node.data.replies && (
                       <div className={styles.scenarioList}>

@@ -1,0 +1,34 @@
+/* app/components/MarkdownRenderer.module.css */
+.markdownContent {
+  line-height: 1.6;
+  word-wrap: break-word; /* 긴 텍스트 줄바꿈 */
+}
+
+.markdownContent a {
+  color: #4285f4; /* 링크 색상 */
+  text-decoration: underline;
+}
+
+.markdownContent strong {
+  font-weight: 600; /* 굵게 */
+}
+
+.markdownContent em {
+  font-style: italic; /* 기울임 */
+}
+
+.markdownContent code {
+  font-family: var(--font-geist-mono), monospace;
+  background-color: var(--button-hover-bg); /* 코드 배경 */
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  word-wrap: break-word; /* 코드 줄바꿈 */
+}
+
+/* <br> 태그로 인한 이중 간격 방지 */
+.markdownContent br {
+  content: "";
+  display: block;
+  margin-bottom: 0;
+}

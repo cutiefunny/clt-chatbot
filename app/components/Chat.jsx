@@ -11,6 +11,7 @@ import CheckCircle from "./icons/CheckCircle";
 import MoonIcon from "./icons/MoonIcon";
 import LogoIcon from "./icons/LogoIcon";
 import CopyIcon from "./icons/CopyIcon";
+import MarkdownRenderer from "./MarkdownRenderer"; // --- 👈 [추가] ---
 
 // JSON 파싱 및 렌더링을 위한 헬퍼 함수
 const tryParseJson = (text) => {
@@ -129,8 +130,12 @@ const MessageWithButtons = ({ text, messageId, isStreaming }) => {
     <div>
       {parts.map((part, index) => {
         if (part.type === "text") {
-          // 텍스트 내용이 비어있지 않을 때만 span 렌더링
-          return part.content ? <span key={index}>{part.content}</span> : null;
+          // 텍스트 내용이 비어있지 않을 때만 렌더링
+          // --- 👇 [수정] span 대신 MarkdownRenderer 사용 ---
+          return part.content ? (
+            <MarkdownRenderer key={index} content={part.content} />
+          ) : null;
+          // --- 👆 [수정] ---
         } else if (part.type === "button") {
           // 버튼 렌더링 로직
           const buttonText = part.content;
