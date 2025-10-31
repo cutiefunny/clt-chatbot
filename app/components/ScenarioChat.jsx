@@ -701,12 +701,13 @@ export default function ScenarioChat() {
             className={styles.headerCloseButton}
             onClick={(e) => {
               e.stopPropagation();
-              const widthToSend = isScenarioPanelExpanded ? -1064 : -784;
               setActivePanel("main"); // 메인 패널로 전환 (포커스 이동 포함)
               console.log("call postMessage to parent window");
               const msg = {
-                action: "callChatbotResize",
-                payload: { width: widthToSend },
+                action: "callChatbotClose",
+                payload: {
+                  state: "close",
+                },
               };
               window.parent.postMessage(msg, PARENT_ORIGIN);
             }}
