@@ -1,3 +1,4 @@
+// app/components/ScenarioBubble.jsx
 "use client";
 
 // --- 👇 useEffect, useRef, useState 제거, interpolateMessage 추가 ---
@@ -15,7 +16,7 @@ import CheckCircle from "./icons/CheckCircle";
 import OpenInNewIcon from "./icons/OpenInNew";
 import ChevronDownIcon from "./icons/ChevronDownIcon";
 
-// FormRenderer 컴포넌트 (변경 없음 - 전체 코드 포함)
+// FormRenderer 컴포넌트 (변경 있음)
 const FormRenderer = ({
   node,
   onFormSubmit,
@@ -25,7 +26,9 @@ const FormRenderer = ({
   onGridRowClick,
 }) => {
   const [formData, setFormData] = useState({});
-  const dateInputRef = useRef(null);
+  // --- 👇 [수정] dateInputRef 제거 ---
+  // const dateInputRef = useRef(null);
+  // --- 👆 [수정] ---
   const { t } = useTranslations();
 
   useEffect(() => {
@@ -99,13 +102,16 @@ const FormRenderer = ({
     onFormSubmit(finalSubmissionData);
   };
 
-  const handleDateInputClick = () => {
+  // --- 👇 [수정] handleDateInputClick 핸들러 수정 ---
+  const handleDateInputClick = (e) => {
+    e.stopPropagation();
     try {
-      dateInputRef.current?.showPicker();
+      e.currentTarget.showPicker();
     } catch (error) {
       console.error("Failed to show date picker:", error);
     }
   };
+  // --- 👆 [수정] ---
 
   const hasSlotBoundGrid = node.data.elements?.some(
     (el) =>
@@ -117,66 +123,180 @@ const FormRenderer = ({
       slots[el.optionsSlot][0] !== null
   );
 
-  return (
-    <form onSubmit={handleSubmit} className={styles.formContainer}>
-      <h3>{interpolateMessage(node.data.title || "Form", slots)}</h3>
-      <div className={styles.formContainerSeparator} />
-      {node.data.elements?.map((el) => {
-        const dateProps = {};
-        if (el.type === "date" && el.validation) {
-          if (el.validation.type === "today after")
-            dateProps.min = new Date().toISOString().split("T")[0];
-          else if (el.validation.type === "today before")
-            dateProps.max = new Date().toISOString().split("T")[0];
-          else if (el.validation.type === "custom") {
-            if (el.validation.startDate)
-              dateProps.min = el.validation.startDate;
-            if (el.validation.endDate) dateProps.max = el.validation.endDate;
-          }
+  // --- 👇 [수정] 폼 요소 렌더링 로직 (그룹화 추가) ---
+  const renderFormElements = () => {
+    const renderedElements = [];
+    let i = 0;
+    const elements = node.data.elements || [];
+
+    // 'input', 'date', 'dropbox' 타입인지 확인하는 헬퍼 함수
+    const isSimpleInput = (el) =>
+      el &&
+      (el.type === "input" || el.type === "date" || el.type === "dropbox");
+
+    while (i < elements.length) {
+      const currentEl = elements[i];
+
+      // 1. 단순 입력 필드 그룹 처리
+      if (isSimpleInput(currentEl)) {
+        const group = [];
+        // 연속되는 단순 입력 필드를 그룹에 추가
+        while (i < elements.length && isSimpleInput(elements[i])) {
+          group.push(elements[i]);
+          i++;
         }
-        let dropboxOptions = [];
-        if (el.type === "dropbox") {
-          if (el.optionsSlot && Array.isArray(slots[el.optionsSlot])) {
-            dropboxOptions = slots[el.optionsSlot].map((opt) =>
-              typeof opt === "object" && opt !== null
-                ? JSON.stringify(opt)
-                : String(opt)
-            );
-          } else if (Array.isArray(el.options)) {
-            dropboxOptions = el.options;
-          }
-        }
-        return (
+
+        // 그룹을 .formInputGroup 래퍼로 감싸서 렌더링
+        renderedElements.push(
+          <div key={`group-${i}`} className={styles.formInputGroup}>
+            {group.map((el) => {
+              // --- (기존 input, date, dropbox 렌더링 로직 복사) ---
+              const dateProps = {};
+              if (el.type === "date" && el.validation) {
+                if (el.validation.type === "today after")
+                  dateProps.min = new Date().toISOString().split("T")[0];
+                else if (el.validation.type === "today before")
+                  dateProps.max = new Date().toISOString().split("T")[0];
+                else if (el.validation.type === "custom") {
+                  if (el.validation.startDate)
+                    dateProps.min = el.validation.startDate;
+                  if (el.validation.endDate)
+                    dateProps.max = el.validation.endDate;
+                }
+              }
+
+              let dropboxOptions = [];
+              if (el.type === "dropbox") {
+                if (el.optionsSlot && Array.isArray(slots[el.optionsSlot])) {
+                  dropboxOptions = slots[el.optionsSlot].map((opt) =>
+                    typeof opt === "object" && opt !== null
+                      ? JSON.stringify(opt)
+                      : String(opt)
+                  );
+                } else if (Array.isArray(el.options)) {
+                  dropboxOptions = el.options;
+                }
+              }
+              // --- (여기까지 렌더링 로직 복사) ---
+
+              return (
+                <div key={el.id} className={styles.formElement}>
+                  <label className={styles.formLabel}>
+                    {interpolateMessage(el.label, slots)}
+                  </label>
+                  {el.type === "input" && (
+                    <input
+                      className={styles.formInput}
+                      type="text"
+                      placeholder={interpolateMessage(
+                        el.placeholder || "",
+                        slots
+                      )}
+                      value={
+                        formData[el.name] ??
+                        interpolateMessage(String(el.defaultValue ?? ""), slots)
+                      }
+                      onChange={(e) =>
+                        handleInputChange(el.name, e.target.value)
+                      }
+                      disabled={disabled}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  )}
+                  {el.type === "date" && (
+                    <input
+                      // ref={dateInputRef} // ref 제거
+                      className={styles.formInput}
+                      type="date"
+                      value={formData[el.name] || ""}
+                      onChange={(e) =>
+                        handleInputChange(el.name, e.target.value)
+                      }
+                      onClick={handleDateInputClick} // 수정된 핸들러 사용
+                      disabled={disabled}
+                      {...dateProps}
+                    />
+                  )}
+                  {el.type === "dropbox" && (
+                    <div className={styles.selectWrapper}>
+                      <select
+                        className={styles.formInput}
+                        value={formData[el.name] || ""}
+                        onChange={(e) =>
+                          handleInputChange(el.name, e.target.value)
+                        }
+                        disabled={disabled}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <option value="" disabled>
+                          {t("select")}
+                        </option>
+                        {dropboxOptions.map((opt, idx) => (
+                          <option key={`${opt}-${idx}`} value={opt}>
+                            {interpolateMessage(opt, slots)}
+                          </option>
+                        ))}
+                      </select>
+                      <ArrowDropDownIcon
+                        style={{ color: "var(--Gray-07, #5E7599)" }}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        );
+      }
+      // 2. 단순 입력 필드가 아닌 (grid, checkbox 등) 요소 처리
+      else {
+        const el = currentEl;
+        renderedElements.push(
           <div key={el.id} className={styles.formElement}>
             {el.type === "grid" ? (
               (() => {
+                // --- 👇 [수정] 스키마 v1.2 (displayKeys as object array) 대응 ---
                 const gridDataFromSlot = el.optionsSlot
                   ? slots[el.optionsSlot]
                   : null;
                 const hasSlotData =
                   Array.isArray(gridDataFromSlot) &&
                   gridDataFromSlot.length > 0;
+
                 if (
                   hasSlotData &&
                   typeof gridDataFromSlot[0] === "object" &&
                   gridDataFromSlot[0] !== null &&
                   !Array.isArray(gridDataFromSlot[0])
                 ) {
-                  const originalDisplayKeys =
-                    el.displayKeys && el.displayKeys.length > 0
-                      ? el.displayKeys
-                      : Object.keys(gridDataFromSlot[0] || {});
-                  const filteredKeys = el.hideNullColumns
-                    ? originalDisplayKeys.filter((key) =>
+                  // 1. displayKeys가 객체 배열인지 확인, 아니면 이전 방식(문자열 배열) 또는 Object.keys로 폴백
+                  const useObjectKeys =
+                    el.displayKeys &&
+                    el.displayKeys.length > 0 &&
+                    typeof el.displayKeys[0] === "object" &&
+                    el.displayKeys[0] !== null &&
+                    el.displayKeys[0].hasOwnProperty("key");
+                  
+                  const originalDisplayConfigs = useObjectKeys
+                    ? el.displayKeys // 스키마 v1.2: [{ key: 'id', label: 'ID' }, ...]
+                    : (el.displayKeys && el.displayKeys.length > 0
+                        ? el.displayKeys // 스키마 v1.0 호환: ['id', 'name']
+                        : Object.keys(gridDataFromSlot[0] || {})
+                      ).map(k => ({ key: k, label: k })); // v1.0 또는 Object.keys를 v1.2 형식으로 변환
+
+                  // 2. hideNullColumns 필터링 (key 기준)
+                  const filteredDisplayConfigs = el.hideNullColumns
+                    ? originalDisplayConfigs.filter((col) => // col은 {key, label}
                         gridDataFromSlot.some(
                           (obj) =>
-                            obj[key] !== null &&
-                            obj[key] !== undefined &&
-                            obj[key] !== ""
+                            obj[col.key] !== null &&
+                            obj[col.key] !== undefined &&
+                            obj[col.key] !== ""
                         )
                       )
-                    : originalDisplayKeys;
-                  if (filteredKeys.length === 0)
+                    : originalDisplayConfigs;
+                  
+                  if (filteredDisplayConfigs.length === 0)
                     return (
                       <div>
                         {el.hideNullColumns
@@ -184,23 +304,26 @@ const FormRenderer = ({
                           : "No data columns found."}
                       </div>
                     );
-                  const columnWidths = filteredKeys.reduce((acc, key) => {
-                    const headerLength = interpolateMessage(key, slots).length;
+
+                  // 3. columnWidths 계산 (key와 label 사용)
+                  const columnWidths = filteredDisplayConfigs.reduce((acc, col) => {
+                    const headerLength = interpolateMessage(col.label, slots).length; // col.label 사용
                     const maxLength = gridDataFromSlot.reduce(
                       (max, obj) =>
                         Math.max(
                           max,
-                          String(interpolateMessage(obj[key] || "", slots))
+                          String(interpolateMessage(obj[col.key] || "", slots)) // col.key 사용
                             .length
                         ),
                       0
                     );
-                    acc[key] = Math.max(
+                    acc[col.key] = Math.max(
                       5,
                       Math.max(headerLength, maxLength) + 2
                     );
                     return acc;
                   }, {});
+
                   return (
                     <div style={{ overflowX: "auto", width: "100%" }}>
                       <table
@@ -209,16 +332,17 @@ const FormRenderer = ({
                       >
                         <thead>
                           <tr>
-                            {filteredKeys.map((key) => (
+                            {/* 4. Thead 렌더링 (col.label 사용) */}
+                            {filteredDisplayConfigs.map((col) => (
                               <th
-                                key={key}
+                                key={col.key} // key는 col.key
                                 style={{
-                                  minWidth: `${columnWidths[key]}ch`,
+                                  minWidth: `${columnWidths[col.key]}ch`,
                                   textAlign: "left",
                                   padding: "10px 12px",
                                 }}
                               >
-                                {interpolateMessage(key, slots)}
+                                {interpolateMessage(col.label, slots)} {/* label은 col.label */}
                               </th>
                             ))}
                           </tr>
@@ -234,16 +358,17 @@ const FormRenderer = ({
                                 cursor: disabled ? "default" : "pointer",
                               }}
                             >
-                              {filteredKeys.map((key) => (
+                              {/* 5. Tbody 렌더링 (col.key 사용) */}
+                              {filteredDisplayConfigs.map((col) => (
                                 <td
-                                  key={key}
+                                  key={col.key} // key는 col.key
                                   style={{
-                                    minWidth: `${columnWidths[key]}ch`,
+                                    minWidth: `${columnWidths[col.key]}ch`,
                                     whiteSpace: "nowrap",
                                   }}
                                 >
                                   {interpolateMessage(
-                                    dataObject[key] || "",
+                                    dataObject[col.key] || "", // data 접근은 col.key
                                     slots
                                   )}
                                 </td>
@@ -254,6 +379,7 @@ const FormRenderer = ({
                       </table>
                     </div>
                   );
+                // --- 👆 [수정 끝] ---
                 } else {
                   const dataArray = hasSlotData
                     ? gridDataFromSlot
@@ -291,63 +417,6 @@ const FormRenderer = ({
                 <label className={styles.formLabel}>
                   {interpolateMessage(el.label, slots)}
                 </label>
-                {el.type === "input" && (
-                  <input
-                    className={styles.formInput}
-                    type="text"
-                    placeholder={interpolateMessage(
-                      el.placeholder || "",
-                      slots
-                    )}
-                    value={
-                      formData[el.name] ??
-                      interpolateMessage(String(el.defaultValue ?? ""), slots)
-                    }
-                    onChange={(e) => handleInputChange(el.name, e.target.value)}
-                    disabled={disabled}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                )}
-                {el.type === "date" && (
-                  <input
-                    ref={dateInputRef}
-                    className={styles.formInput}
-                    type="date"
-                    value={formData[el.name] || ""}
-                    onChange={(e) => handleInputChange(el.name, e.target.value)}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDateInputClick();
-                    }}
-                    disabled={disabled}
-                    {...dateProps}
-                  />
-                )}
-                {el.type === "dropbox" && (
-                  <div className={styles.selectWrapper}>
-                    <select
-                      className={styles.formInput}
-                      value={formData[el.name] || ""}
-                      onChange={(e) =>
-                        handleInputChange(el.name, e.target.value)
-                      }
-                      disabled={disabled}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <option value="" disabled>
-                        {t("select")}
-                      </option>
-                      {dropboxOptions.map((opt, idx) => (
-                        <option key={`${opt}-${idx}`} value={opt}>
-                          {interpolateMessage(opt, slots)}
-                        </option>
-                      ))}
-                    </select>
-                    <ArrowDropDownIcon
-                      style={{ color: "var(--Gray-07, #5E7599)" }}
-                    />
-                  </div>
-                )}
                 {el.type === "checkbox" &&
                   (el.options || []).map((opt) => (
                     <div
@@ -374,11 +443,27 @@ const FormRenderer = ({
                       </label>
                     </div>
                   ))}
+                {/* (기타 다른 타입 'input', 'date', 'dropbox'는 위에서 처리됨) */}
               </>
             )}
           </div>
         );
-      })}
+        i++; // 다음 요소로 이동
+      }
+    }
+    return renderedElements;
+  };
+  // --- 👆 [수정] ---
+
+  return (
+    <form onSubmit={handleSubmit} className={styles.formContainer}>
+      <h3>{interpolateMessage(node.data.title || "Form", slots)}</h3>
+      <div className={styles.formContainerSeparator} />
+
+      {/* --- 👇 [수정] 그룹화된 요소 렌더링 --- */}
+      {renderFormElements()}
+      {/* --- 👆 [수정] --- */}
+      
       {!hasSlotBoundGrid && !disabled && (
         <button
           type="submit"

@@ -2,8 +2,8 @@
 
 This document defines the structure of the JSON data used for chatbot scenarios.
 
-**Last Updated:** 2025-10-29
-**Current Version:** "1.0"
+**Last Updated:** 2025-10-31
+**Current Version:** "1.2"
 
 ## Root Structure
 
@@ -22,8 +22,7 @@ The root object of a scenario JSON contains the following properties:
   "edges": [ ... ],     // Array of Edge objects
   "startNodeId": "string | null" // ID of the node where the simulation should start
 }
-Node Object Structure
-Each node object has the following base structure:
+Node Object Structure Each node object has the following base structure:
 
 JSON
 
@@ -41,7 +40,9 @@ JSON
   "extent": "'parent' | undefined"    // Usually 'parent' if grouped
 }
 Node Data Schemas (data object)
-1. message Node
+
+message Node
+
 JSON
 
 {
@@ -51,7 +52,8 @@ JSON
     ...
   ]
 }
-2. form Node
+form Node
+
 JSON
 
 {
@@ -60,7 +62,8 @@ JSON
     // See Form Element Schemas below
   ]
 }
-3. api Node
+api Node
+
 JSON
 
 {
@@ -88,7 +91,8 @@ JSON
     ...
   ]
 }
-4. branch Node
+branch Node
+
 JSON
 
 {
@@ -111,7 +115,8 @@ JSON
     ...
   ]
 }
-5. slotfilling Node
+slotfilling Node
+
 JSON
 
 {
@@ -122,7 +127,8 @@ JSON
     ...
   ]
 }
-6. llm Node
+llm Node
+
 JSON
 
 {
@@ -136,7 +142,8 @@ JSON
     ...
   ]
 }
-7. setSlot Node
+setSlot Node
+
 JSON
 
 {
@@ -145,13 +152,15 @@ JSON
     ... // Supports multiple assignments
   ]
 }
-8. delay Node
+delay Node
+
 JSON
 
 {
   "duration": "number" // Delay duration in milliseconds (e.g., 1000 for 1 second)
 }
-9. fixedmenu Node
+fixedmenu Node
+
 JSON
 
 {
@@ -161,21 +170,24 @@ JSON
     ...
   ]
 }
-10. link Node
+link Node
+
 JSON
 
 {
   "content": "string", // URL of the link
   "display": "string"  // Text to display for the link
 }
-11. toast Node
+toast Node
+
 JSON
 
 {
   "message": "string",      // Message content for the toast
   "toastType": "'info' | 'success' | 'error'" // Type of toast (affects appearance/icon)
 }
-12. iframe Node
+iframe Node
+
 JSON
 
 {
@@ -183,7 +195,8 @@ JSON
   "width": "string",     // Width in pixels (e.g., "300")
   "height": "string"     // Height in pixels (e.g., "250")
 }
-13. scenario Node (Group Node)
+scenario Node (Group Node)
+
 JSON
 
 {
@@ -192,7 +205,9 @@ JSON
   "isCollapsed": "boolean" // Whether the group node is currently collapsed
 }
 Form Element Schemas (within form node data.elements)
-1. input Element
+
+input Element
+
 JSON
 
 {
@@ -207,7 +222,8 @@ JSON
     "regex": "string | undefined" // Only if type is 'custom'
   }
 }
-2. date Element
+date Element
+
 JSON
 
 {
@@ -222,8 +238,8 @@ JSON
     "endDate": "string | undefined"    // YYYY-MM-DD format, only if type is 'custom'
   }
 }
+grid Element
 
-3. grid Element
 JSON
 
 {
@@ -232,14 +248,17 @@ JSON
   "name": "string | undefined",         // Optional slot name (less common for display grids)
   "label": "string",
   "optionsSlot": "string | undefined", // Slot containing array data (usually objects)
-  "displayKeys": "string[] | undefined", // Keys (column headers) to display when using optionsSlot
+  // --- 👇 [수정] displayKeys 타입 및 설명 변경 ---
+  "displayKeys": "{ key: string, label: string }[] | undefined", // Array of objects defining columns. 'key' = data key, 'label' = header text.
+  // --- 👆 [수정 끝] ---
   "hideNullColumns": "boolean | undefined", // Whether to hide columns if all values are null/empty
   // --- Fallback if optionsSlot is not used ---
   "rows": "number | undefined",
   "columns": "number | undefined",
   "data": "string[] | undefined"        // Flat array of cell values (row by row)
 }
-4. checkbox Element
+checkbox Element
+
 JSON
 
 {
@@ -250,7 +269,8 @@ JSON
   "options": "string[]",   // Array of checkbox option labels/values
   "defaultValue": "string[] | undefined" // Array of initially checked values
 }
-5. dropbox Element
+dropbox Element
+
 JSON
 
 {
@@ -263,6 +283,7 @@ JSON
   "defaultValue": "string | undefined" // Initially selected value
 }
 Edge Object Structure
+
 JSON
 
 {

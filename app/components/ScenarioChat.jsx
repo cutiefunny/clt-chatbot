@@ -1,3 +1,4 @@
+// app/components/ScenarioChat.jsx
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -267,7 +268,7 @@ const FormRenderer = ({
           <div key={el.id} className={styles.formElement}>
             {el.type === "grid" ? (
               (() => {
-                // ... (기존 grid 렌더링 로직) ...
+                // --- 👇 [수정] 스키마 v1.2 (displayKeys as object array) 대응 ---
                 const gridDataFromSlot = el.optionsSlot
                   ? slots[el.optionsSlot]
                   : null;
@@ -281,21 +282,34 @@ const FormRenderer = ({
                   gridDataFromSlot[0] !== null &&
                   !Array.isArray(gridDataFromSlot[0])
                 ) {
-                  const originalDisplayKeys =
-                    el.displayKeys && el.displayKeys.length > 0
-                      ? el.displayKeys
-                      : Object.keys(gridDataFromSlot[0] || {});
-                  const filteredKeys = el.hideNullColumns
-                    ? originalDisplayKeys.filter((key) =>
+                  // 1. displayKeys가 객체 배열인지 확인, 아니면 이전 방식(문자열 배열) 또는 Object.keys로 폴백
+                  const useObjectKeys =
+                    el.displayKeys &&
+                    el.displayKeys.length > 0 &&
+                    typeof el.displayKeys[0] === "object" &&
+                    el.displayKeys[0] !== null &&
+                    el.displayKeys[0].hasOwnProperty("key");
+                  
+                  const originalDisplayConfigs = useObjectKeys
+                    ? el.displayKeys // 스키마 v1.2: [{ key: 'id', label: 'ID' }, ...]
+                    : (el.displayKeys && el.displayKeys.length > 0
+                        ? el.displayKeys // 스키마 v1.0 호환: ['id', 'name']
+                        : Object.keys(gridDataFromSlot[0] || {})
+                      ).map(k => ({ key: k, label: k })); // v1.0 또는 Object.keys를 v1.2 형식으로 변환
+
+                  // 2. hideNullColumns 필터링 (key 기준)
+                  const filteredDisplayConfigs = el.hideNullColumns
+                    ? originalDisplayConfigs.filter((col) => // col은 {key, label}
                         gridDataFromSlot.some(
                           (obj) =>
-                            obj[key] !== null &&
-                            obj[key] !== undefined &&
-                            obj[key] !== ""
+                            obj[col.key] !== null &&
+                            obj[col.key] !== undefined &&
+                            obj[col.key] !== ""
                         )
                       )
-                    : originalDisplayKeys;
-                  if (filteredKeys.length === 0)
+                    : originalDisplayConfigs;
+                  
+                  if (filteredDisplayConfigs.length === 0)
                     return (
                       <div>
                         {el.hideNullColumns
@@ -303,23 +317,26 @@ const FormRenderer = ({
                           : "No data columns found."}
                       </div>
                     );
-                  const columnWidths = filteredKeys.reduce((acc, key) => {
-                    const headerLength = interpolateMessage(key, slots).length;
+
+                  // 3. columnWidths 계산 (key와 label 사용)
+                  const columnWidths = filteredDisplayConfigs.reduce((acc, col) => {
+                    const headerLength = interpolateMessage(col.label, slots).length; // col.label 사용
                     const maxLength = gridDataFromSlot.reduce(
                       (max, obj) =>
                         Math.max(
                           max,
-                          String(interpolateMessage(obj[key] || "", slots))
+                          String(interpolateMessage(obj[col.key] || "", slots)) // col.key 사용
                             .length
                         ),
                       0
                     );
-                    acc[key] = Math.max(
+                    acc[col.key] = Math.max(
                       5,
                       Math.max(headerLength, maxLength) + 2
                     );
                     return acc;
                   }, {});
+
                   return (
                     <div style={{ overflowX: "auto", width: "100%" }}>
                       <table
@@ -328,16 +345,17 @@ const FormRenderer = ({
                       >
                         <thead>
                           <tr>
-                            {filteredKeys.map((key) => (
+                            {/* 4. Thead 렌더링 (col.label 사용) */}
+                            {filteredDisplayConfigs.map((col) => (
                               <th
-                                key={key}
+                                key={col.key} // key는 col.key
                                 style={{
-                                  minWidth: `${columnWidths[key]}ch`,
+                                  minWidth: `${columnWidths[col.key]}ch`,
                                   textAlign: "left",
                                   padding: "10px 12px",
                                 }}
                               >
-                                {interpolateMessage(key, slots)}
+                                {interpolateMessage(col.label, slots)} {/* label은 col.label */}
                               </th>
                             ))}
                           </tr>
@@ -353,16 +371,17 @@ const FormRenderer = ({
                                 cursor: disabled ? "default" : "pointer",
                               }}
                             >
-                              {filteredKeys.map((key) => (
+                              {/* 5. Tbody 렌더링 (col.key 사용) */}
+                              {filteredDisplayConfigs.map((col) => (
                                 <td
-                                  key={key}
+                                  key={col.key} // key는 col.key
                                   style={{
-                                    minWidth: `${columnWidths[key]}ch`,
+                                    minWidth: `${columnWidths[col.key]}ch`,
                                     whiteSpace: "nowrap",
                                   }}
                                 >
                                   {interpolateMessage(
-                                    dataObject[key] || "",
+                                    dataObject[col.key] || "", // data 접근은 col.key
                                     slots
                                   )}
                                 </td>
@@ -373,6 +392,7 @@ const FormRenderer = ({
                       </table>
                     </div>
                   );
+                // --- 👆 [수정 끝] ---
                 } else {
                   const dataArray = hasSlotData
                     ? gridDataFromSlot
@@ -702,13 +722,12 @@ export default function ScenarioChat() {
             className={styles.headerCloseButton}
             onClick={(e) => {
               e.stopPropagation();
+              const widthToSend = isScenarioPanelExpanded ? -1064 : -784;
               setActivePanel("main"); // 메인 패널로 전환 (포커스 이동 포함)
               console.log("call postMessage to parent window");
               const msg = {
-                action: "callChatbotClose",
-                payload: {
-                  state: "close",
-                },
+                action: "callChatbotResize",
+                payload: { width: widthToSend },
               };
               window.parent.postMessage(msg, PARENT_ORIGIN);
             }}
