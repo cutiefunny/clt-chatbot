@@ -36,14 +36,21 @@
 .viewMoreButton {
   background: none;
   border: none;
-  color: var(--login-button-bg); /* 링크와 유사한 색상 */
+  width: 100%;
+  border: 1px solid #babcd1;
+  border-radius: 8px;
+  color: #5e7599;
   cursor: pointer;
-  padding: 4px 0;
-  margin-top: 8px;
+  padding: 8px 0;
+  margin-top: 14px;
   font-weight: 600;
-  font-size: 0.9em;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
 }
 
 .viewMoreButton:hover {
-  text-decoration: underline;
+  background-color: #f0f2f5;
 }
