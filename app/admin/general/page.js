@@ -34,7 +34,7 @@ export default function GeneralSettingsPage() {
   const [provider, setProvider] = useState("gemini");
   const [apiUrl, setApiUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [apiUrlError, setApiUrlError] = useState(''); // --- 👈 [추가] URL 오류 상태 ---
+  const [apiUrlError, setApiUrlError] = useState(''); 
 
   useEffect(() => {
     loadGeneralConfig();
@@ -44,6 +44,9 @@ export default function GeneralSettingsPage() {
     if (maxFavorites !== null) setLimit(String(maxFavorites));
     setHideCompleted(hideCompletedScenarios);
     if (hideDelayInHours !== null) setDelayHours(String(hideDelayInHours));
+    // --- 👇 [수정] 누락된 contentTruncateLimit 상태 설정 추가 ---
+    if (contentTruncateLimit !== null) setTruncateLimit(String(contentTruncateLimit));
+    // --- 👆 [수정] ---
     if (fontSizeDefault) setDefaultSize(fontSizeDefault);
     if (fontSizeSmall) setSmallSize(fontSizeSmall);
     setDevMode(isDevMode);
@@ -63,10 +66,9 @@ export default function GeneralSettingsPage() {
     flowiseApiUrl,
   ]);
 
-  // --- 👇 [수정된 부분 시작]: handleSave에 URL 유효성 검사 추가 ---
   const handleSave = async () => {
     setIsLoading(true);
-    setApiUrlError(''); // 오류 초기화
+    setApiUrlError(''); 
     const newLimit = parseInt(limit, 10);
     const newDelayHours = parseInt(delayHours, 10);
     const newTruncateLimit = parseInt(truncateLimit, 10);
@@ -77,7 +79,7 @@ export default function GeneralSettingsPage() {
       newLimit < 0 ||
       isNaN(newDelayHours) ||
       newDelayHours < 0 ||
-      isNaN(newTruncateLimit) ||
+      isNaN(newTruncateLimit) || // [수정] newTruncateLimit 검사
       newTruncateLimit < 0
     ) {
       showEphemeralToast("유효한 숫자를 입력해주세요.", "error");
@@ -85,7 +87,6 @@ export default function GeneralSettingsPage() {
       return;
     }
 
-    // Flowise 선택 시 URL 유효성 검사 (간단하게 http/https 시작 여부만)
     if (provider === "flowise") {
       if (!apiUrl || !(apiUrl.startsWith('http://') || apiUrl.startsWith('https://'))) {
           setApiUrlError('유효한 URL 형식(http:// 또는 https://)으로 입력해주세요.');
@@ -104,7 +105,7 @@ export default function GeneralSettingsPage() {
       isDevMode: devMode,
       dimUnfocusedPanels: dimPanels,
       llmProvider: provider,
-      flowiseApiUrl: apiUrl, // 저장 시에는 입력된 값 그대로 저장
+      flowiseApiUrl: apiUrl, 
       contentTruncateLimit: newTruncateLimit,
     };
 
@@ -113,11 +114,9 @@ export default function GeneralSettingsPage() {
       showEphemeralToast("설정이 성공적으로 저장되었습니다.", "success");
     } else {
       // saveGeneralConfig 내부에서 오류 토스트가 표시될 것임
-      // showEphemeralToast("저장에 실패했습니다.", "error");
     }
     setIsLoading(false);
   };
-  // --- 👆 [수정된 부분 끝] ---
 
   return (
     <div className={styles.container}>
@@ -143,7 +142,7 @@ export default function GeneralSettingsPage() {
                   type="radio"
                   value="gemini"
                   checked={provider === "gemini"}
-                  onChange={(e) => { setProvider(e.target.value); setApiUrlError(''); }} // Provider 변경 시 오류 초기화
+                  onChange={(e) => { setProvider(e.target.value); setApiUrlError(''); }} 
                 />
                 Gemini
               </label>
@@ -163,29 +162,27 @@ export default function GeneralSettingsPage() {
               <label htmlFor="flowise-url" className={styles.settingLabel}>
                 <h4>Flowise API URL</h4>
                 <p>사용할 Flowise 챗플로우의 API Endpoint URL을 입력합니다.</p>
-                {/* --- 👇 [추가] 오류 메시지 표시 --- */}
                 {apiUrlError && <p style={{ color: 'red', fontSize: '0.8rem', marginTop: '4px' }}>{apiUrlError}</p>}
-                {/* --- 👆 [추가] --- */}
               </label>
               <input
                 id="flowise-url"
                 type="text"
                 value={apiUrl}
-                onChange={(e) => { setApiUrl(e.target.value); setApiUrlError(''); }} // 입력 시 오류 초기화
+                onChange={(e) => { setApiUrl(e.target.value); setApiUrlError(''); }} 
                 className={styles.settingInput}
-                style={{ width: "100%", textAlign: "left", borderColor: apiUrlError ? 'red' : undefined }} // 오류 시 테두리 색 변경
+                style={{ width: "100%", textAlign: "left", borderColor: apiUrlError ? 'red' : undefined }} 
                 placeholder="http://..."
               />
             </div>
           )}
         </div>
 
-        {/* --- 본문 줄임 글자 수 설정 --- */}
+        {/* --- 👇 [수정] 본문 줄임 '글자 수' -> '줄 수' --- */}
         <div className={styles.settingItem}>
           <label htmlFor="truncate-limit" className={styles.settingLabel}>
-            <h3>본문 줄임 글자 수</h3>
+            <h3>본문 줄임 줄 수</h3>
             <p>
-              봇 답변이 설정된 글자 수를 초과하면 '더 보기' 버튼을 표시합니다.
+              봇 답변이 설정된 줄 수를 초과하면 '더 보기' 버튼을 표시합니다.
               (0으로 설정 시 비활성화)
             </p>
           </label>
@@ -198,6 +195,7 @@ export default function GeneralSettingsPage() {
             min="0"
           />
         </div>
+        {/* --- 👆 [수정] --- */}
 
         {/* 포커스 흐림 설정 (기존 코드 유지) */}
         <div className={styles.settingItem}>

@@ -1,9 +1,13 @@
 import { useState } from 'react';
 import { useTranslations } from '../hooks/useTranslations';
 import styles from './MarkdownRenderer.module.css';
+// --- 👇 [수정] useChatStore 임포트 추가 ---
 import { useChatStore } from '../store';
+// --- 👆 [수정] ---
 
-const CONTENT_LIMIT = 200; // 글자 수 제한
+// --- 👇 [수정] const CONTENT_LIMIT = 200; 제거 ---
+// const CONTENT_LIMIT = 200; // 글자 수 제한
+// --- 👆 [수정] ---
 
 /**
  * 간단한 마크다운 형식을 HTML로 변환합니다.
@@ -75,19 +79,24 @@ function formatMarkdown(text) {
 export default function MarkdownRenderer({ content }) {
   const { t } = useTranslations();
   const [isExpanded, setIsExpanded] = useState(false);
-  const CONTENT_LIMIT = useChatStore((state) => state.contentTruncateLimit);
+  // --- 👇 [수정] 스토어에서 contentTruncateLimit 가져오기 (줄 수 제한으로 사용) ---
+  const LINE_LIMIT = useChatStore((state) => state.contentTruncateLimit);
+  // --- 👆 [수정] ---
 
   // content가 문자열이 아니거나 null일 경우 빈 문자열로 처리
   const safeContent = String(content || '');
 
-  const needsTruncation = CONTENT_LIMIT > 0 && safeContent.length > CONTENT_LIMIT;
+  // --- 👇 [수정] 글자 수(.length) 대신 줄 수(lines.length)로 확인 ---
+  const lines = safeContent.split('\n');
+  const needsTruncation = LINE_LIMIT > 0 && lines.length > LINE_LIMIT;
+  // --- 👆 [수정] ---
 
   const handleToggle = (e) => {
     e.stopPropagation(); // 이벤트 버블링 방지
     setIsExpanded(!isExpanded);
   };
 
-  // 1. 축약이 필요 없고, 확장된 상태일 경우
+  // 1. 축약이 필요 없거나(needsTruncation false), 확장된 상태일 경우
   if (!needsTruncation || isExpanded) {
     const htmlContent = formatMarkdown(safeContent);
     return (
@@ -103,16 +112,13 @@ export default function MarkdownRenderer({ content }) {
     );
   }
 
-  // 2. 축약이 필요하고, 축소된 상태일 경우
-  // CONTENT_LIMIT (e.g., 200)자 근처의 공백에서 자르기 (단어 중간 방지)
-  let truncatedText = safeContent.substring(0, CONTENT_LIMIT);
-  const lastSpace = truncatedText.lastIndexOf(' ');
-  // --- 👇 [수정] lastSpace > 0 조건 추가 (공백이 없는 긴 문자열 처리) ---
-  if (lastSpace > CONTENT_LIMIT - 50 && lastSpace > 0) { // 너무 앞에서 잘리지 않도록
-    truncatedText = truncatedText.substring(0, lastSpace);
-  }
-  // --- 👆 [수정] ---
+  // 2. 축약이 필요하고(needsTruncation true), 축소된 상태일 경우
+  // --- 👇 [수정] 글자 수 자르기 -> 줄 수 자르기 ---
+  // (예: 10줄) 근처의 공백에서 자르기
+  const truncatedLines = lines.slice(0, LINE_LIMIT);
+  let truncatedText = truncatedLines.join('\n');
   truncatedText += '...'; // 줄임표 추가
+  // --- 👆 [수정] ---
 
   const htmlContent = formatMarkdown(truncatedText);
 

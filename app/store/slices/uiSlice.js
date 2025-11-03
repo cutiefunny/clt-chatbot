@@ -19,7 +19,9 @@ export const createUISlice = (set, get) => ({
   maxFavorites: 10,
   hideCompletedScenarios: false,
   hideDelayInHours: 0,
-  contentTruncateLimit: 200, // --- 👈 [추가] 봇 답변 줄임 글자 수 (기본값 200) ---
+  // --- 👇 [수정] 주석 및 기본값 변경 (200 -> 10) ---
+  contentTruncateLimit: 10, // 봇 답변 줄임 줄 수 (기본값 10)
+  // --- 👆 [수정] ---
   fontSizeDefault: "16px", // 기본값
   fontSizeSmall: "14px", // 기본값
   isDevMode: false,
@@ -74,10 +76,12 @@ export const createUISlice = (set, get) => ({
             typeof config.hideDelayInHours === "number"
               ? config.hideDelayInHours
               : 0,
+          // --- 👇 [수정] 기본값 변경 (200 -> 10) ---
           contentTruncateLimit:
             typeof config.contentTruncateLimit === "number"
               ? config.contentTruncateLimit
-              : 200,
+              : 10, // 10줄 기본값
+          // --- 👆 [수정] ---
           fontSizeDefault: config.fontSizeDefault || "16px",
           fontSizeSmall: config.fontSizeSmall || "14px",
           isDevMode:
@@ -129,24 +133,16 @@ export const createUISlice = (set, get) => ({
     }));
   },
 
-  // --- 👇 [수정] setTheme: 항상 'light'로 설정하고 저장 로직 제거 ---
   setTheme: async (newTheme) => {
-    // newTheme 인자를 무시하고 항상 'light'로 설정
     set({ theme: "light" });
     if (typeof window !== "undefined") {
-      // 로컬 스토리지에서도 'light'로 강제
       localStorage.setItem("theme", "light");
     }
-    // Firestore 저장 로직 제거
   },
 
-  // --- 👇 [수정] toggleTheme: 기능 비활성화 (호출해도 아무것도 안 함) ---
   toggleTheme: async () => {
-    // 테마 토글 기능을 비활성화
     console.log("Theme toggling is disabled.");
-    // set({ theme: "light" }); // 필요 시 강제로 light로 설정
   },
-  // --- 👆 [수정] ---
 
   setFontSize: async (size) => {
     set({ fontSize: size });
