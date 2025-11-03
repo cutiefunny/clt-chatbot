@@ -32,26 +32,48 @@ const FormRenderer = ({
   // --- 👆 [수정] ---
   const { t } = useTranslations();
 
-  // useEffect를 사용하여 defaultValue로 formData 초기화
+  // --- 👇 [수정] useEffect를 사용하여 defaultValue보다 slots의 기존 값을 우선하여 formData 초기화 ---
   useEffect(() => {
     const initialFormData = {};
     if (node.data && Array.isArray(node.data.elements)) {
       node.data.elements.forEach((el) => {
-        if (
-          el.name &&
-          el.defaultValue !== undefined &&
-          el.defaultValue !== null
-        ) {
-          let initialValue = interpolateMessage(String(el.defaultValue), slots);
-          if (el.type === "checkbox" && typeof initialValue === "string") {
-            initialValue = initialValue.split(",").map((s) => s.trim());
+        if (el.name) {
+          let initialValue;
+
+          // 1. Check for existing value in global slots (user's previous input)
+          if (slots[el.name] !== undefined && slots[el.name] !== null) {
+            initialValue = slots[el.name];
           }
-          initialFormData[el.name] = initialValue;
+          // 2. Else, check for a default value on the node
+          else if (
+            el.defaultValue !== undefined &&
+            el.defaultValue !== null
+          ) {
+            initialValue = interpolateMessage(String(el.defaultValue), slots);
+          }
+
+          // Handle type-specific conversions (like checkbox)
+          if (el.type === "checkbox") {
+            if (typeof initialValue === "string") {
+              initialValue = initialValue
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean); // Filter out empty strings
+            } else if (!Array.isArray(initialValue)) {
+              initialValue = []; // Default to empty array if not already an array
+            }
+          }
+
+          // Set the value in initialFormData if it's defined
+          if (initialValue !== undefined) {
+            initialFormData[el.name] = initialValue;
+          }
         }
       });
     }
     setFormData(initialFormData);
   }, [node.data.elements, slots]);
+  // --- 👆 [수정] ---
 
   const handleInputChange = (name, value) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -205,10 +227,9 @@ const FormRenderer = ({
                         el.placeholder || "",
                         slots
                       )}
-                      value={
-                        formData[el.name] ??
-                        interpolateMessage(String(el.defaultValue ?? ""), slots)
-                      }
+                      // --- 👇 [수정] value를 formData에서만 읽도록 변경 ---
+                      value={formData[el.name] ?? ""}
+                      // --- 👆 [수정] ---
                       onChange={(e) =>
                         handleInputChange(el.name, e.target.value)
                       }
@@ -221,7 +242,9 @@ const FormRenderer = ({
                       // ref={dateInputRef} // ref 제거
                       className={styles.formInput}
                       type="date"
-                      value={formData[el.name] || ""}
+                      // --- 👇 [수정] value를 formData에서만 읽도록 변경 ---
+                      value={formData[el.name] ?? ""}
+                      // --- 👆 [수정] ---
                       onChange={(e) =>
                         handleInputChange(el.name, e.target.value)
                       }
@@ -234,7 +257,9 @@ const FormRenderer = ({
                     <div className={styles.selectWrapper}>
                       <select
                         className={styles.formInput}
-                        value={formData[el.name] || ""}
+                        // --- 👇 [수정] value를 formData에서만 읽도록 변경 ---
+                        value={formData[el.name] ?? ""}
+                        // --- 👆 [수정] ---
                         onChange={(e) =>
                           handleInputChange(el.name, e.target.value)
                         }
