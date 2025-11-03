@@ -500,13 +500,44 @@ input:checked + .slider:before {
   overflow: hidden;
 }
 
-.formContainer h3 {
-  padding: 12px 20px;
+/* --- 👇 [수정] 폼 헤더 및 엑셀 버튼 스타일 --- */
+.formHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px; /* h3에서 패딩 이동 */
+}
+
+.formHeader h3 {
+  padding: 0; /* h3 패딩 리셋 */
+  margin: 0; /* h3 마진 리셋 */
   font-size: 16px;
   font-weight: 600;
   line-height: 20px; /* 125% */
   letter-spacing: -0.24px;
 }
+
+.excelUploadButton {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--Gray-07, #5e7599);
+  cursor: pointer;
+  transition: background-color 0.2s;
+  border-radius: 6px;
+  border: 1px solid var(--Gray-04, #babcd1);
+  background: var(--White-Opacity-48, rgba(255, 255, 255, 0.48));
+}
+
+.excelUploadButton:hover {
+  background-color: var(--button-hover-bg);
+}
+
+.excelUploadButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+/* --- 👆 [수정] --- */
 
 .formContainerSeparator {
   position: relative;
@@ -530,11 +561,14 @@ input:checked + .slider:before {
   width: 100%;
 }
 
+/* --- 👇 [수정] formActionArea에 gap 추가 --- */
 .formActionArea {
   display: flex;
   justify-content: flex-end;
   padding: 0px 20px 12px 20px;
+  gap: 8px; /* 버튼 사이 간격 추가 */
 }
+/* --- 👆 [수정] --- */
 
 .formLabel {
   color: var(--Gray-05, #8d9eba);
@@ -582,8 +616,9 @@ input:checked + .slider:before {
   color-scheme: var(--date-input-scheme);
 }
 
+/* --- 👇 [수정] formSubmitButton에서 align-self 제거 --- */
 .formSubmitButton {
-  align-self: flex-end;
+  /* align-self: flex-end; */ /* 부모(formActionArea)가 정렬을 제어하므로 제거 */
   padding: 8px 16px;
   color: var(--White, #fff); /* Themed */
   border-radius: 8px;
@@ -593,6 +628,7 @@ input:checked + .slider:before {
   );
   cursor: pointer;
 }
+/* --- 👆 [수정] --- */
 
 .formSubmitButton:hover {
   background-color: var(--login-button-hover-bg); /* Themed */
