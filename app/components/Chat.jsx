@@ -16,6 +16,8 @@ import CopyIcon from "./icons/CopyIcon";
 import MarkdownRenderer from "./MarkdownRenderer";
 import LikeIcon from "./icons/LikeIcon";
 import DislikeIcon from "./icons/DislikeIcon";
+import UploadIcon from "./icons/UploadIcon";
+import TransferIcon from "./icons/TransferIcon";
 
 // JSON 파싱 및 렌더링을 위한 헬퍼 함수
 const tryParseJson = (text) => {
@@ -624,6 +626,18 @@ export default function Chat() {
                             }
                           >
                             <DislikeIcon />
+                          </button>
+                          <button
+                            className={styles.actionButton}
+                            onClick={() => handleUpload(msg.id)}
+                          >
+                            <UploadIcon />
+                          </button>
+                          <button
+                            className={styles.actionButton}
+                            onClick={() => handleTransfer(msg.id)}
+                          >
+                            <TransferIcon />
                           </button>
                         </div>
                       )}

@@ -2,7 +2,8 @@
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { locales } from "../../lib/locales";
 
-const PARENT_ORIGIN = process.env.NEXT_PUBLIC_PARENT_ORIGIN || "http://localhost:3000"; // NEXT_PUBLIC_PARENT_ORIGIN 환경 변수 사용
+const PARENT_ORIGIN =
+  process.env.NEXT_PUBLIC_PARENT_ORIGIN || "http://localhost:3000"; // NEXT_PUBLIC_PARENT_ORIGIN 환경 변수 사용
 
 const getInitialMessages = (lang = "ko") => {
   return [
@@ -208,7 +209,9 @@ export const createUISlice = (set, get) => ({
     const { isHistoryPanelOpen } = get();
 
     if (isHistoryPanelOpen) {
-      console.log("calling history panel close");
+      console.log(
+        `[Call Window Method] callChatbotResize to ${PARENT_ORIGIN} with width -264`
+      );
       window.parent.postMessage(
         {
           action: "callChatbotResize",
@@ -219,7 +222,9 @@ export const createUISlice = (set, get) => ({
         PARENT_ORIGIN
       );
     } else {
-      console.log("calling history panel open");
+      console.log(
+        `[Call Window Method] callChatbotResize to ${PARENT_ORIGIN} with width 264`
+      );
       window.parent.postMessage(
         {
           action: "callChatbotResize",

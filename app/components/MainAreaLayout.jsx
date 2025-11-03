@@ -17,7 +17,8 @@ export default function MainAreaLayout({
   theme,
   setTheme,
 }) {
-  const PARENT_ORIGIN = "http://172.20.130.91:9110/";
+  const PARENT_ORIGIN =
+    process.env.NEXT_PUBLIC_PARENT_ORIGIN || "http://localhost:3000"; // NEXT_PUBLIC_PARENT_ORIGIN 환경 변수 사용
 
   return (
     <div
@@ -61,11 +62,15 @@ export default function MainAreaLayout({
             <button
               className={chatStyles.headerCloseButton}
               onClick={() => {
-                console.log("close button clicked");
+                console.log(
+                  `[Call Window Method] callChatbotClose to ${PARENT_ORIGIN}`
+                );
                 window.parent.postMessage(
                   {
-                    action: "closeChatbot",
-                    payload: {},
+                    action: "callChatbotClose",
+                    payload: {
+                      state: "close",
+                    },
                   },
                   PARENT_ORIGIN
                 );
