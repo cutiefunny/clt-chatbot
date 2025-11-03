@@ -495,15 +495,34 @@ const FormRenderer = ({
 
   return (
     <form onSubmit={handleSubmit} className={styles.formContainer}>
-      <h3>{interpolateMessage(node.data.title || "Form", slots)}</h3>
+      {/* --- 👇 [수정] 엑셀 업로드 버튼 제거 --- */}
+      <div className={styles.formHeader}>
+        <h3>{interpolateMessage(node.data.title || "Form", slots)}</h3>
+      </div>
+      {/* --- 👆 [수정] --- */}
       <div className={styles.formContainerSeparator} />
 
       {/* --- 👇 [수정] 그룹화된 요소 렌더링 --- */}
       {renderFormElements()}
       {/* --- 👆 [수정] --- */}
 
+      {/* --- 👇 [수정] 엑셀 업로드 버튼을 formActionArea로 이동 --- */}
       {!hasSlotBoundGrid && !disabled && (
         <div className={styles.formActionArea}>
+          {node.data.enableExcelUpload && (
+            <button
+              type="button"
+              className={styles.excelUploadButton}
+              onClick={(e) => {
+                e.stopPropagation();
+                // TODO: Implement Excel upload logic
+                console.log("Excel Upload clicked for node:", node.id);
+              }}
+              disabled={disabled}
+            >
+              Excel Upload
+            </button>
+          )}
           <button
             type="submit"
             className={styles.formSubmitButton}
@@ -513,6 +532,7 @@ const FormRenderer = ({
           </button>
         </div>
       )}
+      {/* --- 👆 [수정] --- */}
     </form>
   );
 };

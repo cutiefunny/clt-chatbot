@@ -483,35 +483,49 @@ const FormRenderer = ({
 
   return (
     <form onSubmit={handleSubmit} className={styles.formContainer}>
-      <h3>{interpolateMessage(node.data.title || "Form", slots)}</h3>
+      {/* --- 👇 [수정] 엑셀 업로드 버튼 제거 --- */}
+      <div className={styles.formHeader}>
+        <h3>{interpolateMessage(node.data.title || "Form", slots)}</h3>
+      </div>
+      {/* --- 👆 [수정] --- */}
       <div className={styles.formContainerSeparator} />
 
-      {/* --- 👇 [수정] 그룹화된 요소 렌더링 --- */}
       {renderFormElements()}
-      {/* --- 👆 [수정] --- */}
       
+      {/* --- 👇 [수정] 엑셀 업로드 버튼을 formActionArea로 이동 --- */}
       {!hasSlotBoundGrid && !disabled && (
-        <button
-          type="submit"
-          className={styles.formSubmitButton}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {t("submit")}
-        </button>
+        <div className={styles.formActionArea}>
+          {node.data.enableExcelUpload && (
+            <button
+              type="button"
+              className={styles.excelUploadButton}
+              onClick={(e) => {
+                e.stopPropagation();
+                // TODO: Implement Excel upload logic
+                console.log("Excel Upload clicked for node:", node.id);
+              }}
+              disabled={disabled}
+            >
+              Excel Upload
+            </button>
+          )}
+          <button
+            type="submit"
+            className={styles.formSubmitButton}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {t("submit")}
+          </button>
+        </div>
       )}
+      {/* --- 👆 [수정] --- */}
     </form>
   );
 };
 
 // ScenarioStatusBadge 컴포넌트 (변경 없음 - 전체 코드 포함)
 const ScenarioStatusBadge = ({ status, t, isSelected }) => {
-  // if (isSelected) {
-  //   return (
-  //     <span className={`${styles.scenarioBadge} ${styles.selected}`}>
-  //       {t("statusSelected")}
-  //     </span>
-  //   );
-  // }
+// ... (기존 코드)
   if (!status) return null;
   let text;
   let statusClass;
@@ -550,6 +564,7 @@ const ScenarioStatusBadge = ({ status, t, isSelected }) => {
 const PARENT_ORIGIN =
   process.env.NEXT_PUBLIC_PARENT_ORIGIN || "http://localhost:3000";
 const connectParentLink = (url) => {
+// ... (기존 코드)
   try {
     if (!window.parent || window.parent === window) {
       console.warn(
@@ -653,31 +668,18 @@ export default function ScenarioBubble({ scenarioSessionId }) {
             />
 
             <span className={styles.scenarioHeaderTitle}>
-              {/* --- 👇 [수정] interpolateMessage 함수 사용 --- */}
               {t("scenarioTitle")(
                 interpolateMessage(
                   scenarioId || "Scenario",
                   activeScenario?.slots
                 )
               )}
-              {/* --- 👆 [수정] --- */}
             </span>
           </div>
           <div className={styles.headerButtons}>
             <div style={{ rotate: "270deg" }}>
               <ChevronDownIcon />
             </div>
-            {/* {!isCompleted && (
-              <button
-                className={`${styles.headerRestartButton}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  endScenario(scenarioSessionId, "canceled");
-                }}
-              >
-                {t("cancel")}
-              </button>
-            )} */}
           </div>
         </div>
       </div>
