@@ -500,6 +500,12 @@ input:checked + .slider:before {
   overflow: hidden;
 }
 
+/* --- 👇 [추가] 숨겨진 파일 input 스타일 --- */
+.formFileInput {
+  display: none;
+}
+/* --- 👆 [추가] --- */
+
 /* --- 👇 [수정] 폼 헤더 및 엑셀 버튼 스타일 --- */
 .formHeader {
   display: flex;
@@ -567,6 +573,7 @@ input:checked + .slider:before {
   justify-content: flex-end;
   padding: 0px 20px 12px 20px;
   gap: 8px; /* 버튼 사이 간격 추가 */
+  align-items: center; /* 버튼 정렬 */
 }
 /* --- 👆 [수정] --- */
 

@@ -1,9 +1,10 @@
 // app/components/ScenarioBubble.jsx
 "use client";
 
-// --- 👇 useEffect, useRef, useState 제거, interpolateMessage 추가 ---
+// --- 👇 [수정] useRef, useCallback 임포트 및 xlsx 라이브러리 임포트 ---
 import { useCallback, useRef, useEffect, useState } from "react";
-// --- 👆 ---
+import * as XLSX from 'xlsx'; // 엑셀 파싱 라이브러리
+// --- 👆 [수정] ---
 import { useChatStore } from "../store";
 import { useTranslations } from "../hooks/useTranslations";
 import styles from "./Chat.module.css";
@@ -16,6 +17,29 @@ import CheckCircle from "./icons/CheckCircle";
 import OpenInNewIcon from "./icons/OpenInNew";
 import ChevronDownIcon from "./icons/ChevronDownIcon";
 
+// --- 👇 [추가] 엑셀 날짜 변환 헬퍼 ---
+// 엑셀 시리얼 날짜를 YYYY-MM-DD 형식으로 변환
+function convertExcelDate(serial) {
+  if (typeof serial !== 'number' || serial <= 0) {
+    return null;
+  }
+  try {
+    const utc_days = Math.floor(serial - 25569);
+    const utc_value = utc_days * 86400;
+    const date_info = new Date(utc_value * 1000);
+
+    const year = date_info.getUTCFullYear();
+    const month = String(date_info.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date_info.getUTCDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+  } catch (e) {
+    console.error("Failed to convert excel date serial:", serial, e);
+    return null;
+  }
+}
+// --- 👆 [추가] ---
+
 // FormRenderer 컴포넌트 (변경 있음)
 const FormRenderer = ({
   node,
@@ -26,10 +50,10 @@ const FormRenderer = ({
   onGridRowClick,
 }) => {
   const [formData, setFormData] = useState({});
-  // --- 👇 [수정] dateInputRef 제거 ---
-  // const dateInputRef = useRef(null);
-  // --- 👆 [수정] ---
   const { t } = useTranslations();
+  // --- 👇 [추가] 파일 입력을 위한 ref ---
+  const fileInputRef = useRef(null);
+  // --- 👆 [추가] ---
 
   // --- 👇 [수정] useEffect를 사용하여 defaultValue보다 slots의 기존 값을 우선하여 formData 초기화 ---
   useEffect(() => {
@@ -135,6 +159,96 @@ const FormRenderer = ({
     }
   };
   // --- 👆 [수정] ---
+
+  // --- 👇 [추가] 엑셀 업로드 버튼 클릭 핸들러 ---
+  const handleExcelUploadClick = (e) => {
+    e.stopPropagation();
+    fileInputRef.current?.click();
+  };
+  // --- 👆 [추가] ---
+
+  // --- 👇 [추가] 엑셀 파일 파싱 및 폼 데이터 적용 핸들러 ---
+  const handleFileChange = (e) => {
+    e.stopPropagation();
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = event.target.result;
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        
+        // 엑셀 데이터를 JSON 객체 배열로 변환 (헤더가 1행에 있다고 가정)
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 0 });
+
+        if (!jsonData || jsonData.length === 0) {
+          alert("Excel file is empty or has no data rows.");
+          return;
+        }
+
+        // 1. 폼 요소의 'label'을 'name'에 매핑하는 맵 생성
+        const labelToNameMap = new Map();
+        node.data.elements?.forEach(el => {
+          if (el.label && el.name) {
+            // 슬롯 보간을 거친 최종 라벨로 매핑
+            const interpolatedLabel = interpolateMessage(el.label, slots);
+            labelToNameMap.set(interpolatedLabel.toLowerCase().trim(), el);
+          }
+        });
+
+        // 2. 엑셀의 첫 번째 데이터 행(row) 가져오기
+        const firstRow = jsonData[0];
+        const newData = {};
+
+        // 3. 엑셀 헤더(key)를 폼 라벨과 비교하여 데이터 매핑
+        for (const excelHeader in firstRow) {
+          if (Object.hasOwnProperty.call(firstRow, excelHeader)) {
+            const formElement = labelToNameMap.get(excelHeader.toLowerCase().trim());
+
+            if (formElement) {
+              const formName = formElement.name;
+              let excelValue = firstRow[excelHeader];
+
+              // 4. 날짜 타입 처리 (엑셀 시리얼 -> YYYY-MM-DD)
+              if (formElement.type === 'date' && typeof excelValue === 'number') {
+                const formattedDate = convertExcelDate(excelValue);
+                if (formattedDate) {
+                  newData[formName] = formattedDate;
+                } else {
+                  newData[formName] = String(excelValue); // 변환 실패 시 문자열로
+                }
+              } else {
+                // 기타 타입 (문자열로 저장)
+                newData[formName] = String(excelValue ?? '');
+              }
+            }
+          }
+        }
+
+        // 4. 폼 데이터 상태 업데이트
+        if (Object.keys(newData).length > 0) {
+          setFormData(prev => ({ ...prev, ...newData }));
+          alert("Excel data loaded successfully.");
+        } else {
+          alert("No matching columns found between Excel and the form.");
+        }
+
+      } catch (error) {
+        console.error("Error parsing Excel file:", error);
+        alert("Failed to read or parse the Excel file.");
+      } finally {
+        // 파일 input 초기화 (동일한 파일 다시 선택 가능하도록)
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+  // --- 👆 [추가] ---
 
   const hasSlotBoundGrid = node.data.elements?.some(
     (el) =>
@@ -483,27 +597,33 @@ const FormRenderer = ({
 
   return (
     <form onSubmit={handleSubmit} className={styles.formContainer}>
-      {/* --- 👇 [수정] 엑셀 업로드 버튼 제거 --- */}
+      {/* --- 👇 [추가] 숨겨진 파일 input --- */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        className={styles.formFileInput}
+        accept=".xlsx, .xls, .csv"
+        onChange={handleFileChange}
+        onClick={(e) => e.stopPropagation()} // 버블링 방지
+      />
+      {/* --- 👆 [추가] --- */}
+
       <div className={styles.formHeader}>
         <h3>{interpolateMessage(node.data.title || "Form", slots)}</h3>
       </div>
-      {/* --- 👆 [수정] --- */}
       <div className={styles.formContainerSeparator} />
 
       {renderFormElements()}
       
-      {/* --- 👇 [수정] 엑셀 업로드 버튼을 formActionArea로 이동 --- */}
       {!hasSlotBoundGrid && !disabled && (
         <div className={styles.formActionArea}>
           {node.data.enableExcelUpload && (
             <button
               type="button"
               className={styles.excelUploadButton}
-              onClick={(e) => {
-                e.stopPropagation();
-                // TODO: Implement Excel upload logic
-                console.log("Excel Upload clicked for node:", node.id);
-              }}
+              // --- 👇 [수정] onClick 핸들러 변경 ---
+              onClick={handleExcelUploadClick}
+              // --- 👆 [수정] ---
               disabled={disabled}
             >
               Excel Upload
@@ -518,17 +638,27 @@ const FormRenderer = ({
           </button>
         </div>
       )}
-      {/* --- 👆 [수정] --- */}
     </form>
   );
 };
 
-// ScenarioStatusBadge 컴포넌트 (변경 없음 - 전체 코드 포함)
+// --- 👇 [수정] ScenarioStatusBadge 정의 추가 ---
 const ScenarioStatusBadge = ({ status, t, isSelected }) => {
-// ... (기존 코드)
+  // isSelected가 true이면 'selected' 상태를 우선 표시
+  if (isSelected) {
+    return (
+      <span className={`${styles.scenarioBadge} ${styles.selected}`}>
+        {t("statusSelected")}
+      </span>
+    );
+  }
+
+  // isSelected가 false이면 기존 status 로직 수행
   if (!status) return null;
+
   let text;
   let statusClass;
+
   switch (status) {
     case "completed":
       text = t("statusCompleted");
@@ -553,18 +683,19 @@ const ScenarioStatusBadge = ({ status, t, isSelected }) => {
     default:
       return null;
   }
+
   return (
     <span className={`${styles.scenarioBadge} ${styles[statusClass]}`}>
       {text}
     </span>
   );
 };
+// --- 👆 [수정] ---
 
 // connectParentLink 함수 (변경 없음 - 전체 코드 포함)
 const PARENT_ORIGIN =
   process.env.NEXT_PUBLIC_PARENT_ORIGIN || "http://localhost:3000";
 const connectParentLink = (url) => {
-// ... (기존 코드)
   try {
     if (!window.parent || window.parent === window) {
       console.warn(

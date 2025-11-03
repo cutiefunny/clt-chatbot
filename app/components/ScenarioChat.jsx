@@ -1,7 +1,10 @@
 // app/components/ScenarioChat.jsx
 "use client";
 
+// --- 👇 [수정] useRef, useCallback 임포트 및 xlsx 라이브러리 임포트 ---
 import { useEffect, useRef, useState, useCallback } from "react";
+import * as XLSX from 'xlsx'; // 엑셀 파싱 라이브러리
+// --- 👆 [수정] ---
 import { useChatStore } from "../store";
 import { useTranslations } from "../hooks/useTranslations";
 import styles from "./Chat.module.css";
@@ -17,6 +20,29 @@ import ScenarioCollapseIcon from "./icons/ScenarioCollapseIcon";
 import MarkdownRenderer from "./MarkdownRenderer";
 // --- 👆 [수정] ---
 
+// --- 👇 [추가] 엑셀 날짜 변환 헬퍼 ---
+// 엑셀 시리얼 날짜를 YYYY-MM-DD 형식으로 변환
+function convertExcelDate(serial) {
+  if (typeof serial !== 'number' || serial <= 0) {
+    return null;
+  }
+  try {
+    const utc_days = Math.floor(serial - 25569);
+    const utc_value = utc_days * 86400;
+    const date_info = new Date(utc_value * 1000);
+
+    const year = date_info.getUTCFullYear();
+    const month = String(date_info.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date_info.getUTCDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+  } catch (e) {
+    console.error("Failed to convert excel date serial:", serial, e);
+    return null;
+  }
+}
+// --- 👆 [추가] ---
+
 // FormRenderer 컴포넌트
 const FormRenderer = ({
   node,
@@ -31,6 +57,9 @@ const FormRenderer = ({
   // const dateInputRef = useRef(null);
   // --- 👆 [수정] ---
   const { t } = useTranslations();
+  // --- 👇 [추가] 파일 입력을 위한 ref ---
+  const fileInputRef = useRef(null);
+  // --- 👆 [추가] ---
 
   // --- 👇 [수정] useEffect를 사용하여 defaultValue보다 slots의 기존 값을 우선하여 formData 초기화 ---
   useEffect(() => {
@@ -146,6 +175,96 @@ const FormRenderer = ({
     }
   };
   // --- 👆 [수정] ---
+
+  // --- 👇 [추가] 엑셀 업로드 버튼 클릭 핸들러 ---
+  const handleExcelUploadClick = (e) => {
+    e.stopPropagation();
+    fileInputRef.current?.click();
+  };
+  // --- 👆 [추가] ---
+
+  // --- 👇 [추가] 엑셀 파일 파싱 및 폼 데이터 적용 핸들러 ---
+  const handleFileChange = (e) => {
+    e.stopPropagation();
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = event.target.result;
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        
+        // 엑셀 데이터를 JSON 객체 배열로 변환 (헤더가 1행에 있다고 가정)
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 0 });
+
+        if (!jsonData || jsonData.length === 0) {
+          alert("Excel file is empty or has no data rows.");
+          return;
+        }
+
+        // 1. 폼 요소의 'label'을 'name'에 매핑하는 맵 생성
+        const labelToNameMap = new Map();
+        node.data.elements?.forEach(el => {
+          if (el.label && el.name) {
+            // 슬롯 보간을 거친 최종 라벨로 매핑
+            const interpolatedLabel = interpolateMessage(el.label, slots);
+            labelToNameMap.set(interpolatedLabel.toLowerCase().trim(), el);
+          }
+        });
+
+        // 2. 엑셀의 첫 번째 데이터 행(row) 가져오기
+        const firstRow = jsonData[0];
+        const newData = {};
+
+        // 3. 엑셀 헤더(key)를 폼 라벨과 비교하여 데이터 매핑
+        for (const excelHeader in firstRow) {
+          if (Object.hasOwnProperty.call(firstRow, excelHeader)) {
+            const formElement = labelToNameMap.get(excelHeader.toLowerCase().trim());
+
+            if (formElement) {
+              const formName = formElement.name;
+              let excelValue = firstRow[excelHeader];
+
+              // 4. 날짜 타입 처리 (엑셀 시리얼 -> YYYY-MM-DD)
+              if (formElement.type === 'date' && typeof excelValue === 'number') {
+                const formattedDate = convertExcelDate(excelValue);
+                if (formattedDate) {
+                  newData[formName] = formattedDate;
+                } else {
+                  newData[formName] = String(excelValue); // 변환 실패 시 문자열로
+                }
+              } else {
+                // 기타 타입 (문자열로 저장)
+                newData[formName] = String(excelValue ?? '');
+              }
+            }
+          }
+        }
+
+        // 4. 폼 데이터 상태 업데이트
+        if (Object.keys(newData).length > 0) {
+          setFormData(prev => ({ ...prev, ...newData }));
+          alert("Excel data loaded successfully.");
+        } else {
+          alert("No matching columns found between Excel and the form.");
+        }
+
+      } catch (error) {
+        console.error("Error parsing Excel file:", error);
+        alert("Failed to read or parse the Excel file.");
+      } finally {
+        // 파일 input 초기화 (동일한 파일 다시 선택 가능하도록)
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+  // --- 👆 [추가] ---
 
   // 슬롯 데이터를 사용하는 그리드 요소가 있는지 확인
   const hasSlotBoundGrid = node.data.elements?.some(
@@ -495,11 +614,20 @@ const FormRenderer = ({
 
   return (
     <form onSubmit={handleSubmit} className={styles.formContainer}>
-      {/* --- 👇 [수정] 엑셀 업로드 버튼 제거 --- */}
+      {/* --- 👇 [추가] 숨겨진 파일 input --- */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        className={styles.formFileInput}
+        accept=".xlsx, .xls, .csv"
+        onChange={handleFileChange}
+        onClick={(e) => e.stopPropagation()} // 버블링 방지
+      />
+      {/* --- 👆 [추가] --- */}
+
       <div className={styles.formHeader}>
         <h3>{interpolateMessage(node.data.title || "Form", slots)}</h3>
       </div>
-      {/* --- 👆 [수정] --- */}
       <div className={styles.formContainerSeparator} />
 
       {/* --- 👇 [수정] 그룹화된 요소 렌더링 --- */}
@@ -513,11 +641,9 @@ const FormRenderer = ({
             <button
               type="button"
               className={styles.excelUploadButton}
-              onClick={(e) => {
-                e.stopPropagation();
-                // TODO: Implement Excel upload logic
-                console.log("Excel Upload clicked for node:", node.id);
-              }}
+              // --- 👇 [수정] onClick 핸들러 변경 ---
+              onClick={handleExcelUploadClick}
+              // --- 👆 [수정] ---
               disabled={disabled}
             >
               Excel Upload
@@ -537,9 +663,8 @@ const FormRenderer = ({
   );
 };
 
-// ScenarioStatusBadge 컴포넌트 (기존 코드 유지)
+// --- 👇 [수정] ScenarioStatusBadge 컴포넌트 정의 추가 ---
 const ScenarioStatusBadge = ({ status, t, isSelected }) => {
-  // ... (기존 코드)
   if (isSelected) {
     return (
       <span className={`${styles.scenarioBadge} ${styles.selected}`}>
@@ -580,12 +705,12 @@ const ScenarioStatusBadge = ({ status, t, isSelected }) => {
     </span>
   );
 };
+// --- 👆 [수정] ---
 
 // connectParentLink 함수 (기존 코드 유지)
 const PARENT_ORIGIN =
   process.env.NEXT_PUBLIC_PARENT_ORIGIN || "http://localhost:3000";
 const connectParentLink = (url) => {
-  // ... (기존 코드)
   try {
     if (!window.parent || window.parent === window) {
       console.warn(
@@ -634,7 +759,6 @@ export default function ScenarioChat() {
 
   // 스크롤 관련 함수 및 useEffect (기존 코드 유지)
   const updateWasAtBottom = useCallback(() => {
-    // ... (기존 코드)
     const scrollContainer = historyRef.current;
     if (!scrollContainer) return;
     const scrollableDistance =
@@ -645,7 +769,6 @@ export default function ScenarioChat() {
   }, []);
 
   useEffect(() => {
-    // ... (기존 코드)
     const scrollContainer = historyRef.current;
     if (!scrollContainer) return;
     const handleScrollEvent = () => {
@@ -659,7 +782,6 @@ export default function ScenarioChat() {
   }, [updateWasAtBottom]);
 
   useEffect(() => {
-    // ... (기존 코드)
     const scrollContainer = historyRef.current;
     if (!scrollContainer) return;
     const scrollToBottomIfNeeded = () => {
@@ -798,13 +920,11 @@ export default function ScenarioChat() {
                 className={`GlassEffect ${styles.message} ${
                   msg.sender === "bot" ? styles.botMessage : styles.userMessage
                 } ${
-                  // --- 👇 [수정] 폼(form)일 경우에도 .gridMessage 클래스(width 90%) 적용 ---
                   msg.node?.type === "form" ||
                   msg.node?.data?.elements?.some((el) => el.type === "grid") ||
                   msg.node?.type === "iframe"
                     ? styles.gridMessage
                     : ""
-                  // --- 👆 [수정] ---
                 }`}
               >
                 <div
@@ -874,14 +994,12 @@ export default function ScenarioChat() {
                         </a>
                       </div>
                     ) : (
-                      // --- 👇 [수정] <p> 태그를 <MarkdownRenderer>로 변경 ---
                       <MarkdownRenderer
                         content={interpolateMessage(
                           msg.text || msg.node?.data?.content,
                           activeScenario.slots
                         )}
                       />
-                      // --- 👆 [수정] ---
                     )}
                     {msg.node?.type === "branch" && msg.node.data.replies && (
                       <div className={styles.scenarioList}>
