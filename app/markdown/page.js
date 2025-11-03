@@ -35,34 +35,61 @@ const sampleMarkdown = `
 | 셀 2-1 | 셀 2-2 | 20 |
 `;
 
+// --- 👇 [수정] 주석 추가 및 가독성 개선 ---
 // MarkdownRenderer.jsx의 formatMarkdown 함수 로직 (백슬래시 이스케이프 처리됨)
 const defaultFunctionBody = `
+  // 1. 입력값이 문자열이 아니면 빈 문자열로 변환
   if (typeof text !== 'string') {
     text = String(text || '');
   }
+
+  // 2. 기본 HTML 이스케이프 (XSS 방지)
   let escapedText = text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
+
+  // 3. 마크다운 -> HTML 변환
+  // 링크: \\[text\\]\\(url) (http/https만 허용)
+  // (백슬래시 이스케이프 때문에 \\[ \\] \\( \\) \\/ 등으로 표시됨)
   escapedText = escapedText.replace(
     /\\[([^\\]]+)\\]\\((https?:\\/\\/[^)]+)\\)/g,
     '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
   );
+
+  // 굵게: \\*\\*text\\*\\*
   escapedText = escapedText.replace(/\\*\\*(?=\\S)(.+?[*_]*)(?=\\S)\\*\\*/g, '<strong>$1</strong>');
+
+  // 기울임: \\*text\\*
   escapedText = escapedText.replace(/\\*(?=\\S)(.+?[*_]*)(?=\\S)\\*/g, '<em>$1</em>');
+  
+  // 인라인 코드: \\\`text\\\`
   escapedText = escapedText.replace(/\\\`(.+?)\\\`/g, '<code>$1</code>');
+
+  // 줄바꿈: \\n -> <br />
   escapedText = escapedText.replace(/\\n/g, '<br />');
+
+  // 테이블 처리 (간단한 구현)
   const tableRegex = /(?:\\|(.+?)\\|[\\r\\n]+)(?:\\|([-: ]+)\\|[\\r\\n]+)((?:\\|.*\\|[\\r\\n]+)*)/g;
   escapedText = escapedText.replace(tableRegex, (match, headerRow, alignRow, bodyRows) => {
+    // 헤더 행 파싱
     const headers = headerRow.split('|').map(h => h.trim());
+    // 정렬 행 파싱
     const aligns = alignRow.split('|').map(a => a.trim());
+    // 본문 행 파싱
     const bodies = bodyRows.trim().split('\\n').map(row => row.split('|').map(cell => cell.trim()));
+
     let tableHTML = '<table>';
+    
+    // 테이블 헤더 (thead) 렌더링
     tableHTML += '<thead><tr>';
     headers.forEach((header, i) => {
+      // 정렬 정보(aligns[i])가 있으면 적용, 없으면 'left' 기본값
       tableHTML += \`<th style="text-align: \${aligns[i] || 'left'}">\${header}</th>\`;
     });
     tableHTML += '</tr></thead>';
+
+    // 테이블 본문 (tbody) 렌더링
     tableHTML += '<tbody>';
     bodies.forEach(row => {
       tableHTML += '<tr>';
@@ -72,10 +99,14 @@ const defaultFunctionBody = `
       tableHTML += '</tr>';
     });
     tableHTML += '</tbody></table>';
+
     return tableHTML;
   });
+
+  // 4. 최종 HTML 반환
   return escapedText;
 `;
+// --- 👆 [수정] ---
 
 // --- 👇 [추가] MarkdownRenderer.module.css의 원본 내용 ---
 // 동적 적용을 위해 클래스 이름을 `.dynamicMarkdownPreview`로 변경했습니다.
