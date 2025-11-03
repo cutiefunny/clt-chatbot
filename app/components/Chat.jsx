@@ -1,7 +1,9 @@
 // app/components/Chat.jsx
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+// --- 👇 [수정] useState 임포트 제거 ---
+import { useEffect, useRef, useCallback, useState } from "react";
+// --- 👆 [수정] ---
 import { useChatStore } from "../store";
 import { useTranslations } from "../hooks/useTranslations";
 import styles from "./Chat.module.css";
@@ -11,7 +13,9 @@ import CheckCircle from "./icons/CheckCircle";
 import MoonIcon from "./icons/MoonIcon";
 import LogoIcon from "./icons/LogoIcon";
 import CopyIcon from "./icons/CopyIcon";
-import MarkdownRenderer from "./MarkdownRenderer"; // --- 👈 [추가] ---
+import MarkdownRenderer from "./MarkdownRenderer";
+import LikeIcon from "./icons/LikeIcon";
+import DislikeIcon from "./icons/DislikeIcon";
 
 // JSON 파싱 및 렌더링을 위한 헬퍼 함수
 const tryParseJson = (text) => {
@@ -131,11 +135,9 @@ const MessageWithButtons = ({ text, messageId, isStreaming }) => {
       {parts.map((part, index) => {
         if (part.type === "text") {
           // 텍스트 내용이 비어있지 않을 때만 렌더링
-          // --- 👇 [수정] span 대신 MarkdownRenderer 사용 ---
           return part.content ? (
             <MarkdownRenderer key={index} content={part.content} />
           ) : null;
-          // --- 👆 [수정] ---
         } else if (part.type === "button") {
           // 버튼 렌더링 로직
           const buttonText = part.content;
@@ -194,9 +196,7 @@ export default function Chat() {
     scrollToMessageId,
     setScrollToMessageId,
     activePanel,
-    // --- 👇 [수정] setActivePanel 대신 focusChatInput 가져오기 ---
     focusChatInput,
-    // --- 👆 [수정] ---
     forceScrollToBottom,
     setForceScrollToBottom,
     scrollAmount,
@@ -204,22 +204,26 @@ export default function Chat() {
     selectedOptions,
     setSelectedOption,
     dimUnfocusedPanels,
+    // --- 👇 [수정] setMessageFeedback 액션 가져오기 ---
+    setMessageFeedback,
+    // --- 👆 [수정] ---
   } = useChatStore();
   const [copiedMessageId, setCopiedMessageId] = useState(null);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const [animatedButton, setAnimatedButton] = useState(null); // { messageId: string, type: 'like' | 'dislike' }
+  // --- 👇 [삭제] 로컬 피드백 상태 제거 ---
+  // const [messageFeedback, setMessageFeedback] = useState({});
+  // --- 👆 [삭제] ---
   const historyRef = useRef(null);
   const containerRef = useRef(null);
   const wasAtBottomRef = useRef(true);
   const { t } = useTranslations();
 
-  // --- 👇 [수정] 시나리오 패널 닫기 핸들러 -> 포커스 핸들러로 변경 ---
   const handleHistoryClick = () => {
     if (activePanel === "scenario") {
-      // setActivePanel("main"); // 패널을 닫는 대신
-      focusChatInput(); // 포커스만 이동
+      focusChatInput();
     }
   };
-  // --- 👆 [수정] ---
 
   // 스크롤 관련 함수 및 useEffect들
   const updateWasAtBottom = useCallback(() => {
@@ -379,6 +383,21 @@ export default function Chat() {
     });
   };
 
+  // --- 👇 [수정] 피드백 핸들러가 스토어 액션을 호출하도록 변경 ---
+  const handleFeedbackClick = (messageId, type) => {
+    // 1. 애니메이션 상태 설정
+    setAnimatedButton({ messageId, type });
+
+    // 2. 스토어 액션 호출 (토글 및 저장 로직)
+    setMessageFeedback(messageId, type);
+
+    // 3. 300ms 후 애니메이션 상태 초기화
+    setTimeout(() => {
+      setAnimatedButton(null);
+    }, 300);
+  };
+  // --- 👆 [수정] ---
+
   // 초기 메시지 제외 실제 메시지가 있는지 확인
   const hasMessages = messages.some((m) => m.id !== "initial");
 
@@ -419,7 +438,7 @@ export default function Chat() {
             : ""
         }`}
         ref={historyRef}
-        onClick={handleHistoryClick} // --- 👈 [수정] ---
+        onClick={handleHistoryClick}
       >
         {!hasMessages ? (
           <FavoritePanel /> // 메시지 없으면 즐겨찾기 패널 표시
@@ -458,6 +477,9 @@ export default function Chat() {
               } else {
                 // 일반 메시지 렌더링
                 const selectedOption = selectedOptions[msg.id];
+                // --- 👇 [수정] 스토어의 메시지 객체에서 직접 피드백 상태 읽기 ---
+                const currentFeedback = msg.feedback || null;
+                // --- 👆 [수정] ---
                 // 마지막 메시지이고, 봇 메시지이며, 스트리밍 중인지 확인
                 const isStreaming =
                   index === messages.length - 1 &&
@@ -560,7 +582,7 @@ export default function Chat() {
                           )}
                         </div>
                       </div>
-                      {/* 복사 버튼 (봇 메시지이고, 텍스트가 있고, 스트리밍 중 아닐 때) */}
+                      {/* --- 👇 [수정] currentFeedback을 msg.feedback에서 읽도록 수정 --- */}
                       {msg.sender === "bot" && msg.text && !isStreaming && (
                         <div className={styles.messageActionArea}>
                           <button
@@ -569,9 +591,43 @@ export default function Chat() {
                           >
                             <CopyIcon />
                           </button>
-                          {/* 좋아요/싫어요 버튼 등 추가 가능 */}
+                          {/* 좋아요 버튼 */}
+                          <button
+                            className={`${styles.actionButton} ${
+                              currentFeedback === "like" // 스토어 상태(msg.feedback)에서 읽음
+                                ? styles.activeFeedback
+                                : ""
+                            } ${
+                              animatedButton?.messageId === msg.id &&
+                              animatedButton?.type === "like"
+                                ? styles.popAnimation
+                                : ""
+                            }`}
+                            onClick={() => handleFeedbackClick(msg.id, "like")}
+                          >
+                            <LikeIcon />
+                          </button>
+                          {/* 싫어요 버튼 */}
+                          <button
+                            className={`${styles.actionButton} ${
+                              currentFeedback === "dislike" // 스토어 상태(msg.feedback)에서 읽음
+                                ? styles.activeFeedback
+                                : ""
+                            } ${
+                              animatedButton?.messageId === msg.id &&
+                              animatedButton?.type === "dislike"
+                                ? styles.popAnimation
+                                : ""
+                            }`}
+                            onClick={() =>
+                              handleFeedbackClick(msg.id, "dislike")
+                            }
+                          >
+                            <DislikeIcon />
+                          </button>
                         </div>
                       )}
+                      {/* --- 👆 [수정] --- */}
                     </div>
                   </div>
                 );

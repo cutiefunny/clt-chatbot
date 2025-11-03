@@ -36,6 +36,34 @@ function formatMarkdown(text) {
   // 줄바꿈
   escapedText = escapedText.replace(/\n/g, '<br />');
 
+  // 테이블 처리 (간단한 구현)
+  const tableRegex = /(?:\|(.+?)\|[\r\n]+)(?:\|([-: ]+)\|[\r\n]+)((?:\|.*\|[\r\n]+)*)/g;
+  escapedText = escapedText.replace(tableRegex, (match, headerRow, alignRow, bodyRows) => {
+    const headers = headerRow.split('|').map(h => h.trim());
+    const aligns = alignRow.split('|').map(a => a.trim());
+    const bodies = bodyRows.trim().split('\n').map(row => row.split('|').map(cell => cell.trim()));
+
+    let tableHTML = '<table>';
+    // Render header
+    tableHTML += '<thead><tr>';
+    headers.forEach((header, i) => {
+      tableHTML += `<th style="text-align: ${aligns[i] || 'left'}">${header}</th>`;
+    });
+    tableHTML += '</tr></thead>';
+    // Render body
+    tableHTML += '<tbody>';
+    bodies.forEach(row => {
+      tableHTML += '<tr>';
+      row.forEach(cell => {
+        tableHTML += `<td>${cell}</td>`;
+      });
+      tableHTML += '</tr>';
+    });
+    tableHTML += '</tbody></table>';
+
+    return tableHTML;
+  });
+
   return escapedText;
 }
 

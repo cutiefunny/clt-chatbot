@@ -401,6 +401,55 @@ export const createChatSlice = (set, get) => {
     }
   },
 
+  // --- 👇 [새 액션] 메시지 피드백 설정 (좋아요/싫어요) ---
+  setMessageFeedback: async (messageId, feedbackType) => {
+    const { user, language, showEphemeralToast, currentConversationId, messages } = get();
+    if (!user || !currentConversationId || !messageId) {
+      console.warn("[setMessageFeedback] Missing user, conversationId, or messageId.");
+      return;
+    }
+
+    const messageIndex = messages.findIndex(m => m.id === messageId);
+    if (messageIndex === -1) {
+      console.warn(`[setMessageFeedback] Message not found: ${messageId}`);
+      return;
+    }
+
+    const message = messages[messageIndex];
+    const originalFeedback = message.feedback || null;
+    
+    // 1. 새 피드백 상태 결정 (토글 로직)
+    const newFeedback = (originalFeedback === feedbackType) ? null : feedbackType;
+
+    // 2. Optimistic UI Update (Zustand 스토어)
+    const updatedMessages = [...messages];
+    updatedMessages[messageIndex] = { ...message, feedback: newFeedback };
+    set({ messages: updatedMessages });
+
+    // 3. Firestore 업데이트
+    try {
+      const messageRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "messages", messageId);
+      await updateDoc(messageRef, { feedback: newFeedback });
+      
+      console.log(`Feedback set to '${newFeedback}' for message ${messageId}`);
+
+    } catch (error) {
+      console.error("Error updating message feedback in Firestore:", error);
+      const errorKey = getErrorKey(error);
+      const errorMessage = locales[language]?.[errorKey] || locales['en']?.errorUnexpected || 'Failed to save feedback.';
+      showEphemeralToast(errorMessage, 'error');
+
+      // 4. 오류 발생 시 롤백
+      const rollbackMessages = [...get().messages]; // 롤백 시점의 최신 상태 가져오기
+      const rollbackMessageIndex = rollbackMessages.findIndex(m => m.id === messageId);
+      if (rollbackMessageIndex !== -1) {
+        rollbackMessages[rollbackMessageIndex] = { ...rollbackMessages[rollbackMessageIndex], feedback: originalFeedback };
+        set({ messages: rollbackMessages });
+      }
+    }
+  },
+  // --- 👆 [새 액션] ---
+
   // LLM 추출 슬롯 설정
   setExtractedSlots: (newSlots) => {
       console.log("[ChatStore] Setting extracted slots:", newSlots);
@@ -538,6 +587,7 @@ export const createChatSlice = (set, get) => {
          type: messageData.type,
          scenarioId: messageData.scenarioId,
          scenarioSessionId: messageData.scenarioSessionId,
+         feedback: null, // --- 👈 [추가] 피드백 필드 초기화 ---
        };
      }
 
@@ -660,9 +710,11 @@ export const createChatSlice = (set, get) => {
         }
 
         if (response.headers.get("Content-Type")?.includes("text/event-stream")) {
-          // --- 스트림 응답 처리 (이전과 동일) ---
+          // --- 스트림 응답 처리 ---
           console.log("[handleResponse] Processing text/event-stream response.");
-          const tempBotMessage = { id: `temp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`, sender: 'bot', text: thinkingText, isStreaming: true };
+          // --- 👇 [수정] feedback: null 추가 ---
+          const tempBotMessage = { id: `temp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`, sender: 'bot', text: thinkingText, isStreaming: true, feedback: null };
+          // --- 👆 [수정] ---
           set(state => ({ messages: [...state.messages, tempBotMessage] }));
           lastBotMessageId = tempBotMessage.id;
 
@@ -758,7 +810,9 @@ export const createChatSlice = (set, get) => {
                       : finalText;
                   // --- 👆 [수정] ---
 
-                 const finalMessage = { ...lastMessage, text: finalMessageText, isStreaming: false };
+                 // --- 👇 [수정] feedback: null 추가 ---
+                 const finalMessage = { ...lastMessage, text: finalMessageText, isStreaming: false, feedback: null };
+                 // --- 👆 [수정] ---
 
                  saveMessage(finalMessage).then(savedId => {
                       finalMessageId = savedId;
