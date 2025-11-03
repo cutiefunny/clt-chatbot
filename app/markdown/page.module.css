@@ -1,0 +1,130 @@
+/* app/markdown/page.module.css */
+
+.pageWrapper {
+  width: 100%;
+  min-height: 100vh;
+  padding: 20px;
+  background-color: #f4f5fb; /* 배경색을 약간 회색으로 */
+  box-sizing: border-box;
+}
+
+.header {
+  max-width: 100%; /* 너비 꽉 채우기 */
+  margin: 0 auto 20px auto;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #d8e0eb;
+}
+
+.header h1 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #282166;
+  margin-bottom: 8px;
+}
+
+.header p {
+  font-size: 1rem;
+  color: #5e7599;
+  margin: 0;
+}
+
+.header a {
+  color: #634ce2;
+  text-decoration: none;
+  font-weight: 500;
+  margin-top: 10px;
+  display: inline-block;
+}
+.header a:hover {
+  text-decoration: underline;
+}
+
+/* --- 👇 [수정] 2x2 그리드 레이아웃 --- */
+.container {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* 2열 */
+  grid-template-rows: auto auto;   /* 2행 */
+  gap: 20px;
+  max-width: 100%; /* 너비 꽉 채우기 */
+  margin: 0 auto;
+}
+/* --- 👆 [수정] --- */
+
+.editorContainer,
+.previewContainer {
+  display: flex;
+  flex-direction: column;
+}
+
+.editorContainer h2,
+.previewContainer h2 {
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: #5e7599;
+  margin-bottom: 10px;
+}
+
+.editorContainer h2 code {
+  font-size: 1.1rem;
+  color: #d14; /* 코드 부분 강조 */
+  background: #f0f2f5;
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+
+/* --- 👇 [수정] 높이 조절 (vh -> 45vh) --- */
+.textarea {
+  width: 100%;
+  height: 45vh; /* 2x2로 보이도록 높이 조절 */
+  min-height: 300px; /* 최소 높이 */
+  font-family: var(--font-geist-sans), sans-serif; /* 마크다운은 일반 폰트 */
+  font-size: 14px;
+  padding: 16px;
+  border: 1px solid #d8e0eb;
+  border-radius: 8px;
+  resize: vertical;
+  box-sizing: border-box;
+  background: #fff;
+  line-height: 1.6;
+}
+
+.textarea.codeArea {
+  font-family: var(--font-geist-mono), monospace; /* JS/CSS는 모노스페이스 폰트 */
+  line-height: 1.5;
+  background-color: #fdfdfd;
+}
+
+.textarea.hasError {
+  border-color: #e74c3c;
+  border-width: 2px;
+}
+/* --- 👆 [수정] --- */
+
+/* --- 👇 [수정] 높이 조절 (vh -> 45vh) --- */
+.previewBox {
+  width: 100%;
+  height: 45vh; /* 2x2로 보이도록 높이 조절 */
+  min-height: 300px; /* 최소 높이 */
+  border: 1px solid #d8e0eb;
+  border-radius: 8px;
+  padding: 16px;
+  background-color: #ffffff;
+  overflow-y: auto; /* 내용이 길어지면 스크롤 */
+  box-sizing: border-box;
+}
+/* --- 👆 [수정] --- */
+
+.errorBox {
+  background-color: #ffebee;
+  border: 1px solid #e74c3c;
+  color: #c0392b;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.9rem;
+}
+.errorBox strong {
+  color: #c0392b;
+  font-weight: 600;
+}
