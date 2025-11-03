@@ -12,14 +12,14 @@ const getInitialMessages = (lang = "ko") => {
 
 export const createUISlice = (set, get) => ({
   // State
-  // --- 👇 [수정] theme 초기값을 'light'로 고정 ---
+  // --- theme 초기값을 'light'로 고정 ---
   theme: "light",
-  // --- 👆 [수정] ---
   fontSize: "default", // 'default' or 'small'
   language: "ko",
   maxFavorites: 10,
   hideCompletedScenarios: false,
   hideDelayInHours: 0,
+  contentTruncateLimit: 200, // --- 👈 [추가] 봇 답변 줄임 글자 수 (기본값 200) ---
   fontSizeDefault: "16px", // 기본값
   fontSizeSmall: "14px", // 기본값
   isDevMode: false,
@@ -74,6 +74,10 @@ export const createUISlice = (set, get) => ({
             typeof config.hideDelayInHours === "number"
               ? config.hideDelayInHours
               : 0,
+          contentTruncateLimit:
+            typeof config.contentTruncateLimit === "number"
+              ? config.contentTruncateLimit
+              : 200,
           fontSizeDefault: config.fontSizeDefault || "16px",
           fontSizeSmall: config.fontSizeSmall || "14px",
           isDevMode:

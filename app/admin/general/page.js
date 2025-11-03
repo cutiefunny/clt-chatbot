@@ -11,6 +11,7 @@ export default function GeneralSettingsPage() {
     maxFavorites,
     hideCompletedScenarios,
     hideDelayInHours,
+    contentTruncateLimit,
     fontSizeDefault,
     fontSizeSmall,
     isDevMode,
@@ -25,6 +26,7 @@ export default function GeneralSettingsPage() {
   const [limit, setLimit] = useState("");
   const [hideCompleted, setHideCompleted] = useState(false);
   const [delayHours, setDelayHours] = useState("0");
+  const [truncateLimit, setTruncateLimit] = useState("");
   const [defaultSize, setDefaultSize] = useState("");
   const [smallSize, setSmallSize] = useState("");
   const [devMode, setDevMode] = useState(false);
@@ -52,6 +54,7 @@ export default function GeneralSettingsPage() {
     maxFavorites,
     hideCompletedScenarios,
     hideDelayInHours,
+    contentTruncateLimit,
     fontSizeDefault,
     fontSizeSmall,
     isDevMode,
@@ -66,13 +69,16 @@ export default function GeneralSettingsPage() {
     setApiUrlError(''); // 오류 초기화
     const newLimit = parseInt(limit, 10);
     const newDelayHours = parseInt(delayHours, 10);
+    const newTruncateLimit = parseInt(truncateLimit, 10);
 
     // 숫자 유효성 검사
     if (
       isNaN(newLimit) ||
       newLimit < 0 ||
       isNaN(newDelayHours) ||
-      newDelayHours < 0
+      newDelayHours < 0 ||
+      isNaN(newTruncateLimit) ||
+      newTruncateLimit < 0
     ) {
       showEphemeralToast("유효한 숫자를 입력해주세요.", "error");
       setIsLoading(false);
@@ -99,6 +105,7 @@ export default function GeneralSettingsPage() {
       dimUnfocusedPanels: dimPanels,
       llmProvider: provider,
       flowiseApiUrl: apiUrl, // 저장 시에는 입력된 값 그대로 저장
+      contentTruncateLimit: newTruncateLimit,
     };
 
     const success = await saveGeneralConfig(settings);
@@ -171,6 +178,25 @@ export default function GeneralSettingsPage() {
               />
             </div>
           )}
+        </div>
+
+        {/* --- 본문 줄임 글자 수 설정 --- */}
+        <div className={styles.settingItem}>
+          <label htmlFor="truncate-limit" className={styles.settingLabel}>
+            <h3>본문 줄임 글자 수</h3>
+            <p>
+              봇 답변이 설정된 글자 수를 초과하면 '더 보기' 버튼을 표시합니다.
+              (0으로 설정 시 비활성화)
+            </p>
+          </label>
+          <input
+            id="truncate-limit"
+            type="number"
+            value={truncateLimit}
+            onChange={(e) => setTruncateLimit(e.target.value)}
+            className={styles.settingInput}
+            min="0"
+          />
         </div>
 
         {/* 포커스 흐림 설정 (기존 코드 유지) */}
