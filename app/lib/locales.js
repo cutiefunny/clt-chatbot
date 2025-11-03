@@ -80,7 +80,9 @@ export const locales = {
     statusFailed: "실패",
     statusGenerating: "생성 중...",
     statusCanceled: "취소됨",
-    statusSelected: "선택됨", // --- 👈 [추가] ---
+    statusSelected: "선택됨",
+    viewMore: "더 보기",
+    viewLess: "간략히 보기",
 
     // Chat Input
     enterResponse: "응답을 입력하세요...",
@@ -216,7 +218,9 @@ export const locales = {
     statusFailed: "Failed",
     statusGenerating: "Generating...",
     statusCanceled: "Canceled",
-    statusSelected: "Selected", // --- 👈 [추가] ---
+    statusSelected: "Selected",
+    viewMore: "View More",
+    viewLess: "View Less",
 
     // Chat Input
     enterResponse: "Enter your response...",
