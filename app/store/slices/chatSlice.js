@@ -701,7 +701,7 @@ export const createChatSlice = (set, get) => {
     }
   },
 
-  // --- 👇 [수정된 부분 시작]: handleResponse (completedResponses 로직 추가) ---
+  // --- 👇 [수정된 부분 시작]: handleResponse (completedResponses + 스트림/JSON 분리) ---
   // 사용자 메시지 처리 및 봇 응답 요청/처리
   handleResponse: async (messagePayload) => {
       set({ isLoading: true, llmRawResponse: null });
@@ -748,27 +748,15 @@ export const createChatSlice = (set, get) => {
           const newTitle = textForUser.substring(0, 100); // 100자 제한
           await updateConversationTitle(conversationIdForBotResponse, newTitle); // conversationSlice의 액션 호출
       }
-
-      // --- [NEW] ---
-      // 4. Pending 상태 추가 및 '생각중' 메시지 UI에 추가
-      set(state => ({ 
-          pendingResponses: new Set(state.pendingResponses).add(conversationIdForBotResponse) 
-      }));
-      const thinkingText = locales[language]?.['statusGenerating'] || "Generating...";
-      // 예측 가능한 임시 ID 사용
-      const tempBotMessage = { 
-          id: `temp_pending_${conversationIdForBotResponse}`, 
-          sender: 'bot', 
-          text: thinkingText, 
-          isStreaming: true, 
-          feedback: null 
-      };
-      set(state => ({ messages: [...state.messages, tempBotMessage] }));
-      let lastBotMessageId = tempBotMessage.id;
-      // --- [NEW END] ---
-
+      
+      // --- [수정] ---
+      // 4. 상태 변수 초기화 (버블 추가는 fetch 이후로 이동)
+      let lastBotMessageId = null; 
       let finalMessageId = null;
       let finalStreamText = '';
+      let isStream = false; // [NEW]
+      const thinkingText = locales[language]?.['statusGenerating'] || "Generating...";
+      // --- [수정 끝] ---
 
       try {
         const response = await fetch("/api/chat", {
@@ -790,7 +778,23 @@ export const createChatSlice = (set, get) => {
 
         if (response.headers.get("Content-Type")?.includes("text/event-stream")) {
           // --- 스트림 응답 처리 ---
+          isStream = true; // [NEW]
           console.log("[handleResponse] Processing text/event-stream response.");
+
+          // --- [NEW] Pending 상태 및 "생각중" 버블 추가 ---
+          set(state => ({ 
+              pendingResponses: new Set(state.pendingResponses).add(conversationIdForBotResponse) 
+          }));
+          const tempBotMessage = { 
+              id: `temp_pending_${conversationIdForBotResponse}`, 
+              sender: 'bot', 
+              text: thinkingText, 
+              isStreaming: true, 
+              feedback: null 
+          };
+          set(state => ({ messages: [...state.messages, tempBotMessage] }));
+          lastBotMessageId = tempBotMessage.id;
+          // --- [NEW END] ---
           
           const reader = response.body.getReader();
           const decoder = new TextDecoder();
@@ -801,20 +805,18 @@ export const createChatSlice = (set, get) => {
           else throw new Error(`Unsupported LLM provider for streaming: ${llmProvider}`);
 
           for await (const result of streamProcessor) {
-              // [중요] 스트림 업데이트는 현재 활성화된 대화창에만 반영
               if (conversationIdForBotResponse === get().currentConversationId) {
                  if (result.type === 'text') updateLastMessage(result.data, result.replace);
                  else if (result.type === 'button') updateLastMessage(result.data);
               }
-              // 슬롯/rawResponse는 UI 영향 없으므로 항상 업데이트
               if (result.type === 'slots') setExtractedSlots(result.data);
               else if (result.type === 'rawResponse') set({ llmRawResponse: result.data });
               else if (result.type === 'finalText') finalStreamText = result.data;
               else if (result.type === 'error') throw result.data;
           }
-           // 스트림 정상 종료 -> finally 블록에서 최종 메시지 처리 및 저장
 
         } else { // --- JSON 응답 처리 ---
+          isStream = false; // [NEW]
           const data = await response.json();
           set({ llmRawResponse: data });
 
@@ -824,12 +826,10 @@ export const createChatSlice = (set, get) => {
 
           const handler = responseHandlers[data.type];
           if (handler) {
-            // [중요] JSON 응답도 현재 활성화된 대화창에만 addMessage
             if (conversationIdForBotResponse === get().currentConversationId) {
                 handler(data, get);
             } else {
                  console.log("[handleResponse] User switched convo. Skipping local state update for JSON response.");
-                 // [NEW] JSON 응답도 완료 뱃지 표시
                  set(state => ({
                     completedResponses: new Set(state.completedResponses).add(conversationIdForBotResponse)
                  }));
@@ -837,15 +837,12 @@ export const createChatSlice = (set, get) => {
           } else {
             const responseText = data.response || data.text || data.message;
             if (responseText) {
-              // addMessage는 현재 대화창(null)에만 저장함. 
-              // [수정] saveMessage를 직접 호출해야 함
               if(conversationIdForBotResponse === get().currentConversationId) {
                   await addMessage("bot", { text: responseText }); 
               } else {
                   console.log("[handleResponse] User switched. Saving JSON response to original conversation in background.");
                   const botMessage = { id: `temp_${Date.now()}`, sender: 'bot', text: responseText, isStreaming: false, feedback: null };
                   await saveMessage(botMessage, conversationIdForBotResponse);
-                  // [NEW] JSON 응답도 완료 뱃지 표시
                   set(state => ({
                      completedResponses: new Set(state.completedResponses).add(conversationIdForBotResponse)
                   }));
@@ -855,6 +852,7 @@ export const createChatSlice = (set, get) => {
               await addMessage("bot", { text: locales[language]?.['errorUnexpected'] || "(No content)" });
             }
           }
+          set({ isLoading: false }); // [NEW] JSON 응답은 여기서 로딩 종료
         }
       } catch (error) { // 메인 try 블록의 catch
         console.error("[handleResponse] Error:", error);
@@ -900,6 +898,7 @@ export const createChatSlice = (set, get) => {
                     return { messages: [...state.messages.slice(0, lastMessageIndex), updatedMessage] };
                 }
                 
+                // 스트리밍 아니었을 때 에러 (JSON 에러 등)
                 addMessage("bot", { text: errorMessage });
                 const newSet = new Set(state.pendingResponses);
                 newSet.delete(conversationIdForBotResponse);
@@ -915,131 +914,115 @@ export const createChatSlice = (set, get) => {
             set(state => {
                  const newSet = new Set(state.pendingResponses);
                  newSet.delete(conversationIdForBotResponse);
-                 // --- 👇 [수정] 에러 시에도 완료 뱃지 추가 ---
                  const newCompletedSet = new Set(state.completedResponses);
                  newCompletedSet.add(conversationIdForBotResponse);
-                 // --- 👆 [수정] ---
                  return { 
                      isLoading: false, 
                      pendingResponses: newSet,
-                     completedResponses: newCompletedSet // [NEW]
+                     completedResponses: newCompletedSet 
                  };
             });
         }
         
-        if (!messageSaved) {
+        if (!messageSaved && !isStream) { // [FIX] 스트림이 아닌데 저장도 안됐으면
             set(state => {
                  const newSet = new Set(state.pendingResponses);
                  newSet.delete(conversationIdForBotResponse);
-                 // --- 👇 [수정] 에러 시에도 완료 뱃지 추가 ---
                  const newCompletedSet = new Set(state.completedResponses);
                  newCompletedSet.add(conversationIdForBotResponse);
-                 // --- 👆 [수정] ---
                  return { 
                      isLoading: false, 
                      pendingResponses: newSet,
-                     completedResponses: newCompletedSet // [NEW]
+                     completedResponses: newCompletedSet
                  };
             });
         }
 
-      } finally { // 메인 try 블록의 finally (스트림 성공 종료 또는 JSON 성공 시)
+      } finally { // 메인 try 블록의 finally 
         
-        const isStillOnSameConversation = conversationIdForBotResponse === get().currentConversationId;
+        // --- [NEW] 스트림 응답일 때만 이 finally 블록에서 처리 ---
+        if (isStream) {
+            const isStillOnSameConversation = conversationIdForBotResponse === get().currentConversationId;
 
-        if (isStillOnSameConversation) {
-            // 1. 아직 같은 대화창: UI 업데이트 + Firestore 저장
-            set(state => {
-                const lastMessageIndex = state.messages.length - 1;
-                const lastMessage = state.messages[lastMessageIndex];
+            if (isStillOnSameConversation) {
+                // 1. 아직 같은 대화창: UI 업데이트 + Firestore 저장
+                set(state => {
+                    const lastMessageIndex = state.messages.length - 1;
+                    const lastMessage = state.messages[lastMessageIndex];
 
-                // 스트리밍 메시지였는지 확인
-                if (lastMessage && (lastMessage.id === lastBotMessageId || lastMessage.id === finalMessageId) && lastMessage.isStreaming) {
-                    const finalText = (llmProvider === 'flowise' ? finalStreamText : lastMessage.text) || '';
-                    const finalMessageText = finalText.trim() === '' || finalText.trim() === thinkingText.trim()
-                          ? locales[language]?.['errorLLMFail'] || "(Response failed. Please try again later.)"
-                          : finalText;
-                    const finalMessage = { ...lastMessage, text: finalMessageText, isStreaming: false, feedback: null };
+                    if (lastMessage && (lastMessage.id === lastBotMessageId || lastMessage.id === finalMessageId) && lastMessage.isStreaming) {
+                        const finalText = (llmProvider === 'flowise' ? finalStreamText : lastMessage.text) || '';
+                        const finalMessageText = finalText.trim() === '' || finalText.trim() === thinkingText.trim()
+                              ? locales[language]?.['errorLLMFail'] || "(Response failed. Please try again later.)"
+                              : finalText;
+                        const finalMessage = { ...lastMessage, text: finalMessageText, isStreaming: false, feedback: null };
 
-                    saveMessage(finalMessage, conversationIdForBotResponse).then(savedId => {
-                          finalMessageId = savedId;
-                           set(s => {
-                                const newSet = new Set(s.pendingResponses);
-                                newSet.delete(conversationIdForBotResponse);
-                                
-                                let newMessages = s.messages;
-                                const alreadyExists = savedId ? s.messages.some(m => m.id === savedId) : false;
+                        saveMessage(finalMessage, conversationIdForBotResponse).then(savedId => {
+                              finalMessageId = savedId;
+                               set(s => {
+                                    const newSet = new Set(s.pendingResponses);
+                                    newSet.delete(conversationIdForBotResponse);
+                                    
+                                    let newMessages = s.messages;
+                                    const alreadyExists = savedId ? s.messages.some(m => m.id === savedId) : false;
 
-                                if (alreadyExists) {
-                                    newMessages = s.messages.filter(m => m.id !== lastMessage.id);
-                                } else if (savedId) {
-                                    newMessages = s.messages.map(m => m.id === lastMessage.id ? { ...finalMessage, id: savedId } : m);
-                                } else {
-                                    // [FIX] save 실패 시 임시 메시지 제거
-                                    newMessages = s.messages.filter(m => m.id !== lastMessage.id);
-                                }
+                                    if (alreadyExists) {
+                                        newMessages = s.messages.filter(m => m.id !== lastMessage.id);
+                                    } else if (savedId) {
+                                        newMessages = s.messages.map(m => m.id === lastMessage.id ? { ...finalMessage, id: savedId } : m);
+                                    } else {
+                                        newMessages = s.messages.filter(m => m.id !== lastMessage.id);
+                                    }
 
-                                return {
-                                    messages: newMessages,
-                                    isLoading: false,
-                                    pendingResponses: newSet 
-                                };
-                           });
-                    });
+                                    return {
+                                        messages: newMessages,
+                                        isLoading: false,
+                                        pendingResponses: newSet 
+                                    };
+                               });
+                        });
 
-                    return {
-                        messages: [...state.messages.slice(0, lastMessageIndex), finalMessage]
-                    };
-                }
-                
-                // 스트리밍이 아니었던 경우 (예: JSON 응답)
-                const newSet = new Set(state.pendingResponses);
-                newSet.delete(conversationIdForBotResponse);
-                if (state.isLoading) return { isLoading: false, pendingResponses: newSet }; 
-                return {};
-            });
-        } else {
-             // 2. 다른 대화창: Firestore에만 저장
-             console.log("[handleResponse/finally] User switched. Saving final message to original conversation in background.");
-             set(state => {
-                 // 로컬 '생각중' 메시지 찾아서 제거
-                 const messagesWithoutThinking = state.messages.filter(m => m.id !== lastBotMessageId);
-                 
-                 // --- 👇 [수정] 스트리밍/JSON 모두 백그라운드 저장 및 뱃지 추가 ---
-                 let messageToSave = null;
-                 if (finalStreamText) { // 스트리밍 응답
-                     const finalMessageText = finalStreamText.trim() === '' || finalStreamText.trim() === thinkingText.trim()
-                          ? locales[language]?.['errorLLMFail'] || "(Response failed. Please try again later.)"
-                          : finalStreamText;
-                     messageToSave = { id: `temp_${Date.now()}`, sender: 'bot', text: finalMessageText, isStreaming: false, feedback: null };
-                 } else if (lastBotMessageId) { 
-                     // JSON 응답 (스트리밍이 아니었음) - 이 경우는 addMessage에서 이미 처리되었을 수 있으나,
-                     // 1290줄 근처의 JSON 응답 로직에서 다른 대화창일 때 저장을 안 했으므로 여기서 저장
-                     const localJsonMessage = get().messages.find(m => m.id === lastBotMessageId);
-                     if (localJsonMessage) { // addMessage가 만든 임시 메시지가 있다면
-                         messageToSave = { ...localJsonMessage, isStreaming: false };
+                        return {
+                            messages: [...state.messages.slice(0, lastMessageIndex), finalMessage]
+                        };
+                    }
+                    
+                    // 스트리밍이 아니었던 경우 (로직상 여기 오면 안됨)
+                    const newSet = new Set(state.pendingResponses);
+                    newSet.delete(conversationIdForBotResponse);
+                    if (state.isLoading) return { isLoading: false, pendingResponses: newSet }; 
+                    return {};
+                });
+            } else {
+                 // 2. 다른 대화창: Firestore에만 저장
+                 console.log("[handleResponse/finally] User switched. Saving final message to original conversation in background.");
+                 set(state => {
+                     // 로컬 '생각중' 메시지 찾아서 제거
+                     const messagesWithoutThinking = state.messages.filter(m => m.id !== lastBotMessageId);
+                     
+                     if(finalStreamText) { // 스트리밍 응답만 백그라운드 저장
+                         const finalMessageText = finalStreamText.trim() === '' || finalStreamText.trim() === thinkingText.trim()
+                              ? locales[language]?.['errorLLMFail'] || "(Response failed. Please try again later.)"
+                              : finalStreamText;
+                         const finalMessage = { id: `temp_${Date.now()}`, sender: 'bot', text: finalMessageText, isStreaming: false, feedback: null };
+
+                         saveMessage(finalMessage, conversationIdForBotResponse);
                      }
-                 }
 
-                 if (messageToSave) {
-                     saveMessage(messageToSave, conversationIdForBotResponse);
-                 }
-                 
-                 const newSet = new Set(state.pendingResponses);
-                 newSet.delete(conversationIdForBotResponse);
-                 // [NEW] Add to completed set
-                 const newCompletedSet = new Set(state.completedResponses);
-                 newCompletedSet.add(conversationIdForBotResponse);
-                 // --- 👆 [수정] ---
+                     const newSet = new Set(state.pendingResponses);
+                     newSet.delete(conversationIdForBotResponse);
+                     const newCompletedSet = new Set(state.completedResponses);
+                     newCompletedSet.add(conversationIdForBotResponse);
 
-                 return {
-                     messages: messagesWithoutThinking, // 현재 UI에서 '생각중' 제거
-                     isLoading: false, // 현재 UI 로딩 중지
-                     pendingResponses: newSet,
-                     completedResponses: newCompletedSet // [NEW]
-                 };
-             });
-        }
+                     return {
+                         messages: messagesWithoutThinking, // 현재 UI에서 '생각중' 제거
+                         isLoading: false, // 현재 UI 로딩 중지
+                         pendingResponses: newSet,
+                         completedResponses: newCompletedSet 
+                     };
+                 });
+            }
+        } // end if(isStream)
       } // end finally
     }, // end handleResponse
     // --- 👆 [수정된 부분 끝] ---
