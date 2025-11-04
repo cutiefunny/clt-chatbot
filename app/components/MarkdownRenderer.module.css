@@ -68,20 +68,30 @@
 }
 
 .markdownContent table th {
-  background-color: var(--button-hover-bg);
-  padding: 8px 12px;
-  border: 1px solid var(--panel-border-color);
-  min-width: 0;
-  max-width: 130px;
+  background-color: #f4f5fb;
+  padding: 8px 10px;
+  border: 1px solid #d8e0eb;
+  min-width: 50px;
+  max-width: 120px;
+  color: var(--Gray-08, #282166);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  letter-spacing: -0.18px;
   white-space: normal;
   word-break: break-word;
 }
 
 .markdownContent table td {
   padding: 8px 12px;
-  border: 1px solid var(--panel-border-color);
-  min-width: 0;
-  max-width: 130px;
+  border: 1px solid #d8e0eb;
+  min-width: 50px;
+  max-width: 120px;
+  color: var(--Gray-08, #282166);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  letter-spacing: -0.18px;
   white-space: normal;
   word-break: break-word;
 }
