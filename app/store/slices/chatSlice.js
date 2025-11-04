@@ -287,8 +287,9 @@ export const createChatSlice = (set, get) => {
   // State
   messages: getInitialMessages("ko"), // 현재 대화의 메시지 목록
   isLoading: false, // 메시지 로딩 또는 응답 대기 상태
-  // --- 👇 [수정] pendingResponses 상태 추가 ---
+  // --- 👇 [수정] pendingResponses, completedResponses 상태 추가 ---
   pendingResponses: new Set(), // 현재 응답(fetch) 대기 중인 conversationId 집합
+  completedResponses: new Set(), // 완료되었으나 확인하지 않은 conversationId 집합
   // --- 👆 [수정] ---
   slots: {}, // 시나리오 실행 시 사용될 슬롯 (scenarioSlice로 이동 고려)
   extractedSlots: {}, // LLM이 추출한 슬롯
@@ -311,7 +312,7 @@ export const createChatSlice = (set, get) => {
       // 기존 메시지 리스너 해제
       get().unsubscribeMessages?.();
       set({ unsubscribeMessages: null });
-      // [주의] pendingResponses는 여기서 초기화하지 않음 (대화와 무관하게 유지되어야 함)
+      // [주의] pending/completedResponses는 여기서 초기화하지 않음
   },
 
   // --- 👇 [수정] loadInitialMessages 수정 (pendingResponses 확인 로직 추가) ---
@@ -700,7 +701,7 @@ export const createChatSlice = (set, get) => {
     }
   },
 
-  // --- 👇 [수정된 부분 시작]: handleResponse (pendingResponses + 중복 ID 확인 로직) ---
+  // --- 👇 [수정된 부분 시작]: handleResponse (completedResponses 로직 추가) ---
   // 사용자 메시지 처리 및 봇 응답 요청/처리
   handleResponse: async (messagePayload) => {
       set({ isLoading: true, llmRawResponse: null });
@@ -828,11 +829,27 @@ export const createChatSlice = (set, get) => {
                 handler(data, get);
             } else {
                  console.log("[handleResponse] User switched convo. Skipping local state update for JSON response.");
+                 // [NEW] JSON 응답도 완료 뱃지 표시
+                 set(state => ({
+                    completedResponses: new Set(state.completedResponses).add(conversationIdForBotResponse)
+                 }));
             }
           } else {
             const responseText = data.response || data.text || data.message;
             if (responseText) {
-              await addMessage("bot", { text: responseText }); 
+              // addMessage는 현재 대화창(null)에만 저장함. 
+              // [수정] saveMessage를 직접 호출해야 함
+              if(conversationIdForBotResponse === get().currentConversationId) {
+                  await addMessage("bot", { text: responseText }); 
+              } else {
+                  console.log("[handleResponse] User switched. Saving JSON response to original conversation in background.");
+                  const botMessage = { id: `temp_${Date.now()}`, sender: 'bot', text: responseText, isStreaming: false, feedback: null };
+                  await saveMessage(botMessage, conversationIdForBotResponse);
+                  // [NEW] JSON 응답도 완료 뱃지 표시
+                  set(state => ({
+                     completedResponses: new Set(state.completedResponses).add(conversationIdForBotResponse)
+                  }));
+              }
             } else {
               console.warn(`[ChatStore] Unhandled non-stream response type or empty response:`, data);
               await addMessage("bot", { text: locales[language]?.['errorUnexpected'] || "(No content)" });
@@ -861,7 +878,6 @@ export const createChatSlice = (set, get) => {
                             const newSet = new Set(s.pendingResponses);
                             newSet.delete(conversationIdForBotResponse);
                             
-                            // --- [FIX] ---
                             let newMessages = s.messages;
                             const alreadyExists = savedId ? s.messages.some(m => m.id === savedId) : false;
 
@@ -872,7 +888,6 @@ export const createChatSlice = (set, get) => {
                             } else {
                                 newMessages = s.messages.map(m => m.id === lastBotMessageId ? updatedMessage : m);
                             }
-                            // --- [FIX END] ---
 
                             return {
                                 messages: newMessages,
@@ -900,7 +915,15 @@ export const createChatSlice = (set, get) => {
             set(state => {
                  const newSet = new Set(state.pendingResponses);
                  newSet.delete(conversationIdForBotResponse);
-                 return { isLoading: false, pendingResponses: newSet };
+                 // --- 👇 [수정] 에러 시에도 완료 뱃지 추가 ---
+                 const newCompletedSet = new Set(state.completedResponses);
+                 newCompletedSet.add(conversationIdForBotResponse);
+                 // --- 👆 [수정] ---
+                 return { 
+                     isLoading: false, 
+                     pendingResponses: newSet,
+                     completedResponses: newCompletedSet // [NEW]
+                 };
             });
         }
         
@@ -908,7 +931,15 @@ export const createChatSlice = (set, get) => {
             set(state => {
                  const newSet = new Set(state.pendingResponses);
                  newSet.delete(conversationIdForBotResponse);
-                 return { isLoading: false, pendingResponses: newSet };
+                 // --- 👇 [수정] 에러 시에도 완료 뱃지 추가 ---
+                 const newCompletedSet = new Set(state.completedResponses);
+                 newCompletedSet.add(conversationIdForBotResponse);
+                 // --- 👆 [수정] ---
+                 return { 
+                     isLoading: false, 
+                     pendingResponses: newSet,
+                     completedResponses: newCompletedSet // [NEW]
+                 };
             });
         }
 
@@ -936,7 +967,6 @@ export const createChatSlice = (set, get) => {
                                 const newSet = new Set(s.pendingResponses);
                                 newSet.delete(conversationIdForBotResponse);
                                 
-                                // --- [FIX] ---
                                 let newMessages = s.messages;
                                 const alreadyExists = savedId ? s.messages.some(m => m.id === savedId) : false;
 
@@ -945,9 +975,9 @@ export const createChatSlice = (set, get) => {
                                 } else if (savedId) {
                                     newMessages = s.messages.map(m => m.id === lastMessage.id ? { ...finalMessage, id: savedId } : m);
                                 } else {
+                                    // [FIX] save 실패 시 임시 메시지 제거
                                     newMessages = s.messages.filter(m => m.id !== lastMessage.id);
                                 }
-                                // --- [FIX END] ---
 
                                 return {
                                     messages: newMessages,
@@ -975,22 +1005,38 @@ export const createChatSlice = (set, get) => {
                  // 로컬 '생각중' 메시지 찾아서 제거
                  const messagesWithoutThinking = state.messages.filter(m => m.id !== lastBotMessageId);
                  
-                 if(finalStreamText) { // 스트리밍 응답만 백그라운드 저장
+                 // --- 👇 [수정] 스트리밍/JSON 모두 백그라운드 저장 및 뱃지 추가 ---
+                 let messageToSave = null;
+                 if (finalStreamText) { // 스트리밍 응답
                      const finalMessageText = finalStreamText.trim() === '' || finalStreamText.trim() === thinkingText.trim()
                           ? locales[language]?.['errorLLMFail'] || "(Response failed. Please try again later.)"
                           : finalStreamText;
-                     const finalMessage = { id: `temp_${Date.now()}`, sender: 'bot', text: finalMessageText, isStreaming: false, feedback: null };
-
-                     saveMessage(finalMessage, conversationIdForBotResponse);
+                     messageToSave = { id: `temp_${Date.now()}`, sender: 'bot', text: finalMessageText, isStreaming: false, feedback: null };
+                 } else if (lastBotMessageId) { 
+                     // JSON 응답 (스트리밍이 아니었음) - 이 경우는 addMessage에서 이미 처리되었을 수 있으나,
+                     // 1290줄 근처의 JSON 응답 로직에서 다른 대화창일 때 저장을 안 했으므로 여기서 저장
+                     const localJsonMessage = get().messages.find(m => m.id === lastBotMessageId);
+                     if (localJsonMessage) { // addMessage가 만든 임시 메시지가 있다면
+                         messageToSave = { ...localJsonMessage, isStreaming: false };
+                     }
                  }
-                 // (JSON 응답은 백그라운드 저장 로직 현재 없음)
 
+                 if (messageToSave) {
+                     saveMessage(messageToSave, conversationIdForBotResponse);
+                 }
+                 
                  const newSet = new Set(state.pendingResponses);
                  newSet.delete(conversationIdForBotResponse);
+                 // [NEW] Add to completed set
+                 const newCompletedSet = new Set(state.completedResponses);
+                 newCompletedSet.add(conversationIdForBotResponse);
+                 // --- 👆 [수정] ---
+
                  return {
                      messages: messagesWithoutThinking, // 현재 UI에서 '생각중' 제거
                      isLoading: false, // 현재 UI 로딩 중지
-                     pendingResponses: newSet 
+                     pendingResponses: newSet,
+                     completedResponses: newCompletedSet // [NEW]
                  };
              });
         }
