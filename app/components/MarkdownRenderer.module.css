@@ -2,6 +2,8 @@
 .markdownContent {
   line-height: 1.6;
   word-wrap: break-word; /* 긴 텍스트 줄바꿈 */
+  max-width: 100%;
+  min-width: 0;
 }
 
 .markdownContent h1 {
@@ -49,23 +51,39 @@
   margin-bottom: 0;
 }
 
+.tableWrapper {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .markdownContent table {
   border-collapse: collapse;
-  overflow: hidden;
+  width: max-content;
+  min-width: 100%;
   outline: 1px solid var(--panel-border-color);
   outline-offset: -1px;
-  border-radius: 8px;
 }
 
 .markdownContent table th {
   background-color: var(--button-hover-bg);
   padding: 8px 12px;
   border: 1px solid var(--panel-border-color);
+  min-width: 0;
+  max-width: 130px;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .markdownContent table td {
   padding: 8px 12px;
   border: 1px solid var(--panel-border-color);
+  min-width: 0;
+  max-width: 130px;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .viewMoreButton {

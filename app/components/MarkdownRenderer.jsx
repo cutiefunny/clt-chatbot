@@ -11,6 +11,14 @@ export default function MarkdownRenderer({ content }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const LINE_LIMIT = useChatStore((state) => state.contentTruncateLimit);
 
+  const markdownComponents = {
+    table: ({ node: _node, ...props }) => (
+      <div className={styles.tableWrapper}>
+        <table {...props} />
+      </div>
+    ),
+  };
+
   const safeContent = String(content || "");
   const lines = safeContent.split("\n");
   const needsTruncation = LINE_LIMIT > 0 && lines.length > LINE_LIMIT;
@@ -29,7 +37,9 @@ export default function MarkdownRenderer({ content }) {
 
   return (
     <div className={styles.markdownContent}>
-      <Markdown remarkPlugins={[remarkGfm]}>{displayContent}</Markdown>
+      <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+        {displayContent}
+      </Markdown>
       {needsTruncation && (
         <button onClick={handleToggle} className={styles.viewMoreButton}>
           {isExpanded ? t("viewLess") : t("viewMore")}

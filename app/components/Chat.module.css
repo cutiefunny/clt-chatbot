@@ -311,6 +311,7 @@ input:checked + .slider:before {
   margin: 2px 0px;
   line-height: 20px; /* 142.857% */
   letter-spacing: -0.14px;
+  max-width: calc(100% - 32px);
 }
 
 .botMessage {
