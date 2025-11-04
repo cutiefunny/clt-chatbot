@@ -269,7 +269,7 @@ input:checked + .slider:before {
 .message {
   border-radius: 16px;
   width: fit-content;
-  max-width: 70%;
+  max-width: 90%;
   word-wrap: break-word;
   line-height: 1.4;
   white-space: pre-wrap;
@@ -366,9 +366,7 @@ input:checked + .slider:before {
 /* --- 👇 [수정] .actionButton:hover에 color 추가 --- */
 .messageActionArea .actionButton:hover {
   background-color: var(--button-hover-bg);
-  color: var(
-    --action-button-hover-color
-  ); /* globals.css에 정의된 hover 색상 */
+  color: var(--action-button-hover-color); /* globals.css에 정의된 hover 색상 */
 }
 /* --- 👆 [수정] --- */
 
@@ -509,9 +507,9 @@ input:checked + .slider:before {
 /* --- 👇 [수정] 폼 헤더 및 엑셀 버튼 스타일 --- */
 .formHeader {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   padding: 12px 20px; /* h3에서 패딩 이동 */
+  gap: 8px;
 }
 
 .formHeader h3 {
@@ -524,9 +522,10 @@ input:checked + .slider:before {
 }
 
 .excelUploadButton {
+  height: 36px;
   padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 600;
   color: var(--Gray-07, #5e7599);
   cursor: pointer;
   transition: background-color 0.2s;
@@ -908,7 +907,6 @@ body.dark .formGridTable tbody tr:hover {
   background-color: rgba(255, 255, 255, 0.1);
 }
 
-
 /* 폼 입력 필드 그룹 */
 .formInputGroup {
   display: grid;
@@ -960,10 +958,10 @@ body.dark .formGridTable tbody tr:hover {
 
 /* 폼 렌더러가 체인에 포함될 때 상단 패딩 제거 */
 .chainedMessageItem .formContainer {
-   /* padding-top: 0; (FormRenderer 루트에 패딩이 없으므로 불필요) */
+  /* padding-top: 0; (FormRenderer 루트에 패딩이 없으므로 불필요) */
 }
 .chainedMessageItem:not(:first-child) .formContainer {
-   /* padding-top: 12px; (FormRenderer 루트에 패딩이 없으므로 불필요) */
+  /* padding-top: 12px; (FormRenderer 루트에 패딩이 없으므로 불필요) */
 }
 
 /* --- 👆 [추가] --- */
