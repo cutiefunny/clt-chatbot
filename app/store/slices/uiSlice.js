@@ -210,26 +210,26 @@ export const createUISlice = (set, get) => ({
 
     if (isHistoryPanelOpen) {
       console.log(
-        `[Call Window Method] callChatbotResize to ${PARENT_ORIGIN} with width -264`
-      );
-      window.parent.postMessage(
-        {
-          action: "callChatbotResize",
-          payload: {
-            width: -264,
-          },
-        },
-        PARENT_ORIGIN
-      );
-    } else {
-      console.log(
-        `[Call Window Method] callChatbotResize to ${PARENT_ORIGIN} with width 264`
+        `[Call Window Method] callChatbotResize(width: 264) to ${PARENT_ORIGIN} with Open History Panel`
       );
       window.parent.postMessage(
         {
           action: "callChatbotResize",
           payload: {
             width: 264,
+          },
+        },
+        PARENT_ORIGIN
+      );
+    } else {
+      console.log(
+        `[Call Window Method] callChatbotResize(width: -264) to ${PARENT_ORIGIN} with Close History Panel`
+      );
+      window.parent.postMessage(
+        {
+          action: "callChatbotResize",
+          payload: {
+            width: -264,
           },
         },
         PARENT_ORIGIN

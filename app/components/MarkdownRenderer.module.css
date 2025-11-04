@@ -4,6 +4,22 @@
   word-wrap: break-word; /* 긴 텍스트 줄바꿈 */
 }
 
+.markdownContent h1 {
+  color: var(--Purple-03, #634de2);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 20px;
+  letter-spacing: -0.14px;
+}
+
+.markdownContent h2 {
+  color: var(--Gray-08, #282166);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  letter-spacing: -0.14px;
+}
+
 .markdownContent a {
   color: #4285f4; /* 링크 색상 */
   text-decoration: underline;
@@ -31,6 +47,25 @@
   content: "";
   display: block;
   margin-bottom: 0;
+}
+
+.markdownContent table {
+  border-collapse: collapse;
+  overflow: hidden;
+  outline: 1px solid var(--panel-border-color);
+  outline-offset: -1px;
+  border-radius: 8px;
+}
+
+.markdownContent table th {
+  background-color: var(--button-hover-bg);
+  padding: 8px 12px;
+  border: 1px solid var(--panel-border-color);
+}
+
+.markdownContent table td {
+  padding: 8px 12px;
+  border: 1px solid var(--panel-border-color);
 }
 
 .viewMoreButton {

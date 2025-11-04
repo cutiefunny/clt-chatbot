@@ -269,7 +269,7 @@ input:checked + .slider:before {
 .message {
   border-radius: 16px;
   width: fit-content;
-  max-width: 70%;
+  max-width: 90%;
   word-wrap: break-word;
   line-height: 1.4;
   white-space: pre-wrap;
@@ -507,9 +507,9 @@ input:checked + .slider:before {
 /* --- 👇 [수정] 폼 헤더 및 엑셀 버튼 스타일 --- */
 .formHeader {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   padding: 12px 20px; /* h3에서 패딩 이동 */
+  gap: 8px;
 }
 
 .formHeader h3 {
