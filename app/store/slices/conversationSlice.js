@@ -69,6 +69,7 @@ export const createConversationSlice = (set, get) => ({
     set({ unsubscribeConversations: unsubscribe });
   },
 
+  // --- 👇 [수정] loadConversation (completedResponses 뱃지 제거 로직 추가) ---
   loadConversation: async (conversationId) => {
     const user = get().user;
     if (
@@ -87,6 +88,18 @@ export const createConversationSlice = (set, get) => ({
 
     const { language, showEphemeralToast } = get();
 
+    // --- [NEW] ---
+    // "완료" 뱃지 제거 (사용자가 확인했으므로)
+    set(state => {
+        if (state.completedResponses.has(conversationId)) {
+            const newCompletedSet = new Set(state.completedResponses);
+            newCompletedSet.delete(conversationId);
+            return { completedResponses: newCompletedSet };
+        }
+        return {}; // 변경 없음
+    });
+    // --- [NEW END] ---
+
     // 다른 슬라이스의 액션 호출 (구독 해제, 상태 초기화)
     get().unsubscribeAllMessagesAndScenarios?.(); // chatSlice + scenarioSlice
     get().resetMessages?.(language); // chatSlice 호출하여 메시지 상태 초기화
@@ -95,9 +108,7 @@ export const createConversationSlice = (set, get) => ({
     set({
       currentConversationId: conversationId,
       expandedConversationId: null, // 대화 변경 시 확장 닫기
-      // isLoading: true, // 로딩 상태는 uiSlice 또는 chatSlice에서 관리
     });
-    // isLoading 시작은 uiSlice나 chatSlice에서 설정하는 것이 좋음
     get().setIsLoading?.(true); // uiSlice 또는 chatSlice에 setIsLoading 함수 필요
 
     try {
@@ -120,9 +131,6 @@ export const createConversationSlice = (set, get) => ({
         get().subscribeToScenarioSession?.(doc.id); // scenarioSlice 호출
       });
 
-      // 모든 로드 완료 후 isLoading 해제 (chatSlice 또는 uiSlice)
-      // loadInitialMessages 내부에서 처리될 것으로 예상
-      // get().setIsLoading?.(false);
     } catch (error) {
       console.error(`Error loading conversation ${conversationId}:`, error);
       const errorKey = getErrorKey(error);
@@ -134,13 +142,13 @@ export const createConversationSlice = (set, get) => ({
       // 오류 발생 시 상태 초기화
       set({
         currentConversationId: null,
-        // isLoading: false, // uiSlice/chatSlice에서 처리
       });
       get().resetMessages?.(language); // chatSlice 메시지 초기화
       get().unsubscribeAllMessagesAndScenarios?.(); // 모든 관련 리스너 정리
       get().setIsLoading?.(false); // 로딩 상태 해제
     }
   },
+  // --- 👆 [수정] ---
 
   createNewConversation: async (returnId = false) => {
     // 현재 대화 ID가 없고, ID 반환 목적도 아니면 중복 생성 방지

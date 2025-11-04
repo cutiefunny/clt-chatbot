@@ -842,6 +842,45 @@ export default function ScenarioChat() {
     });
   };
 
+  // --- 👇 [추가] 메시지 그룹핑 로직 ---
+  const groupedMessages = [];
+  let currentChain = [];
+
+  scenarioMessages.forEach((msg) => {
+    // set-slot 노드는 렌더링에서 제외
+    if (msg.node?.type === "set-slot") {
+      return;
+    }
+
+    const isChained = msg.node?.data?.chainNext === true;
+    const isUserMsg = msg.sender === 'user';
+
+    if (isUserMsg) {
+      // 1. 사용자 메시지
+      // A. 진행 중이던 봇 체인을 먼저 푸시
+      if (currentChain.length > 0) {
+        groupedMessages.push(currentChain);
+        currentChain = [];
+      }
+      // B. 사용자 메시지를 단일 항목으로 푸시
+      groupedMessages.push(msg); 
+    } else {
+      // 2. 봇 메시지
+      // A. 현재 체인에 봇 메시지 추가
+      currentChain.push(msg);
+      // B. 이 메시지가 체인을 종료시키면 (chainNext: false or undefined)
+      if (!isChained) {
+        groupedMessages.push(currentChain);
+        currentChain = [];
+      }
+    }
+  });
+  // 루프 종료 후 남은 체인이 있으면 푸시
+  if (currentChain.length > 0) {
+    groupedMessages.push(currentChain);
+  }
+  // --- 👆 [추가] ---
+
   return (
     <div className={styles.scenarioChatContainer}>
       <div className={styles.scenarioHeader}>
@@ -905,158 +944,200 @@ export default function ScenarioChat() {
         </div>
       </div>
 
-      {/* 시나리오 메시지 기록 (기존 코드 유지) */}
+      {/* --- 👇 [수정] groupedMessages를 map으로 순회 --- */}
       <div className={styles.history} ref={historyRef}>
-        {scenarioMessages
-          .filter((msg) => msg.node?.type !== "set-slot")
-          .map((msg, index) => (
+        {groupedMessages.map((group, index) => {
+          // group이 배열(체인)이 아닌 경우 (사용자 메시지)
+          if (!Array.isArray(group)) {
+            const msg = group; // msg는 사용자 메시지 객체
+            return (
+              <div
+                key={msg.id || `${activeScenarioSessionId}-msg-${index}`}
+                className={`${styles.messageRow} ${styles.userRow}`}
+              >
+                <div
+                  className={`GlassEffect ${styles.message} ${styles.userMessage}`}
+                >
+                  <div className={styles.messageContent}>
+                    <MarkdownRenderer
+                      content={interpolateMessage(
+                        msg.text, // 사용자 메시지는 text만 있음
+                        activeScenario.slots
+                      )}
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          // group이 배열인 경우 (봇 체인)
+          const chain = group;
+          return (
             <div
-              key={msg.id || `${activeScenarioSessionId}-msg-${index}`}
-              className={`${styles.messageRow} ${
-                msg.sender === "user" ? styles.userRow : ""
-              }`}
+              key={chain[0].id || `${activeScenarioSessionId}-chain-${index}`}
+              className={`${styles.messageRow}`} // 봇 메시지 row
             >
               <div
                 className={`GlassEffect ${styles.message} ${
-                  msg.sender === "bot" ? styles.botMessage : styles.userMessage
+                  styles.botMessage
                 } ${
-                  msg.node?.type === "form" ||
-                  msg.node?.data?.elements?.some((el) => el.type === "grid") ||
-                  msg.node?.type === "iframe"
+                  // 체인 중 하나라도 grid/form/iframe이 있으면 넓은 스타일 적용
+                  chain.some(
+                    (msg) =>
+                      msg.node?.type === "form" ||
+                      msg.node?.data?.elements?.some((el) => el.type === "grid") ||
+                      msg.node?.type === "iframe"
+                  )
                     ? styles.gridMessage
                     : ""
                 }`}
               >
                 <div
                   className={
-                    msg.node?.type === "form"
+                    // 폼 렌더러가 포함된 경우
+                    chain.some((msg) => msg.node?.type === "form")
                       ? styles.scenarioFormMessageContentWrapper
                       : styles.scenarioMessageContentWrapper
                   }
                 >
-                  {msg.sender === "bot" &&
-                    !msg.node?.type?.includes("form") && (
-                      <LogoIcon className={styles.avatar} />
-                    )}
+                  {/* 아바타는 한 번만 표시 */}
+                  <LogoIcon className={styles.avatar} />
 
                   <div className={styles.messageContent}>
-                    {msg.node?.type === "form" ? (
-                      <FormRenderer
-                        node={msg.node}
-                        onFormSubmit={handleFormSubmit}
-                        disabled={isCompleted}
-                        language={language}
-                        slots={activeScenario.slots}
-                        onGridRowClick={handleGridRowSelected}
-                      />
-                    ) : msg.node?.type === "iframe" ? (
-                      <div className={styles.iframeContainer}>
-                        <iframe
-                          src={interpolateMessage(
-                            msg.node.data.url,
-                            activeScenario.slots
-                          )}
-                          width={msg.node.data.width || "604px"}
-                          height={msg.node.data.height || "250"}
-                          style={{ border: "none", borderRadius: "8px" }}
-                          title="chatbot-iframe"
-                        ></iframe>
-                      </div>
-                    ) : msg.node?.type === "link" ? (
-                      <div>
-                        <a
-                          href="#"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            connectParentLink(
-                              interpolateMessage(
-                                msg.node.data.content,
-                                activeScenario.slots
-                              )
-                            );
-                          }}
-                          target="_self"
-                          rel="noopener noreferrer"
-                          className={styles.linkNode}
-                        >
-                          {interpolateMessage(
-                            msg.node.data.display || msg.node.data.content,
-                            activeScenario.slots
-                          )}
-                          <OpenInNewIcon
-                            style={{
-                              marginLeft: "4px",
-                              verticalAlign: "middle",
-                              width: "16px",
-                              height: "16px",
-                            }}
+                    {/* --- 👇 [수정] 체인 내부의 각 메시지를 순회하며 렌더링 --- */}
+                    {chain.map((msg) => (
+                      <div
+                        key={msg.id}
+                        className={styles.chainedMessageItem} // 스타일 추가
+                      >
+                        {/* --- (기존 봇 메시지 렌더링 로직 복사) --- */}
+                        {msg.node?.type === "form" ? (
+                          <FormRenderer
+                            node={msg.node}
+                            onFormSubmit={handleFormSubmit}
+                            disabled={isCompleted}
+                            language={language}
+                            slots={activeScenario.slots}
+                            onGridRowClick={handleGridRowSelected}
                           />
-                        </a>
-                      </div>
-                    ) : (
-                      <MarkdownRenderer
-                        content={interpolateMessage(
-                          msg.text || msg.node?.data?.content,
-                          activeScenario.slots
-                        )}
-                      />
-                    )}
-                    {msg.node?.type === "branch" && msg.node.data.replies && (
-                      <div className={styles.scenarioList}>
-                        {msg.node.data.replies.map((reply) => {
-                          const selectedOption = msg.selectedOption;
-                          const interpolatedDisplayText = interpolateMessage(
-                            reply.display,
-                            activeScenario?.slots
-                          );
-                          const isSelected =
-                            selectedOption === interpolatedDisplayText;
-                          const isDimmed = selectedOption && !isSelected;
-                          return (
-                            <button
-                              key={reply.value}
-                              className={`${styles.optionButton} ${
-                                isSelected ? styles.selected : ""
-                              } ${isDimmed ? styles.dimmed : ""}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (selectedOption || isCompleted) return;
-                                setScenarioSelectedOption(
-                                  activeScenarioSessionId,
-                                  msg.node.id,
-                                  interpolatedDisplayText
-                                );
-                                handleScenarioResponse({
-                                  scenarioSessionId: activeScenarioSessionId,
-                                  currentNodeId: msg.node.id,
-                                  sourceHandle: reply.value,
-                                  userInput: interpolatedDisplayText,
-                                });
-                              }}
-                              disabled={isCompleted || !!selectedOption}
-                            >
-                              <span className={styles.optionButtonText}>
-                                {interpolatedDisplayText}
-                              </span>
-                              {interpolatedDisplayText
-                                .toLowerCase()
-                                .includes("link") ? (
-                                <OpenInNewIcon
-                                  style={{ color: "currentColor" }}
-                                />
-                              ) : (
-                                <CheckCircle />
+                        ) : msg.node?.type === "iframe" ? (
+                          <div className={styles.iframeContainer}>
+                            <iframe
+                              src={interpolateMessage(
+                                msg.node.data.url,
+                                activeScenario.slots
                               )}
-                            </button>
-                          );
-                        })}
+                              width={msg.node.data.width || "604px"}
+                              height={msg.node.data.height || "250"}
+                              style={{ border: "none", borderRadius: "8px" }}
+                              title="chatbot-iframe"
+                            ></iframe>
+                          </div>
+                        ) : msg.node?.type === "link" ? (
+                          <div>
+                            <a
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                connectParentLink(
+                                  interpolateMessage(
+                                    msg.node.data.content,
+                                    activeScenario.slots
+                                  )
+                                );
+                              }}
+                              target="_self"
+                              rel="noopener noreferrer"
+                              className={styles.linkNode}
+                            >
+                              {interpolateMessage(
+                                msg.node.data.display || msg.node.data.content,
+                                activeScenario.slots
+                              )}
+                              <OpenInNewIcon
+                                style={{
+                                  marginLeft: "4px",
+                                  verticalAlign: "middle",
+                                  width: "16px",
+                                  height: "16px",
+                                }}
+                              />
+                            </a>
+                          </div>
+                        ) : (
+                          <MarkdownRenderer
+                            content={interpolateMessage(
+                              msg.text || msg.node?.data?.content,
+                              activeScenario.slots
+                            )}
+                          />
+                        )}
+                        {msg.node?.type === "branch" &&
+                          msg.node.data.replies && (
+                            <div className={styles.scenarioList}>
+                              {msg.node.data.replies.map((reply) => {
+                                const selectedOption = msg.selectedOption;
+                                const interpolatedDisplayText = interpolateMessage(
+                                  reply.display,
+                                  activeScenario?.slots
+                                );
+                                const isSelected =
+                                  selectedOption === interpolatedDisplayText;
+                                const isDimmed = selectedOption && !isSelected;
+                                return (
+                                  <button
+                                    key={reply.value}
+                                    className={`${styles.optionButton} ${
+                                      isSelected ? styles.selected : ""
+                                    } ${isDimmed ? styles.dimmed : ""}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (selectedOption || isCompleted) return;
+                                      setScenarioSelectedOption(
+                                        activeScenarioSessionId,
+                                        msg.node.id,
+                                        interpolatedDisplayText
+                                      );
+                                      handleScenarioResponse({
+                                        scenarioSessionId:
+                                          activeScenarioSessionId,
+                                        currentNodeId: msg.node.id,
+                                        sourceHandle: reply.value,
+                                        userInput: interpolatedDisplayText,
+                                      });
+                                    }}
+                                    disabled={isCompleted || !!selectedOption}
+                                  >
+                                    <span className={styles.optionButtonText}>
+                                      {interpolatedDisplayText}
+                                    </span>
+                                    {interpolatedDisplayText
+                                      .toLowerCase()
+                                      .includes("link") ? (
+                                      <OpenInNewIcon
+                                        style={{ color: "currentColor" }}
+                                      />
+                                    ) : (
+                                      <CheckCircle />
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        {/* --- (기존 봇 메시지 렌더링 로직 끝) --- */}
                       </div>
-                    )}
+                    ))}
+                    {/* --- 👆 [수정] --- */}
                   </div>
                 </div>
               </div>
             </div>
-          ))}
+          );
+        })}
+        {/* --- 👆 [수정] --- */}
+
         {/* 로딩 인디케이터 (기존 코드 유지) */}
         {isScenarioLoading && (
           <div className={styles.messageRow}>

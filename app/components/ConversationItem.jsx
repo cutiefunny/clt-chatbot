@@ -1,3 +1,4 @@
+// app/components/ConversationItem.jsx
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { useTranslations } from "../hooks/useTranslations";
@@ -8,6 +9,23 @@ import ArrowDropDownIcon from "./icons/ArrowDropDownIcon";
 import PinOutlinedIcon from "./icons/PinOutlinedIcon";
 import CloseIcon from "./icons/CloseIcon";
 import { useChatStore } from "../store";
+
+// --- 👇 [추가] 완료 뱃지 아이콘 ---
+const DoneBadgeIcon = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M8 1.5C4.41015 1.5 1.5 4.41015 1.5 8C1.5 11.5899 4.41015 14.5 8 14.5C11.5899 14.5 14.5 11.5899 14.5 8C14.5 4.41015 11.5899 1.5 8 1.5ZM6.8 11L4 8.2L4.9 7.3L6.8 9.2L11.1 4.9L12 5.8L6.8 11Z"
+      fill="currentColor"
+    />
+  </svg>
+);
+// --- 👆 [추가] ---
 
 const CheckIcon = () => (
   <svg
@@ -120,6 +138,10 @@ export default function ConversationItem({
   onScenarioClick,
   unreadScenarioSessions,
   hasUnreadScenarios,
+  isPending,
+  // --- 👇 [추가] hasCompletedResponse 프롭 받기 ---
+  hasCompletedResponse,
+  // --- 👆 [추가] ---
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -212,9 +234,33 @@ export default function ConversationItem({
         }}
       >
         <div className={styles.convoMain}>
+          {/* 로딩 아이콘 */}
+          {isPending && !isEditing && (
+            <span className={styles.loadingIndicator}>
+              <img
+                src="/images/Loading.gif"
+                alt="Loading..."
+                width="16"
+                height="16"
+                style={{ display: "block" }}
+              />
+            </span>
+          )}
+
+          {/* --- 👇 [추가] 완료 뱃지 (로딩 중 아닐 때) --- */}
+          {!isPending && hasCompletedResponse && !isEditing && (
+            <span className={styles.doneIndicator}>
+              <DoneBadgeIcon />
+            </span>
+          )}
+          {/* --- 👆 [추가] --- */}
+
+          {/* 읽지 않은 시나리오 뱃지 (시나리오 확장 시에만 보임 - 현재 로직) */}
           {hasUnreadScenarios && !isEditing && (
             <div className={styles.unreadDot}></div>
           )}
+          
+          {/* 고정 뱃지 */}
           {convo.pinned && !isEditing && (
             <span className={styles.pinIndicator}>
               <PinIcon />

@@ -287,6 +287,10 @@ export const createChatSlice = (set, get) => {
   // State
   messages: getInitialMessages("ko"), // 현재 대화의 메시지 목록
   isLoading: false, // 메시지 로딩 또는 응답 대기 상태
+  // --- 👇 [수정] pendingResponses, completedResponses 상태 추가 ---
+  pendingResponses: new Set(), // 현재 응답(fetch) 대기 중인 conversationId 집합
+  completedResponses: new Set(), // 완료되었으나 확인하지 않은 conversationId 집합
+  // --- 👆 [수정] ---
   slots: {}, // 시나리오 실행 시 사용될 슬롯 (scenarioSlice로 이동 고려)
   extractedSlots: {}, // LLM이 추출한 슬롯
   llmRawResponse: null, // LLM 원시 응답 (디버깅용)
@@ -308,8 +312,10 @@ export const createChatSlice = (set, get) => {
       // 기존 메시지 리스너 해제
       get().unsubscribeMessages?.();
       set({ unsubscribeMessages: null });
+      // [주의] pending/completedResponses는 여기서 초기화하지 않음
   },
 
+  // --- 👇 [수정] loadInitialMessages 수정 (pendingResponses 확인 로직 추가) ---
   // 초기 메시지 로드 및 실시간 구독 설정
   loadInitialMessages: async (conversationId) => {
       const { user, language, showEphemeralToast } = get();
@@ -331,9 +337,27 @@ export const createChatSlice = (set, get) => {
               const newSelectedOptions = {};
               newMessages.forEach(msg => { if (msg.selectedOption) newSelectedOptions[msg.id] = msg.selectedOption; });
 
+              let finalMessages = [initialMessage, ...newMessages];
+
+              // --- [새 로직] ---
+              // 이 대화(conversationId)가 응답 대기 중인지 확인
+              if (get().pendingResponses.has(conversationId)) {
+                  const thinkingText = locales[language]?.['statusGenerating'] || "Generating...";
+                  // 예측 가능한 임시 ID 사용 (handleResponse와 동일하게)
+                  const tempBotMessage = { 
+                      id: `temp_pending_${conversationId}`, 
+                      sender: 'bot', 
+                      text: thinkingText, 
+                      isStreaming: true, 
+                      feedback: null 
+                  };
+                  finalMessages.push(tempBotMessage);
+              }
+              // --- [새 로직 끝] ---
+
               // 초기 메시지와 결합하여 상태 업데이트
               set({
-                  messages: [initialMessage, ...newMessages],
+                  messages: finalMessages, // 수정된 메시지 배열 사용
                   lastVisibleMessage: lastVisible,
                   hasMoreMessages: messagesSnapshot.docs.length === MESSAGE_LIMIT,
                   isLoading: false, // 로딩 완료
@@ -358,6 +382,7 @@ export const createChatSlice = (set, get) => {
           set({ isLoading: false, hasMoreMessages: false, messages: [initialMessage] });
       }
   },
+  // --- 👆 [수정] ---
 
   // 스트리밍 중 마지막 봇 메시지 업데이트
   updateLastMessage: (chunk, replace = false) => {
@@ -494,18 +519,20 @@ export const createChatSlice = (set, get) => {
     clearExtractedSlots(); // 슬롯 초기화
   },
 
+  // --- 👇 [수정된 부분 시작]: saveMessage (중복 ID 확인 로직 추가) ---
   // 메시지를 Firestore에 저장 (대화 생성 로직 포함)
-  saveMessage: async (message) => {
-    const { user, language, showEphemeralToast, currentConversationId, createNewConversation } = get(); // conversationSlice 액션 참조
+  saveMessage: async (message, conversationId = null) => {
+    const { user, language, showEphemeralToast, currentConversationId: globalConversationId, createNewConversation } = get(); // conversationSlice 액션 참조
     if (!user || !message || typeof message !== 'object') {
         if(!message || typeof message !== 'object') console.error("saveMessage invalid message:", message);
         return null;
     }
 
-    let activeConversationId = currentConversationId; // conversationSlice 상태 참조
+    // 1. 전달받은 conversationId를 우선 사용, 없으면 전역(global) ID 사용
+    let activeConversationId = conversationId || globalConversationId;
 
     try {
-        // 현재 대화 ID 없으면 새로 생성하고 로드가 완료될 때까지 기다림
+        // 2. (user 메시지 저장 시) ID가 없으면 새 대화 생성
         if (!activeConversationId) {
             console.log("No active conversation, creating new one and waiting...");
             activeConversationId = await createNewConversation(true); // conversationSlice 호출 (내부 await 포함)
@@ -514,17 +541,18 @@ export const createChatSlice = (set, get) => {
             }
             console.log(`Using newly created and loaded conversation ID: ${activeConversationId}`);
         } else {
-             console.log(`Using existing conversation ID: ${activeConversationId}`);
+             // 봇 응답 저장 시 또는 기존 대화에 메시지 저장 시
+             // console.log(`Using provided conversation ID: ${activeConversationId}`);
         }
 
-        // 저장할 메시지 데이터 정리
+        // 3. 저장할 메시지 데이터 정리
         const messageToSave = { ...message };
         const tempId = String(messageToSave.id).startsWith('temp_') ? messageToSave.id : null; // 임시 ID 저장
         Object.keys(messageToSave).forEach( (key) => { if (messageToSave[key] === undefined) delete messageToSave[key]; });
         if (messageToSave.node?.data) { const { content, replies } = messageToSave.node.data; messageToSave.node.data = { ...(content && { content }), ...(replies && { replies }) }; }
         if (tempId) delete messageToSave.id; // Firestore 저장 시 임시 ID 제거
 
-        // Firestore에 메시지 추가 및 대화 업데이트 시간 갱신
+        // 4. Firestore에 메시지 추가 및 대화 업데이트 시간 갱신 (반드시 activeConversationId 사용)
         console.log(`Saving message to conversation: ${activeConversationId}`);
         const messagesCollection = collection( get().db, "chats", user.uid, "conversations", activeConversationId, "messages" );
         const messageRef = await addDoc(messagesCollection, { ...messageToSave, createdAt: serverTimestamp() });
@@ -532,23 +560,48 @@ export const createChatSlice = (set, get) => {
         await updateDoc( doc(get().db, "chats", user.uid, "conversations", activeConversationId), { updatedAt: serverTimestamp() });
         console.log(`Message saved with ID: ${messageRef.id}`);
 
-        // 저장 성공 후, 임시 ID였던 경우 상태 업데이트 처리
+        // 5. [중요] 저장 성공 후, 로컬 상태(UI) 업데이트 (대화창을 이동하지 않았을 경우에만)
         if (tempId) {
             let selectedOptionValue = null;
-            set(state => {
-                const newSelectedOptions = { ...state.selectedOptions };
-                if (newSelectedOptions[tempId]) {
-                    selectedOptionValue = newSelectedOptions[tempId];
-                    newSelectedOptions[messageRef.id] = selectedOptionValue;
-                    delete newSelectedOptions[tempId];
-                }
-                // 메시지 배열에서 ID 교체 (message 객체 사용)
-                return {
-                    messages: state.messages.map(msg => msg.id === tempId ? { ...message, id: messageRef.id, isStreaming: false } : msg), // isStreaming 확실히 false
-                    selectedOptions: newSelectedOptions
-                };
-            });
-            // Firestore에 selectedOption 업데이트 (setSelectedOption 호출)
+            // 저장한 대화 ID(activeConversationId)와 현재 전역 ID(globalConversationId) 비교
+            const isStillOnSameConversation = activeConversationId === get().currentConversationId;
+
+            if (isStillOnSameConversation) {
+                set(state => {
+                    const newSelectedOptions = { ...state.selectedOptions };
+                    if (newSelectedOptions[tempId]) {
+                        selectedOptionValue = newSelectedOptions[tempId];
+                        newSelectedOptions[messageRef.id] = selectedOptionValue;
+                        delete newSelectedOptions[tempId];
+                    }
+
+                    // --- [FIX] ---
+                    let newMessages = state.messages;
+                    // onSnapshot이 이미 추가했는지 확인
+                    const alreadyExists = state.messages.some(m => m.id === messageRef.id);
+
+                    if (alreadyExists) {
+                        // 스냅샷이 이김: 임시 메시지만 제거
+                        newMessages = state.messages.filter(msg => msg.id !== tempId);
+                    } else {
+                        // saveMessage가 이김: 임시 메시지를 실제 메시지로 교체
+                        newMessages = state.messages.map(msg => 
+                            msg.id === tempId ? { ...message, id: messageRef.id, isStreaming: false } : msg
+                        );
+                    }
+                    // --- [FIX END] ---
+                    
+                    return {
+                        messages: newMessages,
+                        selectedOptions: newSelectedOptions
+                    };
+                });
+            } else {
+                // 사용자가 다른 대화로 이동했으므로 로컬 state(UI)를 건드리지 않음
+                console.log(`[saveMessage] User switched conversation. Skipping local state update for tempId: ${tempId}.`);
+                selectedOptionValue = get().selectedOptions[tempId];
+            }
+            
             if (selectedOptionValue) {
                 await get().setSelectedOption(messageRef.id, selectedOptionValue);
             }
@@ -556,18 +609,19 @@ export const createChatSlice = (set, get) => {
 
         return messageRef.id; // 성공 시 Firestore 문서 ID 반환
     } catch (error) {
-        console.error("Error in saveMessage:", error);
+        console.error(`Error in saveMessage (target convo ID: ${activeConversationId}):`, error);
         const errorKey = getErrorKey(error);
         const errorMessage = locales[language]?.[errorKey] || locales['en']?.errorUnexpected || 'Failed to save message.';
         showEphemeralToast(errorMessage, 'error');
 
-        // 저장 실패 시 임시 메시지 제거
-        if (String(message?.id).startsWith('temp_')) {
+        // 저장 실패 시 임시 메시지 제거 (현재 활성화된 대화창에 한해서)
+        if (String(message?.id).startsWith('temp_') && activeConversationId === get().currentConversationId) {
             set(state => ({ messages: state.messages.filter(msg => msg.id !== message.id) }));
         }
         return null; // 실패 시 null 반환
     }
   },
+  // --- 👆 [수정된 부분 끝] ---
 
   // 메시지를 상태에 추가하고 Firestore에 저장 요청
   addMessage: async (sender, messageData) => {
@@ -596,7 +650,9 @@ export const createChatSlice = (set, get) => {
 
      // 스트리밍 중이 아닐 때만 Firestore 저장 시도 (saveMessage에서 ID 교체 및 selectedOption 처리)
      if (!newMessage.isStreaming) {
-       await get().saveMessage(newMessage); // await 추가하여 저장/롤백 완료 기다림
+       // --- 👇 [수정] saveMessage에 null을 전달 (전역 ID를 사용하도록) ---
+       await get().saveMessage(newMessage, null); // await 추가하여 저장/롤백 완료 기다림
+       // --- 👆 [수정] ---
      }
      // 스트리밍 메시지는 handleResponse의 finally 블록에서 최종 저장 시도
   },
@@ -645,7 +701,7 @@ export const createChatSlice = (set, get) => {
     }
   },
 
-  // --- 👇 [수정된 부분 시작]: handleResponse 개선 ---
+  // --- 👇 [수정된 부분 시작]: handleResponse (completedResponses 로직 추가) ---
   // 사용자 메시지 처리 및 봇 응답 요청/처리
   handleResponse: async (messagePayload) => {
       set({ isLoading: true, llmRawResponse: null });
@@ -673,21 +729,44 @@ export const createChatSlice = (set, get) => {
       const needsTitleUpdate = isFirstUserMessage && textForUser && (!currentConvo || currentConvo.title === defaultTitle);
       
       if (textForUser) {
-          // 1. 메시지 추가 (이 안에서 saveMessage 호출 -> C.ID 없으면 생성)
+          // 1. 메시지 추가 (이 안에서 saveMessage(..., null) 호출 -> C.ID 없으면 생성)
           await addMessage("user", { text: textForUser });
-
-          // 2. 제목 업데이트 필요 시
-          if (needsTitleUpdate) {
-              const finalConversationId = get().currentConversationId; // addMessage/saveMessage를 거치며 ID가 확정됨
-              if (finalConversationId) {
-                  const newTitle = textForUser.substring(0, 100); // 100자 제한
-                  await updateConversationTitle(finalConversationId, newTitle); // conversationSlice의 액션 호출
-              }
-          }
       }
 
+      // 2. [중요] 봇 응답을 저장할 대화 ID 캡처
+      // (addMessage/saveMessage를 거치며 ID가 확정됨)
+      const conversationIdForBotResponse = get().currentConversationId;
+      
+      if (!conversationIdForBotResponse) {
+           console.error("[handleResponse] Failed to determine conversationId for bot response.");
+           set({ isLoading: false });
+           return; // 봇 응답 요청 중단
+      }
+
+      // 3. 제목 업데이트 필요 시 (캡처된 ID 사용)
+      if (needsTitleUpdate) {
+          const newTitle = textForUser.substring(0, 100); // 100자 제한
+          await updateConversationTitle(conversationIdForBotResponse, newTitle); // conversationSlice의 액션 호출
+      }
+
+      // --- [NEW] ---
+      // 4. Pending 상태 추가 및 '생각중' 메시지 UI에 추가
+      set(state => ({ 
+          pendingResponses: new Set(state.pendingResponses).add(conversationIdForBotResponse) 
+      }));
       const thinkingText = locales[language]?.['statusGenerating'] || "Generating...";
-      let lastBotMessageId = null;
+      // 예측 가능한 임시 ID 사용
+      const tempBotMessage = { 
+          id: `temp_pending_${conversationIdForBotResponse}`, 
+          sender: 'bot', 
+          text: thinkingText, 
+          isStreaming: true, 
+          feedback: null 
+      };
+      set(state => ({ messages: [...state.messages, tempBotMessage] }));
+      let lastBotMessageId = tempBotMessage.id;
+      // --- [NEW END] ---
+
       let finalMessageId = null;
       let finalStreamText = '';
 
@@ -712,12 +791,7 @@ export const createChatSlice = (set, get) => {
         if (response.headers.get("Content-Type")?.includes("text/event-stream")) {
           // --- 스트림 응답 처리 ---
           console.log("[handleResponse] Processing text/event-stream response.");
-          // --- 👇 [수정] feedback: null 추가 ---
-          const tempBotMessage = { id: `temp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`, sender: 'bot', text: thinkingText, isStreaming: true, feedback: null };
-          // --- 👆 [수정] ---
-          set(state => ({ messages: [...state.messages, tempBotMessage] }));
-          lastBotMessageId = tempBotMessage.id;
-
+          
           const reader = response.body.getReader();
           const decoder = new TextDecoder();
           let streamProcessor;
@@ -727,10 +801,14 @@ export const createChatSlice = (set, get) => {
           else throw new Error(`Unsupported LLM provider for streaming: ${llmProvider}`);
 
           for await (const result of streamProcessor) {
-              if (result.type === 'text') updateLastMessage(result.data, result.replace);
-              else if (result.type === 'slots') setExtractedSlots(result.data);
+              // [중요] 스트림 업데이트는 현재 활성화된 대화창에만 반영
+              if (conversationIdForBotResponse === get().currentConversationId) {
+                 if (result.type === 'text') updateLastMessage(result.data, result.replace);
+                 else if (result.type === 'button') updateLastMessage(result.data);
+              }
+              // 슬롯/rawResponse는 UI 영향 없으므로 항상 업데이트
+              if (result.type === 'slots') setExtractedSlots(result.data);
               else if (result.type === 'rawResponse') set({ llmRawResponse: result.data });
-              else if (result.type === 'button') updateLastMessage(result.data);
               else if (result.type === 'finalText') finalStreamText = result.data;
               else if (result.type === 'error') throw result.data;
           }
@@ -740,105 +818,228 @@ export const createChatSlice = (set, get) => {
           const data = await response.json();
           set({ llmRawResponse: data });
 
-          // API 라우트에서 표준 오류 객체 반환 시 처리
           if (data.type === 'error') {
               throw new Error(data.message || 'API returned an unknown error.');
           }
 
           const handler = responseHandlers[data.type];
           if (handler) {
-            handler(data, get);
+            // [중요] JSON 응답도 현재 활성화된 대화창에만 addMessage
+            if (conversationIdForBotResponse === get().currentConversationId) {
+                handler(data, get);
+            } else {
+                 console.log("[handleResponse] User switched convo. Skipping local state update for JSON response.");
+                 // [NEW] JSON 응답도 완료 뱃지 표시
+                 set(state => ({
+                    completedResponses: new Set(state.completedResponses).add(conversationIdForBotResponse)
+                 }));
+            }
           } else {
             const responseText = data.response || data.text || data.message;
             if (responseText) {
-              await addMessage("bot", { text: responseText });
-              if (data.slots) setExtractedSlots(data.slots);
+              // addMessage는 현재 대화창(null)에만 저장함. 
+              // [수정] saveMessage를 직접 호출해야 함
+              if(conversationIdForBotResponse === get().currentConversationId) {
+                  await addMessage("bot", { text: responseText }); 
+              } else {
+                  console.log("[handleResponse] User switched. Saving JSON response to original conversation in background.");
+                  const botMessage = { id: `temp_${Date.now()}`, sender: 'bot', text: responseText, isStreaming: false, feedback: null };
+                  await saveMessage(botMessage, conversationIdForBotResponse);
+                  // [NEW] JSON 응답도 완료 뱃지 표시
+                  set(state => ({
+                     completedResponses: new Set(state.completedResponses).add(conversationIdForBotResponse)
+                  }));
+              }
             } else {
               console.warn(`[ChatStore] Unhandled non-stream response type or empty response:`, data);
               await addMessage("bot", { text: locales[language]?.['errorUnexpected'] || "(No content)" });
             }
           }
-          set({ isLoading: false });
         }
       } catch (error) { // 메인 try 블록의 catch
         console.error("[handleResponse] Error:", error);
-        // --- 👇 [수정] errorLLMFail 메시지 키 사용 및 error.message 우선 사용 ---
-        // API 에러 메시지(error.message)가 있으면 사용, 없으면 errorLLMFail 사용
         const errorMessage = error.message || locales[language]?.['errorLLMFail'] || locales['en']?.['errorLLMFail'] || 'There was a problem with the response. Please try again later.';
-        // --- 👆 [수정] ---
 
         let messageSaved = false;
-        set(state => {
-            const lastMessageIndex = state.messages.length - 1;
-            const lastMessage = state.messages[lastMessageIndex];
+        const isStillOnSameConversation = conversationIdForBotResponse === get().currentConversationId;
 
-            if (lastMessage && lastMessage.id === lastBotMessageId && lastMessage.isStreaming) {
-                const updatedMessage = { ...lastMessage, text: errorMessage, isStreaming: false };
-                saveMessage(updatedMessage).then(savedId => {
-                    finalMessageId = savedId;
-                    if (savedId && savedId !== lastBotMessageId) {
-                        set(s => ({
-                             messages: s.messages.map(m => m.id === lastBotMessageId ? { ...updatedMessage, id: savedId } : m),
-                             isLoading: false
-                          }));
-                        messageSaved = true;
-                    } else if (savedId) {
-                        set(s => ({ isLoading: false }));
-                        messageSaved = true;
-                    }
-                });
-                return { messages: [...state.messages.slice(0, lastMessageIndex), updatedMessage] };
-            }
-            addMessage("bot", { text: errorMessage });
-            return { isLoading: false };
-        });
+        if (isStillOnSameConversation) {
+            // 1. 아직 같은 대화창: UI 업데이트 + Firestore 저장
+            set(state => {
+                const lastMessageIndex = state.messages.length - 1;
+                const lastMessage = state.messages[lastMessageIndex];
 
+                if (lastMessage && lastMessage.id === lastBotMessageId && lastMessage.isStreaming) {
+                    const updatedMessage = { ...lastMessage, text: errorMessage, isStreaming: false };
+                    
+                    saveMessage(updatedMessage, conversationIdForBotResponse).then(savedId => {
+                        finalMessageId = savedId;
+                        set(s => {
+                            const newSet = new Set(s.pendingResponses);
+                            newSet.delete(conversationIdForBotResponse);
+                            
+                            let newMessages = s.messages;
+                            const alreadyExists = savedId ? s.messages.some(m => m.id === savedId) : false;
+
+                            if (alreadyExists) {
+                                newMessages = s.messages.filter(m => m.id !== lastBotMessageId);
+                            } else if (savedId) {
+                                newMessages = s.messages.map(m => m.id === lastBotMessageId ? { ...updatedMessage, id: savedId } : m);
+                            } else {
+                                newMessages = s.messages.map(m => m.id === lastBotMessageId ? updatedMessage : m);
+                            }
+
+                            return {
+                                messages: newMessages,
+                                isLoading: false,
+                                pendingResponses: newSet 
+                            };
+                        });
+                        messageSaved = true;
+                    });
+                    return { messages: [...state.messages.slice(0, lastMessageIndex), updatedMessage] };
+                }
+                
+                addMessage("bot", { text: errorMessage });
+                const newSet = new Set(state.pendingResponses);
+                newSet.delete(conversationIdForBotResponse);
+                return { isLoading: false, pendingResponses: newSet };
+            });
+        } else {
+            // 2. 다른 대화창: Firestore에만 저장
+            console.log("[handleResponse/catch] User switched. Saving error message to original conversation in background.");
+            const errorBotMessage = { id: `temp_${Date.now()}`, sender: 'bot', text: errorMessage, isStreaming: false, feedback: null };
+            saveMessage(errorBotMessage, conversationIdForBotResponse).then(() => {
+                 messageSaved = true;
+            });
+            set(state => {
+                 const newSet = new Set(state.pendingResponses);
+                 newSet.delete(conversationIdForBotResponse);
+                 // --- 👇 [수정] 에러 시에도 완료 뱃지 추가 ---
+                 const newCompletedSet = new Set(state.completedResponses);
+                 newCompletedSet.add(conversationIdForBotResponse);
+                 // --- 👆 [수정] ---
+                 return { 
+                     isLoading: false, 
+                     pendingResponses: newSet,
+                     completedResponses: newCompletedSet // [NEW]
+                 };
+            });
+        }
+        
         if (!messageSaved) {
-            set({ isLoading: false });
+            set(state => {
+                 const newSet = new Set(state.pendingResponses);
+                 newSet.delete(conversationIdForBotResponse);
+                 // --- 👇 [수정] 에러 시에도 완료 뱃지 추가 ---
+                 const newCompletedSet = new Set(state.completedResponses);
+                 newCompletedSet.add(conversationIdForBotResponse);
+                 // --- 👆 [수정] ---
+                 return { 
+                     isLoading: false, 
+                     pendingResponses: newSet,
+                     completedResponses: newCompletedSet // [NEW]
+                 };
+            });
         }
 
-      } finally { // 메인 try 블록의 finally (스트림 성공 종료 시)
-        set(state => {
-            const lastMessageIndex = state.messages.length - 1;
-            const lastMessage = state.messages[lastMessageIndex];
+      } finally { // 메인 try 블록의 finally (스트림 성공 종료 또는 JSON 성공 시)
+        
+        const isStillOnSameConversation = conversationIdForBotResponse === get().currentConversationId;
 
-            if (lastMessage && (lastMessage.id === lastBotMessageId || lastMessage.id === finalMessageId) && lastMessage.isStreaming) {
-                 const finalText = (llmProvider === 'flowise' ? finalStreamText : lastMessage.text) || '';
-                 // --- 👇 [수정] 최종 텍스트 비어있거나 thinkingText와 같으면 errorLLMFail 메시지 사용 ---
-                 const finalMessageText = finalText.trim() === '' || finalText.trim() === thinkingText.trim()
-                      ? locales[language]?.['errorLLMFail'] || "(Response failed. Please try again later.)"
-                      : finalText;
-                  // --- 👆 [수정] ---
+        if (isStillOnSameConversation) {
+            // 1. 아직 같은 대화창: UI 업데이트 + Firestore 저장
+            set(state => {
+                const lastMessageIndex = state.messages.length - 1;
+                const lastMessage = state.messages[lastMessageIndex];
 
-                 // --- 👇 [수정] feedback: null 추가 ---
-                 const finalMessage = { ...lastMessage, text: finalMessageText, isStreaming: false, feedback: null };
+                // 스트리밍 메시지였는지 확인
+                if (lastMessage && (lastMessage.id === lastBotMessageId || lastMessage.id === finalMessageId) && lastMessage.isStreaming) {
+                    const finalText = (llmProvider === 'flowise' ? finalStreamText : lastMessage.text) || '';
+                    const finalMessageText = finalText.trim() === '' || finalText.trim() === thinkingText.trim()
+                          ? locales[language]?.['errorLLMFail'] || "(Response failed. Please try again later.)"
+                          : finalText;
+                    const finalMessage = { ...lastMessage, text: finalMessageText, isStreaming: false, feedback: null };
+
+                    saveMessage(finalMessage, conversationIdForBotResponse).then(savedId => {
+                          finalMessageId = savedId;
+                           set(s => {
+                                const newSet = new Set(s.pendingResponses);
+                                newSet.delete(conversationIdForBotResponse);
+                                
+                                let newMessages = s.messages;
+                                const alreadyExists = savedId ? s.messages.some(m => m.id === savedId) : false;
+
+                                if (alreadyExists) {
+                                    newMessages = s.messages.filter(m => m.id !== lastMessage.id);
+                                } else if (savedId) {
+                                    newMessages = s.messages.map(m => m.id === lastMessage.id ? { ...finalMessage, id: savedId } : m);
+                                } else {
+                                    // [FIX] save 실패 시 임시 메시지 제거
+                                    newMessages = s.messages.filter(m => m.id !== lastMessage.id);
+                                }
+
+                                return {
+                                    messages: newMessages,
+                                    isLoading: false,
+                                    pendingResponses: newSet 
+                                };
+                           });
+                    });
+
+                    return {
+                        messages: [...state.messages.slice(0, lastMessageIndex), finalMessage]
+                    };
+                }
+                
+                // 스트리밍이 아니었던 경우 (예: JSON 응답)
+                const newSet = new Set(state.pendingResponses);
+                newSet.delete(conversationIdForBotResponse);
+                if (state.isLoading) return { isLoading: false, pendingResponses: newSet }; 
+                return {};
+            });
+        } else {
+             // 2. 다른 대화창: Firestore에만 저장
+             console.log("[handleResponse/finally] User switched. Saving final message to original conversation in background.");
+             set(state => {
+                 // 로컬 '생각중' 메시지 찾아서 제거
+                 const messagesWithoutThinking = state.messages.filter(m => m.id !== lastBotMessageId);
+                 
+                 // --- 👇 [수정] 스트리밍/JSON 모두 백그라운드 저장 및 뱃지 추가 ---
+                 let messageToSave = null;
+                 if (finalStreamText) { // 스트리밍 응답
+                     const finalMessageText = finalStreamText.trim() === '' || finalStreamText.trim() === thinkingText.trim()
+                          ? locales[language]?.['errorLLMFail'] || "(Response failed. Please try again later.)"
+                          : finalStreamText;
+                     messageToSave = { id: `temp_${Date.now()}`, sender: 'bot', text: finalMessageText, isStreaming: false, feedback: null };
+                 } else if (lastBotMessageId) { 
+                     // JSON 응답 (스트리밍이 아니었음) - 이 경우는 addMessage에서 이미 처리되었을 수 있으나,
+                     // 1290줄 근처의 JSON 응답 로직에서 다른 대화창일 때 저장을 안 했으므로 여기서 저장
+                     const localJsonMessage = get().messages.find(m => m.id === lastBotMessageId);
+                     if (localJsonMessage) { // addMessage가 만든 임시 메시지가 있다면
+                         messageToSave = { ...localJsonMessage, isStreaming: false };
+                     }
+                 }
+
+                 if (messageToSave) {
+                     saveMessage(messageToSave, conversationIdForBotResponse);
+                 }
+                 
+                 const newSet = new Set(state.pendingResponses);
+                 newSet.delete(conversationIdForBotResponse);
+                 // [NEW] Add to completed set
+                 const newCompletedSet = new Set(state.completedResponses);
+                 newCompletedSet.add(conversationIdForBotResponse);
                  // --- 👆 [수정] ---
 
-                 saveMessage(finalMessage).then(savedId => {
-                      finalMessageId = savedId;
-                      if (savedId && savedId !== lastMessage.id) {
-                           set(s => ({
-                              messages: s.messages.map(m => m.id === lastMessage.id ? { ...finalMessage, id: savedId } : m),
-                              isLoading: false
-                          }));
-                      } else if (savedId) {
-                           set(s => ({ isLoading: false }));
-                      } else {
-                          // saveMessage 실패 시 (이미 토스트 표시됨), 로딩 상태만 해제
-                           set(s => ({ isLoading: false }));
-                      }
-                 });
-
                  return {
-                     messages: [...state.messages.slice(0, lastMessageIndex), finalMessage]
-                  };
-            }
-            // 스트리밍 아니었거나 이미 처리된 경우, isLoading 상태가 false가 아닐 수 있으므로 여기서 확실히 false로 설정
-            if (state.isLoading) {
-                 return { isLoading: false };
-            }
-            return {}; // 상태 변경 없음
-        });
+                     messages: messagesWithoutThinking, // 현재 UI에서 '생각중' 제거
+                     isLoading: false, // 현재 UI 로딩 중지
+                     pendingResponses: newSet,
+                     completedResponses: newCompletedSet // [NEW]
+                 };
+             });
+        }
       } // end finally
     }, // end handleResponse
     // --- 👆 [수정된 부분 끝] ---

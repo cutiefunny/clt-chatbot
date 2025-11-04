@@ -941,3 +941,26 @@ body.dark .formGridTable tbody tr:hover {
   color: var(--Purple-03, #634de2);
 }
 /* --- 👆 [수정] --- */
+
+/* --- 👇 [추가] 봇 메시지 체이닝 스타일 --- */
+.chainedMessageItem {
+  width: 100%;
+}
+
+/* 체인된 아이템 사이에 간격 추가 (첫 번째 자식 제외) */
+.chainedMessageItem:not(:first-child) {
+  margin-top: 12px;
+  padding-top: 12px;
+  /* 구분선 (선택 사항) */
+  border-top: 1px solid var(--panel-border-color);
+}
+
+/* 폼 렌더러가 체인에 포함될 때 상단 패딩 제거 */
+.chainedMessageItem .formContainer {
+  /* padding-top: 0; (FormRenderer 루트에 패딩이 없으므로 불필요) */
+}
+.chainedMessageItem:not(:first-child) .formContainer {
+  /* padding-top: 12px; (FormRenderer 루트에 패딩이 없으므로 불필요) */
+}
+
+/* --- 👆 [추가] --- */

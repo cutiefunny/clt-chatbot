@@ -54,7 +54,10 @@ JSON
   "replies": [         // Optional quick replies
     { "display": "string", "value": "string" },
     ...
-  ]
+  ],
+  // --- 👇 [추가] chainNext 플래그 ---
+  "chainNext": "boolean | undefined" // (Optional) If true, do not create a new bubble; append to the active bubble.
+  // --- 👆 [추가 끝] ---
 }
 form Node
 
@@ -79,6 +82,9 @@ JSON
 
 {
   "isMulti": "boolean", // Whether multiple API calls are enabled
+  // --- 👇 [추가] chainNext 플래그 ---
+  "chainNext": "boolean | undefined", // (Optional) If true, do not create a new bubble. (Note: Loading/Error still shows)
+  // --- 👆 [추가 끝] ---
   // --- Single API Call Properties (used if isMulti is false) ---
   "method": "'GET' | 'POST' | 'PUT' | 'DELETE'",
   "url": "string",
@@ -157,7 +163,10 @@ JSON
       "keyword": "string"    // Keyword to search for in the LLM response (case-insensitive)
     },
     ...
-  ]
+  ],
+  // --- 👇 [추가] chainNext 플래그 ---
+  "chainNext": "boolean | undefined" // (Optional) If true, do not create a new bubble. (Note: Loading/Error still shows)
+  // --- 👆 [추가 끝] ---
 }
 setSlot Node
 
@@ -169,7 +178,10 @@ JSON
   "assignments": [
     { "key": "string", "value": "string" }, // 'value' can be literal or "{slotName}"
     ... // Supports multiple assignments
-  ]
+  ],
+  // --- 👇 [추가] chainNext 플래그 ---
+  "chainNext": "boolean | undefined" // (Optional) If true, do not create a new bubble.
+  // --- 👆 [추가 끝] ---
 }
 delay Node
 
@@ -178,7 +190,10 @@ JSON
 JSON
 
 {
-  "duration": "number" // Delay duration in milliseconds (e.g., 1000 for 1 second)
+  "duration": "number", // Delay duration in milliseconds (e.g., 1000 for 1 second)
+  // --- 👇 [추가] chainNext 플래그 ---
+  "chainNext": "boolean | undefined" // (Optional) If true, do not create a new bubble.
+  // --- 👆 [추가 끝] ---
 }
 fixedmenu Node
 
@@ -201,7 +216,10 @@ JSON
 
 {
   "content": "string", // URL of the link
-  "display": "string"  // Text to display for the link
+  "display": "string",  // Text to display for the link
+  // --- 👇 [추가] chainNext 플래그 ---
+  "chainNext": "boolean | undefined" // (Optional) If true, do not create a new bubble.
+  // --- 👆 [추가 끝] ---
 }
 toast Node
 
@@ -211,7 +229,10 @@ JSON
 
 {
   "message": "string",      // Message content for the toast
-  "toastType": "'info' | 'success' | 'error'" // Type of toast (affects appearance/icon)
+  "toastType": "'info' | 'success' | 'error'", // Type of toast (affects appearance/icon)
+  // --- 👇 [추가] chainNext 플래그 ---
+A "chainNext": "boolean | undefined" // (Optional) If true, do not create a new bubble (toast still appears).
+  // --- 👆 [추가 끝] ---
 }
 iframe Node
 
@@ -222,7 +243,10 @@ JSON
 {
   "url": "string",       // URL to load in the iframe
   "width": "string",     // Width in pixels (e.g., "300")
-  "height": "string"     // Height in pixels (e.g., "250")
+  "height": "string",     // Height in pixels (e.g., "250")
+  // --- 👇 [추가] chainNext 플래그 ---
+  "chainNext": "boolean | undefined" // (Optional) If true, do not create a new bubble.
+  // --- 👆 [추가 끝] ---
 }
 scenario Node (Group Node)
 
@@ -282,7 +306,7 @@ JSON
 {
   "id": "string",
   "type": "grid",
-  "name": "string | undefined",         // Optional slot name (less common for display grids)
+  "name": "string | undefined",         // Optional slot name (less common for display grids)
   "label": "string",
   "optionsSlot": "string | undefined", // Slot containing array data (usually objects)
   // --- 👇 [수정] displayKeys 타입 및 설명 변경 ---
