@@ -3,7 +3,7 @@
 
 // --- 👇 [수정] useRef, useCallback 임포트 및 xlsx 라이브러리 임포트 ---
 import { useCallback, useRef, useEffect, useState } from "react";
-import * as XLSX from 'xlsx'; // 엑셀 파싱 라이브러리
+import * as XLSX from "xlsx"; // 엑셀 파싱 라이브러리
 // --- 👆 [수정] ---
 import { useChatStore } from "../store";
 import { useTranslations } from "../hooks/useTranslations";
@@ -20,7 +20,7 @@ import ChevronDownIcon from "./icons/ChevronDownIcon";
 // --- 👇 [추가] 엑셀 날짜 변환 헬퍼 ---
 // 엑셀 시리얼 날짜를 YYYY-MM-DD 형식으로 변환
 function convertExcelDate(serial) {
-  if (typeof serial !== 'number' || serial <= 0) {
+  if (typeof serial !== "number" || serial <= 0) {
     return null;
   }
   try {
@@ -29,8 +29,8 @@ function convertExcelDate(serial) {
     const date_info = new Date(utc_value * 1000);
 
     const year = date_info.getUTCFullYear();
-    const month = String(date_info.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(date_info.getUTCDate()).padStart(2, '0');
+    const month = String(date_info.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(date_info.getUTCDate()).padStart(2, "0");
 
     return `${year}-${month}-${day}`;
   } catch (e) {
@@ -68,10 +68,7 @@ const FormRenderer = ({
             initialValue = slots[el.name];
           }
           // 2. Else, check for a default value on the node
-          else if (
-            el.defaultValue !== undefined &&
-            el.defaultValue !== null
-          ) {
+          else if (el.defaultValue !== undefined && el.defaultValue !== null) {
             initialValue = interpolateMessage(String(el.defaultValue), slots);
           }
 
@@ -177,10 +174,10 @@ const FormRenderer = ({
     reader.onload = (event) => {
       try {
         const data = event.target.result;
-        const workbook = XLSX.read(data, { type: 'array' });
+        const workbook = XLSX.read(data, { type: "array" });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        
+
         // 엑셀 데이터를 JSON 객체 배열로 변환 (헤더가 1행에 있다고 가정)
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 0 });
 
@@ -191,7 +188,7 @@ const FormRenderer = ({
 
         // 1. 폼 요소의 'label'을 'name'에 매핑하는 맵 생성
         const labelToNameMap = new Map();
-        node.data.elements?.forEach(el => {
+        node.data.elements?.forEach((el) => {
           if (el.label && el.name) {
             // 슬롯 보간을 거친 최종 라벨로 매핑
             const interpolatedLabel = interpolateMessage(el.label, slots);
@@ -206,14 +203,19 @@ const FormRenderer = ({
         // 3. 엑셀 헤더(key)를 폼 라벨과 비교하여 데이터 매핑
         for (const excelHeader in firstRow) {
           if (Object.hasOwnProperty.call(firstRow, excelHeader)) {
-            const formElement = labelToNameMap.get(excelHeader.toLowerCase().trim());
+            const formElement = labelToNameMap.get(
+              excelHeader.toLowerCase().trim()
+            );
 
             if (formElement) {
               const formName = formElement.name;
               let excelValue = firstRow[excelHeader];
 
               // 4. 날짜 타입 처리 (엑셀 시리얼 -> YYYY-MM-DD)
-              if (formElement.type === 'date' && typeof excelValue === 'number') {
+              if (
+                formElement.type === "date" &&
+                typeof excelValue === "number"
+              ) {
                 const formattedDate = convertExcelDate(excelValue);
                 if (formattedDate) {
                   newData[formName] = formattedDate;
@@ -222,7 +224,7 @@ const FormRenderer = ({
                 }
               } else {
                 // 기타 타입 (문자열로 저장)
-                newData[formName] = String(excelValue ?? '');
+                newData[formName] = String(excelValue ?? "");
               }
             }
           }
@@ -230,19 +232,18 @@ const FormRenderer = ({
 
         // 4. 폼 데이터 상태 업데이트
         if (Object.keys(newData).length > 0) {
-          setFormData(prev => ({ ...prev, ...newData }));
+          setFormData((prev) => ({ ...prev, ...newData }));
           alert("Excel data loaded successfully.");
         } else {
           alert("No matching columns found between Excel and the form.");
         }
-
       } catch (error) {
         console.error("Error parsing Excel file:", error);
         alert("Failed to read or parse the Excel file.");
       } finally {
         // 파일 input 초기화 (동일한 파일 다시 선택 가능하도록)
         if (fileInputRef.current) {
-          fileInputRef.current.value = '';
+          fileInputRef.current.value = "";
         }
       }
     };
@@ -416,26 +417,29 @@ const FormRenderer = ({
                     typeof el.displayKeys[0] === "object" &&
                     el.displayKeys[0] !== null &&
                     el.displayKeys[0].hasOwnProperty("key");
-                  
+
                   const originalDisplayConfigs = useObjectKeys
                     ? el.displayKeys // 스키마 v1.2: [{ key: 'id', label: 'ID' }, ...]
                     : (el.displayKeys && el.displayKeys.length > 0
                         ? el.displayKeys // 스키마 v1.0 호환: ['id', 'name']
                         : Object.keys(gridDataFromSlot[0] || {})
-                      ).map(k => ({ key: k, label: k })); // v1.0 또는 Object.keys를 v1.2 형식으로 변환
+                      ).map((k) => ({ key: k, label: k })); // v1.0 또는 Object.keys를 v1.2 형식으로 변환
 
                   // 2. hideNullColumns 필터링 (key 기준)
                   const filteredDisplayConfigs = el.hideNullColumns
-                    ? originalDisplayConfigs.filter((col) => // col은 {key, label}
-                        gridDataFromSlot.some(
-                          (obj) =>
-                            obj[col.key] !== null &&
-                            obj[col.key] !== undefined &&
-                            obj[col.key] !== ""
-                        )
+                    ? originalDisplayConfigs.filter(
+                        (
+                          col // col은 {key, label}
+                        ) =>
+                          gridDataFromSlot.some(
+                            (obj) =>
+                              obj[col.key] !== null &&
+                              obj[col.key] !== undefined &&
+                              obj[col.key] !== ""
+                          )
                       )
                     : originalDisplayConfigs;
-                  
+
                   if (filteredDisplayConfigs.length === 0)
                     return (
                       <div>
@@ -446,23 +450,30 @@ const FormRenderer = ({
                     );
 
                   // 3. columnWidths 계산 (key와 label 사용)
-                  const columnWidths = filteredDisplayConfigs.reduce((acc, col) => {
-                    const headerLength = interpolateMessage(col.label, slots).length; // col.label 사용
-                    const maxLength = gridDataFromSlot.reduce(
-                      (max, obj) =>
-                        Math.max(
-                          max,
-                          String(interpolateMessage(obj[col.key] || "", slots)) // col.key 사용
-                            .length
-                        ),
-                      0
-                    );
-                    acc[col.key] = Math.max(
-                      5,
-                      Math.max(headerLength, maxLength) + 2
-                    );
-                    return acc;
-                  }, {});
+                  const columnWidths = filteredDisplayConfigs.reduce(
+                    (acc, col) => {
+                      const headerLength = interpolateMessage(
+                        col.label,
+                        slots
+                      ).length; // col.label 사용
+                      const maxLength = gridDataFromSlot.reduce(
+                        (max, obj) =>
+                          Math.max(
+                            max,
+                            String(
+                              interpolateMessage(obj[col.key] || "", slots)
+                            ).length // col.key 사용
+                          ),
+                        0
+                      );
+                      acc[col.key] = Math.max(
+                        5,
+                        Math.max(headerLength, maxLength) + 2
+                      );
+                      return acc;
+                    },
+                    {}
+                  );
 
                   return (
                     <div style={{ overflowX: "auto", width: "100%" }}>
@@ -482,7 +493,8 @@ const FormRenderer = ({
                                   padding: "10px 12px",
                                 }}
                               >
-                                {interpolateMessage(col.label, slots)} {/* label은 col.label */}
+                                {interpolateMessage(col.label, slots)}{" "}
+                                {/* label은 col.label */}
                               </th>
                             ))}
                           </tr>
@@ -519,7 +531,7 @@ const FormRenderer = ({
                       </table>
                     </div>
                   );
-                // --- 👆 [수정 끝] ---
+                  // --- 👆 [수정 끝] ---
                 } else {
                   const dataArray = hasSlotData
                     ? gridDataFromSlot
@@ -614,7 +626,7 @@ const FormRenderer = ({
       <div className={styles.formContainerSeparator} />
 
       {renderFormElements()}
-      
+
       {!hasSlotBoundGrid && !disabled && (
         <div className={styles.formActionArea}>
           {node.data.enableExcelUpload && (
@@ -645,13 +657,13 @@ const FormRenderer = ({
 // --- 👇 [수정] ScenarioStatusBadge 정의 추가 ---
 const ScenarioStatusBadge = ({ status, t, isSelected }) => {
   // isSelected가 true이면 'selected' 상태를 우선 표시
-  if (isSelected) {
-    return (
-      <span className={`${styles.scenarioBadge} ${styles.selected}`}>
-        {t("statusSelected")}
-      </span>
-    );
-  }
+  // if (isSelected) {
+  //   return (
+  //     <span className={`${styles.scenarioBadge} ${styles.selected}`}>
+  //       {t("statusSelected")}
+  //     </span>
+  //   );
+  // }
 
   // isSelected가 false이면 기존 status 로직 수행
   if (!status) return null;

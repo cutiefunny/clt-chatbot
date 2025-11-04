@@ -366,9 +366,7 @@ input:checked + .slider:before {
 /* --- 👇 [수정] .actionButton:hover에 color 추가 --- */
 .messageActionArea .actionButton:hover {
   background-color: var(--button-hover-bg);
-  color: var(
-    --action-button-hover-color
-  ); /* globals.css에 정의된 hover 색상 */
+  color: var(--action-button-hover-color); /* globals.css에 정의된 hover 색상 */
 }
 /* --- 👆 [수정] --- */
 
@@ -524,9 +522,10 @@ input:checked + .slider:before {
 }
 
 .excelUploadButton {
+  height: 36px;
   padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 600;
   color: var(--Gray-07, #5e7599);
   cursor: pointer;
   transition: background-color 0.2s;
@@ -907,7 +906,6 @@ body.dark .formGridTable td {
 body.dark .formGridTable tbody tr:hover {
   background-color: rgba(255, 255, 255, 0.1);
 }
-
 
 /* 폼 입력 필드 그룹 */
 .formInputGroup {
