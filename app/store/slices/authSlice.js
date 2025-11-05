@@ -1,4 +1,15 @@
-import { GoogleAuthProvider, signInWithPopup, signOut } from '../../lib/firebase';
+// app/store/slices/authSlice.js
+import {
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut,
+  doc, // [추가]
+  getDoc, // [추가]
+  collection, // [추가]
+  getDocs, // [추가]
+  writeBatch, // [추가]
+} from "../../lib/firebase"; // [수정]
+import { locales } from "../../lib/locales"; // [추가]
 
 export const createAuthSlice = (set, get) => ({
   user: null,
@@ -14,31 +25,178 @@ export const createAuthSlice = (set, get) => ({
   loginWithTestId: (userId) => {
     if (!userId || !userId.trim()) {
       console.error("Test User ID cannot be empty.");
-      // You can also show a toast message to the user here.
       return;
     }
     const mockUser = {
       uid: userId.trim(),
       displayName: `Test User (${userId.trim()})`,
       email: `${userId.trim()}@test.com`,
-      photoURL: '/images/avatar.png',
-      isTestUser: true, // Flag to identify this special user
+      photoURL: "/images/avatar.png",
+      isTestUser: true,
     };
-    // This function is defined in the main store file (store/index.js)
     get().setUserAndLoadData(mockUser);
   },
 
   logout: async () => {
     try {
       if (get().user?.isTestUser) {
-        // For test users, just clear the data locally
         get().clearUserAndData();
       } else {
-        // For real Firebase users, signing out will trigger onAuthStateChanged, which handles the cleanup
         await signOut(get().auth);
       }
     } catch (error) {
-        console.error("Logout failed:", error);
+      console.error("Logout failed:", error);
     }
   },
+
+  // --- 👇 [추가] index.js에서 이동된 복합 액션 ---
+  setUserAndLoadData: async (user) => {
+    set({ user });
+
+    try {
+      console.log("Checking for conversation migration...");
+      const conversationsRef = collection(
+        get().db,
+        "chats",
+        user.uid,
+        "conversations"
+      );
+      const snapshot = await getDocs(conversationsRef);
+      const batch = writeBatch(get().db);
+      let updatesNeeded = 0;
+      snapshot.forEach((doc) => {
+        if (doc.data().pinned === undefined) {
+          batch.update(doc.ref, { pinned: false });
+          updatesNeeded++;
+        }
+      });
+      if (updatesNeeded > 0) {
+        await batch.commit();
+        console.log(`Migration complete: ${updatesNeeded} conversations updated.`);
+      } else {
+        console.log("No conversation migration needed.");
+      }
+    } catch (error) {
+      console.error("Conversation migration failed:", error);
+    }
+
+    let fontSize = "default",
+      language = "ko",
+      contentTruncateLimit = 10,
+      hideCompletedScenarios = false,
+      hideDelayInHours = 0,
+      fontSizeDefault = "16px",
+      isDevMode = false;
+
+    try {
+      const userSettingsRef = doc(get().db, "settings", user.uid);
+      const docSnap = await getDoc(userSettingsRef);
+      const settings = docSnap.exists() ? docSnap.data() : {};
+
+      fontSize = settings.fontSize || localStorage.getItem("fontSize") || fontSize;
+      language = settings.language || localStorage.getItem("language") || language;
+      contentTruncateLimit =
+        typeof settings.contentTruncateLimit === "number"
+          ? settings.contentTruncateLimit
+          : contentTruncateLimit;
+      hideCompletedScenarios =
+        typeof settings.hideCompletedScenarios === "boolean"
+          ? settings.hideCompletedScenarios
+          : hideCompletedScenarios;
+      hideDelayInHours =
+        typeof settings.hideDelayInHours === "number"
+          ? settings.hideDelayInHours
+          : hideDelayInHours;
+      fontSizeDefault = settings.fontSizeDefault || fontSizeDefault;
+      isDevMode =
+        typeof settings.isDevMode === "boolean" ? settings.isDevMode : isDevMode;
+    } catch (error) {
+      console.error("Error loading settings from Firestore:", error);
+      fontSize = localStorage.getItem("fontSize") || fontSize;
+      language = localStorage.getItem("language") || language;
+    } finally {
+      set({
+        theme: "light",
+        fontSize,
+        language,
+        contentTruncateLimit,
+        hideCompletedScenarios,
+        hideDelayInHours,
+        fontSizeDefault,
+        isDevMode,
+      });
+      get().resetMessages?.(language);
+    }
+
+    get().unsubscribeAll();
+    get().loadConversations(user.uid);
+    get().loadDevMemos();
+    get().subscribeToUnreadStatus(user.uid);
+    get().subscribeToUnreadScenarioNotifications(user.uid);
+    get().loadFavorites(user.uid);
+  },
+
+  clearUserAndData: () => {
+    get().unsubscribeAll();
+
+    let fontSize = "default",
+      language = "ko";
+    if (typeof window !== "undefined") {
+      fontSize = localStorage.getItem("fontSize") || "default";
+      language = localStorage.getItem("language") || "ko";
+    }
+
+    set({
+      user: null,
+      theme: "light",
+      fontSize,
+      language,
+      contentTruncateLimit: 10,
+      hideCompletedScenarios: false,
+      hideDelayInHours: 0,
+      fontSizeDefault: "16px",
+      isDevMode: false,
+      conversations: [],
+      currentConversationId: null,
+      expandedConversationId: null,
+      scenariosForConversation: {},
+      favorites: [],
+      devMemos: [],
+      toastHistory: [],
+      hasUnreadNotifications: false,
+      unreadScenarioSessions: new Set(),
+      unreadConversations: new Set(),
+      scenarioStates: {},
+      activeScenarioSessionId: null,
+      activeScenarioSessions: [],
+      lastFocusedScenarioSessionId: null,
+      isSearching: false,
+      searchResults: [],
+      isLoading: false,
+      slots: {},
+      extractedSlots: {},
+      llmRawResponse: null,
+      selectedOptions: {},
+      lastVisibleMessage: null,
+      hasMoreMessages: true,
+      isProfileModalOpen: false,
+      isSearchModalOpen: false,
+      isScenarioModalOpen: false,
+      isDevBoardModalOpen: false,
+      isNotificationModalOpen: false,
+      isManualModalOpen: false,
+      confirmModal: {
+        isOpen: false,
+        title: "",
+        message: "",
+        confirmText: "Confirm",
+        cancelText: "Cancel",
+        onConfirm: () => {},
+        confirmVariant: "default",
+      },
+      activePanel: "main",
+    });
+    get().resetMessages?.(language);
+  },
+  // --- 👆 [추가] ---
 });
