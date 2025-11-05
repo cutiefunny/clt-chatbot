@@ -322,23 +322,27 @@ async def read_users_me(current_user: dict = Depends(get_current_user)):
         </div>
       </section>
 
-      {/* --- User Settings --- */}
+      {/* --- User Personal Settings --- */}
        <section className={styles.endpoint}>
         <div className={styles.endpointHeader}>
           <span className={`${styles.method} ${styles.get}`}>GET</span>
           <span className={styles.path}>/settings</span>
         </div>
         <div className={styles.endpointBody}>
-          <h2>사용자 설정 조회</h2>
-          <p>현재 사용자의 테마, 폰트 크기, 언어 설정을 조회합니다.</p>
+          <h2>사용자 개인 설정 조회</h2>
+          <p>현재 사용자의 개인 맞춤형 설정을 조회합니다. (Firestore: <code>settings/{'{uid}'}</code>)</p>
           <dl>
             <dt>헤더:</dt>
             <dd><code>Authorization: Bearer YOUR_ACCESS_TOKEN</code></dd>
             <dt>응답 (200 OK):</dt>
             <dd><pre>{`{
-  "theme": "light" | "dark",
+  "language": "ko" | "en",
   "fontSize": "default" | "small",
-  "language": "ko" | "en"
+  "isDevMode": "boolean",
+  "contentTruncateLimit": "number",
+  "hideCompletedScenarios": "boolean",
+  "hideDelayInHours": "number",
+  "fontSizeDefault": "string (e.g., '16px')"
 }`}</pre></dd>
           </dl>
         </div>
@@ -349,16 +353,59 @@ async def read_users_me(current_user: dict = Depends(get_current_user)):
           <span className={styles.path}>/settings</span>
         </div>
         <div className={styles.endpointBody}>
-          <h2>사용자 설정 수정</h2>
-          <p>현재 사용자의 설정을 부분적으로 수정합니다.</p>
+          <h2>사용자 개인 설정 수정</h2>
+          <p>현재 사용자의 개인 설정을 부분적으로 수정합니다. (Firestore: <code>settings/{'{uid}'}</code>)</p>
           <dl>
             <dt>헤더:</dt>
             <dd><code>Authorization: Bearer YOUR_ACCESS_TOKEN</code></dd>
              <dt>요청 본문 (수정할 필드만 포함):</dt>
             <dd><pre>{`{
-  "theme": "dark",
-  "fontSize": "small",
-  "language": "en"
+  "language": "en",
+  "isDevMode": true,
+  "contentTruncateLimit": 20
+}`}</pre></dd>
+            <dt>응답 (200 OK):</dt>
+            <dd>수정된 전체 설정 객체</dd>
+          </dl>
+        </div>
+      </section>
+
+      {/* --- General Settings --- */}
+       <section className={styles.endpoint}>
+        <div className={styles.endpointHeader}>
+          <span className={`${styles.method} ${styles.get}`}>GET</span>
+          <span className={styles.path}>/settings/general</span>
+        </div>
+        <div className={styles.endpointBody}>
+          <h2>전역(일반) 설정 조회</h2>
+          <p>모든 사용자에게 공통으로 적용되는 전역 설정을 조회합니다. (Firestore: <code>config/general</code>)</p>
+          <dl>
+            <dt>헤더:</dt>
+            <dd><code>Authorization: Bearer YOUR_ACCESS_TOKEN</code> (관리자 권한 필요)</dd>
+            <dt>응답 (200 OK):</dt>
+            <dd><pre>{`{
+  "maxFavorites": "number",
+  "llmProvider": "gemini" | "flowise",
+  "flowiseApiUrl": "string"
+}`}</pre></dd>
+          </dl>
+        </div>
+      </section>
+      <section className={styles.endpoint}>
+        <div className={styles.endpointHeader}>
+          <span className={`${styles.method} ${styles.patch}`}>PATCH</span>
+          <span className={styles.path}>/settings/general</span>
+        </div>
+        <div className={styles.endpointBody}>
+          <h2>전역(일반) 설정 수정</h2>
+          <p>전역 설정을 부분적으로 수정합니다. (Firestore: <code>config/general</code>)</p>
+          <dl>
+            <dt>헤더:</dt>
+            <dd><code>Authorization: Bearer YOUR_ACCESS_TOKEN</code> (관리자 권한 필요)</dd>
+             <dt>요청 본문 (수정할 필드만 포함):</dt>
+            <dd><pre>{`{
+  "maxFavorites": 15,
+  "llmProvider": "flowise"
 }`}</pre></dd>
             <dt>응답 (200 OK):</dt>
             <dd>수정된 전체 설정 객체</dd>
@@ -396,7 +443,8 @@ async def read_users_me(current_user: dict = Depends(get_current_user)):
         </div>
       </section>
       <section className={styles.endpoint}>
-        <div className={styles.endpointHeader}>
+        <div className
+={styles.endpointHeader}>
           <span className={`${styles.method} ${styles.patch}`}>PATCH</span>
           <span className={styles.path}>/notifications/{'{notification_id}'}/read</span>
         </div>
