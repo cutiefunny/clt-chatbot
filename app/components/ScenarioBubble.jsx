@@ -717,6 +717,10 @@ const connectParentLink = (url) => {
       return;
     }
     const msg = { action: "callScreenOpen", payload: { url: url } };
+    console.log(
+      `[Call Window Method] callScreenOpen to ${PARENT_ORIGIN}:`,
+      msg
+    );
     window.parent.postMessage(msg, PARENT_ORIGIN);
     console.log(`Sent message to parent (${PARENT_ORIGIN}):`, msg);
   } catch (err) {
@@ -779,7 +783,9 @@ export default function ScenarioBubble({ scenarioSessionId }) {
       return;
     }
 
-    console.log("call postMessage to parent window");
+    console.log(
+      `[Call Window Method] callChatbotResize(width: 784) to ${PARENT_ORIGIN} with Scenario Bubble Click`
+    );
     const msg = { action: "callChatbotResize", payload: { width: 784 } };
     window.parent.postMessage(msg, PARENT_ORIGIN);
 

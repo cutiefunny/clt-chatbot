@@ -943,7 +943,9 @@ export default function ScenarioChat() {
               e.stopPropagation();
               const widthToSend = isScenarioPanelExpanded ? -1064 : -784;
               setActivePanel("main"); // 메인 패널로 전환 (포커스 이동 포함)
-              console.log("call postMessage to parent window");
+              console.log(
+                `[Call Window Method] callChatbotResize(width: ${widthToSend}) to ${PARENT_ORIGIN} with Close Scenario Chat`
+              );
               const msg = {
                 action: "callChatbotResize",
                 payload: { width: widthToSend },

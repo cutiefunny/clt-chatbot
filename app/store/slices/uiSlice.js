@@ -244,6 +244,9 @@ export const createUISlice = (set, get) => ({
     if (get().activePanel !== "scenario") return;
     const wasExpanded = get().isScenarioPanelExpanded;
     const widthDelta = wasExpanded ? -280 : 280;
+    console.log(
+      `[Call Window Method] callChatbotResize(width: ${widthDelta}) to ${PARENT_ORIGIN} with Toggle Scenario Panel Expanded`
+    );
     window.parent.postMessage(
       {
         action: "callChatbotResize",
