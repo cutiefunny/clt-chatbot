@@ -17,7 +17,7 @@ export default function ProfileModal() {
   const user = useChatStore((state) => state.user);
   const logout = useChatStore((state) => state.logout);
   const closeProfileModal = useChatStore((state) => state.closeProfileModal);
-  const openDevBoardModal = useChatStore((state) => state.openDevBoardModal);
+  // const openDevBoardModal = useChatStore((state) => state.openDevBoardModal); // 제거됨
   const language = useChatStore((state) => state.language);
   const setLanguage = useChatStore((state) => state.setLanguage);
   const openConfirmModal = useChatStore((state) => state.openConfirmModal);
@@ -37,11 +37,6 @@ export default function ProfileModal() {
     });
   };
   
-  const handleDevBoardClick = () => {
-    openDevBoardModal();
-    closeProfileModal(); 
-  };
-
   if (!user) return null;
 
   return (
@@ -78,9 +73,11 @@ export default function ProfileModal() {
                 </div>
             </div>
 
+            {/*
             <button onClick={handleDevBoardClick} className={styles.logoutButton}>
               {t('devBoard')}
             </button>
+            */}
 
             <Link
               href="/apidocs"
@@ -99,6 +96,17 @@ export default function ProfileModal() {
             >
               시나리오 메뉴 편집
             </Link>
+
+            {/* --- 👇 [추가] 개인 설정 링크 --- */}
+            <Link
+              href="/admin/personal"
+              onClick={closeProfileModal}
+              className={styles.logoutButton}
+              style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}
+            >
+              개인 설정
+            </Link>
+            {/* --- 👆 [추가] --- */}
 
             <Link
               href="/admin/general"
