@@ -704,27 +704,6 @@ const ScenarioStatusBadge = ({ status, t, isSelected }) => {
 };
 // --- 👆 [수정] ---
 
-// connectParentLink 함수 (변경 없음 - 전체 코드 포함)
-const PARENT_ORIGIN =
-  process.env.NEXT_PUBLIC_PARENT_ORIGIN || "http://localhost:3000";
-const connectParentLink = (url) => {
-  try {
-    if (!window.parent || window.parent === window) {
-      console.warn(
-        "Not running inside an iframe or parent window is inaccessible."
-      );
-      window.open(url, "_blank", "noopener,noreferrer");
-      return;
-    }
-    const msg = { action: "callScreenOpen", payload: { url: url } };
-    window.parent.postMessage(msg, PARENT_ORIGIN);
-    console.log(`Sent message to parent (${PARENT_ORIGIN}):`, msg);
-  } catch (err) {
-    console.error("Failed to send message to parent window:", err);
-    window.open(url, "_blank", "noopener,noreferrer");
-  }
-};
-
 // ScenarioBubble 컴포넌트 본체
 export default function ScenarioBubble({ scenarioSessionId }) {
   const {
@@ -778,10 +757,6 @@ export default function ScenarioBubble({ scenarioSessionId }) {
       }
       return;
     }
-
-    console.log("call postMessage to parent window");
-    const msg = { action: "callChatbotResize", payload: { width: 784 } };
-    window.parent.postMessage(msg, PARENT_ORIGIN);
 
     e.stopPropagation();
     setActivePanel("scenario", scenarioSessionId);
