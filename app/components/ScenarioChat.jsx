@@ -183,7 +183,7 @@ export default function ScenarioChat() {
     groupedMessages.push(currentChain);
   }
 
-  // --- 👇 [추가] 마크다운 테이블 감지 헬퍼 ---
+  // --- 👇 [수정] 마크다운 테이블 감지 헬퍼 (로직 동일) ---
   const containsMarkdownTable = (msg) => {
     const content = msg.text || msg.node?.data?.content;
     if (typeof content === "string") {
@@ -193,7 +193,7 @@ export default function ScenarioChat() {
     }
     return false;
   };
-  // --- 👆 [추가] ---
+  // --- 👆 [수정] ---
 
   return (
     <div className={styles.scenarioChatContainer}>
@@ -286,6 +286,53 @@ export default function ScenarioChat() {
           }
 
           const chain = group;
+
+          // --- 👇 [수정] 3단계 너비 클래스 계산 로직 (가장 긴 '줄' 기준) ---
+          const isRichContent = chain.some(
+            (msg) =>
+              msg.node?.type === "form" ||
+              msg.node?.data?.elements?.some(
+                (el) => el.type === "grid"
+              ) ||
+              msg.node?.type === "iframe" ||
+              containsMarkdownTable(msg)
+          );
+
+          let widthClass = "";
+          if (isRichContent) {
+            // 100% 단계 (가장 넓음) - 기존 .gridMessage 재사용
+            widthClass = styles.gridMessage;
+          } else {
+            // 1. 모든 텍스트 콘텐츠를 배열로 추출
+            const allTextContents = chain.map((msg) => {
+              return String(msg.text || msg.node?.data?.content || "");
+            });
+
+            // 2. 모든 텍스트를 하나의 문자열로 합치고, 줄바꿈(\n) 기준으로 나눔
+            const lines = allTextContents.join("\n").split("\n");
+
+            // 3. 가장 긴 줄의 길이를 찾음
+            const maxLineLength = lines.reduce((maxLength, currentLine) => {
+              return Math.max(maxLength, currentLine.length);
+            }, 0);
+
+            // 임계값 (가장 긴 '줄'의 길이를 기준)
+            const SHORT_THRESHOLD = 10; // 30% 너비 임계값 (50자 미만)
+            const MEDIUM_THRESHOLD = 30; // 60% 너비 임계값 (150자 미만)
+
+            if (maxLineLength < SHORT_THRESHOLD) {
+              // 30% 단계
+              widthClass = styles.width30;
+            } else if (maxLineLength < MEDIUM_THRESHOLD) {
+              // 60% 단계
+              widthClass = styles.width60;
+            } else {
+              // 100% 단계 (긴 텍스트)
+              widthClass = styles.gridMessage; // .gridMessage (90%) 재사용
+            }
+          }
+          // --- 👆 [수정] ---
+
           return (
             <div
               key={chain[0].id || `${activeScenarioSessionId}-chain-${index}`}
@@ -295,20 +342,7 @@ export default function ScenarioChat() {
                 // --- 👇 [수정] className 정의 수정 ---
                 className={`GlassEffect ${styles.message} ${
                   styles.botMessage
-                } ${
-                  // 체인 중 하나라도 grid/form/iframe/table이 있으면 넓은 스타일 적용
-                  chain.some(
-                    (msg) =>
-                      msg.node?.type === "form" ||
-                      msg.node?.data?.elements?.some(
-                        (el) => el.type === "grid"
-                      ) ||
-                      msg.node?.type === "iframe" ||
-                      containsMarkdownTable(msg) // 마크다운 테이블 확인 추가
-                  )
-                    ? styles.gridMessage
-                    : ""
-                }`}
+                } ${widthClass}`}
                 // --- 👆 [수정] ---
               >
                 <div
