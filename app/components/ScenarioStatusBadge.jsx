@@ -10,14 +10,15 @@ export default function ScenarioStatusBadge({ status, t: propT, isSelected }) {
   const { t: hookT } = useTranslations();
   const t = propT || hookT;
 
+  // 🖐️ [수정]  Do not activate this code, This is not contained in Design Requirements
   // isSelected가 true이면 'selected' 상태를 우선 표시
-  if (isSelected) {
-    return (
-      <span className={`${styles.scenarioBadge} ${styles.selected}`}>
-        {t("statusSelected")}
-      </span>
-    );
-  }
+  // if (isSelected) {
+  //   return (
+  //     <span className={`${styles.scenarioBadge} ${styles.selected}`}>
+  //       {t("statusSelected")}
+  //     </span>
+  //   );
+  // }
 
   // isSelected가 false이면 기존 status 로직 수행
   if (!status) return null;
