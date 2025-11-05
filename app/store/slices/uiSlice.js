@@ -26,7 +26,7 @@ export const createUISlice = (set, get) => ({
   fontSizeDefault: "16px", // 기본값
   // fontSizeSmall: "14px", // [제거]
   isDevMode: false,
-  dimUnfocusedPanels: true, // [참고] 이 값은 이제 config/general에서 로드되지 않습니다.
+  dimUnfocusedPanels: true, // [참고] 이제 이 값은 config/general에서 다시 로드됩니다.
   llmProvider: "gemini",
   flowiseApiUrl: "",
   isProfileModalOpen: false,
@@ -69,15 +69,12 @@ export const createUISlice = (set, get) => ({
         set({
           maxFavorites:
             typeof config.maxFavorites === "number" ? config.maxFavorites : 10,
-          // --- 👇 [제거] 개인 설정 또는 제거된 항목 ---
-          // hideCompletedScenarios: ...
-          // hideDelayInHours: ...
-          // contentTruncateLimit: ...
-          // fontSizeDefault: ...
-          // fontSizeSmall: ...
-          // isDevMode: ... (개인 설정으로 이동)
-          // dimUnfocusedPanels: ... (설정 페이지에서 제거)
-          // --- 👆 [제거] ---
+          // --- 👇 [수정] dimUnfocusedPanels 로드 로직 추가 ---
+          dimUnfocusedPanels:
+            typeof config.dimUnfocusedPanels === "boolean"
+              ? config.dimUnfocusedPanels
+              : true, // 기본값 true
+          // --- 👆 [수정] ---
           llmProvider: config.llmProvider || "gemini",
           flowiseApiUrl: config.flowiseApiUrl || "",
         });

@@ -9,10 +9,9 @@ import Link from "next/link";
 export default function GeneralSettingsPage() {
   const {
     maxFavorites,
-    // --- ▼ 제거 ▼ ---
-    // isDevMode,
-    // dimUnfocusedPanels,
-    // --- ▲ 제거 ▲ ---
+    // --- ▼ 수정 ▼ ---
+    dimUnfocusedPanels, // dimUnfocusedPanels 추가
+    // --- ▲ 수정 ▲ ---
     llmProvider,
     flowiseApiUrl,
     loadGeneralConfig,
@@ -21,10 +20,9 @@ export default function GeneralSettingsPage() {
   } = useChatStore();
 
   const [limit, setLimit] = useState("");
-  // --- ▼ 제거 ▼ ---
-  // const [devMode, setDevMode] = useState(false);
-  // const [dimPanels, setDimPanels] = useState(true);
-  // --- ▲ 제거 ▲ ---
+  // --- ▼ 수정 ▼ ---
+  const [dimPanels, setDimPanels] = useState(true); // dimPanels 상태 추가
+  // --- ▲ 수정 ▲ ---
   const [provider, setProvider] = useState("gemini");
   const [apiUrl, setApiUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -36,18 +34,16 @@ export default function GeneralSettingsPage() {
 
   useEffect(() => {
     if (maxFavorites !== null) setLimit(String(maxFavorites));
-    // --- ▼ 제거 ▼ ---
-    // setDevMode(isDevMode);
-    // setDimPanels(dimUnfocusedPanels);
-    // --- ▲ 제거 ▲ ---
+    // --- ▼ 수정 ▼ ---
+    setDimPanels(dimUnfocusedPanels); // 로드된 값으로 상태 설정
+    // --- ▲ 수정 ▲ ---
     setProvider(llmProvider);
     setApiUrl(flowiseApiUrl);
   }, [
     maxFavorites,
-    // --- ▼ 제거 ▼ ---
-    // isDevMode,
-    // dimUnfocusedPanels,
-    // --- ▲ 제거 ▲ ---
+    // --- ▼ 수정 ▼ ---
+    dimUnfocusedPanels, // 의존성 배열에 추가
+    // --- ▲ 수정 ▲ ---
     llmProvider,
     flowiseApiUrl,
   ]);
@@ -78,10 +74,9 @@ export default function GeneralSettingsPage() {
 
     const settings = {
       maxFavorites: newLimit,
-      // --- ▼ 제거 ▼ ---
-      // isDevMode: devMode,
-      // dimUnfocusedPanels: dimPanels,
-      // --- ▲ 제거 ▲ ---
+      // --- ▼ 수정 ▼ ---
+      dimUnfocusedPanels: dimPanels, // 저장할 설정에 추가
+      // --- ▲ 수정 ▲ ---
       llmProvider: provider,
       flowiseApiUrl: apiUrl, 
     };
@@ -153,11 +148,27 @@ export default function GeneralSettingsPage() {
             </div>
           )}
         </div>
-
-        {/* --- ▼ 제거 ▼ --- */}
+        
+        {/* --- ▼ 추가 ▼ --- */}
         {/* 포커스 흐림 설정 */}
-        {/* 개발자 모드 설정 */}
-        {/* --- ▲ 제거 ▲ --- */}
+        <div className={styles.settingItem}>
+          <label className={styles.settingLabel}>
+            <h3>포커스 잃은 창 흐리게</h3>
+            <p>
+              활성화 시, 메인 채팅과 시나리오 채팅 간 포커스 이동 시 비활성 창을
+              흐리게(dimmed) 처리합니다.
+            </p>
+          </label>
+          <label className={styles.switch}>
+            <input
+              type="checkbox"
+              checked={dimPanels}
+              onChange={(e) => setDimPanels(e.target.checked)}
+            />
+            <span className={styles.slider}></span>
+          </label>
+        </div>
+        {/* --- ▲ 추가 ▲ --- */}
 
         {/* 즐겨찾기 개수 설정 (기존 코드 유지) */}
         <div className={styles.settingItem}>
