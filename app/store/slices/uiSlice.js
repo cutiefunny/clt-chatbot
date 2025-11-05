@@ -1,9 +1,11 @@
 // app/store/slices/uiSlice.js
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { locales } from "../../lib/locales";
-
-const PARENT_ORIGIN =
-  process.env.NEXT_PUBLIC_PARENT_ORIGIN || "http://localhost:3000"; // NEXT_PUBLIC_PARENT_ORIGIN 환경 변수 사용
+import {
+  postToParent,
+  PARENT_ORIGIN,
+  SCENARIO_PANEL_WIDTH,
+} from "../../lib/parentMessaging";
 
 const getInitialMessages = (lang = "ko") => {
   return [
@@ -215,28 +217,12 @@ export const createUISlice = (set, get) => ({
       console.log(
         `[Call Window Method] callChatbotResize(width: 264) to ${PARENT_ORIGIN} with Open History Panel`
       );
-      window.parent.postMessage(
-        {
-          action: "callChatbotResize",
-          payload: {
-            width: 264,
-          },
-        },
-        PARENT_ORIGIN
-      );
+      postToParent("callChatbotResize", { width: 264 });
     } else {
       console.log(
         `[Call Window Method] callChatbotResize(width: -264) to ${PARENT_ORIGIN} with Close History Panel`
       );
-      window.parent.postMessage(
-        {
-          action: "callChatbotResize",
-          payload: {
-            width: -264,
-          },
-        },
-        PARENT_ORIGIN
-      );
+      postToParent("callChatbotResize", { width: -264 });
     }
   },
 
@@ -247,24 +233,23 @@ export const createUISlice = (set, get) => ({
     console.log(
       `[Call Window Method] callChatbotResize(width: ${widthDelta}) to ${PARENT_ORIGIN} with Toggle Scenario Panel Expanded`
     );
-    window.parent.postMessage(
-      {
-        action: "callChatbotResize",
-        payload: {
-          width: widthDelta,
-        },
-      },
-      PARENT_ORIGIN
-    );
+    postToParent("callChatbotResize", { width: widthDelta });
     set({ isScenarioPanelExpanded: !wasExpanded });
   },
 
   resetScenarioPanelExpansion: () => set({ isScenarioPanelExpanded: false }),
 
   setActivePanel: (panel, sessionId = null) => {
-    const wasScenarioPanelActive = get().activePanel === "scenario";
+    const previousActivePanel = get().activePanel;
+    const wasScenarioPanelActive = previousActivePanel === "scenario";
     const wasExpanded = get().isScenarioPanelExpanded;
     if (panel === "scenario") {
+      if (!wasScenarioPanelActive) {
+        console.log(
+          `[Call Window Method] callChatbotResize(width: ${SCENARIO_PANEL_WIDTH}) to ${PARENT_ORIGIN} with Activate Scenario Panel`
+        );
+        postToParent("callChatbotResize", { width: SCENARIO_PANEL_WIDTH });
+      }
       set({
         activePanel: panel,
         activeScenarioSessionId: sessionId,

@@ -7,6 +7,7 @@ import styles from "../page.module.css";
 import chatStyles from "./Chat.module.css";
 import MoonIcon from "./icons/MoonIcon";
 import CloseIcon from "./icons/CloseIcon";
+import { postToParent, PARENT_ORIGIN } from "../lib/parentMessaging";
 
 export default function MainAreaLayout({
   historyPanelWidth,
@@ -17,9 +18,6 @@ export default function MainAreaLayout({
   theme,
   setTheme,
 }) {
-  const PARENT_ORIGIN =
-    process.env.NEXT_PUBLIC_PARENT_ORIGIN || "http://localhost:3000"; // NEXT_PUBLIC_PARENT_ORIGIN 환경 변수 사용
-
   return (
     <div
       className={styles.mainArea}
@@ -65,15 +63,7 @@ export default function MainAreaLayout({
                 console.log(
                   `[Call Window Method] callChatbotClose to ${PARENT_ORIGIN}`
                 );
-                window.parent.postMessage(
-                  {
-                    action: "callChatbotClose",
-                    payload: {
-                      state: "close",
-                    },
-                  },
-                  PARENT_ORIGIN
-                );
+                postToParent("callChatbotClose", { state: "close" });
               }}
             >
               <CloseIcon />

@@ -19,6 +19,12 @@ import ScenarioCollapseIcon from "./icons/ScenarioCollapseIcon";
 // --- 👇 [수정] MarkdownRenderer 임포트 추가 ---
 import MarkdownRenderer from "./MarkdownRenderer";
 // --- 👆 [수정] ---
+import {
+  openLinkThroughParent,
+  postToParent,
+  PARENT_ORIGIN,
+  SCENARIO_PANEL_WIDTH,
+} from "../lib/parentMessaging";
 
 // --- 👇 [추가] 엑셀 날짜 변환 헬퍼 ---
 // 엑셀 시리얼 날짜를 YYYY-MM-DD 형식으로 변환
@@ -720,27 +726,6 @@ const ScenarioStatusBadge = ({ status, t, isSelected }) => {
 };
 // --- 👆 [수정] ---
 
-// connectParentLink 함수 (기존 코드 유지)
-const PARENT_ORIGIN =
-  process.env.NEXT_PUBLIC_PARENT_ORIGIN || "http://localhost:3000";
-const connectParentLink = (url) => {
-  try {
-    if (!window.parent || window.parent === window) {
-      console.warn(
-        "Not running inside an iframe or parent window is inaccessible."
-      );
-      window.open(url, "_blank", "noopener,noreferrer"); // Fallback: 새 탭에서 열기
-      return;
-    }
-    const msg = { action: "callScreenOpen", payload: { url: url } };
-    window.parent.postMessage(msg, PARENT_ORIGIN);
-    console.log(`Sent message to parent (${PARENT_ORIGIN}):`, msg);
-  } catch (err) {
-    console.error("Failed to send message to parent window:", err);
-    window.open(url, "_blank", "noopener,noreferrer"); // Fallback: 새 탭에서 열기
-  }
-};
-
 // ScenarioChat 컴포넌트 본체
 export default function ScenarioChat() {
   const {
@@ -941,16 +926,13 @@ export default function ScenarioChat() {
             className={styles.headerCloseButton}
             onClick={(e) => {
               e.stopPropagation();
-              const widthToSend = isScenarioPanelExpanded ? -1064 : -784;
               setActivePanel("main"); // 메인 패널로 전환 (포커스 이동 포함)
               console.log(
-                `[Call Window Method] callChatbotResize(width: ${widthToSend}) to ${PARENT_ORIGIN} with Close Scenario Chat`
+                `[Call Window Method] callChatbotResize(width: -${SCENARIO_PANEL_WIDTH}) to ${PARENT_ORIGIN} with Close Scenario Chat`
               );
-              const msg = {
-                action: "callChatbotResize",
-                payload: { width: widthToSend },
-              };
-              window.parent.postMessage(msg, PARENT_ORIGIN);
+              postToParent("callChatbotResize", {
+                width: -SCENARIO_PANEL_WIDTH,
+              });
             }}
           >
             <CloseIcon />
@@ -1059,7 +1041,7 @@ export default function ScenarioChat() {
                               href="#"
                               onClick={(e) => {
                                 e.preventDefault();
-                                connectParentLink(
+                                openLinkThroughParent(
                                   interpolateMessage(
                                     msg.node.data.content,
                                     activeScenario.slots
