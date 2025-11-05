@@ -1,7 +1,7 @@
 // app/components/ScenarioChat.jsx
 "use client";
 
-// --- 👇 [수정] useRef, useCallback 임포트 (xlsx 라이브러리 임포트 제거) ---
+// --- 👇 [수정] 임포트 정리 (xlsx 제거, 컴포넌트 추가) ---
 import { useEffect, useRef, useState, useCallback } from "react";
 // import * as XLSX from "xlsx"; // [제거]
 // --- 👆 [수정] ---
@@ -41,7 +41,7 @@ import {
 // const ScenarioStatusBadge = ({ ... }) => { ... };
 // --- 👆 [제거] ---
 
-// ScenarioChat 컴포넌트 본체 (변경 없음)
+// ScenarioChat 컴포넌트 본체
 export default function ScenarioChat() {
   const {
     activeScenarioSessionId,
@@ -70,7 +70,7 @@ export default function ScenarioChat() {
   const historyRef = useRef(null);
   const wasAtBottomRef = useRef(true);
 
-  // 스크롤 관련 함수 및 useEffect (기존 코드 유지)
+  // 스크롤 관련 함수 및 useEffect
   const updateWasAtBottom = useCallback(() => {
     const scrollContainer = historyRef.current;
     if (!scrollContainer) return;
@@ -87,7 +87,7 @@ export default function ScenarioChat() {
     const handleScrollEvent = () => {
       updateWasAtBottom();
     };
-    updateWasAtBottom(); // 초기 상태 설정
+    updateWasAtBottom();
     scrollContainer.addEventListener("scroll", handleScrollEvent);
     return () => {
       scrollContainer.removeEventListener("scroll", handleScrollEvent);
@@ -112,7 +112,7 @@ export default function ScenarioChat() {
     return () => observer.disconnect();
   }, [scenarioMessages, isScenarioLoading]);
 
-  // 로딩 상태 렌더링 (기존 코드 유지)
+  // 로딩 상태 렌더링
   if (!activeScenario) {
     return (
       <div className={styles.scenarioChatContainer}>
@@ -128,7 +128,7 @@ export default function ScenarioChat() {
     );
   }
 
-  // 핸들러 함수들 (기존 코드 유지)
+  // 핸들러 함수들
   const handleFormSubmit = (formData) => {
     handleScenarioResponse({
       scenarioSessionId: activeScenarioSessionId,
@@ -155,7 +155,7 @@ export default function ScenarioChat() {
     });
   };
 
-  // 메시지 그룹핑 로직 (기존 코드 유지)
+  // 메시지 그룹핑 로직
   const groupedMessages = [];
   let currentChain = [];
 
@@ -183,17 +183,27 @@ export default function ScenarioChat() {
     groupedMessages.push(currentChain);
   }
 
+  // --- 👇 [추가] 마크다운 테이블 감지 헬퍼 ---
+  const containsMarkdownTable = (msg) => {
+    const content = msg.text || msg.node?.data?.content;
+    if (typeof content === "string") {
+      // 마크다운 테이블 헤더 구분자(|---)가 포함되어 있는지 확인
+      // (가장 간단하면서 효과적인 휴리스틱)
+      return content.includes("|---");
+    }
+    return false;
+  };
+  // --- 👆 [추가] ---
+
   return (
     <div className={styles.scenarioChatContainer}>
       <div className={styles.scenarioHeader}>
         <div className={styles.headerContent}>
-          {/* --- 👇 [수정] 컴포넌트 사용 --- */}
           <ScenarioStatusBadge
             status={activeScenario?.status}
             t={t}
             styles={styles}
           />
-          {/* --- 👆 [수정] --- */}
           <span className={styles.headerTitle}>
             {t("scenarioTitle")(
               interpolateMessage(scenarioId || "Scenario", activeScenario.slots)
@@ -282,20 +292,24 @@ export default function ScenarioChat() {
               className={`${styles.messageRow}`}
             >
               <div
+                // --- 👇 [수정] className 정의 수정 ---
                 className={`GlassEffect ${styles.message} ${
                   styles.botMessage
                 } ${
+                  // 체인 중 하나라도 grid/form/iframe/table이 있으면 넓은 스타일 적용
                   chain.some(
                     (msg) =>
                       msg.node?.type === "form" ||
                       msg.node?.data?.elements?.some(
                         (el) => el.type === "grid"
                       ) ||
-                      msg.node?.type === "iframe"
+                      msg.node?.type === "iframe" ||
+                      containsMarkdownTable(msg) // 마크다운 테이블 확인 추가
                   )
                     ? styles.gridMessage
                     : ""
                 }`}
+                // --- 👆 [수정] ---
               >
                 <div
                   className={
@@ -315,7 +329,6 @@ export default function ScenarioChat() {
                         className={styles.chainedMessageItem}
                       >
                         {msg.node?.type === "form" ? (
-                          // --- 👇 [수정] 컴포넌트 사용 ---
                           <FormRenderer
                             node={msg.node}
                             onFormSubmit={handleFormSubmit}
@@ -324,7 +337,6 @@ export default function ScenarioChat() {
                             slots={activeScenario.slots}
                             onGridRowClick={handleGridRowSelected}
                           />
-                          // --- 👆 [수정] ---
                         ) : msg.node?.type === "iframe" ? (
                           <div className={styles.iframeContainer}>
                             <iframe
