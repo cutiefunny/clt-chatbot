@@ -9,13 +9,10 @@ import Link from "next/link";
 export default function GeneralSettingsPage() {
   const {
     maxFavorites,
-    hideCompletedScenarios,
-    hideDelayInHours,
-    contentTruncateLimit,
-    fontSizeDefault,
-    fontSizeSmall,
-    isDevMode,
-    dimUnfocusedPanels,
+    // --- ▼ 제거 ▼ ---
+    // isDevMode,
+    // dimUnfocusedPanels,
+    // --- ▲ 제거 ▲ ---
     llmProvider,
     flowiseApiUrl,
     loadGeneralConfig,
@@ -24,13 +21,10 @@ export default function GeneralSettingsPage() {
   } = useChatStore();
 
   const [limit, setLimit] = useState("");
-  const [hideCompleted, setHideCompleted] = useState(false);
-  const [delayHours, setDelayHours] = useState("0");
-  const [truncateLimit, setTruncateLimit] = useState("");
-  const [defaultSize, setDefaultSize] = useState("");
-  const [smallSize, setSmallSize] = useState("");
-  const [devMode, setDevMode] = useState(false);
-  const [dimPanels, setDimPanels] = useState(true);
+  // --- ▼ 제거 ▼ ---
+  // const [devMode, setDevMode] = useState(false);
+  // const [dimPanels, setDimPanels] = useState(true);
+  // --- ▲ 제거 ▲ ---
   const [provider, setProvider] = useState("gemini");
   const [apiUrl, setApiUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -42,26 +36,18 @@ export default function GeneralSettingsPage() {
 
   useEffect(() => {
     if (maxFavorites !== null) setLimit(String(maxFavorites));
-    setHideCompleted(hideCompletedScenarios);
-    if (hideDelayInHours !== null) setDelayHours(String(hideDelayInHours));
-    // --- 👇 [수정] 누락된 contentTruncateLimit 상태 설정 추가 ---
-    if (contentTruncateLimit !== null) setTruncateLimit(String(contentTruncateLimit));
-    // --- 👆 [수정] ---
-    if (fontSizeDefault) setDefaultSize(fontSizeDefault);
-    if (fontSizeSmall) setSmallSize(fontSizeSmall);
-    setDevMode(isDevMode);
-    setDimPanels(dimUnfocusedPanels);
+    // --- ▼ 제거 ▼ ---
+    // setDevMode(isDevMode);
+    // setDimPanels(dimUnfocusedPanels);
+    // --- ▲ 제거 ▲ ---
     setProvider(llmProvider);
     setApiUrl(flowiseApiUrl);
   }, [
     maxFavorites,
-    hideCompletedScenarios,
-    hideDelayInHours,
-    contentTruncateLimit,
-    fontSizeDefault,
-    fontSizeSmall,
-    isDevMode,
-    dimUnfocusedPanels,
+    // --- ▼ 제거 ▼ ---
+    // isDevMode,
+    // dimUnfocusedPanels,
+    // --- ▲ 제거 ▲ ---
     llmProvider,
     flowiseApiUrl,
   ]);
@@ -70,17 +56,11 @@ export default function GeneralSettingsPage() {
     setIsLoading(true);
     setApiUrlError(''); 
     const newLimit = parseInt(limit, 10);
-    const newDelayHours = parseInt(delayHours, 10);
-    const newTruncateLimit = parseInt(truncateLimit, 10);
 
     // 숫자 유효성 검사
     if (
       isNaN(newLimit) ||
-      newLimit < 0 ||
-      isNaN(newDelayHours) ||
-      newDelayHours < 0 ||
-      isNaN(newTruncateLimit) || // [수정] newTruncateLimit 검사
-      newTruncateLimit < 0
+      newLimit < 0
     ) {
       showEphemeralToast("유효한 숫자를 입력해주세요.", "error");
       setIsLoading(false);
@@ -98,15 +78,12 @@ export default function GeneralSettingsPage() {
 
     const settings = {
       maxFavorites: newLimit,
-      hideCompletedScenarios: hideCompleted,
-      hideDelayInHours: newDelayHours,
-      fontSizeDefault: defaultSize,
-      fontSizeSmall: smallSize,
-      isDevMode: devMode,
-      dimUnfocusedPanels: dimPanels,
+      // --- ▼ 제거 ▼ ---
+      // isDevMode: devMode,
+      // dimUnfocusedPanels: dimPanels,
+      // --- ▲ 제거 ▲ ---
       llmProvider: provider,
       flowiseApiUrl: apiUrl, 
-      contentTruncateLimit: newTruncateLimit,
     };
 
     const success = await saveGeneralConfig(settings);
@@ -177,63 +154,10 @@ export default function GeneralSettingsPage() {
           )}
         </div>
 
-        {/* --- 👇 [수정] 본문 줄임 '글자 수' -> '줄 수' --- */}
-        <div className={styles.settingItem}>
-          <label htmlFor="truncate-limit" className={styles.settingLabel}>
-            <h3>본문 줄임 줄 수</h3>
-            <p>
-              봇 답변이 설정된 줄 수를 초과하면 '더 보기' 버튼을 표시합니다.
-              (0으로 설정 시 비활성화)
-            </p>
-          </label>
-          <input
-            id="truncate-limit"
-            type="number"
-            value={truncateLimit}
-            onChange={(e) => setTruncateLimit(e.target.value)}
-            className={styles.settingInput}
-            min="0"
-          />
-        </div>
-        {/* --- 👆 [수정] --- */}
-
-        {/* 포커스 흐림 설정 (기존 코드 유지) */}
-        <div className={styles.settingItem}>
-          <label className={styles.settingLabel}>
-            <h3>포커스 잃은 창 흐리게</h3>
-            <p>
-              활성화 시, 메인 채팅과 시나리오 채팅 간 포커스 이동 시 비활성 창을
-              흐리게(dimmed) 처리합니다.
-            </p>
-          </label>
-          <label className={styles.switch}>
-            <input
-              type="checkbox"
-              checked={dimPanels}
-              onChange={(e) => setDimPanels(e.target.checked)}
-            />
-            <span className={styles.slider}></span>
-          </label>
-        </div>
-
-        {/* 개발자 모드 설정 (기존 코드 유지) */}
-        <div className={styles.settingItem}>
-          <label className={styles.settingLabel}>
-            <h3>개발자 모드</h3>
-            <p>
-              활성화 시, 채팅 화면 우측 하단에 현재 추출된 변수(Slots) 상태를
-              표시합니다.
-            </p>
-          </label>
-          <label className={styles.switch}>
-            <input
-              type="checkbox"
-              checked={devMode}
-              onChange={(e) => setDevMode(e.target.checked)}
-            />
-            <span className={styles.slider}></span>
-          </label>
-        </div>
+        {/* --- ▼ 제거 ▼ --- */}
+        {/* 포커스 흐림 설정 */}
+        {/* 개발자 모드 설정 */}
+        {/* --- ▲ 제거 ▲ --- */}
 
         {/* 즐겨찾기 개수 설정 (기존 코드 유지) */}
         <div className={styles.settingItem}>
@@ -251,85 +175,6 @@ export default function GeneralSettingsPage() {
             className={styles.settingInput}
             min="0"
           />
-        </div>
-
-        {/* 완료된 시나리오 숨김 설정 (기존 코드 유지) */}
-        <div
-          className={`${styles.settingGroup} ${
-            hideCompleted ? styles.active : ""
-          }`}
-        >
-          <div className={styles.settingItem}>
-            <label className={styles.settingLabel}>
-              <h3>완료된 시나리오 숨김</h3>
-              <p>
-                대화 목록의 하위 메뉴에서 '완료' 상태인 시나리오를 숨깁니다.
-              </p>
-            </label>
-            <label className={styles.switch}>
-              <input
-                type="checkbox"
-                checked={hideCompleted}
-                onChange={(e) => setHideCompleted(e.target.checked)}
-              />
-              <span className={styles.slider}></span>
-            </label>
-          </div>
-          {hideCompleted && (
-            <div className={`${styles.settingItem} ${styles.subSettingItem}`}>
-              <label htmlFor="hide-delay" className={styles.settingLabel}>
-                <h4>숨김 지연 시간 (시간)</h4>
-                <p>
-                  완료된 시점을 기준으로, 설정된 시간 이후에 목록에서 숨깁니다.
-                  (0으로 설정 시 즉시 숨김)
-                </p>
-              </label>
-              <input
-                id="hide-delay"
-                type="number"
-                value={delayHours}
-                onChange={(e) => setDelayHours(e.target.value)}
-                className={styles.settingInput}
-                min="0"
-              />
-            </div>
-          )}
-        </div>
-
-        {/* 폰트 크기 설정 (기존 코드 유지) */}
-        <div className={styles.settingGroup}>
-          <div className={styles.settingItem}>
-            <label htmlFor="font-size-default" className={styles.settingLabel}>
-              <h3>기본 폰트 크기</h3>
-              <p>
-                'Large text' 모드가 ON일 때 적용될 폰트 크기입니다. (예: 16px,
-                1rem)
-              </p>
-            </label>
-            <input
-              id="font-size-default"
-              type="text"
-              value={defaultSize}
-              onChange={(e) => setDefaultSize(e.target.value)}
-              className={styles.settingInput}
-            />
-          </div>
-          <div className={styles.settingItem}>
-            <label htmlFor="font-size-small" className={styles.settingLabel}>
-              <h3>축소 폰트 크기</h3>
-              <p>
-                'Large text' 모드가 OFF일 때 적용될 폰트 크기입니다. (예: 14px,
-                0.9rem)
-              </p>
-            </label>
-            <input
-              id="font-size-small"
-              type="text"
-              value={smallSize}
-              onChange={(e) => setSmallSize(e.target.value)}
-              className={styles.settingInput}
-            />
-          </div>
         </div>
 
         {/* 저장 버튼 (기존 코드 유지) */}

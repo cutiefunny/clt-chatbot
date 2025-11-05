@@ -24,9 +24,9 @@ export const createUISlice = (set, get) => ({
   contentTruncateLimit: 10, // 봇 답변 줄임 줄 수 (기본값 10)
   // --- 👆 [수정] ---
   fontSizeDefault: "16px", // 기본값
-  fontSizeSmall: "14px", // 기본값
+  // fontSizeSmall: "14px", // [제거]
   isDevMode: false,
-  dimUnfocusedPanels: true,
+  dimUnfocusedPanels: true, // [참고] 이 값은 이제 config/general에서 로드되지 않습니다.
   llmProvider: "gemini",
   flowiseApiUrl: "",
   isProfileModalOpen: false,
@@ -69,28 +69,15 @@ export const createUISlice = (set, get) => ({
         set({
           maxFavorites:
             typeof config.maxFavorites === "number" ? config.maxFavorites : 10,
-          hideCompletedScenarios:
-            typeof config.hideCompletedScenarios === "boolean"
-              ? config.hideCompletedScenarios
-              : false,
-          hideDelayInHours:
-            typeof config.hideDelayInHours === "number"
-              ? config.hideDelayInHours
-              : 0,
-          // --- 👇 [수정] 기본값 변경 (200 -> 10) ---
-          contentTruncateLimit:
-            typeof config.contentTruncateLimit === "number"
-              ? config.contentTruncateLimit
-              : 10, // 10줄 기본값
-          // --- 👆 [수정] ---
-          fontSizeDefault: config.fontSizeDefault || "16px",
-          fontSizeSmall: config.fontSizeSmall || "14px",
-          isDevMode:
-            typeof config.isDevMode === "boolean" ? config.isDevMode : false,
-          dimUnfocusedPanels:
-            typeof config.dimUnfocusedPanels === "boolean"
-              ? config.dimUnfocusedPanels
-              : true,
+          // --- 👇 [제거] 개인 설정 또는 제거된 항목 ---
+          // hideCompletedScenarios: ...
+          // hideDelayInHours: ...
+          // contentTruncateLimit: ...
+          // fontSizeDefault: ...
+          // fontSizeSmall: ...
+          // isDevMode: ... (개인 설정으로 이동)
+          // dimUnfocusedPanels: ... (설정 페이지에서 제거)
+          // --- 👆 [제거] ---
           llmProvider: config.llmProvider || "gemini",
           flowiseApiUrl: config.flowiseApiUrl || "",
         });
@@ -111,6 +98,25 @@ export const createUISlice = (set, get) => ({
       return false;
     }
   },
+
+  // --- 👇 [추가] 개인 설정 저장 액션 ---
+  savePersonalSettings: async (settings) => {
+    const { user, db, showEphemeralToast, language } = get();
+    if (!user) return false;
+    try {
+      const userSettingsRef = doc(db, "settings", user.uid);
+      await setDoc(userSettingsRef, settings, { merge: true });
+      set(settings); // 로컬 스토어 상태 즉시 업데이트
+      return true;
+    } catch (error) {
+      console.error("Error saving personal settings:", error);
+      const errorMsg =
+        locales[language]?.errorUnexpected || "Failed to save settings.";
+      showEphemeralToast(errorMsg, "error");
+      return false;
+    }
+  },
+  // --- 👆 [추가] ---
 
   setScrollToMessageId: (id) => set({ scrollToMessageId: id }),
   setForceScrollToBottom: (value) => set({ forceScrollToBottom: value }),

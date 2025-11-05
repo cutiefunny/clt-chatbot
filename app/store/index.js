@@ -96,23 +96,48 @@ export const useChatStore = create((set, get) => ({
       else { console.log("No conversation migration needed."); }
     } catch (error) { console.error("Conversation migration failed:", error); }
 
-    // --- 👇 [수정] 사용자 설정 로드 시 theme을 'light'로 고정 ---
-    let fontSize = 'default', language = 'ko'; // 기본값 (theme 제거)
+    // --- 👇 [수정] fontSizeSmall 제거 ---
+    let fontSize = 'default', 
+        language = 'ko',
+        contentTruncateLimit = 10, // 기본값
+        hideCompletedScenarios = false, // 기본값
+        hideDelayInHours = 0, // 기본값
+        fontSizeDefault = '16px', // 기본값
+        // fontSizeSmall = '14px', // [제거]
+        isDevMode = false; 
+
     try {
       const userSettingsRef = doc(get().db, "settings", user.uid);
       const docSnap = await getDoc(userSettingsRef);
       const settings = docSnap.exists() ? docSnap.data() : {};
-      // theme 로드 로직 제거
+      
       fontSize = settings.fontSize || localStorage.getItem("fontSize") || fontSize;
       language = settings.language || localStorage.getItem("language") || language;
+
+      // [수정] 개인 설정 항목 불러오기
+      contentTruncateLimit = typeof settings.contentTruncateLimit === "number" 
+        ? settings.contentTruncateLimit : contentTruncateLimit;
+      hideCompletedScenarios = typeof settings.hideCompletedScenarios === "boolean" 
+        ? settings.hideCompletedScenarios : hideCompletedScenarios;
+      hideDelayInHours = typeof settings.hideDelayInHours === "number"
+        ? settings.hideDelayInHours : hideDelayInHours;
+      fontSizeDefault = settings.fontSizeDefault || fontSizeDefault;
+      // fontSizeSmall = settings.fontSizeSmall || fontSizeSmall; // [제거]
+      isDevMode = typeof settings.isDevMode === "boolean" 
+        ? settings.isDevMode : isDevMode;
+
     } catch (error) {
       console.error("Error loading settings from Firestore:", error);
-      // theme 로드 로직 제거
       fontSize = localStorage.getItem("fontSize") || fontSize;
       language = localStorage.getItem("language") || language;
+      // localStorage에서 개인 설정 항목들도 불러올 수 있으나, 우선 Firestore 기준으로 처리
     } finally {
-        // set 호출 시 theme: 'light' 명시적 전달
-        set({ theme: 'light', fontSize, language }); // uiSlice 상태 설정
+        // [수정] set에 fontSizeSmall 제거
+        set({ 
+          theme: 'light', fontSize, language,
+          contentTruncateLimit, hideCompletedScenarios, hideDelayInHours,
+          fontSizeDefault, isDevMode 
+        });
         // chatSlice의 메시지 상태 초기화 (언어 적용)
         get().resetMessages?.(language); // chatSlice 액션 호출
     }
@@ -127,7 +152,7 @@ export const useChatStore = create((set, get) => ({
     get().loadFavorites(user.uid); // favoritesSlice
   },
 
-  // --- 👇 [수정] clearUserAndData 에서도 theme을 'light'로 고정 ---
+  // --- 👇 [수정] clearUserAndData 에서 fontSizeSmall 제거 ---
   clearUserAndData: () => {
     // 모든 구독 해제
     get().unsubscribeAll();
@@ -145,6 +170,13 @@ export const useChatStore = create((set, get) => ({
       user: null, // authSlice
       theme: 'light', // uiSlice - 'light' 고정
       fontSize, language, // uiSlice
+      // [수정] 개인 설정 항목 기본값으로 초기화
+      contentTruncateLimit: 10,
+      hideCompletedScenarios: false,
+      hideDelayInHours: 0,
+      fontSizeDefault: "16px",
+      // fontSizeSmall: "14px", // [제거]
+      isDevMode: false, 
       // messages: getInitialMessages(language), // chatSlice 초기화는 resetMessages에서 처리
       conversations: [], currentConversationId: null, expandedConversationId: null, scenariosForConversation: {}, // conversationSlice 초기화
       favorites: [], // favoritesSlice 초기화
