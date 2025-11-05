@@ -9,8 +9,11 @@ import ArrowDropDownIcon from "./icons/ArrowDropDownIcon";
 import PinOutlinedIcon from "./icons/PinOutlinedIcon";
 import CloseIcon from "./icons/CloseIcon";
 import { useChatStore } from "../store";
+// --- 👇 [추가] ScenarioStatusBadge 임포트 ---
+import ScenarioStatusBadge from "./ScenarioStatusBadge";
+// --- 👆 [추가] ---
 
-// --- 👇 [추가] 완료 뱃지 아이콘 ---
+// --- 👇 [추가] 완료 뱃지 아이콘 (기존 정의 유지) ---
 const DoneBadgeIcon = () => (
   <svg
     width="16"
@@ -75,55 +78,9 @@ const TrashIcon = () => (
   </svg>
 );
 
-// --- 👇 [수정된 부분 시작] ---
-const ScenarioStatusBadge = ({ status, t, isSelected }) => {
-  // isSelected가 true이면 'selected' 상태를 우선 표시
-  if (isSelected) {
-    return (
-      <span className={`${styles.scenarioBadge} ${styles.selected}`}>
-        {t("statusSelected")}
-      </span>
-    );
-  }
-
-  // isSelected가 false이면 기존 status 로직 수행
-  if (!status) return null;
-
-  let text;
-  let statusClass;
-
-  switch (status) {
-    case "completed":
-      text = t("statusCompleted");
-      statusClass = "done";
-      break;
-    case "active":
-      text = t("statusActive");
-      statusClass = "incomplete";
-      break;
-    case "failed":
-      text = t("statusFailed");
-      statusClass = "failed";
-      break;
-    case "generating":
-      text = t("statusGenerating");
-      statusClass = "generating";
-      break;
-    case "canceled":
-      text = t("statusCanceled");
-      statusClass = "canceled";
-      break;
-    default:
-      return null;
-  }
-
-  return (
-    <span className={`${styles.scenarioBadge} ${styles[statusClass]}`}>
-      {text}
-    </span>
-  );
-};
-// --- 👆 [수정된 부분 끝] ---
+// --- 👇 [제거] ScenarioStatusBadge (ScenarioStatusBadge.jsx로 이동) ---
+// const ScenarioStatusBadge = ({ ... }) => { ... };
+// --- 👆 [제거] ---
 
 export default function ConversationItem({
   convo,
@@ -139,9 +96,7 @@ export default function ConversationItem({
   unreadScenarioSessions,
   hasUnreadScenarios,
   isPending,
-  // --- 👇 [추가] hasCompletedResponse 프롭 받기 ---
   hasCompletedResponse,
-  // --- 👆 [추가] ---
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -234,7 +189,6 @@ export default function ConversationItem({
         }}
       >
         <div className={styles.convoMain}>
-          {/* 로딩 아이콘 */}
           {isPending && !isEditing && (
             <span className={styles.loadingIndicator}>
               <img
@@ -247,20 +201,16 @@ export default function ConversationItem({
             </span>
           )}
 
-          {/* --- 👇 [추가] 완료 뱃지 (로딩 중 아닐 때) --- */}
           {!isPending && hasCompletedResponse && !isEditing && (
             <span className={styles.doneIndicator}>
               <DoneBadgeIcon />
             </span>
           )}
-          {/* --- 👆 [추가] --- */}
 
-          {/* 읽지 않은 시나리오 뱃지 (시나리오 확장 시에만 보임 - 현재 로직) */}
           {hasUnreadScenarios && !isEditing && (
             <div className={styles.unreadDot}></div>
           )}
           
-          {/* 고정 뱃지 */}
           {convo.pinned && !isEditing && (
             <span className={styles.pinIndicator}>
               <PinIcon />
@@ -354,11 +304,13 @@ export default function ConversationItem({
                     <span className={styles.scenarioTitle}>
                       {scenario.scenarioId}
                     </span>
+                    {/* --- 👇 [수정] 컴포넌트 사용 --- */}
                     <ScenarioStatusBadge
                       status={scenario.status}
                       t={t}
-                      // isSelected={isSelected}
+                      isSelected={isSelected} // isSelected prop 전달
                     />
+                    {/* --- 👆 [수정] --- */}
                   </div>
                 );
               })
