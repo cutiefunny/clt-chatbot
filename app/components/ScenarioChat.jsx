@@ -24,6 +24,7 @@ import {
   postToParent,
   PARENT_ORIGIN,
   SCENARIO_PANEL_WIDTH,
+  delayParentAnimationIfNeeded,
 } from "../lib/parentMessaging";
 
 // --- 👇 [추가] 엑셀 날짜 변환 헬퍼 ---
@@ -924,15 +925,16 @@ export default function ScenarioChat() {
           {/* "숨기기" 버튼 (기존 코드 유지) */}
           <button
             className={styles.headerCloseButton}
-            onClick={(e) => {
+            onClick={async (e) => {
               e.stopPropagation();
-              setActivePanel("main"); // 메인 패널로 전환 (포커스 이동 포함)
               console.log(
                 `[Call Window Method] callChatbotResize(width: -${SCENARIO_PANEL_WIDTH}) to ${PARENT_ORIGIN} with Close Scenario Chat`
               );
               postToParent("callChatbotResize", {
                 width: -SCENARIO_PANEL_WIDTH,
               });
+              await delayParentAnimationIfNeeded();
+              await setActivePanel("main"); // 메인 패널로 전환 (포커스 이동 포함)
             }}
           >
             <CloseIcon />

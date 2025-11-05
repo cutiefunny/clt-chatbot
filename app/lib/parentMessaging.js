@@ -2,6 +2,12 @@ export const PARENT_ORIGIN =
   process.env.NEXT_PUBLIC_PARENT_ORIGIN || "http://localhost:3000";
 
 export const SCENARIO_PANEL_WIDTH = 784;
+export const PARENT_ANIMATION_DELAY_MS = 300;
+
+const sleep = (ms) =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 
 export const isEmbeddedInParent = () => {
   if (typeof window === "undefined") {
@@ -66,4 +72,14 @@ export const openLinkThroughParent = (url) => {
   }
 
   return didSend;
+};
+
+export const delayParentAnimationIfNeeded = async (
+  delayMs = PARENT_ANIMATION_DELAY_MS
+) => {
+  if (!isEmbeddedInParent()) {
+    return false;
+  }
+  await sleep(delayMs);
+  return true;
 };

@@ -5,6 +5,7 @@ import {
   postToParent,
   PARENT_ORIGIN,
   SCENARIO_PANEL_WIDTH,
+  delayParentAnimationIfNeeded,
 } from "../../lib/parentMessaging";
 
 const getInitialMessages = (lang = "ko") => {
@@ -209,37 +210,36 @@ export const createUISlice = (set, get) => ({
       confirmModal: { ...state.confirmModal, isOpen: false },
     })),
 
-  toggleHistoryPanel: () => {
-    set((state) => ({ isHistoryPanelOpen: !state.isHistoryPanelOpen }));
-    const { isHistoryPanelOpen } = get();
-
-    if (isHistoryPanelOpen) {
-      console.log(
-        `[Call Window Method] callChatbotResize(width: 264) to ${PARENT_ORIGIN} with Open History Panel`
-      );
-      postToParent("callChatbotResize", { width: 264 });
-    } else {
-      console.log(
-        `[Call Window Method] callChatbotResize(width: -264) to ${PARENT_ORIGIN} with Close History Panel`
-      );
-      postToParent("callChatbotResize", { width: -264 });
-    }
+  toggleHistoryPanel: async () => {
+    const isCurrentlyOpen = get().isHistoryPanelOpen;
+    const willBeOpen = !isCurrentlyOpen;
+    const width = willBeOpen ? 264 : -264;
+    console.log(
+      `[Call Window Method] callChatbotResize(width: ${width}) to ${PARENT_ORIGIN} with ${
+        willBeOpen ? "Open" : "Close"
+      } History Panel`
+    );
+    postToParent("callChatbotResize", { width });
+    await delayParentAnimationIfNeeded();
+    set({ isHistoryPanelOpen: willBeOpen });
   },
 
-  toggleScenarioPanelExpanded: () => {
+  toggleScenarioPanelExpanded: async () => {
     if (get().activePanel !== "scenario") return;
     const wasExpanded = get().isScenarioPanelExpanded;
-    const widthDelta = wasExpanded ? -280 : 280;
+    const willBeExpanded = !wasExpanded;
+    const widthDelta = willBeExpanded ? 280 : -280;
     console.log(
       `[Call Window Method] callChatbotResize(width: ${widthDelta}) to ${PARENT_ORIGIN} with Toggle Scenario Panel Expanded`
     );
     postToParent("callChatbotResize", { width: widthDelta });
-    set({ isScenarioPanelExpanded: !wasExpanded });
+    await delayParentAnimationIfNeeded();
+    set({ isScenarioPanelExpanded: willBeExpanded });
   },
 
   resetScenarioPanelExpansion: () => set({ isScenarioPanelExpanded: false }),
 
-  setActivePanel: (panel, sessionId = null) => {
+  setActivePanel: async (panel, sessionId = null) => {
     const previousActivePanel = get().activePanel;
     const wasScenarioPanelActive = previousActivePanel === "scenario";
     const wasExpanded = get().isScenarioPanelExpanded;
@@ -249,6 +249,7 @@ export const createUISlice = (set, get) => ({
           `[Call Window Method] callChatbotResize(width: ${SCENARIO_PANEL_WIDTH}) to ${PARENT_ORIGIN} with Activate Scenario Panel`
         );
         postToParent("callChatbotResize", { width: SCENARIO_PANEL_WIDTH });
+        await delayParentAnimationIfNeeded();
       }
       set({
         activePanel: panel,

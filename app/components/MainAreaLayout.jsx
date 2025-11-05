@@ -7,7 +7,11 @@ import styles from "../page.module.css";
 import chatStyles from "./Chat.module.css";
 import MoonIcon from "./icons/MoonIcon";
 import CloseIcon from "./icons/CloseIcon";
-import { postToParent, PARENT_ORIGIN } from "../lib/parentMessaging";
+import {
+  postToParent,
+  PARENT_ORIGIN,
+  delayParentAnimationIfNeeded,
+} from "../lib/parentMessaging";
 
 export default function MainAreaLayout({
   historyPanelWidth,
@@ -59,11 +63,12 @@ export default function MainAreaLayout({
             </div>
             <button
               className={chatStyles.headerCloseButton}
-              onClick={() => {
+              onClick={async () => {
                 console.log(
                   `[Call Window Method] callChatbotClose to ${PARENT_ORIGIN}`
                 );
                 postToParent("callChatbotClose", { state: "close" });
+                await delayParentAnimationIfNeeded();
               }}
             >
               <CloseIcon />
