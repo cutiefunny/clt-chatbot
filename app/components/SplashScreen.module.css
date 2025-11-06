@@ -1,0 +1,60 @@
+/* app/components/SplashScreen.module.css */
+.splashContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100vw;
+  height: 100vh;
+  background-color: #C0C4E5; /* 요청하신 배경색 */
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9998; /* 모달보다는 낮게, 채팅 UI보다는 높게 */
+  transition: opacity 1s ease-out; /* 1s fade-out for the container */
+  opacity: 1; /* Start visible */
+}
+
+/* --- 👇 [추가] 컨테이너 페이드 아웃 애니메이션 --- */
+.fadeOutContainer {
+  opacity: 0;
+  pointer-events: none; /* 클릭 이벤트 방지 */
+}
+
+.splashLogo {
+  width: 128px; /* 로고 크기 (적절히 조절하세요) */
+  height: 128px;
+  /* 1s intro animation */
+  animation: scaleRotateAndFadeIn 1s ease-out forwards; /* 'forwards'로 최종 상태 유지 */
+  transform-origin: center center; /* 변형 기준점 중앙으로 설정 */
+}
+
+/* --- 👇 [추가] 로고 아웃트로 애니메이션 --- */
+.flyAwayLogo {
+  /* 1s outro animation, 'animation' 속성 교체로 인트로를 덮어씀 */
+  animation: flyToTopLeft 1s ease-in-out forwards; 
+}
+
+@keyframes scaleRotateAndFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(5) rotate(0deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(360deg);
+  }
+}
+
+/* --- 👇 [추가] 로고가 왼쪽 위로 날아가는 애니메이션 --- */
+@keyframes flyToTopLeft {
+  from {
+    /* 인트로 애니메이션의 'to' 상태에서 시작 */
+    transform: scale(1) rotate(360deg) translate(0, 0); 
+    opacity: 1;
+  }
+  to {
+    /* 최종 상태: 50% 축소, 왼쪽 상단으로 이동, 반투명 */
+    transform: scale(0.5) rotate(360deg) translate(calc(-50vw + 64px), calc(-50vh + 64px));
+    opacity: 0.5;
+  }
+}

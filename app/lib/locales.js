@@ -137,6 +137,10 @@ export const locales = {
 
     // API Messages
     scenarioListMessage: "실행할 시나리오를 선택해주세요.",
+
+    initialBotMessage: "무엇을 도와드릴까요?",
+    initialGreetingTitle: "무엇을 도와드릴까요?",
+    initialGreetingSubtitle: "자연어로 저에게 말해보세요. 예를 들어, '피드백 주기'.",
   },
   en: {
     // General
@@ -277,5 +281,9 @@ export const locales = {
 
     // API Messages
     scenarioListMessage: "Please select a scenario to run.",
+
+    initialBotMessage: "How can I help you?",
+    initialGreetingTitle: "How can I help you?",
+    initialGreetingSubtitle: "Talk to me naturally. For example, 'Give Feedback'."
   },
 };

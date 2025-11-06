@@ -9,6 +9,7 @@ import styles from "./page.module.css";
 import ConfirmModal from "../app/components/ConfirmModal";
 import DevStateDisplay from "../app/components/DevStateDisplay";
 import MainAreaLayout from "../app/components/MainAreaLayout";
+import SplashScreen from "../app/components/SplashScreen"; // <-- [추가]
 
 export default function HomePage() {
   const {
@@ -24,6 +25,7 @@ export default function HomePage() {
     setTheme,
     fontSize,
     setFontSize,
+    isInitializing, // <-- [추가]
   } = useChatStore();
 
   const handleConfirm = () => {
@@ -48,7 +50,12 @@ export default function HomePage() {
   return (
     <main className={styles.main}>
       <Toast />
-      {user ? (
+      {/* --- 👇 [수정] 렌더링 로직 변경 --- */}
+      {!user ? (
+        <Login />
+      ) : isInitializing ? (
+        <SplashScreen />
+      ) : (
         <>
           <div className={styles.chatLayout}>
             <HistoryPanel />
@@ -65,9 +72,8 @@ export default function HomePage() {
           {isScenarioModalOpen && <ScenarioModal />}
           {isDevMode && <DevStateDisplay />}
         </>
-      ) : (
-        <Login />
       )}
+      {/* --- 👆 [수정] --- */}
       {confirmModal.isOpen && (
         <ConfirmModal
           title={confirmModal.title}

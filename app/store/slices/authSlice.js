@@ -49,10 +49,12 @@ export const createAuthSlice = (set, get) => ({
     }
   },
 
-  // --- 👇 [추가] index.js에서 이동된 복합 액션 ---
+  // --- 👇 [수정] index.js에서 이동된 복합 액션 ---
   setUserAndLoadData: async (user) => {
-    set({ user });
+    // --- [수정] isInitializing을 true로 설정 ---
+    set({ user, isInitializing: true });
 
+    // 1. 데이터 마이그레이션 (Await)
     try {
       console.log("Checking for conversation migration...");
       const conversationsRef = collection(
@@ -80,6 +82,7 @@ export const createAuthSlice = (set, get) => ({
       console.error("Conversation migration failed:", error);
     }
 
+    // 2. 개인 설정 로드 (Await)
     let fontSize = "default",
       language = "ko",
       contentTruncateLimit = 10,
@@ -128,12 +131,21 @@ export const createAuthSlice = (set, get) => ({
       get().resetMessages?.(language);
     }
 
+    // 3. 리스너 구독 시작 (No Await)
     get().unsubscribeAll();
     get().loadConversations(user.uid);
     get().loadDevMemos();
     get().subscribeToUnreadStatus(user.uid);
     get().subscribeToUnreadScenarioNotifications(user.uid);
     get().loadFavorites(user.uid);
+
+    // --- [추가] 2초 타이머 (Await) ---
+    console.log("Starting 2-second splash screen timer...");
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    console.log("Timer finished. Hiding splash screen.");
+
+    // 4. 초기화 완료
+    set({ isInitializing: false });
   },
 
   clearUserAndData: () => {
@@ -194,6 +206,7 @@ export const createAuthSlice = (set, get) => ({
         onConfirm: () => {},
         confirmVariant: "default",
       },
+      isInitializing: false, // <-- [추가]
       activePanel: "main",
     });
     get().resetMessages?.(language);

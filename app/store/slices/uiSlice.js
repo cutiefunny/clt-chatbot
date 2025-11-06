@@ -64,6 +64,7 @@ export const createUISlice = (set, get) => ({
   scrollToMessageId: null,
   forceScrollToBottom: false,
   scrollAmount: 0,
+  isInitializing: false, // <-- [추가] 스플래시 화면 표시 여부
 
   // Actions
   loadGeneralConfig: async () => {
