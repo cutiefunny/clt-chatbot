@@ -24,7 +24,7 @@
 
 .markdownContent a {
   color: #4285f4; /* 링크 색상 */
-  text-decoration: underline;
+  /* text-decoration: underline; */
 }
 
 .markdownContent strong {
@@ -32,7 +32,7 @@
 }
 
 .markdownContent em {
-  font-style: italic; /* 기울임 */
+  /* font-style: italic; 기울임 */
 }
 
 .markdownContent code {
