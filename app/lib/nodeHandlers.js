@@ -179,17 +179,25 @@ async function handleApiNode(node, scenario, slots) {
              throw new Error("Invalid API node configuration: isMulti is true but 'apis' array is missing or invalid.");
         }
 
-        // 결과 매핑
+        // --- 👇 [수정] 결과 매핑 시 m.slot 유효성 검사 ---
         const combinedNewSlots = {};
         results.forEach(({ result, mapping }) => {
             if (mapping && mapping.length > 0) {
                 mapping.forEach(m => {
-                    const value = getDeepValue(result, m.path);
-                    if (value !== undefined) combinedNewSlots[m.slot] = value;
+                    // m.slot이 존재하고, 빈 문자열이 아닌지 확인
+                    if (m.slot && typeof m.slot === 'string' && m.slot.trim() !== '') {
+                        const value = getDeepValue(result, m.path);
+                        if (value !== undefined) {
+                            combinedNewSlots[m.slot] = value;
+                        }
+                    } else {
+                        console.warn(`[handleApiNode] Invalid or empty slot name found in responseMapping. Path: "${m.path}", Slot: "${m.slot}". Skipping mapping.`);
+                    }
                 });
             }
         });
         currentSlots = { ...currentSlots, ...combinedNewSlots }; // 슬롯 업데이트
+        // --- 👆 [수정] ---
 
         isSuccess = true;
     } catch (error) {

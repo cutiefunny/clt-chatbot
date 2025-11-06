@@ -12,8 +12,8 @@
 }
 
 .logo {
-  width: 64px; /* 로고 크기 */
-  height: 64px;
+  width: 128px; /* 로고 크기 */
+  height: 128px;
   margin-bottom: 20px;
   color: var(--primary-color); /* 로고 색상 */
 }
@@ -21,6 +21,7 @@
 .title {
   font-size: 1.8em;
   font-weight: 600;
+  margin-top: 50px;
   margin-bottom: 10px;
   color: var(--Gray-09, #293D5C); /* 강조 색상 */
 }

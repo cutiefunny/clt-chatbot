@@ -43,7 +43,7 @@
 .markdownContent li {
   margin-bottom: -10px;
   /* 리스트 번호 붙이기 */
-  list-style-type: disc;
+  /* list-style-type: disc; */
   margin-left: 20px;
 }
 

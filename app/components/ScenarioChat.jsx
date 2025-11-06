@@ -366,7 +366,15 @@ export default function ScenarioChat() {
                           <FormRenderer
                             node={msg.node}
                             onFormSubmit={handleFormSubmit}
-                            disabled={isCompleted}
+                            // --- 👇 [수정] ---
+                            // 1. 시나리오가 완료되었거나 (isCompleted)
+                            // 2. 이 폼 노드가 더 이상 현재 노드가 아니면 (제출 완료)
+                            // 비활성화합니다.
+                            disabled={
+                              isCompleted ||
+                              msg.node.id !== currentScenarioNodeId
+                            }
+                            // --- 👆 [수정] ---
                             language={language}
                             slots={activeScenario.slots}
                             onGridRowClick={handleGridRowSelected}
