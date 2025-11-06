@@ -121,6 +121,21 @@ const FormRenderer = ({
     }
   };
 
+  // --- 👇 [추가] 더블클릭 핸들러 ---
+  const handleInputDoubleClick = (e, el) => {
+    e.stopPropagation();
+    if (disabled) return; // 비활성화 상태면 무시
+
+    // defaultValue가 있는지 확인
+    if (el.defaultValue !== undefined && el.defaultValue !== null) {
+      // defaultValue를 현재 슬롯 기준으로 보간
+      const interpolatedValue = interpolateMessage(String(el.defaultValue), slots);
+      // handleInputChange를 호출하여 formData 상태 업데이트
+      handleInputChange(el.name, interpolatedValue);
+    }
+  };
+  // --- 👆 [추가] ---
+
   const handleExcelUploadClick = (e) => {
     e.stopPropagation();
     fileInputRef.current?.click();
@@ -270,6 +285,7 @@ const FormRenderer = ({
                       }
                       disabled={disabled}
                       onClick={(e) => e.stopPropagation()}
+                      onDoubleClick={(e) => handleInputDoubleClick(e, el)} // --- 👈 [수정] ---
                     />
                   )}
                   {el.type === "date" && (
@@ -283,6 +299,7 @@ const FormRenderer = ({
                       onClick={handleDateInputClick}
                       disabled={disabled}
                       {...dateProps}
+                      onDoubleClick={(e) => handleInputDoubleClick(e, el)} // --- 👈 [수정] ---
                     />
                   )}
                   {el.type === "dropbox" && (
