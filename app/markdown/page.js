@@ -1,209 +1,137 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-// CSS 모듈 import는 제거합니다. (스타일을 동적으로 주입할 것이기 때문)
-// import markdownStyles from '../../components/MarkdownRenderer.module.css'; 
 import styles from './page.module.css';
 import Link from 'next/link';
+import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+// MarkdownRenderer.jsx의 CSS를 가져와서 TO-BE 패널에 적용합니다.
+import markdownStyles from '../components/MarkdownRenderer.module.css';
 
 // 렌더러 테스트를 위한 기본 마크다운 텍스트
 const sampleMarkdown = `
-# 마크다운 렌더러 테스트
+# AS-IS: 마크다운 입력
+이곳에 마크다운 텍스트를 입력하면,
+TO-BE 프리뷰에 **react-markdown** 라이브러리 렌더링 결과가 실시간으로 반영됩니다.
 
-이 페이지는 렌더링 기능과 스타일을 실시간으로 테스트합니다.
-아래 텍스트 영역의 내용을 수정하면 미리보기에 즉시 반영됩니다.
 
----
+## TO-BE: 스타일 테스트
+* *이탤릭체* (em)
+* **굵은 글씨** (strong)
+* \`인라인 코드\` (code)
+* [링크](https://www.google.com) (a)
 
-## 지원하는 기능
+## 리스트 테스트
+* 항목 1
+* 항목 2
+    * 중첩 항목 2.1
 
-* **굵은 글씨:** **이 텍스트는 굵게 표시됩니다.**
-* *기울임꼴:* *이 텍스트는 기울임꼴입니다.*
-* \`인라인 코드\`: \`const message = "Hello World";\`
-* [링크](https://www.google.com): [Google로 이동](https://www.google.com)
-* 줄바꿈:
-  이렇게 자동으로
-  줄바꿈이 적용됩니다.
 
----
-
-## 테이블 테스트
-
-| 헤더 1 (왼쪽 정렬) | 헤더 2 (기본 정렬) | 헤더 3 (오른쪽 정렬) |
-| :--- | --- | ---: |
+## GFM 테이블 테스트
+| 헤더 1 | 헤더 2 | 헤더 3 |
+| :--- | :---: | ---: |
 | 셀 1-1 | 셀 1-2 | 1000 |
 | 셀 2-1 | 셀 2-2 | 20 |
 `;
 
-// --- 👇 [수정] 주석 추가 및 가독성 개선 ---
-// MarkdownRenderer.jsx의 formatMarkdown 함수 로직 (백슬래시 이스케이프 처리됨)
-const defaultFunctionBody = `
-  // 1. 입력값이 문자열이 아니면 빈 문자열로 변환
-  if (typeof text !== 'string') {
-    text = String(text || '');
-  }
-
-  // 2. 기본 HTML 이스케이프 (XSS 방지)
-  let escapedText = text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-
-  // 3. 마크다운 -> HTML 변환
-  // 링크: \\[text\\]\\(url) (http/https만 허용)
-  // (백슬래시 이스케이프 때문에 \\[ \\] \\( \\) \\/ 등으로 표시됨)
-  escapedText = escapedText.replace(
-    /\\[([^\\]]+)\\]\\((https?:\\/\\/[^)]+)\\)/g,
-    '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
-  );
-
-  // 굵게: \\*\\*text\\*\\*
-  escapedText = escapedText.replace(/\\*\\*(?=\\S)(.+?[*_]*)(?=\\S)\\*\\*/g, '<strong>$1</strong>');
-
-  // 기울임: \\*text\\*
-  escapedText = escapedText.replace(/\\*(?=\\S)(.+?[*_]*)(?=\\S)\\*/g, '<em>$1</em>');
-  
-  // 인라인 코드: \\\`text\\\`
-  escapedText = escapedText.replace(/\\\`(.+?)\\\`/g, '<code>$1</code>');
-
-  // 줄바꿈: \\n -> <br />
-  escapedText = escapedText.replace(/\\n/g, '<br />');
-
-  // 테이블 처리 (간단한 구현)
-  const tableRegex = /(?:\\|(.+?)\\|[\\r\\n]+)(?:\\|([-: ]+)\\|[\\r\\n]+)((?:\\|.*\\|[\\r\\n]+)*)/g;
-  escapedText = escapedText.replace(tableRegex, (match, headerRow, alignRow, bodyRows) => {
-    // 헤더 행 파싱
-    const headers = headerRow.split('|').map(h => h.trim());
-    // 정렬 행 파싱
-    const aligns = alignRow.split('|').map(a => a.trim());
-    // 본문 행 파싱
-    const bodies = bodyRows.trim().split('\\n').map(row => row.split('|').map(cell => cell.trim()));
-
-    let tableHTML = '<table>';
-    
-    // 테이블 헤더 (thead) 렌더링
-    tableHTML += '<thead><tr>';
-    headers.forEach((header, i) => {
-      // 정렬 정보(aligns[i])가 있으면 적용, 없으면 'left' 기본값
-      tableHTML += \`<th style="text-align: \${aligns[i] || 'left'}">\${header}</th>\`;
-    });
-    tableHTML += '</tr></thead>';
-
-    // 테이블 본문 (tbody) 렌더링
-    tableHTML += '<tbody>';
-    bodies.forEach(row => {
-      tableHTML += '<tr>';
-      row.forEach(cell => {
-        tableHTML += \`<td>\${cell}</td>\`;
-      });
-      tableHTML += '</tr>';
-    });
-    tableHTML += '</tbody></table>';
-
-    return tableHTML;
-  });
-
-  // 4. 최종 HTML 반환
-  return escapedText;
-`;
-// --- 👆 [수정] ---
-
-// --- 👇 [추가] MarkdownRenderer.module.css의 원본 내용 ---
-// 동적 적용을 위해 클래스 이름을 `.dynamicMarkdownPreview`로 변경했습니다.
-const defaultCssCode = `
-/* app/components/MarkdownRenderer.module.css (수정됨) */
-.dynamicMarkdownPreview {
-  line-height: 1.6;
+// --- 👇 [수정] CSS 규칙을 객체로 분리하여 초기 상태 정의 ---
+const initialCssState = {
+  // .markdownContent (루트)
+  root: `  line-height: 2.5;
   word-wrap: break-word; /* 긴 텍스트 줄바꿈 */
-}
-
-.dynamicMarkdownPreview a {
-  color: #4285f4; /* 링크 색상 */
-  text-decoration: underline;
-}
-
-.dynamicMarkdownPreview strong {
-  font-weight: 600; /* 굵게 */
-}
-
-.dynamicMarkdownPreview em {
-  font-style: italic; /* 기울임 */
-}
-
-.dynamicMarkdownPreview code {
-  font-family: var(--font-geist-mono), monospace;
-  background-color: var(--button-hover-bg); /* 코드 배경 */
+  max-width: 100%;
+  min-width: 0;`,
+  h1: `  color: var(--Purple-03, #634de2);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 20px;
+  letter-spacing: -0.14px;`,
+  h2: `  color: var(--Gray-08, #282166);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  letter-spacing: -0.14px;`,
+  a: `  color: #4285f4; /* 링크 색상 */
+  /* text-decoration: underline; */`,
+  strong: `  font-weight: 600; /* 굵게 */`,
+  em: `  font-style: normal;`,
+  ul: `  margin-bottom: 0px;
+  margin-top: -10px;
+  list-style-type: disc;
+  padding-left: 30px;`,
+  li: `  margin-bottom: -10px;
+  list-style-type: disc;`,
+  code: `  font-family: var(--font-geist-mono), monospace;
+  background-color: var(--button-hover-bg);
   padding: 2px 5px;
   border-radius: 4px;
   font-size: 0.9em;
-  word-wrap: break-word; /* 코드 줄바꿈 */
-}
-
-/* <br> 태그로 인한 이중 간격 방지 */
-.dynamicMarkdownPreview br {
-  content: "";
-  display: block;
-  margin-bottom: 0;
-}
-
-/* 테이블 스타일 추가 */
-.dynamicMarkdownPreview table {
-  border-collapse: collapse;
-  margin: 1em 0;
-  width: auto;
+  word-wrap: break-word;`,
+  table: `  border-collapse: collapse;
+  width: max-content;
+  min-width: 100%;
+  outline: 1px solid var(--panel-border-color);
+  outline-offset: -1px;`,
+  th: `  background-color: #f4f5fb;
+  padding: 8px 10px;
   border: 1px solid #d8e0eb;
-}
-
-.dynamicMarkdownPreview th,
-.dynamicMarkdownPreview td {
+  min-width: 50px;
+  max-width: 120px;
+  color: var(--Gray-08, #282166);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  letter-spacing: -0.18px;
+  white-space: normal;
+  word-break: break-word;`,
+  td: `  padding: 8px 12px;
   border: 1px solid #d8e0eb;
-  padding: 8px 12px;
-}
-
-.dynamicMarkdownPreview th {
-  background-color: #f4f5fb;
-  font-weight: 600;
-}
-`;
-// --- 👆 [추가] ---
+  min-width: 50px;
+  max-width: 120px;
+  color: var(--Gray-08, #282166);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  letter-spacing: -0.18px;
+  white-space: normal;
+  word-break: break-word;`,
+  // .tableWrapper (테이블 감싸는 div)
+  tableWrapper: `  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;`,
+};
+// --- 👆 [수정] ---
 
 // 동적으로 주입할 <style> 태그의 고유 ID
 const DYNAMIC_STYLE_ID = 'dynamic-markdown-renderer-style';
 
+// MarkdownRenderer.jsx의 table 커스텀 로직을 가져옵니다.
+const markdownComponents = {
+  table: ({ node: _node, ...props }) => (
+    // .tableWrapper 스타일은 CSS 주입을 통해 적용됩니다.
+    <div className={markdownStyles.tableWrapper}>
+      <table {...props} />
+    </div>
+  ),
+};
+
+
 export default function MarkdownTestPage() {
   const [markdownInput, setMarkdownInput] = useState(sampleMarkdown);
-  const [functionCode, setFunctionCode] = useState(defaultFunctionBody);
-  // --- 👇 [추가] CSS 코드 상태 ---
-  const [cssCode, setCssCode] = useState(defaultCssCode);
-  // --- 👆 [추가] ---
+  // --- 👇 [수정] CSS 상태를 문자열 -> 객체로 변경 ---
+  const [cssStyles, setCssStyles] = useState(initialCssState);
+  // --- 👆 [수정] ---
   
-  const [renderedHtml, setRenderedHtml] = useState('');
-  const [functionError, setFunctionError] = useState(null);
-
-  // JS 렌더링 함수 로직 (이전과 동일)
+  // --- [유지] CSS를 <head>에 주입하는 로직 (마운트/언마운트) ---
   useEffect(() => {
-    try {
-      const formatFn = new Function('text', functionCode);
-      const html = formatFn(markdownInput);
-      setRenderedHtml(html);
-      setFunctionError(null);
-    } catch (error) {
-      console.error("Markdown function error:", error);
-      setFunctionError(error.message);
-    }
-  }, [markdownInput, functionCode]);
-
-  // --- 👇 [추가] CSS를 <head>에 주입하는 로직 ---
-  useEffect(() => {
-    // 1. 컴포넌트 마운트 시 <style> 태그 생성
     let styleTag = document.getElementById(DYNAMIC_STYLE_ID);
     if (!styleTag) {
       styleTag = document.createElement('style');
       styleTag.id = DYNAMIC_STYLE_ID;
       document.head.appendChild(styleTag);
     }
-
-    // 2. 컴포넌트 언마운트 시 <style> 태그 제거
     return () => {
       const tag = document.getElementById(DYNAMIC_STYLE_ID);
       if (tag) {
@@ -212,34 +140,53 @@ export default function MarkdownTestPage() {
     };
   }, []); // 마운트/언마운트 시 한 번만 실행
 
-  // 3. cssCode가 변경될 때마다 <style> 태그 내용 업데이트
+  // --- 👇 [수정] cssStyles 객체가 변경될 때마다 <style> 태그 내용 업데이트 ---
   useEffect(() => {
     const styleTag = document.getElementById(DYNAMIC_STYLE_ID);
     if (styleTag) {
-      styleTag.innerHTML = cssCode;
+      // cssStyles 객체로부터 전체 CSS 문자열 생성
+      const fullCssString = Object.entries(cssStyles)
+        .map(([key, value]) => {
+          if (key === 'root') {
+            // .markdownContent (루트 클래스)
+            return `.${markdownStyles.markdownContent} {\n${value}\n}`;
+          }
+          if (key === 'tableWrapper') {
+            // .tableWrapper (특수 클래스)
+            return `.${markdownStyles.tableWrapper} {\n${value}\n}`;
+          }
+          // .markdownContent 내부의 태그
+          return `.${markdownStyles.markdownContent} ${key} {\n${value}\n}`;
+        })
+        .join('\n\n');
+        
+      styleTag.innerHTML = fullCssString;
     }
-  }, [cssCode]);
+  }, [cssStyles]);
+  // --- 👆 [수정] ---
+
+  // --- 👇 [추가] 개별 CSS 규칙을 업데이트하는 핸들러 ---
+  const handleCssRuleChange = (key, value) => {
+    setCssStyles(prev => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
   // --- 👆 [추가] ---
 
   return (
     <div className={styles.pageWrapper}>
       <header className={styles.header}>
         <h1>Markdown 렌더러 샌드박스</h1>
-        <p>마크다운 입력, 렌더링 함수(JS), 스타일(CSS)을 수정하여 실시간으로 결과를 확인합니다.</p>
+        <p>마크다운 입력(AS-IS)과 스타일(CSS)을 수정하여 실시간으로 렌더링 결과(TO-BE)를 확인합니다.</p>
         <Link href="/">← 챗봇으로 돌아가기</Link>
       </header>
 
-      {functionError && (
-        <div className={styles.errorBox}>
-          <strong>함수 오류:</strong> {functionError}
-        </div>
-      )}
-
-      {/* --- 👇 [수정] 2x2 그리드 레이아웃으로 변경 --- */}
+      {/* --- [유지] 레이아웃 --- */}
       <div className={styles.container}>
         {/* 1. 마크다운 입력 영역 */}
         <div className={styles.editorContainer}>
-          <h2>입력 (Markdown)</h2>
+          <h2>AS-IS (Markdown Input)</h2>
           <textarea
             className={styles.textarea}
             value={markdownInput}
@@ -250,40 +197,45 @@ export default function MarkdownTestPage() {
 
         {/* 2. 렌더링 결과 영역 */}
         <div className={styles.previewContainer}>
-          <h2>미리보기 (HTML)</h2>
+          <h2>TO-BE (Preview)</h2>
           <div
-            className={`${styles.previewBox} dynamicMarkdownPreview`} // CSS 모듈 대신 정적 클래스 사용
-            dangerouslySetInnerHTML={{ __html: renderedHtml }}
-          />
+            className={`${styles.previewBox} ${markdownStyles.markdownContent}`} 
+          >
+            <Markdown 
+              remarkPlugins={[remarkGfm]} 
+              components={markdownComponents}
+            >
+              {markdownInput}
+            </Markdown>
+          </div>
         </div>
 
-        {/* 3. 렌더링 함수 편집 영역 */}
-        <div className={styles.editorContainer}>
-          <h2>
-            <code>formatMarkdown(text)</code> 함수 본문 (JavaScript)
-          </h2>
-          <textarea
-            className={`${styles.textarea} ${styles.codeArea} ${functionError ? styles.hasError : ''}`}
-            value={functionCode}
-            onChange={(e) => setFunctionCode(e.target.value)}
-            spellCheck="false"
-          />
-        </div>
-
-        {/* 4. CSS 편집 영역 */}
-        <div className={styles.editorContainer}>
+        {/* 3. CSS 편집 영역 (하단 전체 너비) */}
+        <div className={styles.cssEditorContainer}>
           <h2>
             스타일시트 (CSS)
           </h2>
-          <textarea
-            className={`${styles.textarea} ${styles.codeArea}`}
-            value={cssCode}
-            onChange={(e) => setCssCode(e.target.value)}
-            spellCheck="false"
-          />
+          {/* --- 👇 [수정] 단일 textarea -> 분리된 textarea 그리드 --- */}
+          <div className={styles.cssEditorGrid}>
+            {Object.entries(cssStyles).map(([key, value]) => (
+              <div key={key} className={styles.cssRuleEditor}>
+                <label className={styles.cssRuleLabel}>
+                  {key === 'root' ? `.${markdownStyles.markdownContent}` : 
+                   key === 'tableWrapper' ? `.${markdownStyles.tableWrapper}` : 
+                   `${key}`}
+                </label>
+                <textarea
+                  className={`${styles.textarea} ${styles.codeArea} ${styles.cssRuleTextarea}`}
+                  value={value}
+                  onChange={(e) => handleCssRuleChange(key, e.target.value)}
+                  spellCheck="false"
+                />
+              </div>
+            ))}
+          </div>
+          {/* --- 👆 [수정] --- */}
         </div>
       </div>
-      {/* --- 👆 [수정] --- */}
     </div>
   );
 }

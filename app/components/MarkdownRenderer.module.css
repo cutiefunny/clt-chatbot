@@ -32,7 +32,19 @@
 }
 
 .markdownContent em {
-  /* font-style: italic; 기울임 */
+  font-style: normal;
+}
+
+.markdownContent ul {
+  margin-bottom: 0px;
+  margin-top: -10px;
+}
+
+.markdownContent li {
+  margin-bottom: -10px;
+  /* 리스트 번호 붙이기 */
+  list-style-type: disc;
+  margin-left: 20px;
 }
 
 .markdownContent code {

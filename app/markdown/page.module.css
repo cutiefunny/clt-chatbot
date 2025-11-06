@@ -39,22 +39,25 @@
   text-decoration: underline;
 }
 
-/* --- 👇 [수정] 2x2 그리드 레이아웃 --- */
+/* --- [유지] 2열(상단), 1열(하단) 그리드 --- */
 .container {
   display: grid;
-  grid-template-columns: 1fr 1fr; /* 2열 */
-  grid-template-rows: auto auto;   /* 2행 */
+  grid-template-columns: 1fr 1fr; /* 상단 2열 */
+  grid-template-rows: auto auto;   /* 2행 (상단, 하단) */
   gap: 20px;
   max-width: 100%; /* 너비 꽉 채우기 */
   margin: 0 auto;
 }
-/* --- 👆 [수정] --- */
 
 .editorContainer,
 .previewContainer {
   display: flex;
   flex-direction: column;
+  /* 상단 패널의 최소/권장 높이 설정 */
+  min-height: 400px; 
+  height: 50vh; 
 }
+/* --- [유지] --- */
 
 .editorContainer h2,
 .previewContainer h2 {
@@ -72,11 +75,10 @@
   border-radius: 4px;
 }
 
-/* --- 👇 [수정] 높이 조절 (vh -> 45vh) --- */
+/* --- [유지] 높이 계산 방식 변경 (flex-grow) --- */
 .textarea {
   width: 100%;
-  height: 45vh; /* 2x2로 보이도록 높이 조절 */
-  min-height: 300px; /* 최소 높이 */
+  height: 100%; /* 부모(.editorContainer)의 높이를 따름 */
   font-family: var(--font-geist-sans), sans-serif; /* 마크다운은 일반 폰트 */
   font-size: 14px;
   padding: 16px;
@@ -98,13 +100,10 @@
   border-color: #e74c3c;
   border-width: 2px;
 }
-/* --- 👆 [수정] --- */
 
-/* --- 👇 [수정] 높이 조절 (vh -> 45vh) --- */
 .previewBox {
   width: 100%;
-  height: 45vh; /* 2x2로 보이도록 높이 조절 */
-  min-height: 300px; /* 최소 높이 */
+  height: 100%; /* 부모(.previewContainer)의 높이를 따름 */
   border: 1px solid #d8e0eb;
   border-radius: 8px;
   padding: 16px;
@@ -112,7 +111,7 @@
   overflow-y: auto; /* 내용이 길어지면 스크롤 */
   box-sizing: border-box;
 }
-/* --- 👆 [수정] --- */
+/* --- [유지] --- */
 
 .errorBox {
   background-color: #ffebee;
@@ -128,3 +127,52 @@
   color: #c0392b;
   font-weight: 600;
 }
+
+/* --- [유지] CSS 편집기 컨테이너 (하단 전체 너비) --- */
+.cssEditorContainer {
+  grid-column: 1 / -1; /* 1번 열에서 마지막 열까지 확장 */
+  display: flex;
+  flex-direction: column;
+  min-height: 250px; /* CSS 편집기 최소 높이 */
+  /* --- 👇 [수정] 높이 고정 -> 유연하게 변경 --- */
+  height: auto; 
+  /* --- 👆 [수정] --- */
+}
+/* --- [유지] --- */
+
+/* --- 👇 [추가] CSS 규칙 편집기 그리드 스타일 --- */
+.cssEditorGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  width: 100%;
+  /* 스크롤바가 필요할 경우를 대비 (컨테이너 높이 고정 시) */
+  /* overflow-y: auto; */
+  /* padding: 8px; */
+  /* background: #fdfdfd; */
+  /* border: 1px solid #d8e0eb; */
+  /* border-radius: 8px; */
+}
+
+.cssRuleEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cssRuleLabel {
+  font-family: var(--font-geist-mono), monospace;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #282166;
+  padding: 4px 8px;
+  background: #e1e4f2;
+  border-radius: 4px;
+}
+
+.cssRuleTextarea {
+  /* .textarea 기본 스타일을 상속받음 */
+  height: 150px; /* 각 textarea의 높이 고정 */
+  min-height: 100px; /* 최소 높이 */
+}
+/* --- 👆 [추가] --- */
