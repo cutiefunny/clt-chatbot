@@ -1,3 +1,4 @@
+// app/admin/scenario-editor/page.js
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -189,8 +190,12 @@ export default function ScenarioEditorPage() {
                                                                             >
                                                                                 <option value="scenario">Scenario</option>
                                                                                 <option value="custom">Custom Action</option>
+                                                                                {/* --- ▼ 수정 ▼ --- */}
+                                                                                <option value="text">Text</option>
+                                                                                {/* --- ▲ 수정 ▲ --- */}
                                                                             </select>
 
+                                                                            {/* --- ▼ 수정 ▼ --- */}
                                                                             {item.action.type === 'scenario' ? (
                                                                                 <select 
                                                                                     value={item.action.value} 
@@ -202,7 +207,7 @@ export default function ScenarioEditorPage() {
                                                                                         <option key={id} value={id}>{id}</option>
                                                                                     ))}
                                                                                 </select>
-                                                                            ) : (
+                                                                            ) : item.action.type === 'custom' ? (
                                                                                 <input 
                                                                                     type="text" 
                                                                                     value={item.action.value} 
@@ -210,7 +215,16 @@ export default function ScenarioEditorPage() {
                                                                                     placeholder="Custom Action Name (e.g., GET_SCENARIO_LIST)" 
                                                                                     className={styles.inputField}
                                                                                 />
+                                                                            ) : ( // 'text' 타입일 경우
+                                                                                <input 
+                                                                                    type="text" 
+                                                                                    value={item.action.value} 
+                                                                                    onChange={e => handleInputChange([catIndex, 'subCategories', subCatIndex, 'items', itemIndex, 'action'], 'value', e.target.value)} 
+                                                                                    placeholder="전송할 텍스트를 입력하세요" 
+                                                                                    className={styles.inputField}
+                                                                                />
                                                                             )}
+                                                                            {/* --- ▲ 수정 ▲ --- */}
                                                                         </div>
                                                                     </div>
                                                                 </div>
