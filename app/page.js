@@ -1,3 +1,4 @@
+// app/page.js
 "use client";
 
 import { useChatStore } from "../app/store";
@@ -12,21 +13,25 @@ import MainAreaLayout from "../app/components/MainAreaLayout";
 import SplashScreen from "../app/components/SplashScreen"; // <-- [추가]
 
 export default function HomePage() {
-  const {
-    user,
-    isHistoryPanelOpen,
-    isScenarioModalOpen,
-    confirmModal,
-    closeConfirmModal,
-    isDevMode,
-    activePanel, // activePanel 상태 가져오기
-    isScenarioPanelExpanded,
-    theme,
-    setTheme,
-    fontSize,
-    setFontSize,
-    isInitializing, // <-- [추가]
-  } = useChatStore();
+  // --- 👇 [수정] 스토어 셀렉터를 개별적으로 분리하여 무한 루프 방지 ---
+  const user = useChatStore((state) => state.user);
+  const isHistoryPanelOpen = useChatStore((state) => state.isHistoryPanelOpen);
+  const isScenarioModalOpen = useChatStore((state) => state.isScenarioModalOpen);
+  const confirmModal = useChatStore((state) => state.confirmModal);
+  const closeConfirmModal = useChatStore((state) => state.closeConfirmModal);
+  const isDevMode = useChatStore((state) => state.isDevMode);
+  const activePanel = useChatStore((state) => state.activePanel);
+  const isScenarioPanelExpanded = useChatStore(
+    (state) => state.isScenarioPanelExpanded
+  );
+  const theme = useChatStore((state) => state.theme);
+  const setTheme = useChatStore((state) => state.setTheme);
+  const fontSize = useChatStore((state) => state.fontSize);
+  const setFontSize = useChatStore((state) => state.setFontSize);
+  const isInitializing = useChatStore((state) => state.isInitializing);
+  const setIsInitializing = useChatStore((state) => state.setIsInitializing);
+  const messages = useChatStore((state) => state.messages);
+  // --- 👆 [수정] ---
 
   const handleConfirm = () => {
     if (confirmModal.onConfirm) {
@@ -35,8 +40,16 @@ export default function HomePage() {
     closeConfirmModal();
   };
 
-  // --- 👇 [수정] 히스토리 패널 너비 계산 로직 분리 ---
-  const historyPanelWidth = isHistoryPanelOpen ? "320px" : "60px";
+  // --- 👇 [수정] HistoryPanel 표시 여부 및 너비 계산 ---
+  // 초기 메시지("initial")만 있는지 확인
+  const showInitialGreeting = messages.length <= 1;
+
+  // 히스토리 패널 너비 계산: 초기 화면이면 0px, 아니면 상태에 따라 60px 또는 320px
+  const historyPanelWidth = showInitialGreeting
+    ? "0px"
+    : isHistoryPanelOpen
+    ? "320px"
+    : "60px";
   // --- 👆 [수정] ---
 
   const scenarioPanelClasses = [styles.scenarioPanel];
@@ -47,6 +60,12 @@ export default function HomePage() {
     }
   }
 
+  // --- 👇 [추가] 스플래시 애니메이션 종료 핸들러 ---
+  const handleSplashAnimationEnd = () => {
+    console.log("Splash animation finished. Setting isInitializing to false.");
+    setIsInitializing(false); // 스토어 상태 변경
+  };
+
   return (
     <main className={styles.main}>
       <Toast />
@@ -54,11 +73,15 @@ export default function HomePage() {
       {!user ? (
         <Login />
       ) : isInitializing ? (
-        <SplashScreen />
+        // --- 👇 [수정] 89라인의 {" "} 제거 ---
+        <SplashScreen onAnimationEnd={handleSplashAnimationEnd} />
       ) : (
+        // --- 👆 [수정] ---
         <>
           <div className={styles.chatLayout}>
-            <HistoryPanel />
+            {/* --- 👇 [수정] 초기 화면이 아닐 때만 HistoryPanel 렌더링 --- */}
+            {!showInitialGreeting && <HistoryPanel />}
+            {/* --- 👆 [수정] --- */}
             <MainAreaLayout
               historyPanelWidth={historyPanelWidth}
               scenarioPanelClasses={scenarioPanelClasses}
