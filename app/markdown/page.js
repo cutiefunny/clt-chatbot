@@ -8,12 +8,18 @@ import remarkGfm from 'remark-gfm';
 // MarkdownRenderer.jsx의 CSS를 가져와서 TO-BE 패널에 적용합니다.
 import markdownStyles from '../components/MarkdownRenderer.module.css';
 
+// --- 👇 [수정] Chat.module.css와 LogoIcon을 import ---
+import chatStyles from '../components/Chat.module.css';
+import LogoIcon from '../components/icons/LogoIcon';
+// --- 👆 [수정] ---
+
 // 렌더러 테스트를 위한 기본 마크다운 텍스트
 const sampleMarkdown = `
 # AS-IS: 마크다운 입력
 이곳에 마크다운 텍스트를 입력하면,
 TO-BE 프리뷰에 **react-markdown** 라이브러리 렌더링 결과가 실시간으로 반영됩니다.
 
+---
 
 ## TO-BE: 스타일 테스트
 * *이탤릭체* (em)
@@ -26,6 +32,7 @@ TO-BE 프리뷰에 **react-markdown** 라이브러리 렌더링 결과가 실시
 * 항목 2
     * 중첩 항목 2.1
 
+---
 
 ## GFM 테이블 테스트
 | 헤더 1 | 헤더 2 | 헤더 3 |
@@ -34,10 +41,10 @@ TO-BE 프리뷰에 **react-markdown** 라이브러리 렌더링 결과가 실시
 | 셀 2-1 | 셀 2-2 | 20 |
 `;
 
-// --- 👇 [수정] CSS 규칙을 객체로 분리하여 초기 상태 정의 ---
+// --- [유지] CSS 규칙을 객체로 분리하여 초기 상태 정의 ---
 const initialCssState = {
   // .markdownContent (루트)
-  root: `  line-height: 2.5;
+  root: `  line-height: 1.6;
   word-wrap: break-word; /* 긴 텍스트 줄바꿈 */
   max-width: 100%;
   min-width: 0;`,
@@ -57,16 +64,19 @@ const initialCssState = {
   em: `  font-style: normal;`,
   ul: `  margin-bottom: 0px;
   margin-top: -10px;
+  /* react-markdown 기본 리스트 스타일 적용을 위해 추가 */
   list-style-type: disc;
   padding-left: 30px;`,
   li: `  margin-bottom: -10px;
-  list-style-type: disc;`,
+  /* 리스트 번호 붙이기 */
+  list-style-type: disc;
+  /* margin-left: 20px; (ul에서 padding-left로 대체) */`,
   code: `  font-family: var(--font-geist-mono), monospace;
-  background-color: var(--button-hover-bg);
+  background-color: var(--button-hover-bg); /* 코드 배경 */
   padding: 2px 5px;
   border-radius: 4px;
   font-size: 0.9em;
-  word-wrap: break-word;`,
+  word-wrap: break-word; /* 코드 줄바꿈 */`,
   table: `  border-collapse: collapse;
   width: max-content;
   min-width: 100%;
@@ -102,7 +112,7 @@ const initialCssState = {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;`,
 };
-// --- 👆 [수정] ---
+// --- [유지] ---
 
 // 동적으로 주입할 <style> 태그의 고유 ID
 const DYNAMIC_STYLE_ID = 'dynamic-markdown-renderer-style';
@@ -120,9 +130,7 @@ const markdownComponents = {
 
 export default function MarkdownTestPage() {
   const [markdownInput, setMarkdownInput] = useState(sampleMarkdown);
-  // --- 👇 [수정] CSS 상태를 문자열 -> 객체로 변경 ---
   const [cssStyles, setCssStyles] = useState(initialCssState);
-  // --- 👆 [수정] ---
   
   // --- [유지] CSS를 <head>에 주입하는 로직 (마운트/언마운트) ---
   useEffect(() => {
@@ -140,7 +148,7 @@ export default function MarkdownTestPage() {
     };
   }, []); // 마운트/언마운트 시 한 번만 실행
 
-  // --- 👇 [수정] cssStyles 객체가 변경될 때마다 <style> 태그 내용 업데이트 ---
+  // --- [유지] cssStyles 객체가 변경될 때마다 <style> 태그 내용 업데이트 ---
   useEffect(() => {
     const styleTag = document.getElementById(DYNAMIC_STYLE_ID);
     if (styleTag) {
@@ -163,16 +171,16 @@ export default function MarkdownTestPage() {
       styleTag.innerHTML = fullCssString;
     }
   }, [cssStyles]);
-  // --- 👆 [수정] ---
+  // --- [유지] ---
 
-  // --- 👇 [추가] 개별 CSS 규칙을 업데이트하는 핸들러 ---
+  // --- [유지] 개별 CSS 규칙을 업데이트하는 핸들러 ---
   const handleCssRuleChange = (key, value) => {
     setCssStyles(prev => ({
       ...prev,
       [key]: value,
     }));
   };
-  // --- 👆 [추가] ---
+  // --- [유지] ---
 
   return (
     <div className={styles.pageWrapper}>
@@ -196,26 +204,44 @@ export default function MarkdownTestPage() {
         </div>
 
         {/* 2. 렌더링 결과 영역 */}
+        {/* --- 👇 [수정] 미리보기 패널을 실제 시나리오 구조와 동일하게 래핑 --- */}
         <div className={styles.previewContainer}>
           <h2>TO-BE (Preview)</h2>
-          <div
-            className={`${styles.previewBox} ${markdownStyles.markdownContent}`} 
-          >
-            <Markdown 
-              remarkPlugins={[remarkGfm]} 
-              components={markdownComponents}
-            >
-              {markdownInput}
-            </Markdown>
+          
+          {/* 이 outer div는 page.module.css의 .previewBox 스타일(배경, 패딩 등)을 적용합니다.
+          */}
+          <div className={styles.previewBox}>
+            {/* 이 inner div들은 Chat.module.css의 스타일을 적용하여
+              실제 채팅 버블의 상속 스타일(폰트, 색상 등)을 시뮬레이션합니다.
+            */}
+            <div className={`${chatStyles.message} ${chatStyles.botMessage}`}>
+              <div className={chatStyles.scenarioMessageContentWrapper}>
+                <LogoIcon /> 
+                <div className={chatStyles.messageContent}>
+                  {/* MarkdownRenderer.jsx의 루트 <div>에 해당하는 클래스입니다.
+                    동적 CSS가 이곳을 타겟합니다.
+                  */}
+                  <div className={markdownStyles.markdownContent}>
+                    <Markdown 
+                      remarkPlugins={[remarkGfm]} 
+                      components={markdownComponents}
+                    >
+                      {markdownInput}
+                    </Markdown>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
+        {/* --- 👆 [수정] --- */}
 
         {/* 3. CSS 편집 영역 (하단 전체 너비) */}
         <div className={styles.cssEditorContainer}>
           <h2>
             스타일시트 (CSS)
           </h2>
-          {/* --- 👇 [수정] 단일 textarea -> 분리된 textarea 그리드 --- */}
+          {/* --- [유지] 단일 textarea -> 분리된 textarea 그리드 --- */}
           <div className={styles.cssEditorGrid}>
             {Object.entries(cssStyles).map(([key, value]) => (
               <div key={key} className={styles.cssRuleEditor}>
@@ -233,7 +259,7 @@ export default function MarkdownTestPage() {
               </div>
             ))}
           </div>
-          {/* --- 👆 [수정] --- */}
+          {/* --- [유지] --- */}
         </div>
       </div>
     </div>
