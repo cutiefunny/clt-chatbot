@@ -11,6 +11,7 @@ export default function GeneralSettingsPage() {
     maxFavorites,
     // --- ▼ 수정 ▼ ---
     dimUnfocusedPanels, // dimUnfocusedPanels 추가
+    enableFavorites, // enableFavorites 추가
     // --- ▲ 수정 ▲ ---
     llmProvider,
     flowiseApiUrl,
@@ -22,6 +23,7 @@ export default function GeneralSettingsPage() {
   const [limit, setLimit] = useState("");
   // --- ▼ 수정 ▼ ---
   const [dimPanels, setDimPanels] = useState(true); // dimPanels 상태 추가
+  const [favoritesEnabled, setFavoritesEnabled] = useState(true); // favoritesEnabled 상태 추가
   // --- ▲ 수정 ▲ ---
   const [provider, setProvider] = useState("gemini");
   const [apiUrl, setApiUrl] = useState("");
@@ -36,6 +38,7 @@ export default function GeneralSettingsPage() {
     if (maxFavorites !== null) setLimit(String(maxFavorites));
     // --- ▼ 수정 ▼ ---
     setDimPanels(dimUnfocusedPanels); // 로드된 값으로 상태 설정
+    setFavoritesEnabled(enableFavorites); // 로드된 값으로 상태 설정
     // --- ▲ 수정 ▲ ---
     setProvider(llmProvider);
     setApiUrl(flowiseApiUrl);
@@ -43,6 +46,7 @@ export default function GeneralSettingsPage() {
     maxFavorites,
     // --- ▼ 수정 ▼ ---
     dimUnfocusedPanels, // 의존성 배열에 추가
+    enableFavorites, // 의존성 배열에 추가
     // --- ▲ 수정 ▲ ---
     llmProvider,
     flowiseApiUrl,
@@ -76,6 +80,7 @@ export default function GeneralSettingsPage() {
       maxFavorites: newLimit,
       // --- ▼ 수정 ▼ ---
       dimUnfocusedPanels: dimPanels, // 저장할 설정에 추가
+      enableFavorites: favoritesEnabled, // 저장할 설정에 추가
       // --- ▲ 수정 ▲ ---
       llmProvider: provider,
       flowiseApiUrl: apiUrl, 
@@ -150,7 +155,29 @@ export default function GeneralSettingsPage() {
         </div>
         
         {/* --- ▼ 추가 ▼ --- */}
-        {/* 포커스 흐림 설정 */}
+        {/* 즐겨찾기 기능 설정 */}
+        <div className={styles.settingItem}>
+          <label className={styles.settingLabel}>
+            <h3>즐겨찾기 기능</h3>
+            <p>
+              활성화 시, 숏컷 메뉴의 즐겨찾기(별) 아이콘과 메인 화면의 즐겨찾기
+              패널을 활성화합니다.
+            </p>
+          </label>
+          <label className={styles.switch}>
+            <input
+              type="checkbox"
+              checked={favoritesEnabled}
+              onChange={(e) => setFavoritesEnabled(e.target.checked)}
+            />
+            <span className={styles.slider}></span>
+          </label>
+        </div>
+        {/* --- ▲ 추가 ▲ --- */}
+
+        {/* --- ▼ 수정 ▼ --- */}
+        {/* 포커스 흐림 설정 (기존 코드 유지) */}
+        {/* --- ▲ 수정 ▲ --- */}
         <div className={styles.settingItem}>
           <label className={styles.settingLabel}>
             <h3>포커스 잃은 창 흐리게</h3>
@@ -168,7 +195,7 @@ export default function GeneralSettingsPage() {
             <span className={styles.slider}></span>
           </label>
         </div>
-        {/* --- ▲ 추가 ▲ --- */}
+        {/* --- ▲ 수정 ▲ --- */}
 
         {/* 즐겨찾기 개수 설정 (기존 코드 유지) */}
         <div className={styles.settingItem}>

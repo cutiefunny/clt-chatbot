@@ -209,6 +209,9 @@ export default function Chat() {
     // --- 👇 [수정] setMessageFeedback 액션 가져오기 ---
     setMessageFeedback,
     // --- 👆 [수정] ---
+    // --- ▼ 수정 ▼ ---
+    enableFavorites,
+    // --- ▲ 수정 ▲ ---
   } = useChatStore();
   const [copiedMessageId, setCopiedMessageId] = useState(null);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
@@ -442,9 +445,13 @@ export default function Chat() {
         ref={historyRef}
         onClick={handleHistoryClick}
       >
+        {/* --- ▼ 수정 ▼ --- */}
         {!hasMessages ? (
-          <FavoritePanel /> // 메시지 없으면 즐겨찾기 패널 표시
+          enableFavorites ? (
+            <FavoritePanel />
+          ) : null // 메시지 없고, 즐겨찾기 비활성화 시 아무것도 표시 안 함
         ) : (
+          // --- ▲ 수정 ▲ ---
           <>
             {/* 이전 메시지 로딩 인디케이터 */}
             {isFetchingMore && (

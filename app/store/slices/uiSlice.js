@@ -30,6 +30,9 @@ export const createUISlice = (set, get) => ({
   // fontSizeSmall: "14px", // [제거]
   isDevMode: false,
   dimUnfocusedPanels: true, // [참고] 이제 이 값은 config/general에서 다시 로드됩니다.
+  // --- ▼ 수정 ▼ ---
+  enableFavorites: true, // 즐겨찾기 기능 활성화 여부 (기본값 true)
+  // --- ▲ 수정 ▲ ---
   llmProvider: "gemini",
   flowiseApiUrl: "",
   isProfileModalOpen: false,
@@ -78,6 +81,12 @@ export const createUISlice = (set, get) => ({
               ? config.dimUnfocusedPanels
               : true, // 기본값 true
           // --- 👆 [수정] ---
+          // --- ▼ 수정 ▼ ---
+          enableFavorites:
+            typeof config.enableFavorites === "boolean"
+              ? config.enableFavorites
+              : true, // 기본값 true
+          // --- ▲ 수정 ▲ ---
           llmProvider: config.llmProvider || "gemini",
           flowiseApiUrl: config.flowiseApiUrl || "",
         });
