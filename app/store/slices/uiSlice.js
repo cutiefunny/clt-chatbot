@@ -30,6 +30,10 @@ export const createUISlice = (set, get) => ({
   // fontSizeSmall: "14px", // [제거]
   isDevMode: false,
   dimUnfocusedPanels: true, // [참고] 이제 이 값은 config/general에서 다시 로드됩니다.
+  // --- ▼ 수정 ▼ ---
+  enableFavorites: true, // 즐겨찾기 기능 활성화 여부 (기본값 true)
+  // --- ▲ 수정 ▲ ---
+  showHistoryOnGreeting: false, // <-- [추가] 초기 화면 히스토리 표시 여부
   llmProvider: "gemini",
   flowiseApiUrl: "",
   isProfileModalOpen: false,
@@ -61,8 +65,11 @@ export const createUISlice = (set, get) => ({
   scrollToMessageId: null,
   forceScrollToBottom: false,
   scrollAmount: 0,
+  isInitializing: false, // <-- 기본값 false
 
   // Actions
+  setIsInitializing: (value) => set({ isInitializing: value }), // <-- [추가]
+
   loadGeneralConfig: async () => {
     try {
       const configRef = doc(get().db, "config", "general");
@@ -78,6 +85,18 @@ export const createUISlice = (set, get) => ({
               ? config.dimUnfocusedPanels
               : true, // 기본값 true
           // --- 👆 [수정] ---
+          // --- ▼ 수정 ▼ ---
+          enableFavorites:
+            typeof config.enableFavorites === "boolean"
+              ? config.enableFavorites
+              : true, // 기본값 true
+          // --- ▲ 수정 ▲ ---
+          // --- 👇 [추가] ---
+          showHistoryOnGreeting:
+            typeof config.showHistoryOnGreeting === "boolean"
+              ? config.showHistoryOnGreeting
+              : false, // 기본값 false
+          // --- 👆 [추가] ---
           llmProvider: config.llmProvider || "gemini",
           flowiseApiUrl: config.flowiseApiUrl || "",
         });

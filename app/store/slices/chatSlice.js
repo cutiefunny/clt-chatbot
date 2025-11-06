@@ -333,11 +333,18 @@ export const createChatSlice = (set, get) => {
         get().setSelectedOption(messageId, item.title);
       }
 
+      // --- ▼ 수정 ▼ ---
       if (item.action.type === "custom") {
         await handleResponse({
           text: item.action.value,
           displayText: item.title,
         });
+      } else if (item.action.type === "text") {
+        await handleResponse({
+          text: item.action.value,
+          displayText: item.action.value, // 'text' 타입은 value를 displayText로 사용
+        });
+      // --- ▲ 수정 ▲ ---
       } else if (item.action.type === "scenario") {
         get().openScenarioPanel?.(item.action.value, extractedSlots);
       } else {

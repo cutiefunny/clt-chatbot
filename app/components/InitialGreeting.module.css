@@ -1,0 +1,72 @@
+/* app/components/InitialGreeting.module.css */
+@keyframes spinOnce {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    /* 1회전 완료 상태를 유지하도록 forwards와 함께 사용 */
+    transform: rotate(360deg);
+  }
+}
+
+/* --- 👇 [추가] 간헐적인 펄스 애니메이션 --- */
+@keyframes pulse {
+  /* 5초 주기 애니메이션 */
+  0%, 100% {
+    /* 1회전 완료 상태(rotate(360deg))를 유지하며 100% 크기 */
+    transform: rotate(360deg) scale(1);
+  }
+  5% {
+    /* 0.25초 지점: 95%로 축소 */
+    transform: rotate(360deg) scale(0.95);
+  }
+  10% {
+    /* 0.5초 지점: 100%로 복귀 */
+    transform: rotate(360deg) scale(1);
+  }
+  /* 10% ~ 100% (4.5초) 동안은 100% 크기 유지 (대기 상태) */
+}
+/* --- 👆 [추가] --- */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%; /* 부모 컨테이너에 맞춰 높이 채우기 */
+  width: 100%;
+  color: var(--text-color); /* 테마에 맞는 텍스트 색상 */
+  text-align: center;
+  padding-bottom: 120px; /* 인풋바와의 겹침 방지 */
+}
+
+.logo {
+  /* --- 👇 [수정] 4배 크기(96px) 적용 (이전 요청 반영) --- */
+  width: 96px;
+  height: 96px;
+  /* --- 👆 [수정] --- */
+  margin-bottom: 20px;
+  color: var(--primary-color); /* 로고 색상 */
+  
+  /* --- 👇 [수정] 2개 애니메이션 조합 --- */
+  animation-name: spinOnce, pulse;
+  animation-duration: 1s, 3s; /* spin 1초, pulse 5초 */
+  animation-timing-function: ease-out, ease-in-out;
+  animation-iteration-count: 1, infinite; /* spin 1번, pulse 무한 */
+  animation-delay: 0s, 1s; /* pulse는 spinOnce가 끝난 1초 후 시작 */
+  animation-fill-mode: forwards, none; /* spinOnce는 마지막 프레임(rotate(360deg))을 유지 */
+  /* --- 👆 [수정] --- */
+}
+
+.title {
+  font-size: 2.8em;
+  font-weight: 600;
+  margin-top: 80px;
+  margin-bottom: 10px;
+  color: var(--Gray-09, #293D5C); /* 강조 색상 */
+}
+
+.subtitle {
+  font-size: 1.5em;
+  color: var(--text-color-light); /* 보조 텍스트 색상 */
+}

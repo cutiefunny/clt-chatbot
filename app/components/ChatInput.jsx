@@ -1,3 +1,4 @@
+// app/components/ChatInput.jsx
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -75,6 +76,9 @@ export default function ChatInput() {
   const isScenarioPanelExpanded = useChatStore(
     (state) => state.isScenarioPanelExpanded
   );
+  // --- ▼ 수정 ▼ ---
+  const enableFavorites = useChatStore((state) => state.enableFavorites);
+  // --- ▲ 수정 ▲ ---
 
   const { t } = useTranslations();
   const inputRef = useRef(null);
@@ -176,17 +180,21 @@ export default function ChatInput() {
                               handleItemClick(item)
                             }
                           >
-                            <button
-                              className={`${styles.favoriteButton} ${
-                                isFavorited ? styles.favorited : ""
-                              }`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleFavorite(item);
-                              }}
-                            >
-                              <StarIcon size={18} filled={isFavorited} />
-                            </button>
+                            {/* --- ▼ 수정 ▼ --- */}
+                            {enableFavorites && (
+                              <button
+                                className={`${styles.favoriteButton} ${
+                                  isFavorited ? styles.favorited : ""
+                                }`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleFavorite(item);
+                                }}
+                              >
+                                <StarIcon size={18} filled={isFavorited} />
+                              </button>
+                            )}
+                            {/* --- ▲ 수정 ▲ --- */}
                             <div className={styles.itemContent}>
                               <span className={styles.itemTitle}>
                                 {item.title}

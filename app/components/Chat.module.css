@@ -278,6 +278,22 @@ input:checked + .slider:before {
   position: relative;
 }
 
+/* --- 👇 [추가] 3단계 너비 클래스 --- */
+/* 30% 너비 */
+.width30 {
+  width: 30%;
+  min-width: 200px; /* 너무 좁아지는 것 방지 */
+  max-width: 30%;
+}
+
+/* 60% 너비 */
+.width60 {
+  width: 60%;
+  max-width: 60%;
+}
+/* --- 👆 [추가] --- */
+
+/* 100% 단계 (90% 너비) */
 .gridMessage,
 .iframeMessage {
   width: 90%;

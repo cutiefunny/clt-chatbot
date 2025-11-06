@@ -1,3 +1,4 @@
+// app/page.js
 "use client";
 
 import { useChatStore } from "../app/store";
@@ -9,22 +10,31 @@ import styles from "./page.module.css";
 import ConfirmModal from "../app/components/ConfirmModal";
 import DevStateDisplay from "../app/components/DevStateDisplay";
 import MainAreaLayout from "../app/components/MainAreaLayout";
+import SplashScreen from "../app/components/SplashScreen";
 
 export default function HomePage() {
-  const {
-    user,
-    isHistoryPanelOpen,
-    isScenarioModalOpen,
-    confirmModal,
-    closeConfirmModal,
-    isDevMode,
-    activePanel, // activePanel 상태 가져오기
-    isScenarioPanelExpanded,
-    theme,
-    setTheme,
-    fontSize,
-    setFontSize,
-  } = useChatStore();
+  // --- 👇 [수정] 스토어 셀렉터를 개별적으로 분리 ---
+  const user = useChatStore((state) => state.user);
+  const isHistoryPanelOpen = useChatStore((state) => state.isHistoryPanelOpen);
+  const isScenarioModalOpen = useChatStore((state) => state.isScenarioModalOpen);
+  const confirmModal = useChatStore((state) => state.confirmModal);
+  const closeConfirmModal = useChatStore((state) => state.closeConfirmModal);
+  const isDevMode = useChatStore((state) => state.isDevMode);
+  const activePanel = useChatStore((state) => state.activePanel);
+  const isScenarioPanelExpanded = useChatStore(
+    (state) => state.isScenarioPanelExpanded
+  );
+  const theme = useChatStore((state) => state.theme);
+  const setTheme = useChatStore((state) => state.setTheme);
+  const fontSize = useChatStore((state) => state.fontSize);
+  const setFontSize = useChatStore((state) => state.setFontSize);
+  const isInitializing = useChatStore((state) => state.isInitializing);
+  const setIsInitializing = useChatStore((state) => state.setIsInitializing);
+  const messages = useChatStore((state) => state.messages);
+  const showHistoryOnGreeting = useChatStore(
+    (state) => state.showHistoryOnGreeting
+  ); // <-- [추가]
+  // --- 👆 [수정] ---
 
   const handleConfirm = () => {
     if (confirmModal.onConfirm) {
@@ -33,8 +43,19 @@ export default function HomePage() {
     closeConfirmModal();
   };
 
-  // --- 👇 [수정] 히스토리 패널 너비 계산 로직 분리 ---
-  const historyPanelWidth = isHistoryPanelOpen ? "320px" : "60px";
+  // --- 👇 [수정] HistoryPanel 표시 여부 및 너비 계산 ---
+  // 초기 메시지("initial")만 있는지 확인
+  const showInitialGreeting = messages.length <= 1;
+
+  // [추가] 설정값을 반영하여 패널을 숨길지 여부 결정
+  const shouldHidePanel = showInitialGreeting && !showHistoryOnGreeting;
+
+  // 히스토리 패널 너비 계산: 숨겨야 하면 0px, 아니면 상태에 따라 60px 또는 320px
+  const historyPanelWidth = shouldHidePanel
+    ? "0px"
+    : isHistoryPanelOpen
+    ? "320px"
+    : "60px";
   // --- 👆 [수정] ---
 
   const scenarioPanelClasses = [styles.scenarioPanel];
@@ -45,13 +66,26 @@ export default function HomePage() {
     }
   }
 
+  // --- 👇 [추가] 스플래시 애니메이션 종료 핸들러 ---
+  const handleSplashAnimationEnd = () => {
+    console.log("Splash animation finished. Setting isInitializing to false.");
+    setIsInitializing(false); // 스토어 상태 변경
+  };
+
   return (
     <main className={styles.main}>
       <Toast />
-      {user ? (
+      {/* --- 👇 [수정] 렌더링 로직 변경 --- */}
+      {!user ? (
+        <Login />
+      ) : isInitializing ? (
+        <SplashScreen onAnimationEnd={handleSplashAnimationEnd} />
+      ) : (
         <>
           <div className={styles.chatLayout}>
-            <HistoryPanel />
+            {/* --- 👇 [수정] shouldHidePanel 값에 따라 렌더링 --- */}
+            {!shouldHidePanel && <HistoryPanel />}
+            {/* --- 👆 [수정] --- */}
             <MainAreaLayout
               historyPanelWidth={historyPanelWidth}
               scenarioPanelClasses={scenarioPanelClasses}
@@ -65,9 +99,8 @@ export default function HomePage() {
           {isScenarioModalOpen && <ScenarioModal />}
           {isDevMode && <DevStateDisplay />}
         </>
-      ) : (
-        <Login />
       )}
+      {/* --- 👆 [수정] --- */}
       {confirmModal.isOpen && (
         <ConfirmModal
           title={confirmModal.title}

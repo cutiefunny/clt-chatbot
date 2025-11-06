@@ -427,7 +427,7 @@ export const createScenarioSlice = (set, get) => ({
       } else {
         // 문서가 삭제된 경우: 구독 해지 및 로컬 상태 정리
         console.log(`Scenario session ${sessionId} not found or deleted.`);
-        get().unsubscribeFromScenarioSession(sessionId); // 구독 해제 함수 호출
+        get().unsubscribeFromScenarioSession(sessionId); // 구독 해지 함수 호출
         // set 내부에서 관련 상태 정리 (unsubscribeFromScenarioSession이 처리)
       }
     }, (error) => { // 오류 콜백
@@ -491,9 +491,10 @@ export const createScenarioSlice = (set, get) => ({
   // --- 👆 [추가] ---
 
 
-  // --- 👇 [수정된 부분 시작]: endScenario에 2초 딜레이 추가 ---
+  // --- 👇 [수정된 부분 시작]: endScenario에서 딜레이 및 패널 닫기 로직 제거 ---
   endScenario: async (scenarioSessionId, status = 'completed') => {
-    const { user, currentConversationId, language, showEphemeralToast, setActivePanel } = get(); 
+    // setActivePanel 제거
+    const { user, currentConversationId, language, showEphemeralToast } = get(); 
     if (!user || !currentConversationId || !scenarioSessionId) return;
 
     const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", scenarioSessionId);
@@ -513,33 +514,18 @@ export const createScenarioSlice = (set, get) => ({
                     ...state.scenarioStates,
                     [scenarioSessionId]: updatedState
                 },
-                // activePanel 변경 로직 제거
             };
         });
 
-        // 3. 2초 딜레이 후 패널 닫기
-        setTimeout(() => {
-            // 2초 후, 닫으려는 패널이 여전히 활성/포커스 상태인지 확인
-            const { activeScenarioSessionId, lastFocusedScenarioSessionId } = get();
-            
-            const panelIsStillRelevant = activeScenarioSessionId === scenarioSessionId || 
-                                          lastFocusedScenarioSessionId === scenarioSessionId;
-
-            if (panelIsStillRelevant) {
-                console.log(`Delay complete. Closing scenario panel for ${scenarioSessionId}.`);
-                setActivePanel('main'); // uiSlice의 setActivePanel 호출하여 패널 닫기
-            } else {
-                 console.log(`Delay complete. Scenario panel for ${scenarioSessionId} is no longer active, not closing.`);
-            }
-        }, 2000); // 2000ms = 2초
+        // 3. 2초 딜레이 및 패널 닫기 로직 (제거됨)
+        console.log(`[endScenario] Scenario ${scenarioSessionId} marked as ${status}. Panel will remain open.`);
 
     } catch (error) {
         console.error(`Error ending scenario ${scenarioSessionId} with status ${status}:`, error);
         const errorKey = getErrorKey(error);
         const message = locales[language]?.[errorKey] || 'Failed to update scenario status.';
         showEphemeralToast(message, 'error');
-        // Firestore 업데이트 실패 시에도 패널은 닫아서 혼동 방지
-        setActivePanel('main');
+        // Firestore 업데이트 실패 시에도 패널은 닫지 않음 (setActivePanel('main') 제거)
     }
   },
   // --- 👆 [수정된 부분 끝] ---
