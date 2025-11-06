@@ -1,4 +1,13 @@
 /* app/components/InitialGreeting.module.css */
+@keyframes spinOnce {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .container {
   display: flex;
   flex-direction: column;
@@ -12,21 +21,26 @@
 }
 
 .logo {
-  width: 128px; /* 로고 크기 */
-  height: 128px;
+  /* --- 👇 [수정] 로고 크기를 96px로 수정 (이전 4배 확대 요청 반영) --- */
+  width: 96px; 
+  height: 96px;
+  /* --- 👆 [수정] --- */
   margin-bottom: 20px;
   color: var(--primary-color); /* 로고 색상 */
+  /* --- 👇 [추가] 애니메이션 적용 --- */
+  animation: spinOnce 1s ease-out; /* 1초 동안 1회 회전 */
+  /* --- 👆 [추가] --- */
 }
 
 .title {
-  font-size: 1.8em;
+  font-size: 2.8em;
   font-weight: 600;
-  margin-top: 50px;
+  margin-top: 80px;
   margin-bottom: 10px;
   color: var(--Gray-09, #293D5C); /* 강조 색상 */
 }
 
 .subtitle {
-  font-size: 1em;
+  font-size: 1.5em;
   color: var(--text-color-light); /* 보조 텍스트 색상 */
 }

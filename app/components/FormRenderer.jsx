@@ -28,14 +28,14 @@ const FormRenderer = ({
   const { t } = useTranslations();
   const fileInputRef = useRef(null);
 
-  // --- 👇 [수정] useEffect 의존성 배열에서 'slots' 제거 ---
+  // --- 👇 [수정] useEffect 로직 변경 ---
   useEffect(() => {
     const initialFormData = {};
     if (node.data && Array.isArray(node.data.elements)) {
       node.data.elements.forEach((el) => {
         if (el.name) {
           let initialValue;
-          // 1. 슬롯 값 우선 적용 (컴포넌트 첫 마운트 시)
+          // 1. 슬롯 값 우선 적용
           if (slots[el.name] !== undefined && slots[el.name] !== null) {
             initialValue = slots[el.name];
             // 2. defaultValue는 input/date 타입을 제외하고 적용
@@ -78,10 +78,7 @@ const FormRenderer = ({
       });
     }
     setFormData(initialFormData);
-    // 의존성 배열에서 'slots'를 제거하여,
-    // 폼 제출 후 'slots' prop이 변경되어도 이 effect가 다시 실행되지 않도록 함.
-    // 이렇게 하면 사용자가 입력한 'formData' 상태가 보존됨.
-  }, [node.data.elements]);
+  }, [node.data.elements, slots]);
   // --- 👆 [수정] ---
 
   const handleInputChange = (name, value) => {
@@ -100,24 +97,9 @@ const FormRenderer = ({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // --- 👇 [수정] 제출 시점에 formData와 slots를 병합 ---
-    // (이렇게 하면 defaultValue 등이 최종 제출 데이터에 포함됨)
     const finalFormData = { ...formData };
-
-    // 유효성 검사 전, 현재 formData에 없는 값들을 slots에서 가져오기
-    // (disabled=true일 때 재진입 방지용으로도 사용됨)
-    if (disabled) return;
-
     for (const element of node.data.elements) {
-      // 1. formData에 있는 값 (사용자 입력)
-      let valueToValidate = finalFormData[element.name];
-
-      // 2. formData에 없으면 slots에서 가져오기 (초기값)
-      if (valueToValidate === undefined) {
-        valueToValidate = slots[element.name];
-      }
-      
-      // 3. 그래도 없으면 defaultValue (더블클릭 용)
+      let valueToValidate = formData[element.name];
       if (
         valueToValidate === undefined &&
         element.defaultValue !== undefined &&
@@ -128,11 +110,7 @@ const FormRenderer = ({
           slots
         );
       }
-      
-      // 4. 최종적으로 undefined/null이면 빈 문자열로 유효성 검사
       valueToValidate = valueToValidate ?? "";
-
-      // 5. 유효성 검사 (input/date 타입만)
       if (element.type === "input" || element.type === "date") {
         const { isValid, message } = validateInput(
           valueToValidate,
@@ -144,25 +122,14 @@ const FormRenderer = ({
           return;
         }
       }
-      
-      // 6. 유효성 검사를 통과한 값을 최종 제출 데이터에 할당
-      // (defaultValue 등이 formData에 반영되도록)
-      if (finalFormData[element.name] === undefined && valueToValidate !== "") {
-         finalFormData[element.name] = valueToValidate;
-      }
     }
-    
-    // 7. 최종 제출 데이터 정리 (elements에 정의된 name만)
     const finalSubmissionData = {};
     node.data.elements.forEach((el) => {
       if (el.name && finalFormData[el.name] !== undefined) {
         finalSubmissionData[el.name] = finalFormData[el.name];
       }
     });
-    
-    // 8. 폼 제출
     onFormSubmit(finalSubmissionData);
-    // --- 👆 [수정] ---
   };
 
   const handleDateInputClick = (e) => {
@@ -319,17 +286,6 @@ const FormRenderer = ({
                   dropboxOptions = el.options;
                 }
               }
-              
-              // --- 👇 [수정] value 로직 변경 ---
-              // 1. formData에 값이 있으면 (사용자 입력/더블클릭/엑셀) 그것을 사용
-              // 2. formData에 없고, disabled 상태이면(제출 후), slots에서 값을 가져옴
-              // 3. 둘 다 아니면(초기 상태) 빈 문자열
-              let currentValue = formData[el.name];
-              if (currentValue === undefined && disabled && slots[el.name] !== undefined) {
-                  currentValue = slots[el.name];
-              }
-              // --- 👆 [수정] ---
-              
               return (
                 <div key={el.id} className={styles.formElement}>
                   <label className={styles.formLabel}>
@@ -343,40 +299,34 @@ const FormRenderer = ({
                         el.placeholder || "",
                         slots
                       )}
-                      // --- 👇 [수정] value={formData[el.name] ?? ""}
-                      value={currentValue ?? ""}
-                      // --- 👆 [수정] ---
+                      value={formData[el.name] ?? ""}
                       onChange={(e) =>
                         handleInputChange(el.name, e.target.value)
                       }
                       disabled={disabled}
                       onClick={(e) => e.stopPropagation()}
-                      onDoubleClick={(e) => handleInputDoubleClick(e, el)}
+                      onDoubleClick={(e) => handleInputDoubleClick(e, el)} // --- 👈 [수정] ---
                     />
                   )}
                   {el.type === "date" && (
                     <input
                       className={styles.formInput}
                       type="date"
-                      // --- 👇 [수정] value={formData[el.name] ?? ""}
-                      value={currentValue ?? ""}
-                      // --- 👆 [수정] ---
+                      value={formData[el.name] ?? ""}
                       onChange={(e) =>
                         handleInputChange(el.name, e.target.value)
                       }
                       onClick={handleDateInputClick}
                       disabled={disabled}
                       {...dateProps}
-                      onDoubleClick={(e) => handleInputDoubleClick(e, el)}
+                      onDoubleClick={(e) => handleInputDoubleClick(e, el)} // --- 👈 [수정] ---
                     />
                   )}
                   {el.type === "dropbox" && (
                     <div className={styles.selectWrapper}>
                       <select
                         className={styles.formInput}
-                        // --- 👇 [수정] value={formData[el.name] ?? ""}
-                        value={currentValue ?? ""}
-                        // --- 👆 [수정] ---
+                        value={formData[el.name] ?? ""}
                         onChange={(e) =>
                           handleInputChange(el.name, e.target.value)
                         }
@@ -565,45 +515,35 @@ const FormRenderer = ({
                     {interpolateMessage(el.label, slots)}
                   </label>
                   {el.type === "checkbox" &&
-                    (el.options || []).map((opt) => {
-                      // --- 👇 [수정] 체크박스 value 로직 ---
-                      let currentChecked = (formData[el.name] || []).includes(opt);
-                      if (!formData[el.name] && disabled && Array.isArray(slots[el.name])) {
-                        currentChecked = slots[el.name].includes(opt);
-                      }
-                      // --- 👆 [수정] ---
-                      return (
-                        <div
-                          key={opt}
-                          onClick={(e) => e.stopPropagation()}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "8px",
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            id={`${el.id}-${opt}`}
-                            value={opt}
-                            // --- [수정] ---
-                            checked={currentChecked}
-                            // --- [수정] ---
-                            onChange={(e) =>
-                              handleMultiInputChange(
-                                el.name,
-                                opt,
-                                e.target.checked
-                              )
-                            }
-                            disabled={disabled}
-                          />
-                          <label htmlFor={`${el.id}-${opt}`}>
-                            {interpolateMessage(opt, slots)}
-                          </label>
-                        </div>
-                      );
-                    })}
+                    (el.options || []).map((opt) => (
+                      <div
+                        key={opt}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          id={`${el.id}-${opt}`}
+                          value={opt}
+                          checked={(formData[el.name] || []).includes(opt)}
+                          onChange={(e) =>
+                            handleMultiInputChange(
+                              el.name,
+                              opt,
+                              e.target.checked
+                            )
+                          }
+                          disabled={disabled}
+                        />
+                        <label htmlFor={`${el.id}-${opt}`}>
+                          {interpolateMessage(opt, slots)}
+                        </label>
+                      </div>
+                    ))}
                 </>
               )}
           </div>
@@ -649,7 +589,6 @@ const FormRenderer = ({
             type="submit"
             className={styles.formSubmitButton}
             onClick={(e) => e.stopPropagation()}
-            disabled={disabled} // --- [추가] disabled 속성
           >
             {t("submit")}
           </button>

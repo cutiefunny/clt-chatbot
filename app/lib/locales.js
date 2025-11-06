@@ -282,8 +282,8 @@ export const locales = {
     // API Messages
     scenarioListMessage: "Please select a scenario to run.",
 
-    initialBotMessage: "How can I help you?",
-    initialGreetingTitle: "How can I help you?",
+    initialBotMessage: "How can I guide you?",
+    initialGreetingTitle: "How can I guide you?",
     initialGreetingSubtitle: "Talk to me naturally. For example, 'Give Feedback'."
   },
 };
