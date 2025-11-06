@@ -12,6 +12,7 @@ export default function GeneralSettingsPage() {
     // --- ▼ 수정 ▼ ---
     dimUnfocusedPanels, // dimUnfocusedPanels 추가
     enableFavorites, // enableFavorites 추가
+    showHistoryOnGreeting, // <-- [추가]
     // --- ▲ 수정 ▲ ---
     llmProvider,
     flowiseApiUrl,
@@ -24,11 +25,12 @@ export default function GeneralSettingsPage() {
   // --- ▼ 수정 ▼ ---
   const [dimPanels, setDimPanels] = useState(true); // dimPanels 상태 추가
   const [favoritesEnabled, setFavoritesEnabled] = useState(true); // favoritesEnabled 상태 추가
+  const [showHistory, setShowHistory] = useState(false); // <-- [추가]
   // --- ▲ 수정 ▲ ---
   const [provider, setProvider] = useState("gemini");
   const [apiUrl, setApiUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [apiUrlError, setApiUrlError] = useState(''); 
+  const [apiUrlError, setApiUrlError] = useState("");
 
   useEffect(() => {
     loadGeneralConfig();
@@ -39,6 +41,7 @@ export default function GeneralSettingsPage() {
     // --- ▼ 수정 ▼ ---
     setDimPanels(dimUnfocusedPanels); // 로드된 값으로 상태 설정
     setFavoritesEnabled(enableFavorites); // 로드된 값으로 상태 설정
+    setShowHistory(showHistoryOnGreeting); // <-- [추가]
     // --- ▲ 수정 ▲ ---
     setProvider(llmProvider);
     setApiUrl(flowiseApiUrl);
@@ -47,6 +50,7 @@ export default function GeneralSettingsPage() {
     // --- ▼ 수정 ▼ ---
     dimUnfocusedPanels, // 의존성 배열에 추가
     enableFavorites, // 의존성 배열에 추가
+    showHistoryOnGreeting, // <-- [추가]
     // --- ▲ 수정 ▲ ---
     llmProvider,
     flowiseApiUrl,
@@ -54,25 +58,25 @@ export default function GeneralSettingsPage() {
 
   const handleSave = async () => {
     setIsLoading(true);
-    setApiUrlError(''); 
+    setApiUrlError("");
     const newLimit = parseInt(limit, 10);
 
     // 숫자 유효성 검사
-    if (
-      isNaN(newLimit) ||
-      newLimit < 0
-    ) {
+    if (isNaN(newLimit) || newLimit < 0) {
       showEphemeralToast("유효한 숫자를 입력해주세요.", "error");
       setIsLoading(false);
       return;
     }
 
     if (provider === "flowise") {
-      if (!apiUrl || !(apiUrl.startsWith('http://') || apiUrl.startsWith('https://'))) {
-          setApiUrlError('유효한 URL 형식(http:// 또는 https://)으로 입력해주세요.');
-          showEphemeralToast("Flowise API URL 형식이 올바르지 않습니다.", "error");
-          setIsLoading(false);
-          return;
+      if (
+        !apiUrl ||
+        !(apiUrl.startsWith("http://") || apiUrl.startsWith("https://"))
+      ) {
+        setApiUrlError("유효한 URL 형식(http:// 또는 https://)으로 입력해주세요.");
+        showEphemeralToast("Flowise API URL 형식이 올바르지 않습니다.", "error");
+        setIsLoading(false);
+        return;
       }
     }
 
@@ -81,9 +85,10 @@ export default function GeneralSettingsPage() {
       // --- ▼ 수정 ▼ ---
       dimUnfocusedPanels: dimPanels, // 저장할 설정에 추가
       enableFavorites: favoritesEnabled, // 저장할 설정에 추가
+      showHistoryOnGreeting: showHistory, // <-- [추가]
       // --- ▲ 수정 ▲ ---
       llmProvider: provider,
-      flowiseApiUrl: apiUrl, 
+      flowiseApiUrl: apiUrl,
     };
 
     const success = await saveGeneralConfig(settings);
@@ -119,7 +124,10 @@ export default function GeneralSettingsPage() {
                   type="radio"
                   value="gemini"
                   checked={provider === "gemini"}
-                  onChange={(e) => { setProvider(e.target.value); setApiUrlError(''); }} 
+                  onChange={(e) => {
+                    setProvider(e.target.value);
+                    setApiUrlError("");
+                  }}
                 />
                 Gemini
               </label>
@@ -139,21 +147,38 @@ export default function GeneralSettingsPage() {
               <label htmlFor="flowise-url" className={styles.settingLabel}>
                 <h4>Flowise API URL</h4>
                 <p>사용할 Flowise 챗플로우의 API Endpoint URL을 입력합니다.</p>
-                {apiUrlError && <p style={{ color: 'red', fontSize: '0.8rem', marginTop: '4px' }}>{apiUrlError}</p>}
+                {apiUrlError && (
+                  <p
+                    style={{
+                      color: "red",
+                      fontSize: "0.8rem",
+                      marginTop: "4px",
+                    }}
+                  >
+                    {apiUrlError}
+                  </p>
+                )}
               </label>
               <input
                 id="flowise-url"
                 type="text"
                 value={apiUrl}
-                onChange={(e) => { setApiUrl(e.target.value); setApiUrlError(''); }} 
+                onChange={(e) => {
+                  setApiUrl(e.target.value);
+                  setApiUrlError("");
+                }}
                 className={styles.settingInput}
-                style={{ width: "100%", textAlign: "left", borderColor: apiUrlError ? 'red' : undefined }} 
+                style={{
+                  width: "100%",
+                  textAlign: "left",
+                  borderColor: apiUrlError ? "red" : undefined,
+                }}
                 placeholder="http://..."
               />
             </div>
           )}
         </div>
-        
+
         {/* --- ▼ 추가 ▼ --- */}
         {/* 즐겨찾기 기능 설정 */}
         <div className={styles.settingItem}>
@@ -196,6 +221,26 @@ export default function GeneralSettingsPage() {
           </label>
         </div>
         {/* --- ▲ 수정 ▲ --- */}
+
+        {/* --- 👇 [추가] 초기 화면 히스토리 패널 표시 --- */}
+        <div className={styles.settingItem}>
+          <label className={styles.settingLabel}>
+            <h3>초기 화면 히스토리 표시</h3>
+            <p>
+              활성화 시, 채팅 시작 전 초기 화면(Greeting)에서도 히스토리
+              패널(사이드바)을 표시합니다.
+            </p>
+          </label>
+          <label className={styles.switch}>
+            <input
+              type="checkbox"
+              checked={showHistory}
+              onChange={(e) => setShowHistory(e.target.checked)}
+            />
+            <span className={styles.slider}></span>
+          </label>
+        </div>
+        {/* --- 👆 [추가] --- */}
 
         {/* 즐겨찾기 개수 설정 (기존 코드 유지) */}
         <div className={styles.settingItem}>

@@ -10,10 +10,10 @@ import styles from "./page.module.css";
 import ConfirmModal from "../app/components/ConfirmModal";
 import DevStateDisplay from "../app/components/DevStateDisplay";
 import MainAreaLayout from "../app/components/MainAreaLayout";
-import SplashScreen from "../app/components/SplashScreen"; // <-- [추가]
+import SplashScreen from "../app/components/SplashScreen";
 
 export default function HomePage() {
-  // --- 👇 [수정] 스토어 셀렉터를 개별적으로 분리하여 무한 루프 방지 ---
+  // --- 👇 [수정] 스토어 셀렉터를 개별적으로 분리 ---
   const user = useChatStore((state) => state.user);
   const isHistoryPanelOpen = useChatStore((state) => state.isHistoryPanelOpen);
   const isScenarioModalOpen = useChatStore((state) => state.isScenarioModalOpen);
@@ -31,6 +31,9 @@ export default function HomePage() {
   const isInitializing = useChatStore((state) => state.isInitializing);
   const setIsInitializing = useChatStore((state) => state.setIsInitializing);
   const messages = useChatStore((state) => state.messages);
+  const showHistoryOnGreeting = useChatStore(
+    (state) => state.showHistoryOnGreeting
+  ); // <-- [추가]
   // --- 👆 [수정] ---
 
   const handleConfirm = () => {
@@ -44,8 +47,11 @@ export default function HomePage() {
   // 초기 메시지("initial")만 있는지 확인
   const showInitialGreeting = messages.length <= 1;
 
-  // 히스토리 패널 너비 계산: 초기 화면이면 0px, 아니면 상태에 따라 60px 또는 320px
-  const historyPanelWidth = showInitialGreeting
+  // [추가] 설정값을 반영하여 패널을 숨길지 여부 결정
+  const shouldHidePanel = showInitialGreeting && !showHistoryOnGreeting;
+
+  // 히스토리 패널 너비 계산: 숨겨야 하면 0px, 아니면 상태에 따라 60px 또는 320px
+  const historyPanelWidth = shouldHidePanel
     ? "0px"
     : isHistoryPanelOpen
     ? "320px"
@@ -73,14 +79,12 @@ export default function HomePage() {
       {!user ? (
         <Login />
       ) : isInitializing ? (
-        // --- 👇 [수정] 89라인의 {" "} 제거 ---
         <SplashScreen onAnimationEnd={handleSplashAnimationEnd} />
       ) : (
-        // --- 👆 [수정] ---
         <>
           <div className={styles.chatLayout}>
-            {/* --- 👇 [수정] 초기 화면이 아닐 때만 HistoryPanel 렌더링 --- */}
-            {!showInitialGreeting && <HistoryPanel />}
+            {/* --- 👇 [수정] shouldHidePanel 값에 따라 렌더링 --- */}
+            {!shouldHidePanel && <HistoryPanel />}
             {/* --- 👆 [수정] --- */}
             <MainAreaLayout
               historyPanelWidth={historyPanelWidth}
