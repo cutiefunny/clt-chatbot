@@ -28,21 +28,38 @@ const FormRenderer = ({
   const { t } = useTranslations();
   const fileInputRef = useRef(null);
 
+  // --- 👇 [수정] useEffect 로직 변경 ---
   useEffect(() => {
     const initialFormData = {};
     if (node.data && Array.isArray(node.data.elements)) {
       node.data.elements.forEach((el) => {
         if (el.name) {
           let initialValue;
+          // 1. 슬롯 값 우선 적용
           if (slots[el.name] !== undefined && slots[el.name] !== null) {
             initialValue = slots[el.name];
+            // 2. defaultValue는 input/date 타입을 제외하고 적용
           } else if (
             el.defaultValue !== undefined &&
-            el.defaultValue !== null
+            el.defaultValue !== null &&
+            el.type !== "input" && // input 제외
+            el.type !== "date" // date 제외
           ) {
             initialValue = interpolateMessage(String(el.defaultValue), slots);
           }
+
+          // 3. 체크박스는 별도 defaultValue 로직 (더블클릭 대상이 아님)
           if (el.type === "checkbox") {
+            // 슬롯이나 위 else if에서 값이 할당되지 않았을 경우
+            if (
+              initialValue === undefined &&
+              el.defaultValue !== undefined &&
+              el.defaultValue !== null
+            ) {
+              initialValue = interpolateMessage(String(el.defaultValue), slots);
+            }
+
+            // (기존 체크박스 배열 변환 로직)
             if (typeof initialValue === "string") {
               initialValue = initialValue
                 .split(",")
@@ -52,6 +69,8 @@ const FormRenderer = ({
               initialValue = [];
             }
           }
+
+          // 4. 최종 값 할당
           if (initialValue !== undefined) {
             initialFormData[el.name] = initialValue;
           }
@@ -60,6 +79,7 @@ const FormRenderer = ({
     }
     setFormData(initialFormData);
   }, [node.data.elements, slots]);
+  // --- 👆 [수정] ---
 
   const handleInputChange = (name, value) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
