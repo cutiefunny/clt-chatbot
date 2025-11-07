@@ -39,6 +39,18 @@ TO-BE 프리뷰에 **react-markdown** 라이브러리 렌더링 결과가 실시
 | :--- | :---: | ---: |
 | 셀 1-1 | 셀 1-2 | 1000 |
 | 셀 2-1 | 셀 2-2 | 20 |
+
+## 4열 테이블
+| Menu / Program | Program Type | 주요 영향 | 비고 / 추가 고려사항 |
+| :--- | :---: | :--- | :--- |
+| Miscellaneous Revenue Invoice | UI | Credit Customer 정보(결제조건, 만기일) 조회 불가 | Rep Customer 조회 불가 |
+| 항목 2 | UI | 내용 | ... |
+
+## 5열 테이블
+| Menu / Program | Program Type | 유형 | 주요 영향 | 비고 / 추가 고려사항 |
+| :--- | :---: | :---: | :--- | :--- |
+| Outstanding List | UI | Vendor 입력 시 대기 | Customer 조건에서 Vendor 입력 제한 필요 | ... |
+| 항목 2 | API | 백엔드 | 테스트 | ... |
 `;
 
 // --- [유지] CSS 규칙을 객체로 분리하여 초기 상태 정의 ---
@@ -77,11 +89,13 @@ const initialCssState = {
   border-radius: 4px;
   font-size: 0.9em;
   word-wrap: break-word; /* 코드 줄바꿈 */`,
+  // --- 👇 [수정] ---
   table: `  border-collapse: collapse;
-  width: max-content;
-  min-width: 100%;
+  min-width: 100%; /* 100% 너비를 최소로 보장 */
+  table-layout: auto; /* 컬럼 너비가 내용에 따라 자동 조절되도록 */
   outline: 1px solid var(--panel-border-color);
   outline-offset: -1px;`,
+  // --- 👆 [수정] ---
   th: `  background-color: #f4f5fb;
   padding: 8px 10px;
   border: 1px solid #d8e0eb;

@@ -71,13 +71,17 @@
   -webkit-overflow-scrolling: touch;
 }
 
+/* --- 👇 [수정] --- */
 .markdownContent table {
   border-collapse: collapse;
-  width: max-content;
-  min-width: 100%;
+  /* width: max-content; 제거 */
+  width: 100%; /* 100% 너비 강제 */
+  table-layout: fixed; /* 컬럼 너비 균등 배분 */
+  /* min-width: 100%; (width: 100%로 대체) */
   outline: 1px solid var(--panel-border-color);
   outline-offset: -1px;
 }
+/* --- 👆 [수정] --- */
 
 .markdownContent table th {
   background-color: #f4f5fb;
