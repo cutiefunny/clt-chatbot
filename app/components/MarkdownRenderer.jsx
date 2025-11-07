@@ -6,7 +6,7 @@ import ChevronDownIcon from "./icons/ChevronDownIcon";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-export default function MarkdownRenderer({ content }) {
+export default function MarkdownRenderer({ content, renderAsMarkdown = true }) {
   const { t } = useTranslations();
   const [isExpanded, setIsExpanded] = useState(false);
   const LINE_LIMIT = useChatStore((state) => state.contentTruncateLimit);
@@ -37,9 +37,18 @@ export default function MarkdownRenderer({ content }) {
 
   return (
     <div className={styles.markdownContent}>
-      <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-        {displayContent}
-      </Markdown>
+      {/* --- 👇 [수정] 조건부 렌더링 --- */}
+      {renderAsMarkdown ? (
+        <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+          {displayContent}
+        </Markdown>
+      ) : (
+        <div style={{ whiteSpace: "pre-wrap", wordWrap: "break-word" }}>
+          {displayContent}
+        </div>
+      )}
+      {/* --- 👆 [수정] --- */}
+
       {needsTruncation && (
         <button onClick={handleToggle} className={styles.viewMoreButton}>
           {isExpanded ? t("viewLess") : t("viewMore")}
