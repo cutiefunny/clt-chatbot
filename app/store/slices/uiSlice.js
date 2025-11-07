@@ -23,17 +23,16 @@ export const createUISlice = (set, get) => ({
   maxFavorites: 10,
   hideCompletedScenarios: false,
   hideDelayInHours: 0,
-  // --- 👇 [수정] 주석 및 기본값 변경 (200 -> 10) ---
   contentTruncateLimit: 10, // 봇 답변 줄임 줄 수 (기본값 10)
-  // --- 👆 [수정] ---
   fontSizeDefault: "16px", // 기본값
-  // fontSizeSmall: "14px", // [제거]
   isDevMode: false,
-  dimUnfocusedPanels: true, // [참고] 이제 이 값은 config/general에서 다시 로드됩니다.
-  // --- ▼ 수정 ▼ ---
+  dimUnfocusedPanels: true,
   enableFavorites: true, // 즐겨찾기 기능 활성화 여부 (기본값 true)
-  // --- ▲ 수정 ▲ ---
   showHistoryOnGreeting: false, // <-- [추가] 초기 화면 히스토리 표시 여부
+  mainInputPlaceholder: "", // 메인 입력창 플레이스홀더
+  // --- 👇 [추가] ---
+  enableMainChatMarkdown: true, // 메인 챗 마크다운 활성화 여부
+  // --- 👆 [추가] ---
   llmProvider: "gemini",
   flowiseApiUrl: "",
   isProfileModalOpen: false,
@@ -79,23 +78,24 @@ export const createUISlice = (set, get) => ({
         set({
           maxFavorites:
             typeof config.maxFavorites === "number" ? config.maxFavorites : 10,
-          // --- 👇 [수정] dimUnfocusedPanels 로드 로직 추가 ---
           dimUnfocusedPanels:
             typeof config.dimUnfocusedPanels === "boolean"
               ? config.dimUnfocusedPanels
-              : true, // 기본값 true
-          // --- 👆 [수정] ---
-          // --- ▼ 수정 ▼ ---
+              : true,
           enableFavorites:
             typeof config.enableFavorites === "boolean"
               ? config.enableFavorites
-              : true, // 기본값 true
-          // --- ▲ 수정 ▲ ---
-          // --- 👇 [추가] ---
+              : true,
           showHistoryOnGreeting:
             typeof config.showHistoryOnGreeting === "boolean"
               ? config.showHistoryOnGreeting
-              : false, // 기본값 false
+              : false,
+          mainInputPlaceholder: config.mainInputPlaceholder || "",
+          // --- 👇 [추가] ---
+          enableMainChatMarkdown:
+            typeof config.enableMainChatMarkdown === "boolean"
+              ? config.enableMainChatMarkdown
+              : true, // 기본값 true
           // --- 👆 [추가] ---
           llmProvider: config.llmProvider || "gemini",
           flowiseApiUrl: config.flowiseApiUrl || "",

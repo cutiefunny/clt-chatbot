@@ -76,9 +76,12 @@ export default function ChatInput() {
   const isScenarioPanelExpanded = useChatStore(
     (state) => state.isScenarioPanelExpanded
   );
-  // --- ▼ 수정 ▼ ---
+  // --- 👇 [추가] ---
+  const mainInputPlaceholder = useChatStore(
+    (state) => state.mainInputPlaceholder
+  );
+  // --- 👆 [추가] ---
   const enableFavorites = useChatStore((state) => state.enableFavorites);
-  // --- ▲ 수정 ▲ ---
 
   const { t } = useTranslations();
   const inputRef = useRef(null);
@@ -109,18 +112,15 @@ export default function ChatInput() {
     }
   }, [isInputDisabled, focusRequest, activePanel]);
 
-  // --- 👇 [수정된 부분 시작] ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     const input = e.target.elements.userInput.value;
     if (!input.trim() || isLoading) return;
 
-    // activePanel 조건 제거하고 항상 메인 응답 함수(handleResponse) 호출
     await handleResponse({ text: input });
 
     e.target.reset();
   };
-  // --- 👆 [수정된 부분 끝] ---
 
   const handleItemClick = (item) => {
     handleShortcutClick(item);
@@ -180,7 +180,6 @@ export default function ChatInput() {
                               handleItemClick(item)
                             }
                           >
-                            {/* --- ▼ 수정 ▼ --- */}
                             {enableFavorites && (
                               <button
                                 className={`${styles.favoriteButton} ${
@@ -194,7 +193,6 @@ export default function ChatInput() {
                                 <StarIcon size={18} filled={isFavorited} />
                               </button>
                             )}
-                            {/* --- ▲ 수정 ▲ --- */}
                             <div className={styles.itemContent}>
                               <span className={styles.itemTitle}>
                                 {item.title}
@@ -225,11 +223,9 @@ export default function ChatInput() {
           ref={inputRef}
           name="userInput"
           className={styles.textInput}
-          placeholder={
-            activePanel === "scenario"
-              ? t("enterResponse")
-              : t("askAboutService")
-          }
+          // --- 👇 [수정] ---
+          placeholder={mainInputPlaceholder || t("askAboutService")}
+          // --- 👆 [수정] ---
           autoComplete="off"
           disabled={isInputDisabled}
         />

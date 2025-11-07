@@ -9,11 +9,11 @@ import Link from "next/link";
 export default function GeneralSettingsPage() {
   const {
     maxFavorites,
-    // --- ▼ 수정 ▼ ---
     dimUnfocusedPanels, // dimUnfocusedPanels 추가
     enableFavorites, // enableFavorites 추가
     showHistoryOnGreeting, // <-- [추가]
-    // --- ▲ 수정 ▲ ---
+    mainInputPlaceholder, // <-- [추가]
+    enableMainChatMarkdown, // <-- [추가]
     llmProvider,
     flowiseApiUrl,
     loadGeneralConfig,
@@ -22,13 +22,13 @@ export default function GeneralSettingsPage() {
   } = useChatStore();
 
   const [limit, setLimit] = useState("");
-  // --- ▼ 수정 ▼ ---
   const [dimPanels, setDimPanels] = useState(true); // dimPanels 상태 추가
   const [favoritesEnabled, setFavoritesEnabled] = useState(true); // favoritesEnabled 상태 추가
   const [showHistory, setShowHistory] = useState(false); // <-- [추가]
-  // --- ▲ 수정 ▲ ---
   const [provider, setProvider] = useState("gemini");
   const [apiUrl, setApiUrl] = useState("");
+  const [placeholder, setPlaceholder] = useState(""); // <-- [추가]
+  const [markdownEnabled, setMarkdownEnabled] = useState(true); // <-- [추가]
   const [isLoading, setIsLoading] = useState(false);
   const [apiUrlError, setApiUrlError] = useState("");
 
@@ -38,20 +38,20 @@ export default function GeneralSettingsPage() {
 
   useEffect(() => {
     if (maxFavorites !== null) setLimit(String(maxFavorites));
-    // --- ▼ 수정 ▼ ---
     setDimPanels(dimUnfocusedPanels); // 로드된 값으로 상태 설정
     setFavoritesEnabled(enableFavorites); // 로드된 값으로 상태 설정
     setShowHistory(showHistoryOnGreeting); // <-- [추가]
-    // --- ▲ 수정 ▲ ---
     setProvider(llmProvider);
     setApiUrl(flowiseApiUrl);
+    setPlaceholder(mainInputPlaceholder || ""); // <-- [추가]
+    setMarkdownEnabled(enableMainChatMarkdown); // <-- [추가]
   }, [
     maxFavorites,
-    // --- ▼ 수정 ▼ ---
     dimUnfocusedPanels, // 의존성 배열에 추가
     enableFavorites, // 의존성 배열에 추가
     showHistoryOnGreeting, // <-- [추가]
-    // --- ▲ 수정 ▲ ---
+    mainInputPlaceholder, // <-- [추가]
+    enableMainChatMarkdown, // <-- [추가]
     llmProvider,
     flowiseApiUrl,
   ]);
@@ -82,11 +82,11 @@ export default function GeneralSettingsPage() {
 
     const settings = {
       maxFavorites: newLimit,
-      // --- ▼ 수정 ▼ ---
       dimUnfocusedPanels: dimPanels, // 저장할 설정에 추가
       enableFavorites: favoritesEnabled, // 저장할 설정에 추가
       showHistoryOnGreeting: showHistory, // <-- [추가]
-      // --- ▲ 수정 ▲ ---
+      mainInputPlaceholder: placeholder, // <-- [추가]
+      enableMainChatMarkdown: markdownEnabled, // <-- [추가]
       llmProvider: provider,
       flowiseApiUrl: apiUrl,
     };
@@ -179,7 +179,50 @@ export default function GeneralSettingsPage() {
           )}
         </div>
 
-        {/* --- ▼ 추가 ▼ --- */}
+        {/* 메인 입력창 플레이스홀더 */}
+        <div className={styles.settingItem}>
+          <label htmlFor="main-placeholder" className={styles.settingLabel}>
+            <h3>메인 입력창 문구</h3>
+            <p>
+              채팅 하단의 메인 입력창에 표시될 플레이스홀더 텍스트입니다. (기본값:
+              askAboutService)
+            </p>
+          </label>
+          <input
+            id="main-placeholder"
+            type="text"
+            value={placeholder}
+            onChange={(e) => setPlaceholder(e.target.value)}
+            className={styles.settingInput}
+            style={{
+              width: "100%",
+              textAlign: "left",
+              maxWidth: "400px",
+            }}
+            placeholder="예: 서비스에 대해 질문해주세요."
+          />
+        </div>
+
+        {/* --- 👇 [추가] 메인 챗 마크다운 설정 --- */}
+        <div className={styles.settingItem}>
+          <label className={styles.settingLabel}>
+            <h3>메인 챗 마크다운</h3>
+            <p>
+              활성화 시, 메인 채팅(시나리오 제외)의 봇 답변에 마크다운 서식을
+              적용합니다.
+            </p>
+          </label>
+          <label className={styles.switch}>
+            <input
+              type="checkbox"
+              checked={markdownEnabled}
+              onChange={(e) => setMarkdownEnabled(e.target.checked)}
+            />
+            <span className={styles.slider}></span>
+          </label>
+        </div>
+        {/* --- 👆 [추가] --- */}
+
         {/* 즐겨찾기 기능 설정 */}
         <div className={styles.settingItem}>
           <label className={styles.settingLabel}>
@@ -198,11 +241,8 @@ export default function GeneralSettingsPage() {
             <span className={styles.slider}></span>
           </label>
         </div>
-        {/* --- ▲ 추가 ▲ --- */}
 
-        {/* --- ▼ 수정 ▼ --- */}
-        {/* 포커스 흐림 설정 (기존 코드 유지) */}
-        {/* --- ▲ 수정 ▲ --- */}
+        {/* 포커스 흐림 설정 */}
         <div className={styles.settingItem}>
           <label className={styles.settingLabel}>
             <h3>포커스 잃은 창 흐리게</h3>
@@ -220,9 +260,8 @@ export default function GeneralSettingsPage() {
             <span className={styles.slider}></span>
           </label>
         </div>
-        {/* --- ▲ 수정 ▲ --- */}
 
-        {/* --- 👇 [추가] 초기 화면 히스토리 패널 표시 --- */}
+        {/* 초기 화면 히스토리 패널 표시 */}
         <div className={styles.settingItem}>
           <label className={styles.settingLabel}>
             <h3>초기 화면 히스토리 표시</h3>
@@ -240,7 +279,6 @@ export default function GeneralSettingsPage() {
             <span className={styles.slider}></span>
           </label>
         </div>
-        {/* --- 👆 [추가] --- */}
 
         {/* 즐겨찾기 개수 설정 (기존 코드 유지) */}
         <div className={styles.settingItem}>
