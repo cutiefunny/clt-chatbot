@@ -13,6 +13,7 @@ export default function GeneralSettingsPage() {
     enableFavorites, // enableFavorites 추가
     showHistoryOnGreeting, // <-- [추가]
     mainInputPlaceholder, // <-- [추가]
+    enableMainChatMarkdown, // <-- [추가]
     llmProvider,
     flowiseApiUrl,
     loadGeneralConfig,
@@ -27,6 +28,7 @@ export default function GeneralSettingsPage() {
   const [provider, setProvider] = useState("gemini");
   const [apiUrl, setApiUrl] = useState("");
   const [placeholder, setPlaceholder] = useState(""); // <-- [추가]
+  const [markdownEnabled, setMarkdownEnabled] = useState(true); // <-- [추가]
   const [isLoading, setIsLoading] = useState(false);
   const [apiUrlError, setApiUrlError] = useState("");
 
@@ -42,12 +44,14 @@ export default function GeneralSettingsPage() {
     setProvider(llmProvider);
     setApiUrl(flowiseApiUrl);
     setPlaceholder(mainInputPlaceholder || ""); // <-- [추가]
+    setMarkdownEnabled(enableMainChatMarkdown); // <-- [추가]
   }, [
     maxFavorites,
     dimUnfocusedPanels, // 의존성 배열에 추가
     enableFavorites, // 의존성 배열에 추가
     showHistoryOnGreeting, // <-- [추가]
     mainInputPlaceholder, // <-- [추가]
+    enableMainChatMarkdown, // <-- [추가]
     llmProvider,
     flowiseApiUrl,
   ]);
@@ -82,6 +86,7 @@ export default function GeneralSettingsPage() {
       enableFavorites: favoritesEnabled, // 저장할 설정에 추가
       showHistoryOnGreeting: showHistory, // <-- [추가]
       mainInputPlaceholder: placeholder, // <-- [추가]
+      enableMainChatMarkdown: markdownEnabled, // <-- [추가]
       llmProvider: provider,
       flowiseApiUrl: apiUrl,
     };
@@ -174,7 +179,7 @@ export default function GeneralSettingsPage() {
           )}
         </div>
 
-        {/* --- 👇 [추가] 메인 입력창 플레이스홀더 --- */}
+        {/* 메인 입력창 플레이스홀더 */}
         <div className={styles.settingItem}>
           <label htmlFor="main-placeholder" className={styles.settingLabel}>
             <h3>메인 입력창 문구</h3>
@@ -196,6 +201,25 @@ export default function GeneralSettingsPage() {
             }}
             placeholder="예: 서비스에 대해 질문해주세요."
           />
+        </div>
+
+        {/* --- 👇 [추가] 메인 챗 마크다운 설정 --- */}
+        <div className={styles.settingItem}>
+          <label className={styles.settingLabel}>
+            <h3>메인 챗 마크다운</h3>
+            <p>
+              활성화 시, 메인 채팅(시나리오 제외)의 봇 답변에 마크다운 서식을
+              적용합니다.
+            </p>
+          </label>
+          <label className={styles.switch}>
+            <input
+              type="checkbox"
+              checked={markdownEnabled}
+              onChange={(e) => setMarkdownEnabled(e.target.checked)}
+            />
+            <span className={styles.slider}></span>
+          </label>
         </div>
         {/* --- 👆 [추가] --- */}
 

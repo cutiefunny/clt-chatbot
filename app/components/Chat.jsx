@@ -42,6 +42,11 @@ const tryParseJson = (text) => {
 const MessageWithButtons = ({ text, messageId, isStreaming }) => {
   const { handleShortcutClick, scenarioCategories, selectedOptions } =
     useChatStore();
+  // --- 👇 [추가] ---
+  const enableMainChatMarkdown = useChatStore(
+    (state) => state.enableMainChatMarkdown
+  );
+  // --- 👆 [추가] ---
   const selectedOption = selectedOptions[messageId];
 
   const findShortcutByTitle = useCallback(
@@ -138,7 +143,19 @@ const MessageWithButtons = ({ text, messageId, isStreaming }) => {
         if (part.type === "text") {
           // 텍스트 내용이 비어있지 않을 때만 렌더링
           return part.content ? (
-            <MarkdownRenderer key={index} content={part.content} />
+            // --- 👇 [수정] ---
+            enableMainChatMarkdown ? (
+              <MarkdownRenderer key={index} content={part.content} />
+            ) : (
+              // Markdown 비활성화 시: pre-wrap 스타일로 텍스트만 렌더링
+              <div
+                key={index}
+                style={{ whiteSpace: "pre-wrap", wordWrap: "break-word" }}
+              >
+                {part.content}
+              </div>
+            )
+            // --- 👆 [수정] ---
           ) : null;
         } else if (part.type === "button") {
           // 버튼 렌더링 로직
