@@ -317,8 +317,8 @@ export default function ScenarioChat() {
             }, 0);
 
             // 임계값 (가장 긴 '줄'의 길이를 기준)
-            const SHORT_THRESHOLD = 10; // 30% 너비 임계값 (50자 미만)
-            const MEDIUM_THRESHOLD = 30; // 60% 너비 임계값 (150자 미만)
+            const SHORT_THRESHOLD = 10; // 30% 너비 임계값 (10자 미만)
+            const MEDIUM_THRESHOLD = 30; // 60% 너비 임계값 (30자 미만)
 
             if (maxLineLength < SHORT_THRESHOLD) {
               // 30% 단계
