@@ -324,6 +324,11 @@ export const createChatSlice = (set, get) => {
         setSelectedOption,
         openScenarioPanel,
         handleResponse,
+        // --- 👇 [추가] ---
+        availableScenarios, // 시나리오 슬라이스에서 가져옴
+        language,
+        showEphemeralToast,
+        // --- 👆 [추가] ---
       } = get();
 
       if (messageId) {
@@ -333,7 +338,6 @@ export const createChatSlice = (set, get) => {
         get().setSelectedOption(messageId, item.title);
       }
 
-      // --- ▼ 수정 ▼ ---
       if (item.action.type === "custom") {
         await handleResponse({
           text: item.action.value,
@@ -344,9 +348,27 @@ export const createChatSlice = (set, get) => {
           text: item.action.value,
           displayText: item.action.value, // 'text' 타입은 value를 displayText로 사용
         });
-      // --- ▲ 수정 ▲ ---
+        // --- 👇 [수정] ---
       } else if (item.action.type === "scenario") {
-        get().openScenarioPanel?.(item.action.value, extractedSlots);
+        const scenarioId = item.action.value;
+
+        // 시나리오 ID가 availableScenarios 목록에 있는지 확인
+        if (!availableScenarios.includes(scenarioId)) {
+          console.warn(
+            `[handleShortcutClick] Scenario not found: ${scenarioId}. Shortcut title: "${item.title}"`
+          );
+          // locales.js에 새로 추가한 에러 메시지 사용
+          const errorMessage =
+            locales[language]?.["errorScenarioNotFound"] ||
+            "The linked scenario could not be found. Please contact an administrator.";
+          
+          showEphemeralToast(errorMessage, "error");
+          // clearExtractedSlots()는 finally처럼 맨 마지막에 호출되므로 여기서는 return
+        } else {
+          // 시나리오가 존재하면 패널 열기
+          get().openScenarioPanel?.(scenarioId, extractedSlots);
+        }
+        // --- 👆 [수정] ---
       } else {
         console.warn(`Unsupported shortcut action type: ${item.action.type}`);
       }
