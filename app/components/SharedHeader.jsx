@@ -57,7 +57,7 @@ export default function SharedHeader({
             <CloseIcon />
           </button>
         </div>
-        <div className={styles.splashContainer}>aa</div>
+        <div className={styles.splashContainer}></div>
       </div>
       <div className={styles.chatLayout}>
         {!shouldHidePanel && <HistoryPanel />}
