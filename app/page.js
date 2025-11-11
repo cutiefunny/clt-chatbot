@@ -3,20 +3,10 @@
 
 import { useChatStore } from "../app/store";
 import Login from "../app/components/Login";
-import HistoryPanel from "../app/components/HistoryPanel";
-import ScenarioModal from "../app/components/ScenarioModal";
 import Toast from "../app/components/Toast";
 import styles from "./page.module.css";
 import ConfirmModal from "../app/components/ConfirmModal";
-import DevStateDisplay from "../app/components/DevStateDisplay";
-import MainAreaLayout from "../app/components/MainAreaLayout";
-import SplashScreen from "../app/components/SplashScreen";
-import {
-  postToParent,
-  PARENT_ORIGIN,
-  delayParentAnimationIfNeeded,
-} from "../app/lib/parentMessaging";
-import CloseIcon from "../app/components/icons/CloseIcon";
+import SharedHeader from "../app/components/SharedHeader";
 
 export default function HomePage() {
   // --- 👇 [수정] 스토어 셀렉터를 개별적으로 분리 ---
@@ -61,6 +51,7 @@ export default function HomePage() {
 
   // [추가] 설정값을 반영하여 패널을 숨길지 여부 결정
   const shouldHidePanel =
+    !isHistoryPanelOpen &&
     !currentConversationId &&
     showInitialGreeting &&
     !showHistoryOnGreeting &&
@@ -83,10 +74,10 @@ export default function HomePage() {
   }
 
   // --- 👇 [추가] 스플래시 애니메이션 종료 핸들러 ---
-  const handleSplashAnimationEnd = () => {
-    console.log("Splash animation finished. Setting isInitializing to false.");
-    setIsInitializing(false); // 스토어 상태 변경
-  };
+  // const handleSplashAnimationEnd = () => {
+  //   console.log("Splash animation finished. Setting isInitializing to false.");
+  //   setIsInitializing(false); // 스토어 상태 변경
+  // };
 
   return (
     <main className={styles.main}>
@@ -95,47 +86,19 @@ export default function HomePage() {
       {!user ? (
         <Login />
       ) : (
-        <div className={styles.chatContainer}>
-          <div
-            className={`${styles.chatHeader}
-              ${
-                isInitializing
-                  ? styles.full
-                  : !shouldHidePanel
-                  ? ""
-                  : styles.half
-              }`}
-          >
-            {/* 닫기 버튼 (기존 코드 유지) */}
-            <button
-              onClick={async () => {
-                console.log(
-                  `[Call Window Method] callChatbotClose to ${PARENT_ORIGIN}`
-                );
-                postToParent("callChatbotClose", { state: "close" });
-                await delayParentAnimationIfNeeded();
-              }}
-            >
-              <CloseIcon />
-            </button>
-          </div>
-          <div className={styles.chatLayout}>
-            {/* --- 👇 [수정] shouldHidePanel 값에 따라 렌더링 --- */}
-            {!shouldHidePanel && <HistoryPanel />}
-            {/* --- 👆 [수정] --- */}
-            <MainAreaLayout
-              historyPanelWidth={historyPanelWidth}
-              scenarioPanelClasses={scenarioPanelClasses}
-              activePanel={activePanel}
-              fontSize={fontSize}
-              setFontSize={setFontSize}
-              theme={theme}
-              setTheme={setTheme}
-            />
-          </div>
-          {isScenarioModalOpen && <ScenarioModal />}
-          {isDevMode && <DevStateDisplay />}
-        </div>
+        <SharedHeader
+          isInitializing={isInitializing}
+          shouldHidePanel={shouldHidePanel}
+          historyPanelWidth={historyPanelWidth}
+          scenarioPanelClasses={scenarioPanelClasses}
+          activePanel={activePanel}
+          fontSize={fontSize}
+          setFontSize={setFontSize}
+          theme={theme}
+          setTheme={setTheme}
+          isScenarioModalOpen={isScenarioModalOpen}
+          isDevMode={isDevMode}
+        />
       )}
       {/* --- 👆 [수정] --- */}
       {confirmModal.isOpen && (

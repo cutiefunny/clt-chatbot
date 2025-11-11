@@ -8,50 +8,6 @@
   align-items: center;
 }
 
-.chatLayout {
-  display: flex; /* 자식 요소들을 가로로 배치 */
-  width: 100%;
-  flex: 1;
-  position: relative; /* HistoryPanel absolute 배치의 기준 */
-  overflow: hidden;
-}
-
-.chatContainer {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  height: 100%;
-}
-
-.chatHeader {
-  flex-shrink: 0;
-  height: 48px;
-  position: relative;
-  width: 100%;
-  background: linear-gradient(90deg, #8f9aff 0%, #634ce2 100%);
-  overflow: hidden;
-  isolation: isolate;
-  transition: height 0.3s ease-in-out;
-}
-
-.chatHeader::before {
-  content: "";
-  position: absolute;
-  inset: -48px;
-  background: url("/images/background.png") lightgray 50% / cover no-repeat;
-  opacity: 0.12;
-  filter: blur(28px);
-  pointer-events: none;
-}
-
-.chatHeader.full {
-  height: 100%;
-}
-
-.chatHeader.half {
-  height: calc(100% - 204px);
-}
-
 .mainArea {
   flex: 1;
   display: flex;
