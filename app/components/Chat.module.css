@@ -397,6 +397,7 @@ input:checked + .slider:before {
     --Color-Light-Gradation-01,
     linear-gradient(90deg, #8f9aff 0%, #634ce2 100%)
   ) !important;
+  font-size: 14px;
 }
 
 @keyframes fadeInOut {
