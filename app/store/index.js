@@ -72,6 +72,9 @@ export const useChatStore = create((set, get) => ({
     // 초기 설정 로드
     get().loadScenarioCategories?.(); // scenarioSlice (또는 별도 configSlice)
     get().loadGeneralConfig?.(); // uiSlice (또는 별도 configSlice)
+    // --- 👇 [수정] 누락된 시나리오 목록 로드 호출 추가 ---
+    get().loadAvailableScenarios?.(); 
+    // --- 👆 [수정] ---
 
     // URL 파라미터 테스트 로그인
     if (typeof window !== "undefined") {

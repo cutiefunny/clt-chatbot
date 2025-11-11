@@ -16,25 +16,19 @@ export async function* processFlowiseStream(reader, decoder, language) {
   const mockChartData = {
     type: "bar", // 차트 타입 bar(막대), line(선), pie(원형)
     data: {
-      labels: ["January", "February", "March", "April", "May", "June"],
+      labels: ["FAIRWAY TRANSPORT CO.,LTD.", "CMA CGM MARSEILLES", "MAERSK LINE", "MAXPEED CO., LTD.", "SAMSUNG ELECTRONICS CO.,LTD."],
       datasets: [
         {
-          label: "Monthly Sales",
-          data: [65, 59, 80, 81, 56, 55],
+          label: "Outstanding (USD)",
+          data: [11,400,772.87, 553,600.00, 318,750.00, 249,399.67, 54,371.38],
           backgroundColor: "rgba(99, 102, 241, 0.6)",
           borderColor: "rgba(99, 102, 241, 1)",
           borderWidth: 1,
-        },
-        {
-          label: "Monthly Expenses",
-          data: [28, 48, 40, 19, 86, 27],
-          backgroundColor: "rgba(239, 68, 68, 0.6)",
-          borderColor: "rgba(239, 68, 68, 1)",
-          borderWidth: 1,
-        },
+        }
       ],
     },
     options: {
+      indexAxis: 'y',  //막대가 가로인지 세로인지 지정 
       responsive: true,
       plugins: {
         legend: {
@@ -42,7 +36,7 @@ export async function* processFlowiseStream(reader, decoder, language) {
         },
         title: {
           display: true,
-          text: "Mock Monthly Performance",
+          text: "Top 5 Customers by Outstanding Amount (USD) for SELSC Office (2025.11.11)",
         },
       },
       scales: {
