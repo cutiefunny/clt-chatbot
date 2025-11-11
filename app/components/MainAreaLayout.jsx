@@ -33,11 +33,12 @@ export default function MainAreaLayout({
         {!hideMainContent && <Chat />}
         <ChatInput />
       </div>
-      {activePanel === "scenario" && (
-        <div className={scenarioPanelClasses.join(" ")}>
-          <ScenarioChat />
-        </div>
-      )}
+      <div
+        className={scenarioPanelClasses.join(" ")}
+        aria-hidden={activePanel !== "scenario"}
+      >
+        {activePanel === "scenario" && <ScenarioChat />}
+      </div>
     </div>
   );
 }
