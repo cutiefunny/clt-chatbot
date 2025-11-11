@@ -243,6 +243,28 @@ export const createUISlice = (set, get) => ({
     set({ isHistoryPanelOpen: willBeOpen });
   },
 
+  openHistoryPanel: async () => {
+    if (get().isHistoryPanelOpen) return;
+    const width = 264;
+    console.log(
+      `[Call Window Method] callChatbotResize(width: ${width}) to ${PARENT_ORIGIN} with Open History Panel`
+    );
+    postToParent("callChatbotResize", { width });
+    await delayParentAnimationIfNeeded();
+    set({ isHistoryPanelOpen: true });
+  },
+
+  closeHistoryPanel: async () => {
+    if (!get().isHistoryPanelOpen) return;
+    const width = -264;
+    console.log(
+      `[Call Window Method] callChatbotResize(width: ${width}) to ${PARENT_ORIGIN} with Close History Panel`
+    );
+    postToParent("callChatbotResize", { width });
+    await delayParentAnimationIfNeeded();
+    set({ isHistoryPanelOpen: false });
+  },
+
   toggleScenarioPanelExpanded: async () => {
     if (get().activePanel !== "scenario") return;
     const wasExpanded = get().isScenarioPanelExpanded;

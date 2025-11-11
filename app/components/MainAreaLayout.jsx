@@ -40,61 +40,14 @@ export default function MainAreaLayout({
         paddingLeft: historyPanelWidth,
       }}
     >
-      <div className={styles.sharedHeader}>
-        <div className={chatStyles.header}>
-          <div className={chatStyles.headerButtons}>
-            {/* 테마 및 폰트 크기 버튼 (기존 코드 유지) */}
-            <div
-              className={chatStyles.settingControl}
-              style={{ display: "none" }}
-            >
-              <span className={chatStyles.settingLabel}>Large text</span>
-              <label className={chatStyles.switch}>
-                <input
-                  type="checkbox"
-                  checked={fontSize === "default"}
-                  onChange={() =>
-                    setFontSize(fontSize === "default" ? "small" : "default")
-                  }
-                />
-                <span className={chatStyles.slider}></span>
-              </label>
-            </div>
-            <div
-              className={chatStyles.separator}
-              style={{ display: "none" }}
-            ></div>
-            <div style={{ display: "none" }}>
-              <button
-                className={chatStyles.themeToggleButton}
-                onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-              >
-                <MoonIcon />
-              </button>
-            </div>
-            {/* 닫기 버튼 (기존 코드 유지) */}
-            <button
-              className={chatStyles.headerCloseButton}
-              onClick={async () => {
-                console.log(
-                  `[Call Window Method] callChatbotClose to ${PARENT_ORIGIN}`
-                );
-                postToParent("callChatbotClose", { state: "close" });
-                await delayParentAnimationIfNeeded();
-              }}
-            >
-              <CloseIcon />
-            </button>
-          </div>
-        </div>
-      </div>
       <div className={styles.panelsWrapper}>
         <div className={styles.contentAndInputWrapper}>
           {/* --- 👇 [수정] 조건부 렌더링 --- */}
           {/* showInitialGreeting이 true이면 (메시지가 1개 이하) InitialGreeting 렌더링
             false이면 (메시지가 2개 이상) Chat (채팅 내역) 렌더링
           */}
-          {showInitialGreeting ? <InitialGreeting /> : <Chat />}
+          {/* {showInitialGreeting ? <InitialGreeting /> : <Chat />} */}
+          <Chat />
           {/* ChatInput은 항상 렌더링 (Chat.jsx 내부에서 이동) */}
           <ChatInput />
           {/* --- 👆 [수정] --- */}
