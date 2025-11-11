@@ -8,18 +8,11 @@
   align-items: center;
 }
 
-.chatLayout {
-  display: flex; /* 자식 요소들을 가로로 배치 */
-  width: 100%;
-  height: 100%;
-  position: relative; /* HistoryPanel absolute 배치의 기준 */
-  overflow: hidden;
-}
-
 .mainArea {
   flex: 1;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: stretch;
   height: 100%;
   transition: padding-left 0.3s ease-in-out;
   overflow: hidden;
@@ -44,6 +37,15 @@
   /* width 계산 방식은 page.js의 레이아웃에서 처리 */
 }
 
+.chatAreaWrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 /* --- 👇 [삭제] .mainPanelShiftedLeft 클래스 제거 --- */
 /* .mainPanelShiftedLeft { ... } */
 /* --- 👆 [삭제] --- */
@@ -57,13 +59,16 @@
   width: 0; /* 초기 상태: 너비 0 */
   height: calc(100% - 16px);
   background-color: rgba(255, 255, 255, 0.64);
-  margin: 0 16px 16px 0;
+  margin: 0;
   border-radius: 16px;
   background: var(--White-Opacity-64, rgba(255, 255, 255, 0.64));
   /* Shadow_Glass/Light/Shadow_Glass 01 */
   box-shadow: 0 6px 16px 0 #dfe2fe;
-  /* transform: translateX(100%); 제거 */
-  transition: width 0.3s ease-in-out; /* width 애니메이션 */
+  transition: width 0.3s ease-in-out, transform 0.3s ease-in-out,
+    opacity 0.3s ease-in-out, margin 0.3s ease-in-out;
+  transform: translateX(32px);
+  opacity: 0;
+  pointer-events: none;
   z-index: 2;
   display: flex;
   flex-direction: column;
@@ -73,14 +78,17 @@
 
 .scenarioPanelOpen {
   width: 784px;
+  margin: 0 16px 16px 16px;
   border: var(--stroke-weight-2, 2px) solid
     var(--Color-Light-Gradation-03, #3051ea);
-
-  /* transform: translateX(0); 제거 */
+  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .scenarioPanelExpanded {
   width: 1064px;
+  margin: 0 16px 16px 16px;
   border: var(--stroke-weight-2, 2px) solid
     var(--Color-Light-Gradation-03, #3051ea);
 }

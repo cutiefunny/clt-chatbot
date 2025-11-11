@@ -2,8 +2,8 @@
 .historyPanel {
   position: fixed;
   left: 0;
-  top: 0;
-  height: 100vh;
+  top: 48px;
+  height: calc(100% - 48px);
   z-index: 10;
   display: flex;
   flex-direction: column;
@@ -785,7 +785,6 @@ body.dark .conversationList:hover::-webkit-scrollbar-thumb {
   background-color: #555;
 }
 
-
 .animate-spin {
   animation: spin 1s linear infinite;
 }
@@ -804,7 +803,7 @@ body.dark .conversationList:hover::-webkit-scrollbar-thumb {
 /* --- 👇 [추가] 'Done' 뱃지 스타일 --- */
 .doneIndicator {
   flex-shrink: 0;
-  color: #2ECC71; /* Green color for 'done' */
+  color: #2ecc71; /* Green color for 'done' */
   display: flex;
   align-items: center;
   width: 16px; /* 로딩 아이콘과 크기 맞춤 */

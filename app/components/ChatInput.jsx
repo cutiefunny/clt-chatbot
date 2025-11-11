@@ -76,6 +76,7 @@ export default function ChatInput() {
   const isScenarioPanelExpanded = useChatStore(
     (state) => state.isScenarioPanelExpanded
   );
+  const openHistoryPanel = useChatStore((state) => state.openHistoryPanel);
   // --- 👇 [추가] ---
   const mainInputPlaceholder = useChatStore(
     (state) => state.mainInputPlaceholder
@@ -136,11 +137,14 @@ export default function ChatInput() {
               className={`GlassEffect ${styles.categoryButton} ${
                 shortcutMenuOpen === category.name ? styles.active : ""
               }`}
-              onClick={() =>
-                setShortcutMenuOpen(
-                  shortcutMenuOpen === category.name ? null : category.name
-                )
-              }
+              onClick={() => {
+                const nextMenu =
+                  shortcutMenuOpen === category.name ? null : category.name;
+                setShortcutMenuOpen(nextMenu);
+                if (nextMenu && openHistoryPanel) {
+                  openHistoryPanel();
+                }
+              }}
             >
               {category.name}{" "}
               <ChevronDownIcon

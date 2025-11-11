@@ -3,20 +3,18 @@
 
 import { useChatStore } from "../app/store";
 import Login from "../app/components/Login";
-import HistoryPanel from "../app/components/HistoryPanel";
-import ScenarioModal from "../app/components/ScenarioModal";
 import Toast from "../app/components/Toast";
 import styles from "./page.module.css";
 import ConfirmModal from "../app/components/ConfirmModal";
-import DevStateDisplay from "../app/components/DevStateDisplay";
-import MainAreaLayout from "../app/components/MainAreaLayout";
-import SplashScreen from "../app/components/SplashScreen";
+import SharedHeader from "../app/components/SharedHeader";
 
 export default function HomePage() {
   // --- 👇 [수정] 스토어 셀렉터를 개별적으로 분리 ---
   const user = useChatStore((state) => state.user);
   const isHistoryPanelOpen = useChatStore((state) => state.isHistoryPanelOpen);
-  const isScenarioModalOpen = useChatStore((state) => state.isScenarioModalOpen);
+  const isScenarioModalOpen = useChatStore(
+    (state) => state.isScenarioModalOpen
+  );
   const confirmModal = useChatStore((state) => state.confirmModal);
   const closeConfirmModal = useChatStore((state) => state.closeConfirmModal);
   const isDevMode = useChatStore((state) => state.isDevMode);
@@ -31,9 +29,13 @@ export default function HomePage() {
   const isInitializing = useChatStore((state) => state.isInitializing);
   const setIsInitializing = useChatStore((state) => state.setIsInitializing);
   const messages = useChatStore((state) => state.messages);
+  const currentConversationId = useChatStore(
+    (state) => state.currentConversationId
+  );
   const showHistoryOnGreeting = useChatStore(
     (state) => state.showHistoryOnGreeting
   ); // <-- [추가]
+  const shortcutMenuOpen = useChatStore((state) => state.shortcutMenuOpen);
   // --- 👆 [수정] ---
 
   const handleConfirm = () => {
@@ -48,7 +50,12 @@ export default function HomePage() {
   const showInitialGreeting = messages.length <= 1;
 
   // [추가] 설정값을 반영하여 패널을 숨길지 여부 결정
-  const shouldHidePanel = showInitialGreeting && !showHistoryOnGreeting;
+  const shouldHidePanel =
+    !isHistoryPanelOpen &&
+    !currentConversationId &&
+    showInitialGreeting &&
+    !showHistoryOnGreeting &&
+    !shortcutMenuOpen;
 
   // 히스토리 패널 너비 계산: 숨겨야 하면 0px, 아니면 상태에 따라 60px 또는 320px
   const historyPanelWidth = shouldHidePanel
@@ -78,27 +85,20 @@ export default function HomePage() {
       {/* --- 👇 [수정] 렌더링 로직 변경 --- */}
       {!user ? (
         <Login />
-      ) : isInitializing ? (
-        <SplashScreen onAnimationEnd={handleSplashAnimationEnd} />
       ) : (
-        <>
-          <div className={styles.chatLayout}>
-            {/* --- 👇 [수정] shouldHidePanel 값에 따라 렌더링 --- */}
-            {!shouldHidePanel && <HistoryPanel />}
-            {/* --- 👆 [수정] --- */}
-            <MainAreaLayout
-              historyPanelWidth={historyPanelWidth}
-              scenarioPanelClasses={scenarioPanelClasses}
-              activePanel={activePanel}
-              fontSize={fontSize}
-              setFontSize={setFontSize}
-              theme={theme}
-              setTheme={setTheme}
-            />
-          </div>
-          {isScenarioModalOpen && <ScenarioModal />}
-          {isDevMode && <DevStateDisplay />}
-        </>
+        <SharedHeader
+          isInitializing={isInitializing}
+          shouldHidePanel={shouldHidePanel}
+          historyPanelWidth={historyPanelWidth}
+          scenarioPanelClasses={scenarioPanelClasses}
+          activePanel={activePanel}
+          fontSize={fontSize}
+          setFontSize={setFontSize}
+          theme={theme}
+          setTheme={setTheme}
+          isScenarioModalOpen={isScenarioModalOpen}
+          isDevMode={isDevMode}
+        />
       )}
       {/* --- 👆 [수정] --- */}
       {confirmModal.isOpen && (
