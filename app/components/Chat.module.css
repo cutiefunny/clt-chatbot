@@ -580,7 +580,7 @@ input:checked + .slider:before {
   display: flex;
   flex-direction: column;
   gap: 5px;
-  padding: 12px 20px;
+  /* padding: 12px 20px; */
   width: 100%;
 }
 
@@ -931,6 +931,7 @@ body.dark .formGridTable tbody tr:hover {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 16px; /* 필드 사이의 간격 */
   width: 100%;
+  padding: 12px 20px;
 }
 
 @keyframes scalePop {
