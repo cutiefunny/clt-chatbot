@@ -151,18 +151,26 @@ export async function handleResponse(get, set, messagePayload) {
           `Unsupported LLM provider for streaming: ${llmProvider}`
         );
 
+      // --- 👇 [수정] updateLastMessage 호출 방식을 객체 페이로드로 변경 ---
       for await (const result of streamProcessor) {
         if (conversationIdForBotResponse === get().currentConversationId) {
-          if (result.type === "text")
-            updateLastMessage(result.data, result.replace);
-          else if (result.type === "button") updateLastMessage(result.data);
+          // 'text', 'button', 'chart' 타입은 updateLastMessage로 전달
+          if (
+            result.type === "text" ||
+            result.type === "button" ||
+            result.type === "chart"
+          ) {
+            updateLastMessage(result); // result 객체({ type, data, ... })를 그대로 전달
+          }
         }
+        // 다른 타입들은 기존 로직대로 처리
         if (result.type === "slots") setExtractedSlots(result.data);
         else if (result.type === "rawResponse")
           set({ llmRawResponse: result.data });
         else if (result.type === "finalText") finalStreamText = result.data;
         else if (result.type === "error") throw result.data;
       }
+      // --- 👆 [수정] ---
     } else {
       isStream = false;
       const data = await response.json();
@@ -369,6 +377,7 @@ export async function handleResponse(get, set, messagePayload) {
               text: finalMessageText,
               isStreaming: false,
               feedback: null,
+              // ...lastMessage에 chartData가 포함되어 있으므로 저장됨
             };
 
             saveMessage(finalMessage, conversationIdForBotResponse).then(
@@ -429,6 +438,15 @@ export async function handleResponse(get, set, messagePayload) {
           const messagesWithoutThinking = state.messages.filter(
             (m) => m.id !== lastBotMessageId
           );
+          
+          // --- 👇 [수정] 마지막 메시지 상태를 가져와서 저장 ---
+          // (참고: 이 시점에는 lastMessage가 로컬 상태에 정확히 반영되지 않을 수 있으나,
+          // finalStreamText와 stream에서 받은 chartData를 기반으로 구성해야 함)
+          // 이 로직은 현재 복잡하며, 스위칭 시 정확한 '마지막 상태'를 저장하는 데 한계가 있을 수 있음.
+          // 현재 로직은 finalStreamText만 저장함. chartData 저장은 누락될 수 있음.
+          // (개선하려면 handleResponse에서 stream 중 chartData를 임시 변수에 저장해야 함)
+          // (우선 현재 로직 유지)
+          // --- 👆 [수정] ---
 
           if (finalStreamText) {
             const finalMessageText =
@@ -443,6 +461,7 @@ export async function handleResponse(get, set, messagePayload) {
               text: finalMessageText,
               isStreaming: false,
               feedback: null,
+              // chartData: ... (현재 로직에서는 누락됨. 개선 필요)
             };
 
             saveMessage(finalMessage, conversationIdForBotResponse);

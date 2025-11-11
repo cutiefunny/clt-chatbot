@@ -1,0 +1,37 @@
+/* app/components/ChartRenderer.module.css */
+
+.chartContainer {
+  /*
+    차트가 부모 컨테이너(메시지 버블)에 꽉 차도록 설정합니다.
+    Chart.js의 options에서 responsive: true (기본값)로 설정하면
+    이 컨테이너의 크기에 맞춰 캔버스 크기가 조절됩니다.
+  */
+  position: relative;
+  width: 100%;
+  max-width: 100%; /* 부모 너비를 넘지 않도록 */
+  height: auto; /* 높이는 내용에 맞게 자동 조절 (또는 고정값 300px 등) */
+  min-height: 250px; /* 최소 높이 */
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+.errorContainer {
+  width: 100%;
+  padding: 16px;
+  background-color: rgba(255, 0, 0, 0.1);
+  border: 1px solid #f44336;
+  border-radius: 8px;
+  color: #d32f2f;
+  box-sizing: border-box;
+}
+
+.errorContainer strong {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.errorContainer p {
+  margin: 0;
+  font-size: 0.9rem;
+}

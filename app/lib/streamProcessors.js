@@ -1,14 +1,58 @@
 // app/lib/streamProcessors.js
 import { locales } from "./locales";
 
-// --- 👇 [수정] get() 대신 language를 인자로 받도록 변경 ---
+// --- 👇 [수정] chartDataText 변수 추가 ---
 export async function* processFlowiseStream(reader, decoder, language) {
   let buffer = "";
   let thinkingMessageReplaced = false;
   let collectedText = ""; // 스트림 전체 텍스트 수집
   let buttonText = ""; // 추출된 버튼 텍스트
+  let chartDataText = ""; // [추가] 추출된 차트 데이터 (JSON 문자열)
   let extractedSlots = {}; // 추출된 슬롯
   // const { language } = get(); // [제거]
+
+  // --- 👇 [추가] 차트 테스트를 위한 Mock 데이터 ---
+  // Re-charts 또는 Chart.js에서 사용하기 좋은 형식의 Mock 데이터
+  const mockChartData = {
+    type: "bar", // 차트 타입 bar(막대), line(선), pie(원형)
+    data: {
+      labels: ["January", "February", "March", "April", "May", "June"],
+      datasets: [
+        {
+          label: "Monthly Sales",
+          data: [65, 59, 80, 81, 56, 55],
+          backgroundColor: "rgba(99, 102, 241, 0.6)",
+          borderColor: "rgba(99, 102, 241, 1)",
+          borderWidth: 1,
+        },
+        {
+          label: "Monthly Expenses",
+          data: [28, 48, 40, 19, 86, 27],
+          backgroundColor: "rgba(239, 68, 68, 0.6)",
+          borderColor: "rgba(239, 68, 68, 1)",
+          borderWidth: 1,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: "top",
+        },
+        title: {
+          display: true,
+          text: "Mock Monthly Performance",
+        },
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+        },
+      },
+    },
+  };
+  // --- 👆 [추가] ---
 
   try {
     while (true) {
@@ -115,6 +159,30 @@ export async function* processFlowiseStream(reader, decoder, language) {
                 );
               }
             }
+
+            // --- 👇 [추가] 차트 데이터 추출 로직 ---
+            // "chartData": "{\"type\":\"bar\",...}" 와 같이 stringify된 JSON이 값으로 오는 경우
+            const matchChartData = toolOutput.match(/"chartData"\s*:\s*"(.*?)"/);
+            if (matchChartData && matchChartData[1]) {
+              try {
+                // 1. 캡처된 문자열 (e.g., {\"type\":\"bar\",...})의 이스케이프를 해제합니다.
+                const unescapedString = matchChartData[1].replace(/\\"/g, '"');
+                // 2. 이스케이프가 해제된 문자열이 유효한 JSON인지 확인 (선택 사항이지만 권장)
+                JSON.parse(unescapedString);
+                // 3. 유효한 JSON 문자열을 chartDataText에 할당
+                chartDataText = unescapedString;
+                console.log("[Flowise Stream] Extracted chartData (stringified):", chartDataText);
+              } catch (e) {
+                console.warn("[Flowise Stream] Failed to parse extracted chartData:", e, matchChartData[1]);
+              }
+            }
+            
+            // --- 👇 [추가] 요청대로 테스트용 Mock 데이터를 하드코딩 ---
+            // (참고: 실제 운영 시에는 위 matchChartData 로직만 사용하고 이 줄은 제거해야 합니다)
+            chartDataText = JSON.stringify(mockChartData);
+            console.log("[Flowise Stream] HARDCODED mock chartData for testing.");
+            // --- 👆 [추가] ---
+
           }
         } else if (data.event === "token" && typeof data.data === "string") {
           textChunk = data.data;
@@ -162,6 +230,13 @@ export async function* processFlowiseStream(reader, decoder, language) {
       yield { type: "button", data: buttonText };
       collectedText += buttonText;
     }
+
+    // --- 👇 [추가] 차트 데이터 yield (buttonText 이후) ---
+    if (chartDataText) {
+      // 차트 데이터는 텍스트로 수집하지 않고, 별도 타입으로 전달
+      yield { type: "chart", data: chartDataText };
+    }
+    // --- 👆 [추가] ---
 
     const bookingNoRegex = /\b([A-Z]{2}\d{10})\b/i;
     const match = collectedText.match(bookingNoRegex);

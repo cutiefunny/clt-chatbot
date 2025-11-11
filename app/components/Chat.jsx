@@ -1,8 +1,9 @@
 // app/components/Chat.jsx
 "use client";
 
-// --- 👇 [수정] useState 임포트 제거 ---
+// --- 👇 [수정] useState 임포트 제거, dynamic 임포트 추가 ---
 import { useEffect, useRef, useCallback, useState } from "react";
+import dynamic from "next/dynamic"; // Lazy loading을 위해 dynamic import 사용
 // --- 👆 [수정] ---
 import { useChatStore } from "../store";
 import { useTranslations } from "../hooks/useTranslations";
@@ -18,6 +19,13 @@ import LikeIcon from "./icons/LikeIcon";
 import DislikeIcon from "./icons/DislikeIcon";
 import UploadIcon from "./icons/UploadIcon";
 import TransferIcon from "./icons/TransferIcon";
+
+// --- 👇 [추가] ChartRenderer를 dynamic import로 로드 ---
+const ChartRenderer = dynamic(() => import("./ChartRenderer"), {
+  loading: () => <p>Loading chart...</p>, // 로딩 중에 표시할 컴포넌트
+  ssr: false, // 차트 라이브러리는 클라이언트 측에서만 렌더링
+});
+// --- 👆 [추가] ---
 
 // JSON 파싱 및 렌더링을 위한 헬퍼 함수
 const tryParseJson = (text) => {
@@ -38,8 +46,11 @@ const tryParseJson = (text) => {
   return null;
 };
 
-// isStreaming prop 추가
-const MessageWithButtons = ({ text, messageId, isStreaming }) => {
+// --- 👇 [수정] props를 msg 객체로 변경 ---
+const MessageWithButtons = ({ msg }) => {
+  // msg 객체에서 필요한 속성들을 구조 분해 할당
+  const { text, id: messageId, isStreaming, chartData } = msg;
+  // --- 👆 [수정] ---
   const { handleShortcutClick, scenarioCategories, selectedOptions } =
     useChatStore();
   const enableMainChatMarkdown = useChatStore(
@@ -107,78 +118,77 @@ const MessageWithButtons = ({ text, messageId, isStreaming }) => {
     );
   }
 
-  // 버튼 파싱 및 렌더링 로직
+  // --- 👇 [수정] 텍스트, 차트, 버튼 분리 및 재조합 ---
   const regex = /\[BUTTON:(.+?)\]/g;
-  const parts = [];
+  const textParts = [];
+  const buttonParts = [];
   let lastIndex = 0;
   let match;
 
   if (typeof text === "string") {
     while ((match = regex.exec(text)) !== null) {
       if (match.index > lastIndex) {
-        parts.push({
-          type: "text",
-          content: text.substring(lastIndex, match.index),
-        });
+        textParts.push(text.substring(lastIndex, match.index));
       }
-      parts.push({ type: "button", content: match[1] });
+      buttonParts.push(match[1]); // 버튼 텍스트만 저장
       lastIndex = regex.lastIndex;
     }
-    // 남은 텍스트 추가 (빈 문자열일 수도 있음)
-    parts.push({ type: "text", content: text.substring(lastIndex) });
+    textParts.push(text.substring(lastIndex)); // 남은 텍스트
   } else {
-    // 텍스트가 문자열이 아닌 경우 (예: 오류 객체 등), 문자열로 변환하여 표시
+    // 텍스트가 문자열이 아닌 경우 (예: 오류 객체 등)
     try {
-      parts.push({ type: "text", content: JSON.stringify(text) });
+      textParts.push(JSON.stringify(text));
     } catch (e) {
-      parts.push({ type: "text", content: String(text) });
+      textParts.push(String(text));
     }
   }
 
+  // 모든 텍스트 부분을 하나로 합침 (MarkdownRenderer가 처리)
+  // 버튼 기준으로 나뉘었으므로 줄바꿈(\n)으로 합쳐 자연스러운 문단 분리 유도
+  const allTextContent = textParts.map(s => s.trim()).filter(Boolean).join("\n");
+
   return (
     <div>
-      {parts.map((part, index) => {
-        if (part.type === "text") {
-          // 텍스트 내용이 비어있지 않을 때만 렌더링
-          return part.content ? (
-            // --- 👇 [수정] ---
-            // 항상 MarkdownRenderer를 사용하되,
-            // renderAsMarkdown prop을 전달하여 렌더링 방식을 제어
-            <MarkdownRenderer
-              key={index}
-              content={part.content}
-              renderAsMarkdown={enableMainChatMarkdown}
-            />
-          ) : // --- 👆 [수정] ---
-          null;
-        } else if (part.type === "button") {
-          // 버튼 렌더링 로직
-          const buttonText = part.content;
-          const shortcutItem = findShortcutByTitle(buttonText);
-          const isSelected = selectedOption === buttonText;
-          const isDimmed = selectedOption && !isSelected;
+      {/* 1. 텍스트 + 차트 (MarkdownRenderer가 차트 숨김/표시 제어) */}
+      <MarkdownRenderer
+        content={allTextContent}
+        renderAsMarkdown={enableMainChatMarkdown}
+      >
+        {/* ChartRenderer를 children으로 전달합니다.
+          MarkdownRenderer 내부에서 truncation 상태에 따라
+          이 children을 렌더링할지 결정합니다.
+        */}
+        {chartData && (
+          <ChartRenderer chartJsonString={chartData} />
+        )}
+      </MarkdownRenderer>
 
-          if (shortcutItem) {
-            return (
-              <button
-                key={index}
-                className={`${styles.optionButton} ${
-                  isSelected ? styles.selected : ""
-                } ${isDimmed ? styles.dimmed : ""}`}
-                style={{ margin: "4px 4px 4px 0", display: "block" }}
-                onClick={() => handleShortcutClick(shortcutItem, messageId)}
-                disabled={!!selectedOption}
-              >
-                {buttonText}
-              </button>
-            );
-          }
-          // 찾을 수 없는 버튼은 텍스트로 표시
-          return <span key={index}>{`[BUTTON:${part.content}]`}</span>;
+      {/* 2. 버튼 렌더링 (항상 표시됨) */}
+      {buttonParts.map((buttonText, index) => {
+        const shortcutItem = findShortcutByTitle(buttonText);
+        const isSelected = selectedOption === buttonText;
+        const isDimmed = selectedOption && !isSelected;
+
+        if (shortcutItem) {
+          return (
+            <button
+              key={`button-${index}`}
+              className={`${styles.optionButton} ${
+                isSelected ? styles.selected : ""
+              } ${isDimmed ? styles.dimmed : ""}`}
+              style={{ margin: "4px 4px 4px 0", display: "block" }}
+              onClick={() => handleShortcutClick(shortcutItem, messageId)}
+              disabled={!!selectedOption}
+            >
+              {buttonText}
+            </button>
+          );
         }
-        return null;
+        // 찾을 수 없는 버튼은 텍스트로 표시
+        return <span key={`button-text-${index}`}>{`[BUTTON:${buttonText}]`}</span>;
       })}
-      {/* isStreaming이 true일 때 로딩 GIF 추가 */}
+
+      {/* 3. 스트리밍 로딩 GIF */}
       {isStreaming && (
         <img
           src="/images/Loading.gif"
@@ -193,6 +203,7 @@ const MessageWithButtons = ({ text, messageId, isStreaming }) => {
       )}
     </div>
   );
+  // --- 👆 [수정] ---
 };
 
 export default function Chat() {
@@ -516,7 +527,8 @@ export default function Chat() {
                     (Array.isArray(msg.contentBlocks) &&
                       msg.contentBlocks.length > 0) ||
                     (Array.isArray(msg.attachments) &&
-                      msg.attachments.length > 0));
+                      msg.attachments.length > 0) ||
+                    msg.chartData); // [추가] chartData가 있어도 rich content로 간주
                 const richContentMinWidthRaw =
                   msg.minWidth ??
                   msg.contentMinWidth ??
@@ -566,12 +578,11 @@ export default function Chat() {
                       <div className={styles.messageContentWrapper}>
                         {msg.sender === "bot" && <LogoIcon />}
                         <div className={styles.messageContent}>
-                          {/* 텍스트 및 버튼 렌더링 (isStreaming 전달) */}
+                          {/* --- 👇 [수정] MessageWithButtons에 전체 msg 객체 전달 --- */}
                           <MessageWithButtons
-                            text={msg.text}
-                            messageId={msg.id}
-                            isStreaming={isStreaming}
+                            msg={msg}
                           />
+                          {/* --- 👆 [수정] --- */}
                           {/* 시나리오 목록 버튼 (봇 메시지이고 scenarios 있을 때) */}
                           {msg.sender === "bot" && msg.scenarios && (
                             <div className={styles.scenarioList}>

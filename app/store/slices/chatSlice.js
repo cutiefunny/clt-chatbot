@@ -175,25 +175,57 @@ export const createChatSlice = (set, get) => {
       }
     },
 
-    updateLastMessage: (chunk, replace = false) => {
+    // --- 👇 [수정] updateLastMessage가 객체 페이로드를 받도록 수정 ---
+    /**
+     * 스트리밍 중인 마지막 봇 메시지를 업데이트합니다.
+     * @param {object} payload - 스트림 이벤트 페이로드
+     * (e.g., { type: 'text', data: '...', replace: false } or { type: 'chart', data: '...' })
+     */
+    updateLastMessage: (payload) => {
       set((state) => {
         const lastMessage = state.messages[state.messages.length - 1];
         if (
-          lastMessage &&
-          lastMessage.sender === "bot" &&
-          lastMessage.isStreaming
+          !lastMessage ||
+          lastMessage.sender !== "bot" ||
+          !lastMessage.isStreaming
         ) {
-          const updatedText = replace
-            ? chunk
-            : (lastMessage.text || "") + chunk;
-          const updatedMessage = { ...lastMessage, text: updatedText };
-          return {
-            messages: [...state.messages.slice(0, -1), updatedMessage],
-          };
+          return state; // 스트리밍 중인 봇 메시지가 아니면 아무것도 안 함
         }
-        return state;
+
+        let updatedMessage = { ...lastMessage };
+
+        switch (payload.type) {
+          case "text":
+            // 텍스트 청크 업데이트
+            updatedMessage.text = payload.replace
+              ? payload.data
+              : (lastMessage.text || "") + payload.data;
+            break;
+          case "button":
+            // 버튼 텍스트 추가 (기존 텍스트에 연결)
+            updatedMessage.text = (lastMessage.text || "") + payload.data;
+            break;
+          case "chart":
+            // 차트 데이터(JSON 문자열) 추가
+            updatedMessage.chartData = payload.data;
+            // 리치 컨텐츠 플래그 설정 (Chat.jsx에서 너비 조절 등에 사용 가능)
+            updatedMessage.hasRichContent = true;
+            break;
+          default:
+            console.warn(
+              "updateLastMessage received unknown payload type:",
+              payload.type
+            );
+            return state; // 모르는 타입이면 상태 변경 없음
+        }
+
+        // 메시지 배열의 마지막 요소를 업데이트된 메시지로 교체
+        return {
+          messages: [...state.messages.slice(0, -1), updatedMessage],
+        };
       });
     },
+    // --- 👆 [수정] ---
 
     setSelectedOption: async (messageId, optionValue) => {
       const isTemporaryId = String(messageId).startsWith("temp_");
@@ -539,6 +571,8 @@ export const createChatSlice = (set, get) => {
           scenarioId: messageData.scenarioId,
           scenarioSessionId: messageData.scenarioSessionId,
           feedback: null,
+          // [추가] chartData 필드도 전달받을 수 있도록
+          chartData: messageData.chartData || null,
         };
       }
 

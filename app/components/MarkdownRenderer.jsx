@@ -6,7 +6,13 @@ import ChevronDownIcon from "./icons/ChevronDownIcon";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-export default function MarkdownRenderer({ content, renderAsMarkdown = true }) {
+// --- 👇 [수정] children prop 추가 ---
+export default function MarkdownRenderer({
+  content,
+  renderAsMarkdown = true,
+  children,
+}) {
+  // --- 👆 [수정] ---
   const { t } = useTranslations();
   const [isExpanded, setIsExpanded] = useState(false);
   const LINE_LIMIT = useChatStore((state) => state.contentTruncateLimit);
@@ -37,7 +43,7 @@ export default function MarkdownRenderer({ content, renderAsMarkdown = true }) {
 
   return (
     <div className={styles.markdownContent}>
-      {/* --- 👇 [수정] 조건부 렌더링 --- */}
+      {/* --- 👇 [수정] --- */}
       {renderAsMarkdown ? (
         <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
           {displayContent}
@@ -47,7 +53,9 @@ export default function MarkdownRenderer({ content, renderAsMarkdown = true }) {
           {displayContent}
         </div>
       )}
-      {/* --- 👆 [수정] --- */}
+
+      {/* "더 보기"가 필요 없거나, 확장된 상태일 때만 children(차트)을 렌더링 */}
+      {(!needsTruncation || isExpanded) && children}
 
       {needsTruncation && (
         <button onClick={handleToggle} className={styles.viewMoreButton}>
@@ -55,6 +63,7 @@ export default function MarkdownRenderer({ content, renderAsMarkdown = true }) {
           <ChevronDownIcon isRotated={isExpanded} size={20} />
         </button>
       )}
+      {/* --- 👆 [수정] --- */}
     </div>
   );
 }
