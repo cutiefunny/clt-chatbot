@@ -74,10 +74,10 @@ export default function HomePage() {
   }
 
   // --- 👇 [추가] 스플래시 애니메이션 종료 핸들러 ---
-  // const handleSplashAnimationEnd = () => {
-  //   console.log("Splash animation finished. Setting isInitializing to false.");
-  //   setIsInitializing(false); // 스토어 상태 변경
-  // };
+  const handleSplashAnimationEnd = () => {
+    console.log("Splash animation finished. Setting isInitializing to false.");
+    setIsInitializing(false); // 스토어 상태 변경
+  };
 
   return (
     <main className={styles.main}>

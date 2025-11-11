@@ -11,6 +11,7 @@ import {
   delayParentAnimationIfNeeded,
 } from "../lib/parentMessaging";
 import styles from "./SharedHeader.module.css";
+import ScenarioExpandIcon from "./icons/ScenarioExpandIcon";
 
 export default function SharedHeader({
   isInitializing,
@@ -33,20 +34,30 @@ export default function SharedHeader({
     headerClasses.push(styles.half);
   }
 
+  const hideMainContent = isInitializing || shouldHidePanel;
+
   return (
     <div className={styles.chatContainer}>
       <div className={headerClasses.join(" ")}>
-        <button
-          onClick={async () => {
-            console.log(
-              `[Call Window Method] callChatbotClose to ${PARENT_ORIGIN}`
-            );
-            postToParent("callChatbotClose", { state: "close" });
-            await delayParentAnimationIfNeeded();
-          }}
-        >
-          <CloseIcon />
-        </button>
+        <div className={styles.headerContent}>
+          <span className={styles.headerTitle}>AI Chatbot</span>
+          <button className={styles.headerButton}>
+            <ScenarioExpandIcon />
+          </button>
+          <button
+            className={styles.headerButton}
+            onClick={async () => {
+              console.log(
+                `[Call Window Method] callChatbotClose to ${PARENT_ORIGIN}`
+              );
+              postToParent("callChatbotClose", { state: "close" });
+              await delayParentAnimationIfNeeded();
+            }}
+          >
+            <CloseIcon />
+          </button>
+        </div>
+        <div className={styles.splashContainer}>aa</div>
       </div>
       <div className={styles.chatLayout}>
         {!shouldHidePanel && <HistoryPanel />}
@@ -54,10 +65,7 @@ export default function SharedHeader({
           historyPanelWidth={historyPanelWidth}
           scenarioPanelClasses={scenarioPanelClasses}
           activePanel={activePanel}
-          fontSize={fontSize}
-          setFontSize={setFontSize}
-          theme={theme}
-          setTheme={setTheme}
+          hideMainContent={hideMainContent}
         />
       </div>
       {isScenarioModalOpen && <ScenarioModal />}
@@ -65,4 +73,3 @@ export default function SharedHeader({
     </div>
   );
 }
-

@@ -36,6 +36,15 @@
   /* width 계산 방식은 page.js의 레이아웃에서 처리 */
 }
 
+.chatAreaWrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 /* --- 👇 [삭제] .mainPanelShiftedLeft 클래스 제거 --- */
 /* .mainPanelShiftedLeft { ... } */
 /* --- 👆 [삭제] --- */

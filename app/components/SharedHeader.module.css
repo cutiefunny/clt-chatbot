@@ -35,11 +35,45 @@
   pointer-events: none;
 }
 
+.headerButton {
+  padding: 5px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  border-radius: 100px;
+  background: transparent;
+}
+
+.headerButton:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.headerContent {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  height: 48px;
+  color: #fff;
+  padding: 0 16px;
+}
+
+.headerTitle {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.2;
+  flex-grow: 1;
+  align-self: left;
+}
+
+.splashContainer {
+  flex-grow: 1;
+  flex: 1;
+}
+
 .full {
   height: 100%;
 }
 
 .half {
-  height: calc(100% - 204px);
+  height: calc(100% - 184px);
 }
-
