@@ -11,42 +11,9 @@ export async function* processFlowiseStream(reader, decoder, language) {
   let extractedSlots = {}; // 추출된 슬롯
   // const { language } = get(); // [제거]
 
-  // --- 👇 [추가] 차트 테스트를 위한 Mock 데이터 ---
-  // Re-charts 또는 Chart.js에서 사용하기 좋은 형식의 Mock 데이터
-  const mockChartData = {
-    type: "bar", // 차트 타입 bar(막대), line(선), pie(원형)
-    data: {
-      labels: ["FAIRWAY TRANSPORT CO.,LTD.", "CMA CGM MARSEILLES", "MAERSK LINE", "MAXPEED CO., LTD.", "SAMSUNG ELECTRONICS CO.,LTD."],
-      datasets: [
-        {
-          label: "Outstanding (USD)",
-          data: [11,400,772.87, 553,600.00, 318,750.00, 249,399.67, 54,371.38],
-          backgroundColor: "rgba(99, 102, 241, 0.6)",
-          borderColor: "rgba(99, 102, 241, 1)",
-          borderWidth: 1,
-        }
-      ],
-    },
-    options: {
-      indexAxis: 'y',  //막대가 가로인지 세로인지 지정 
-      responsive: true,
-      plugins: {
-        legend: {
-          position: "top",
-        },
-        title: {
-          display: true,
-          text: "Top 5 Customers by Outstanding Amount (USD) for SELSC Office (2025.11.11)",
-        },
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-        },
-      },
-    },
-  };
-  // --- 👆 [추가] ---
+  // --- 👇 [제거] 차트 테스트를 위한 Mock 데이터 ---
+  // const mockChartData = { ... };
+  // --- 👆 [제거] ---
 
   try {
     while (true) {
@@ -127,12 +94,43 @@ export async function* processFlowiseStream(reader, decoder, language) {
             }
           }
         } else if (
+          // --- 👇 [유지] 'usedTools' 이벤트 핸들링 로직 ---
           data.event === "usedTools" &&
           Array.isArray(data.data) &&
           data.data.length > 0
         ) {
+          const toolName = data.data[0]?.tool;
           const toolOutput = data.data[0]?.toolOutput;
-          if (toolOutput && typeof toolOutput === "string") {
+
+          // 1. 'chartData' tool이 명시적으로 온 경우
+          if (toolName === "chartData" && toolOutput && typeof toolOutput === "string") {
+            try {
+              // toolOutput 자체가 차트 JSON 문자열임
+              const parsedChart = JSON.parse(toolOutput);
+              // 유효성 검사 (type과 data가 있는지)
+              if (parsedChart && parsedChart.type && parsedChart.data) {
+                chartDataText = toolOutput; // 원본 JSON 문자열 저장
+                console.log(
+                  "[Flowise Stream] Extracted chartData from 'chartData' tool:",
+                  chartDataText
+                );
+              } else {
+                console.warn(
+                  "[Flowise Stream] 'chartData' tool output was not a valid chart object:",
+                  toolOutput
+                );
+              }
+            } catch (e) {
+              console.warn(
+                "[Flowise Stream] Failed to parse 'chartData' tool output:",
+                e,
+                toolOutput
+              );
+            }
+          } 
+          // 2. 다른 tool이거나, tool 이름이 명시되지 않은 경우 (기존 로직)
+          else if (toolOutput && typeof toolOutput === "string") {
+            // scenarioId 또는 question 추출 시도 (차트 데이터가 아닐 경우)
             if (!buttonText) {
               const matchScenarioId = toolOutput.match(
                 /"scenarioId"\s*:\s*"([^"]+)"/
@@ -153,49 +151,30 @@ export async function* processFlowiseStream(reader, decoder, language) {
                 );
               }
             }
-
-            // --- 👇 [추가] 차트 데이터 추출 로직 ---
-            // "chartData": "{\"type\":\"bar\",...}" 와 같이 stringify된 JSON이 값으로 오는 경우
-            const matchChartData = toolOutput.match(/"chartData"\s*:\s*"(.*?)"/);
-            if (matchChartData && matchChartData[1]) {
-              try {
-                // 1. 캡처된 문자열 (e.g., {\"type\":\"bar\",...})의 이스케이프를 해제합니다.
-                const unescapedString = matchChartData[1].replace(/\\"/g, '"');
-                // 2. 이스케이프가 해제된 문자열이 유효한 JSON인지 확인 (선택 사항이지만 권장)
-                JSON.parse(unescapedString);
-                // 3. 유효한 JSON 문자열을 chartDataText에 할당
-                chartDataText = unescapedString;
-                console.log("[Flowise Stream] Extracted chartData (stringified):", chartDataText);
-              } catch (e) {
-                console.warn("[Flowise Stream] Failed to parse extracted chartData:", e, matchChartData[1]);
-              }
-            }
-            
-            // --- 👇 [추가] 요청대로 테스트용 Mock 데이터를 하드코딩 ---
-            // (참고: 실제 운영 시에는 위 matchChartData 로직만 사용하고 이 줄은 제거해야 합니다)
-            chartDataText = JSON.stringify(mockChartData);
-            console.log("[Flowise Stream] HARDCODED mock chartData for testing.");
-            // --- 👆 [추가] ---
-
           }
+          // --- 👆 [유지] ---
         } else if (data.event === "token" && typeof data.data === "string") {
+          // --- 👇 [수정] 텍스트 yield 제거, 수집만 하도록 변경 ---
           textChunk = data.data;
           if (textChunk.trim().length > 0 && !thinkingMessageReplaced) {
-            yield { type: "text", data: textChunk, replace: true };
+            // yield { type: "text", data: textChunk, replace: true }; // [제거]
             thinkingMessageReplaced = true;
           } else if (thinkingMessageReplaced) {
-            yield { type: "text", data: textChunk, replace: false };
+            // yield { type: "text", data: textChunk, replace: false }; // [제거]
           }
           collectedText += textChunk;
+          // --- 👆 [수정] ---
         } else if (data.event === "chunk" && data.data?.response) {
+          // --- 👇 [수정] 텍스트 yield 제거, 수집만 하도록 변경 ---
           textChunk = data.data.response;
           if (textChunk.trim().length > 0 && !thinkingMessageReplaced) {
-            yield { type: "text", data: textChunk, replace: true };
+            // yield { type: "text", data: textChunk, replace: true }; // [제거]
             thinkingMessageReplaced = true;
           } else if (thinkingMessageReplaced) {
-            yield { type: "text", data: textChunk, replace: false };
+            // yield { type: "text", data: textChunk, replace: false }; // [제거]
           }
           collectedText += textChunk;
+          // --- 👆 [수정] ---
         }
       }
     } // end while
@@ -220,17 +199,26 @@ export async function* processFlowiseStream(reader, decoder, language) {
       }
     }
 
-    if (buttonText) {
-      yield { type: "button", data: buttonText };
-      collectedText += buttonText;
-    }
+    // --- 👇 [수정] yield 순서 변경 (차트 -> 텍스트 -> 버튼) ---
 
-    // --- 👇 [추가] 차트 데이터 yield (buttonText 이후) ---
+    // 1. 차트 데이터 yield
     if (chartDataText) {
       // 차트 데이터는 텍스트로 수집하지 않고, 별도 타입으로 전달
       yield { type: "chart", data: chartDataText };
     }
-    // --- 👆 [추가] ---
+
+    // 2. 수집된 텍스트 전체를 yield
+    if (collectedText.trim().length > 0) {
+      // thinkingMessageReplaced 플래그는 "텍스트가 수신되었음"을 의미
+      yield { type: "text", data: collectedText, replace: thinkingMessageReplaced };
+    }
+
+    // 3. 버튼 yield
+    if (buttonText) {
+      yield { type: "button", data: buttonText };
+      collectedText += buttonText; // finalText에도 버튼 텍스트 포함
+    }
+    // --- 👆 [수정] ---
 
     const bookingNoRegex = /\b([A-Z]{2}\d{10})\b/i;
     const match = collectedText.match(bookingNoRegex);

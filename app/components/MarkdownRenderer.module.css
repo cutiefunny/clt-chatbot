@@ -1,7 +1,7 @@
 /* app/components/MarkdownRenderer.module.css */
 .markdownContent {
   line-height: 1.6;
-  word-wrap: break-word; /* 긴 텍스트 줄바꿈 */
+  word-break: keep-all;
   max-width: 100%;
   min-width: 0;
 }
@@ -19,6 +19,15 @@
   font-size: 14px;
   font-weight: 600;
   line-height: 20px;
+  letter-spacing: -0.14px;
+}
+
+/* 임시 */
+.markdownContent h3 {
+  color: var(--Purple-03, #634de2);
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: -15px !important; 
   letter-spacing: -0.14px;
 }
 
