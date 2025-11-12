@@ -31,7 +31,22 @@ ChartJS.register(
   Legend
 );
 
-// --- 👇 [추가] mockChartData에서 가져온 기본 옵션 ---
+// --- 👇 [추가] Pie 차트 등을 위한 다양한 색상 팔레트 ---
+const PIE_CHART_COLORS = [
+  'rgba(99, 102, 241, 0.8)',  // Indigo
+  'rgba(239, 68, 68, 0.8)',   // Red
+  'rgba(59, 130, 246, 0.8)',  // Blue
+  'rgba(245, 158, 11, 0.8)',  // Amber
+  'rgba(16, 185, 129, 0.8)',  // Emerald
+  'rgba(139, 92, 246, 0.8)',  // Violet
+  'rgba(236, 72, 153, 0.8)',  // Pink
+  'rgba(22, 163, 74, 0.8)',   // Green
+  'rgba(217, 119, 6, 0.8)',   // Orange
+  'rgba(107, 114, 128, 0.8)', // Gray
+];
+// --- 👆 [추가] ---
+
+// --- 👇 [유지] mockChartData에서 가져온 기본 옵션 ---
 const defaultChartOptions = {
   responsive: true,
   plugins: {
@@ -50,7 +65,7 @@ const defaultChartOptions = {
   },
 };
 
-// --- 👇 [추가] Bar 차트 전용 기본 옵션 (가로 막대) ---
+// --- 👇 [유지] Bar 차트 전용 기본 옵션 (가로 막대) ---
 const defaultBarOptions = {
   ...defaultChartOptions,
   indexAxis: 'y', // 막대가 가로인지 세로인지 지정
@@ -61,6 +76,22 @@ const defaultBarOptions = {
       text: "Bar Chart", // 기본 제목
     },
   },
+};
+// --- 👆 [유지] ---
+
+// --- 👇 [추가] Pie 차트 전용 기본 옵션 (축 제거) ---
+const defaultPieOptions = {
+  responsive: true,
+  plugins: {
+    legend: {
+      position: "top",
+    },
+    title: {
+      display: true,
+      text: "Pie Chart", // 기본 제목
+    },
+  },
+  // Pie 차트는 scales가 필요 없음
 };
 // --- 👆 [추가] ---
 
@@ -83,7 +114,7 @@ export default function ChartRenderer({ chartJsonString }) {
 
     try {
       const parsedData = JSON.parse(chartJsonString);
-      // --- 👇 [수정] 유효성 검사 변경 (options는 선택 사항) ---
+      // --- 👇 [유지] 유효성 검사 변경 (options는 선택 사항) ---
       if (
         !parsedData ||
         !parsedData.type ||
@@ -92,9 +123,9 @@ export default function ChartRenderer({ chartJsonString }) {
       ) {
         throw new Error("Invalid chart data structure received (missing type or data).");
       }
-      // --- 👆 [수정] ---
+      // --- 👆 [유지] ---
 
-      // --- 👇 [추가] 옵션 병합 로직 ---
+      // --- 👇 [수정] 옵션 병합 로직 (Pie 차트 분기 처리) ---
       let finalOptions;
       if (parsedData.options) {
         // API에서 옵션을 제공한 경우 (API 옵션을 우선 사용)
@@ -105,14 +136,30 @@ export default function ChartRenderer({ chartJsonString }) {
           case "bar":
             finalOptions = defaultBarOptions;
             break;
+          case "pie": // [추가]
+            finalOptions = defaultPieOptions;
+            break;
           case "line":
-          case "pie":
           default:
             finalOptions = defaultChartOptions;
             break;
         }
       }
       
+      // [추가] Pie 차트인 경우, 데이터셋에 색상 배열 주입
+      if (parsedData.type === 'pie' && parsedData.data.datasets && parsedData.data.datasets[0]) {
+        // API 응답에 이미 색상 배열이 있는지 확인
+        const hasColors = Array.isArray(parsedData.data.datasets[0].backgroundColor);
+        if (!hasColors) {
+          // 색상 배열이 없으면(단색이거나 undefined), 미리 정의된 색상표를 데이터 라벨 수만큼 반복/잘라서 적용
+          const dataCount = parsedData.data.labels.length;
+          parsedData.data.datasets[0].backgroundColor = Array.from(
+            { length: dataCount },
+            (_, i) => PIE_CHART_COLORS[i % PIE_CHART_COLORS.length]
+          );
+        }
+      }
+
       // API에서 제공한 제목(title)이 있으면 기본 제목 덮어쓰기
       if (parsedData.title && finalOptions.plugins?.title) {
         finalOptions.plugins.title.text = parsedData.title;
@@ -121,10 +168,10 @@ export default function ChartRenderer({ chartJsonString }) {
       // 최종 차트 데이터(data + options)를 state에 저장
       setChartData({
         type: parsedData.type,
-        data: parsedData.data,
+        data: parsedData.data, // data 객체 (pie 차트의 경우 수정되었을 수 있음)
         options: finalOptions, // 병합/선택된 옵션 사용
       });
-      // --- 👆 [추가] ---
+      // --- 👆 [수정] ---
       
       setError(null);
     } catch (e) {
