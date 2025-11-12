@@ -137,10 +137,12 @@ export default function ChatInput() {
               className={`GlassEffect ${styles.categoryButton} ${
                 shortcutMenuOpen === category.name ? styles.active : ""
               }`}
+              
               onClick={() => {
                 const nextMenu =
                   shortcutMenuOpen === category.name ? null : category.name;
                 setShortcutMenuOpen(nextMenu);
+                
                 if (nextMenu && openHistoryPanel) {
                   openHistoryPanel();
                 }

@@ -141,7 +141,7 @@ export const createAuthSlice = (set, get) => ({
 
     // --- [추가] 2초 타이머 (Await) ---
     console.log("Starting 2-second splash screen timer...");
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 4500));
     console.log("Timer finished. Hiding splash screen.");
 
     // 4. 초기화 완료
