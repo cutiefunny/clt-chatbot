@@ -149,19 +149,18 @@ const MessageWithButtons = ({ msg }) => {
 
   return (
     <div>
-      {/* 1. 텍스트 + 차트 (MarkdownRenderer가 차트 숨김/표시 제어) */}
+      {/* --- 👇 [수정] 1. 차트를 텍스트보다 먼저 렌더링 --- */}
+      {chartData && (
+        <ChartRenderer chartJsonString={chartData} />
+      )}
+      {/* --- 👆 [수정] --- */}
+
+      {/* --- 👇 [수정] 2. 텍스트를 다음에 렌더링 (children 제거) --- */}
       <MarkdownRenderer
         content={allTextContent}
         renderAsMarkdown={enableMainChatMarkdown}
-      >
-        {/* ChartRenderer를 children으로 전달합니다.
-          MarkdownRenderer 내부에서 truncation 상태에 따라
-          이 children을 렌더링할지 결정합니다.
-        */}
-        {chartData && (
-          <ChartRenderer chartJsonString={chartData} />
-        )}
-      </MarkdownRenderer>
+      />
+      {/* --- 👆 [수정] --- */}
 
       {/* 2. 버튼 렌더링 (항상 표시됨) */}
       {buttonParts.map((buttonText, index) => {
