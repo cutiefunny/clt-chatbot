@@ -8,6 +8,7 @@
             width: 100%;
             position: relative;
             padding-bottom: 160px;
+            gap: 16px;
         }
 
         .iconContainer {
