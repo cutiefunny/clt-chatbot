@@ -16,7 +16,6 @@ const getInitialMessages = (lang = "ko") => {
 
 export const createUISlice = (set, get) => ({
   // State
-  // --- theme 초기값을 'light'로 고정 ---
   theme: "light",
   fontSize: "default", // 'default' or 'small'
   language: "ko",
@@ -28,11 +27,12 @@ export const createUISlice = (set, get) => ({
   isDevMode: false,
   dimUnfocusedPanels: true,
   enableFavorites: true, // 즐겨찾기 기능 활성화 여부 (기본값 true)
-  showHistoryOnGreeting: false, // <-- [추가] 초기 화면 히스토리 표시 여부
+  showHistoryOnGreeting: false, // 초기 화면 히스토리 표시 여부
   mainInputPlaceholder: "", // 메인 입력창 플레이스홀더
   enableMainChatMarkdown: true, // 메인 챗 마크다운 활성화 여부
-  // --- 👇 [추가] ---
   mainInputValue: "", // 메인 입력창의 제어되는 값
+  // --- 👇 [추가] ---
+  showScenarioBubbles: true, // 시나리오 버블 표시 여부 (기본값 true)
   // --- 👆 [추가] ---
   llmProvider: "gemini",
   flowiseApiUrl: "",
@@ -65,13 +65,11 @@ export const createUISlice = (set, get) => ({
   scrollToMessageId: null,
   forceScrollToBottom: false,
   scrollAmount: 0,
-  isInitializing: false, // <-- 기본값 false
+  isInitializing: false,
 
   // Actions
-  setIsInitializing: (value) => set({ isInitializing: value }), // <-- [추가]
-  // --- 👇 [추가] ---
+  setIsInitializing: (value) => set({ isInitializing: value }),
   setMainInputValue: (value) => set({ mainInputValue: value }),
-  // --- 👆 [추가] ---
 
   loadGeneralConfig: async () => {
     try {
@@ -98,7 +96,13 @@ export const createUISlice = (set, get) => ({
           enableMainChatMarkdown:
             typeof config.enableMainChatMarkdown === "boolean"
               ? config.enableMainChatMarkdown
-              : true, // 기본값 true
+              : true,
+          // --- 👇 [추가] ---
+          showScenarioBubbles:
+            typeof config.showScenarioBubbles === "boolean"
+              ? config.showScenarioBubbles
+              : true,
+          // --- 👆 [추가] ---
           llmProvider: config.llmProvider || "gemini",
           flowiseApiUrl: config.flowiseApiUrl || "",
         });
@@ -310,4 +314,60 @@ export const createUISlice = (set, get) => ({
 
   focusChatInput: () =>
     set((state) => ({ focusRequest: state.focusRequest + 1 })),
+  
+  // clearUserAndData는 authSlice로 이동했지만, uiSlice 필드를 여기서 초기화해야 함
+  clearUserAndData: () => {
+    set({
+      theme: "light",
+      fontSize: "default",
+      language: "ko",
+      maxFavorites: 10,
+      hideCompletedScenarios: false,
+      hideDelayInHours: 0,
+      contentTruncateLimit: 10,
+      fontSizeDefault: "16px",
+      isDevMode: false,
+      dimUnfocusedPanels: true,
+      enableFavorites: true,
+      showHistoryOnGreeting: false,
+      mainInputPlaceholder: "",
+      enableMainChatMarkdown: true,
+      // --- 👇 [추가] ---
+      showScenarioBubbles: true,
+      mainInputValue: "",
+      // --- 👆 [추가] ---
+      llmProvider: "gemini",
+      flowiseApiUrl: "",
+      isProfileModalOpen: false,
+      isSearchModalOpen: false,
+      isScenarioModalOpen: false,
+      isDevBoardModalOpen: false,
+      isNotificationModalOpen: false,
+      isManualModalOpen: false,
+      isHistoryPanelOpen: false,
+      isScenarioPanelExpanded: false,
+      confirmModal: {
+        isOpen: false,
+        title: "",
+        message: "",
+        confirmText: "Confirm",
+        cancelText: "Cancel",
+        onConfirm: () => {},
+        confirmVariant: "default",
+      },
+      activePanel: "main",
+      lastFocusedScenarioSessionId: null,
+      focusRequest: 0,
+      shortcutMenuOpen: null,
+      ephemeralToast: {
+        visible: false,
+        message: "",
+        type: "info",
+      },
+      scrollToMessageId: null,
+      forceScrollToBottom: false,
+      scrollAmount: 0,
+      isInitializing: false,
+    });
+  },
 });

@@ -19,9 +19,6 @@ import LikeIcon from "./icons/LikeIcon";
 import DislikeIcon from "./icons/DislikeIcon";
 import UploadIcon from "./icons/UploadIcon";
 import TransferIcon from "./icons/TransferIcon";
-// --- 👇 [추가] ---
-import mainMarkdownStyles from "./MainChatMarkdown.module.css";
-// --- 👆 [추가] ---
 
 // --- 👇 [추가] ChartRenderer를 dynamic import로 로드 ---
 const ChartRenderer = dynamic(() => import("./ChartRenderer"), {
@@ -158,11 +155,10 @@ const MessageWithButtons = ({ msg }) => {
       )}
       {/* --- 👆 [수정] --- */}
 
-      {/* --- 👇 [수정] 2. 텍스트 렌더링 시 wrapperClassName 전달 --- */}
+      {/* --- 👇 [수정] 2. 텍스트를 다음에 렌더링 (children 제거) --- */}
       <MarkdownRenderer
         content={allTextContent}
         renderAsMarkdown={enableMainChatMarkdown}
-        wrapperClassName={mainMarkdownStyles.mainChatMarkdown}
       />
       {/* --- 👆 [수정] --- */}
 
@@ -231,15 +227,9 @@ export default function Chat() {
     selectedOptions,
     setSelectedOption,
     dimUnfocusedPanels,
-    // --- 👇 [수정] setMessageFeedback 액션 가져오기 ---
     setMessageFeedback,
-    // --- 👆 [수정] ---
-    // --- ▼ 수정 ▼ ---
     enableFavorites,
-    // --- ▲ 수정 ▲ ---
-    // --- 👇 [추가] ---
-    enableMainChatMarkdown, // 메인 챗 마크다운 여부
-    // --- 👆 [추가] ---
+    showScenarioBubbles,
   } = useChatStore();
   const [copiedMessageId, setCopiedMessageId] = useState(null);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
@@ -504,7 +494,11 @@ export default function Chat() {
               if (msg.id === "initial") return null; // 초기 메시지 건너뛰기
 
               // 시나리오 버블 메시지 처리
+              // --- 👇 [수정] 시나리오 버블 렌더링 조건 추가 ---
               if (msg.type === "scenario_bubble") {
+                if (!showScenarioBubbles) {
+                  return null; // 설정이 false이면 렌더링 안함
+                }
                 return (
                   <ScenarioBubble
                     key={msg.id || msg.scenarioSessionId}
@@ -512,6 +506,7 @@ export default function Chat() {
                   />
                 );
               } else {
+              // --- 👆 [수정] ---
                 // 일반 메시지 렌더링
                 const selectedOption = selectedOptions[msg.id];
                 // --- 👇 [수정] 스토어의 메시지 객체에서 직접 피드백 상태 읽기 ---
@@ -581,27 +576,46 @@ export default function Chat() {
                       {copiedMessageId === msg.id && (
                         <div className={styles.copyFeedback}>{t("copied")}</div>
                       )}
-                      {/* --- 👇 [수정] 사용자 메시지 렌더링 로직 수정 --- */}
-                      {isBotMessage ? (
-                        <div className={styles.messageContentWrapper}>
-                          <LogoIcon />
-                          <div className={styles.messageContent}>
-                            <MessageWithButtons msg={msg} />
-                          </div>
-                        </div>
-                      ) : (
-                        // 사용자 메시지 (userMessage)
+                      <div className={styles.messageContentWrapper}>
+                        {msg.sender === "bot" && <LogoIcon />}
                         <div className={styles.messageContent}>
-                          <MarkdownRenderer
-                            content={msg.text}
-                            renderAsMarkdown={false} // 사용자 입력은 항상 마크다운 비활성화
+                          {/* --- 👇 [수정] MessageWithButtons에 전체 msg 객체 전달 --- */}
+                          <MessageWithButtons
+                            msg={msg}
                           />
+                          {/* --- 👆 [수정] --- */}
+                          {/* 시나리오 목록 버튼 (봇 메시지이고 scenarios 있을 때) */}
+                          {msg.sender === "bot" && msg.scenarios && (
+                            <div className={styles.scenarioList}>
+                              {msg.scenarios.map((name) => {
+                                const isSelected = selectedOption === name;
+                                const isDimmed = selectedOption && !isSelected;
+                                return (
+                                  <button
+                                    key={name}
+                                    className={`${styles.optionButton} ${
+                                      isSelected ? styles.selected : ""
+                                    } ${isDimmed ? styles.dimmed : ""}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedOption(msg.id, name); // 선택 상태 업데이트
+                                      openScenarioPanel(name); // 시나리오 패널 열기
+                                    }}
+                                    disabled={!!selectedOption} // 이미 선택했으면 비활성화
+                                  >
+                                    <span className={styles.optionButtonText}>
+                                      {name}
+                                    </span>
+                                    <CheckCircle />
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
-                      )}
-                      {/* --- 👆 [수정] --- */}
-
-                      {/* --- 👇 [수정] 봇 메시지일 경우에만 액션 버튼 표시 --- */}
-                      {isBotMessage && msg.text && !isStreaming && (
+                      </div>
+                      {/* --- 👇 [수정] currentFeedback을 msg.feedback에서 읽도록 수정 --- */}
+                      {msg.sender === "bot" && msg.text && !isStreaming && (
                         <div className={styles.messageActionArea}>
                           <button
                             className={styles.actionButton}

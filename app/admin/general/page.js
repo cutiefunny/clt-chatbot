@@ -9,11 +9,14 @@ import Link from "next/link";
 export default function GeneralSettingsPage() {
   const {
     maxFavorites,
-    dimUnfocusedPanels, // dimUnfocusedPanels 추가
-    enableFavorites, // enableFavorites 추가
-    showHistoryOnGreeting, // <-- [추가]
-    mainInputPlaceholder, // <-- [추가]
-    enableMainChatMarkdown, // <-- [추가]
+    dimUnfocusedPanels,
+    enableFavorites,
+    showHistoryOnGreeting,
+    mainInputPlaceholder,
+    enableMainChatMarkdown,
+    // --- 👇 [추가] ---
+    showScenarioBubbles,
+    // --- 👆 [추가] ---
     llmProvider,
     flowiseApiUrl,
     loadGeneralConfig,
@@ -22,13 +25,16 @@ export default function GeneralSettingsPage() {
   } = useChatStore();
 
   const [limit, setLimit] = useState("");
-  const [dimPanels, setDimPanels] = useState(true); // dimPanels 상태 추가
-  const [favoritesEnabled, setFavoritesEnabled] = useState(true); // favoritesEnabled 상태 추가
-  const [showHistory, setShowHistory] = useState(false); // <-- [추가]
+  const [dimPanels, setDimPanels] = useState(true);
+  const [favoritesEnabled, setFavoritesEnabled] = useState(true);
+  const [showHistory, setShowHistory] = useState(false);
   const [provider, setProvider] = useState("gemini");
   const [apiUrl, setApiUrl] = useState("");
-  const [placeholder, setPlaceholder] = useState(""); // <-- [추가]
-  const [markdownEnabled, setMarkdownEnabled] = useState(true); // <-- [추가]
+  const [placeholder, setPlaceholder] = useState("");
+  const [markdownEnabled, setMarkdownEnabled] = useState(true);
+  // --- 👇 [추가] ---
+  const [bubblesVisible, setBubblesVisible] = useState(true);
+  // --- 👆 [추가] ---
   const [isLoading, setIsLoading] = useState(false);
   const [apiUrlError, setApiUrlError] = useState("");
 
@@ -38,20 +44,26 @@ export default function GeneralSettingsPage() {
 
   useEffect(() => {
     if (maxFavorites !== null) setLimit(String(maxFavorites));
-    setDimPanels(dimUnfocusedPanels); // 로드된 값으로 상태 설정
-    setFavoritesEnabled(enableFavorites); // 로드된 값으로 상태 설정
-    setShowHistory(showHistoryOnGreeting); // <-- [추가]
+    setDimPanels(dimUnfocusedPanels);
+    setFavoritesEnabled(enableFavorites);
+    setShowHistory(showHistoryOnGreeting);
     setProvider(llmProvider);
     setApiUrl(flowiseApiUrl);
-    setPlaceholder(mainInputPlaceholder || ""); // <-- [추가]
-    setMarkdownEnabled(enableMainChatMarkdown); // <-- [추가]
+    setPlaceholder(mainInputPlaceholder || "");
+    setMarkdownEnabled(enableMainChatMarkdown);
+    // --- 👇 [추가] ---
+    setBubblesVisible(showScenarioBubbles);
+    // --- 👆 [추가] ---
   }, [
     maxFavorites,
-    dimUnfocusedPanels, // 의존성 배열에 추가
-    enableFavorites, // 의존성 배열에 추가
-    showHistoryOnGreeting, // <-- [추가]
-    mainInputPlaceholder, // <-- [추가]
-    enableMainChatMarkdown, // <-- [추가]
+    dimUnfocusedPanels,
+    enableFavorites,
+    showHistoryOnGreeting,
+    mainInputPlaceholder,
+    enableMainChatMarkdown,
+    // --- 👇 [추가] ---
+    showScenarioBubbles,
+    // --- 👆 [추가] ---
     llmProvider,
     flowiseApiUrl,
   ]);
@@ -82,11 +94,14 @@ export default function GeneralSettingsPage() {
 
     const settings = {
       maxFavorites: newLimit,
-      dimUnfocusedPanels: dimPanels, // 저장할 설정에 추가
-      enableFavorites: favoritesEnabled, // 저장할 설정에 추가
-      showHistoryOnGreeting: showHistory, // <-- [추가]
-      mainInputPlaceholder: placeholder, // <-- [추가]
-      enableMainChatMarkdown: markdownEnabled, // <-- [추가]
+      dimUnfocusedPanels: dimPanels,
+      enableFavorites: favoritesEnabled,
+      showHistoryOnGreeting: showHistory,
+      mainInputPlaceholder: placeholder,
+      enableMainChatMarkdown: markdownEnabled,
+      // --- 👇 [추가] ---
+      showScenarioBubbles: bubblesVisible,
+      // --- 👆 [추가] ---
       llmProvider: provider,
       flowiseApiUrl: apiUrl,
     };
@@ -203,12 +218,32 @@ export default function GeneralSettingsPage() {
           />
         </div>
 
-        {/* --- 👇 [추가] 메인 챗 마크다운 설정 --- */}
+        {/* --- 👇 [추가] 시나리오 버블 표시 설정 --- */}
+        <div className={styles.settingItem}>
+          <label className={styles.settingLabel}>
+            <h3>시나리오 버블 표시</h3>
+            <p>
+              활성화 시, 시나리오가 시작될 때 메인 채팅창에 해당 시나리오로
+              이동하는 버블을 표시합니다.
+            </p>
+          </label>
+          <label className={styles.switch}>
+            <input
+              type="checkbox"
+              checked={bubblesVisible}
+              onChange={(e) => setBubblesVisible(e.target.checked)}
+            />
+            <span className={styles.slider}></span>
+          </label>
+        </div>
+        {/* --- 👆 [추가] --- */}
+
+        {/* 메인 챗 마크다운 설정 */}
         <div className={styles.settingItem}>
           <label className={styles.settingLabel}>
             <h3>메인 챗 마크다운</h3>
             <p>
-              활성화 시, 메인 채팅(시나리오 제외)의 봇 답변에 마크다운 서식을
+              활성화 시, 메인 채팅(좌측)의 봇 답변에 마크다운 서식을
               적용합니다.
             </p>
           </label>
@@ -221,7 +256,6 @@ export default function GeneralSettingsPage() {
             <span className={styles.slider}></span>
           </label>
         </div>
-        {/* --- 👆 [추가] --- */}
 
         {/* 즐겨찾기 기능 설정 */}
         <div className={styles.settingItem}>
