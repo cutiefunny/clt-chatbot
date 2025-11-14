@@ -22,7 +22,7 @@
   background: linear-gradient(90deg, #8f9aff 0%, #634ce2 100%);
   overflow: hidden;
   isolation: isolate;
-  transition: height 0.3s ease-in-out;
+  transition: height 0.2s ease-in-out;
 }
 
 .chatHeader::before {
@@ -77,3 +77,5 @@
 .half {
   height: calc(100% - 184px);
 }
+
+

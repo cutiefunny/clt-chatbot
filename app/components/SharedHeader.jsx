@@ -5,6 +5,7 @@ import ScenarioModal from "./ScenarioModal";
 import DevStateDisplay from "./DevStateDisplay";
 import MainAreaLayout from "./MainAreaLayout";
 import CloseIcon from "./icons/CloseIcon";
+import Intro from "./intro";
 import {
   postToParent,
   PARENT_ORIGIN,
@@ -57,8 +58,10 @@ export default function SharedHeader({
             <CloseIcon />
           </button>
         </div>
-        <div className={styles.splashContainer}></div>
+        {/* <div className={styles.splashContainer}></div> */}
+        {hideMainContent && <Intro />}
       </div>
+
       <div className={styles.chatLayout}>
         {!shouldHidePanel && <HistoryPanel />}
         <MainAreaLayout
