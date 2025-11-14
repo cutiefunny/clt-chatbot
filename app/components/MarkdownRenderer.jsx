@@ -6,11 +6,12 @@ import ChevronDownIcon from "./icons/ChevronDownIcon";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-// --- 👇 [수정] children prop 추가 ---
+// --- 👇 [수정] children prop 및 wrapperClassName prop 추가 ---
 export default function MarkdownRenderer({
   content,
   renderAsMarkdown = true,
   children,
+  wrapperClassName, // 이 prop을 추가합니다.
 }) {
   // --- 👆 [수정] ---
   const { t } = useTranslations();
@@ -42,8 +43,9 @@ export default function MarkdownRenderer({
     !needsTruncation || isExpanded ? safeContent : truncatedText;
 
   return (
-    <div className={styles.markdownContent}>
-      {/* --- 👇 [수정] --- */}
+    // --- 👇 [수정] className에 wrapperClassName을 추가합니다. ---
+    <div className={`${styles.markdownContent} ${wrapperClassName || ""}`}>
+      {/* --- 👆 [수정] --- */}
       {renderAsMarkdown ? (
         <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
           {displayContent}
@@ -63,7 +65,6 @@ export default function MarkdownRenderer({
           <ChevronDownIcon isRotated={isExpanded} size={20} />
         </button>
       )}
-      {/* --- 👆 [수정] --- */}
     </div>
   );
 }

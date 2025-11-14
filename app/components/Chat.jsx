@@ -19,6 +19,9 @@ import LikeIcon from "./icons/LikeIcon";
 import DislikeIcon from "./icons/DislikeIcon";
 import UploadIcon from "./icons/UploadIcon";
 import TransferIcon from "./icons/TransferIcon";
+// --- 👇 [추가] ---
+import mainMarkdownStyles from "./MainChatMarkdown.module.css";
+// --- 👆 [추가] ---
 
 // --- 👇 [추가] ChartRenderer를 dynamic import로 로드 ---
 const ChartRenderer = dynamic(() => import("./ChartRenderer"), {
@@ -155,10 +158,11 @@ const MessageWithButtons = ({ msg }) => {
       )}
       {/* --- 👆 [수정] --- */}
 
-      {/* --- 👇 [수정] 2. 텍스트를 다음에 렌더링 (children 제거) --- */}
+      {/* --- 👇 [수정] 2. 텍스트 렌더링 시 wrapperClassName 전달 --- */}
       <MarkdownRenderer
         content={allTextContent}
         renderAsMarkdown={enableMainChatMarkdown}
+        wrapperClassName={mainMarkdownStyles.mainChatMarkdown}
       />
       {/* --- 👆 [수정] --- */}
 
@@ -233,6 +237,9 @@ export default function Chat() {
     // --- ▼ 수정 ▼ ---
     enableFavorites,
     // --- ▲ 수정 ▲ ---
+    // --- 👇 [추가] ---
+    enableMainChatMarkdown, // 메인 챗 마크다운 여부
+    // --- 👆 [추가] ---
   } = useChatStore();
   const [copiedMessageId, setCopiedMessageId] = useState(null);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
@@ -574,46 +581,27 @@ export default function Chat() {
                       {copiedMessageId === msg.id && (
                         <div className={styles.copyFeedback}>{t("copied")}</div>
                       )}
-                      <div className={styles.messageContentWrapper}>
-                        {msg.sender === "bot" && <LogoIcon />}
-                        <div className={styles.messageContent}>
-                          {/* --- 👇 [수정] MessageWithButtons에 전체 msg 객체 전달 --- */}
-                          <MessageWithButtons
-                            msg={msg}
-                          />
-                          {/* --- 👆 [수정] --- */}
-                          {/* 시나리오 목록 버튼 (봇 메시지이고 scenarios 있을 때) */}
-                          {msg.sender === "bot" && msg.scenarios && (
-                            <div className={styles.scenarioList}>
-                              {msg.scenarios.map((name) => {
-                                const isSelected = selectedOption === name;
-                                const isDimmed = selectedOption && !isSelected;
-                                return (
-                                  <button
-                                    key={name}
-                                    className={`${styles.optionButton} ${
-                                      isSelected ? styles.selected : ""
-                                    } ${isDimmed ? styles.dimmed : ""}`}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setSelectedOption(msg.id, name); // 선택 상태 업데이트
-                                      openScenarioPanel(name); // 시나리오 패널 열기
-                                    }}
-                                    disabled={!!selectedOption} // 이미 선택했으면 비활성화
-                                  >
-                                    <span className={styles.optionButtonText}>
-                                      {name}
-                                    </span>
-                                    <CheckCircle />
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
+                      {/* --- 👇 [수정] 사용자 메시지 렌더링 로직 수정 --- */}
+                      {isBotMessage ? (
+                        <div className={styles.messageContentWrapper}>
+                          <LogoIcon />
+                          <div className={styles.messageContent}>
+                            <MessageWithButtons msg={msg} />
+                          </div>
                         </div>
-                      </div>
-                      {/* --- 👇 [수정] currentFeedback을 msg.feedback에서 읽도록 수정 --- */}
-                      {msg.sender === "bot" && msg.text && !isStreaming && (
+                      ) : (
+                        // 사용자 메시지 (userMessage)
+                        <div className={styles.messageContent}>
+                          <MarkdownRenderer
+                            content={msg.text}
+                            renderAsMarkdown={false} // 사용자 입력은 항상 마크다운 비활성화
+                          />
+                        </div>
+                      )}
+                      {/* --- 👆 [수정] --- */}
+
+                      {/* --- 👇 [수정] 봇 메시지일 경우에만 액션 버튼 표시 --- */}
+                      {isBotMessage && msg.text && !isStreaming && (
                         <div className={styles.messageActionArea}>
                           <button
                             className={styles.actionButton}

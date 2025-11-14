@@ -8,10 +8,12 @@ import remarkGfm from 'remark-gfm';
 // MarkdownRenderer.jsx의 CSS를 가져와서 TO-BE 패널에 적용합니다.
 import markdownStyles from '../components/MarkdownRenderer.module.css';
 
-// --- 👇 [수정] Chat.module.css와 LogoIcon을 import ---
 import chatStyles from '../components/Chat.module.css';
 import LogoIcon from '../components/icons/LogoIcon';
-// --- 👆 [수정] ---
+
+// --- 👇 [추가] 메인 챗 전용 마크다운 스타일 임포트 ---
+import mainMarkdownStyles from '../components/MainChatMarkdown.module.css';
+// --- 👆 [추가] ---
 
 // 렌더러 테스트를 위한 기본 마크다운 텍스트
 const sampleMarkdown = `
@@ -26,6 +28,9 @@ TO-BE 프리뷰에 **react-markdown** 라이브러리 렌더링 결과가 실시
 * **굵은 글씨** (strong)
 * \`인라인 코드\` (code)
 * [링크](https://www.google.com) (a)
+
+### H3 스타일 테스트
+h3 태그는 메인 챗과 시나리오 챗에서 동일하게 보입니다.
 
 ## 리스트 테스트
 * 항목 1
@@ -53,8 +58,8 @@ TO-BE 프리뷰에 **react-markdown** 라이브러리 렌더링 결과가 실시
 | 항목 2 | API | 백엔드 | 테스트 | ... |
 `;
 
-// --- [유지] CSS 규칙을 객체로 분리하여 초기 상태 정의 ---
-const initialCssState = {
+// --- [수정] 시나리오 챗(기본) CSS 규칙 ---
+const initialScenarioCssState = {
   // .markdownContent (루트)
   root: `  line-height: 1.6;
   word-wrap: break-word; /* 긴 텍스트 줄바꿈 */
@@ -70,6 +75,13 @@ const initialCssState = {
   font-weight: 600;
   line-height: 20px;
   letter-spacing: -0.14px;`,
+  h3: `  color: var(--Purple-03, #634de2);
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: -15px !important; 
+  letter-spacing: -0.14px;`,
+  p: `  /* 기본 p 스타일 (root에서 상속됨) */
+  /* 메인 챗에서 이 스타일을 덮어씁니다. */`,
   a: `  color: #4285f4; /* 링크 색상 */
   /* text-decoration: underline; */`,
   strong: `  font-weight: 600; /* 굵게 */`,
@@ -89,13 +101,11 @@ const initialCssState = {
   border-radius: 4px;
   font-size: 0.9em;
   word-wrap: break-word; /* 코드 줄바꿈 */`,
-  // --- 👇 [수정] ---
   table: `  border-collapse: collapse;
   min-width: 100%; /* 100% 너비를 최소로 보장 */
   table-layout: auto; /* 컬럼 너비가 내용에 따라 자동 조절되도록 */
   outline: 1px solid var(--panel-border-color);
   outline-offset: -1px;`,
-  // --- 👆 [수정] ---
   th: `  background-color: #f4f5fb;
   padding: 8px 10px;
   border: 1px solid #d8e0eb;
@@ -126,7 +136,22 @@ const initialCssState = {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;`,
 };
-// --- [유지] ---
+
+// --- 👇 [추가] 메인 챗 전용 (덮어쓰기) CSS 규칙 ---
+const initialMainChatCssState = {
+  h1: `  color: #b22222; /* Firebrick - 예시용 빨간색 */
+  font-size: 1.5rem; /* 메인 챗 H1은 더 크게 */
+  border-bottom: 2px solid #b22222;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;`,
+  h2: `  color: #4682b4; /* SteelBlue - 예시용 파란색 */
+  font-size: 1.25rem;
+  margin-top: 0.8rem;
+  margin-bottom: 0.4rem;`,
+  p: `  font-size: 1.05rem; /* 메인 챗 p 태그는 약간 크게 */
+  color: #333;`,
+};
+// --- 👆 [추가] ---
 
 // 동적으로 주입할 <style> 태그의 고유 ID
 const DYNAMIC_STYLE_ID = 'dynamic-markdown-renderer-style';
@@ -144,7 +169,11 @@ const markdownComponents = {
 
 export default function MarkdownTestPage() {
   const [markdownInput, setMarkdownInput] = useState(sampleMarkdown);
-  const [cssStyles, setCssStyles] = useState(initialCssState);
+  // --- 👇 [수정] CSS 상태 분리 ---
+  const [scenarioCssStyles, setScenarioCssStyles] = useState(initialScenarioCssState);
+  const [mainChatCssStyles, setMainChatCssStyles] = useState(initialMainChatCssState);
+  // --- 👆 [수정] ---
+  const [isPreviewMainChat, setIsPreviewMainChat] = useState(false);
   
   // --- [유지] CSS를 <head>에 주입하는 로직 (마운트/언마운트) ---
   useEffect(() => {
@@ -162,12 +191,12 @@ export default function MarkdownTestPage() {
     };
   }, []); // 마운트/언마운트 시 한 번만 실행
 
-  // --- [유지] cssStyles 객체가 변경될 때마다 <style> 태그 내용 업데이트 ---
+  // --- 👇 [수정] 두 CSS 상태를 모두 동적 스타일에 주입 ---
   useEffect(() => {
     const styleTag = document.getElementById(DYNAMIC_STYLE_ID);
     if (styleTag) {
-      // cssStyles 객체로부터 전체 CSS 문자열 생성
-      const fullCssString = Object.entries(cssStyles)
+      // 1. Build Scenario (Base) Styles
+      const scenarioCssString = Object.entries(scenarioCssStyles)
         .map(([key, value]) => {
           if (key === 'root') {
             // .markdownContent (루트 클래스)
@@ -182,19 +211,34 @@ export default function MarkdownTestPage() {
         })
         .join('\n\n');
         
-      styleTag.innerHTML = fullCssString;
-    }
-  }, [cssStyles]);
-  // --- [유지] ---
+      // 2. Build Main Chat (Override) Styles
+      const mainChatCssString = Object.entries(mainChatCssStyles)
+        .map(([key, value]) => {
+          // Main chat styles are applied INSIDE the mainChatMarkdown wrapper
+          // --- [수정] 덮어쓰는 값이 비어있지 않은 경우에만 규칙 생성 ---
+          if (value && value.trim() !== '') {
+            return `.${mainMarkdownStyles.mainChatMarkdown} ${key} {\n${value}\n}`;
+          }
+          return ''; // 값이 비어있으면 규칙 생성 안 함
+        })
+        .filter(Boolean) // 빈 문자열 제거
+        .join('\n\n');
 
-  // --- [유지] 개별 CSS 규칙을 업데이트하는 핸들러 ---
-  const handleCssRuleChange = (key, value) => {
-    setCssStyles(prev => ({
-      ...prev,
-      [key]: value,
-    }));
+      // 3. Combine and inject
+      styleTag.innerHTML = scenarioCssString + '\n\n' + mainChatCssString;
+    }
+  }, [scenarioCssStyles, mainChatCssStyles]); // 두 상태 모두에 의존
+  // --- 👆 [수정] ---
+
+  // --- 👇 [수정] CSS 규칙 업데이트 핸들러 (타입 분기) ---
+  const handleCssRuleChange = (type, key, value) => {
+    if (type === 'scenario') {
+      setScenarioCssStyles(prev => ({ ...prev, [key]: value }));
+    } else if (type === 'main') {
+      setMainChatCssStyles(prev => ({ ...prev, [key]: value }));
+    }
   };
-  // --- [유지] ---
+  // --- 👆 [수정] ---
 
   return (
     <div className={styles.pageWrapper}>
@@ -204,7 +248,7 @@ export default function MarkdownTestPage() {
         <Link href="/">← 챗봇으로 돌아가기</Link>
       </header>
 
-      {/* --- [유지] 레이아웃 --- */}
+      {/* --- [수정] 2열 레이아웃 --- */}
       <div className={styles.container}>
         {/* 1. 마크다운 입력 영역 */}
         <div className={styles.editorContainer}>
@@ -217,25 +261,32 @@ export default function MarkdownTestPage() {
           />
         </div>
 
-        {/* 2. 렌더링 결과 영역 */}
-        {/* --- 👇 [수정] 미리보기 패널을 실제 시나리오 구조와 동일하게 래핑 --- */}
+        {/* 2. 렌더링 결과 영역 (토글 기능 추가) */}
         <div className={styles.previewContainer}>
-          <h2>TO-BE (Preview)</h2>
+          {/* --- 👇 [추가] 헤더 및 토글 버튼 --- */}
+          <div className={styles.previewHeader}>
+            <h2>
+              {isPreviewMainChat ? "TO-BE (Main Chat)" : "TO-BE (Scenario Chat)"}
+            </h2>
+            <button
+              className={`${styles.toggleButton} ${isPreviewMainChat ? styles.active : ""}`}
+              onClick={() => setIsPreviewMainChat(!isPreviewMainChat)}
+            >
+              {isPreviewMainChat ? "Showing Main Chat" : "Showing Scenario"}
+            </button>
+          </div>
+          {/* --- 👆 [추가] --- */}
           
-          {/* 이 outer div는 page.module.css의 .previewBox 스타일(배경, 패딩 등)을 적용합니다.
-          */}
           <div className={styles.previewBox}>
-            {/* 이 inner div들은 Chat.module.css의 스타일을 적용하여
-              실제 채팅 버블의 상속 스타일(폰트, 색상 등)을 시뮬레이션합니다.
-            */}
             <div className={`${chatStyles.message} ${chatStyles.botMessage}`}>
               <div className={chatStyles.scenarioMessageContentWrapper}>
                 <LogoIcon /> 
                 <div className={chatStyles.messageContent}>
-                  {/* MarkdownRenderer.jsx의 루트 <div>에 해당하는 클래스입니다.
-                    동적 CSS가 이곳을 타겟합니다.
-                  */}
-                  <div className={markdownStyles.markdownContent}>
+                  {/* --- 👇 [수정] 조건부 클래스 적용 --- */}
+                  <div className={`${markdownStyles.markdownContent} ${
+                      isPreviewMainChat ? mainMarkdownStyles.mainChatMarkdown : ""
+                    }`}
+                  >
                     <Markdown 
                       remarkPlugins={[remarkGfm]} 
                       components={markdownComponents}
@@ -243,37 +294,74 @@ export default function MarkdownTestPage() {
                       {markdownInput}
                     </Markdown>
                   </div>
+                  {/* --- 👆 [수정] --- */}
                 </div>
               </div>
             </div>
           </div>
         </div>
-        {/* --- 👆 [수정] --- */}
+        {/* --- [수정] --- */}
 
         {/* 3. CSS 편집 영역 (하단 전체 너비) */}
         <div className={styles.cssEditorContainer}>
+          {/* --- 👇 [수정] 헤더 텍스트 동적 변경 --- */}
           <h2>
-            스타일시트 (CSS)
+            스타일시트 ({isPreviewMainChat ? "Main Chat (Overrides)" : "Scenario Chat (Base)"})
           </h2>
-          {/* --- [유지] 단일 textarea -> 분리된 textarea 그리드 --- */}
-          <div className={styles.cssEditorGrid}>
-            {Object.entries(cssStyles).map(([key, value]) => (
-              <div key={key} className={styles.cssRuleEditor}>
-                <label className={styles.cssRuleLabel}>
-                  {key === 'root' ? `.${markdownStyles.markdownContent}` : 
-                   key === 'tableWrapper' ? `.${markdownStyles.tableWrapper}` : 
-                   `${key}`}
-                </label>
-                <textarea
-                  className={`${styles.textarea} ${styles.codeArea} ${styles.cssRuleTextarea}`}
-                  value={value}
-                  onChange={(e) => handleCssRuleChange(key, e.target.value)}
-                  spellCheck="false"
-                />
-              </div>
-            ))}
-          </div>
-          {/* --- [유지] --- */}
+          {/* --- 👆 [수정] --- */}
+          
+          {/* --- 👇 [수정] CSS 편집기 조건부 렌더링 --- */}
+          {!isPreviewMainChat ? (
+            // Scenario CSS Editor
+            <div className={styles.cssEditorGrid}>
+              {Object.entries(scenarioCssStyles).map(([key, value]) => (
+                <div key={key} className={styles.cssRuleEditor}>
+                  <label className={styles.cssRuleLabel}>
+                    {/* [수정] "및 Main" 문구 제거 */}
+                    {key === 'root' ? `.${markdownStyles.markdownContent}` : 
+                     key === 'tableWrapper' ? `.${markdownStyles.tableWrapper}` : 
+                     `${key}`}
+                  </label>
+                  <textarea
+                    className={`${styles.textarea} ${styles.codeArea} ${styles.cssRuleTextarea}`}
+                    value={value}
+                    onChange={(e) => handleCssRuleChange('scenario', key, e.target.value)}
+                    spellCheck="false"
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            // Main Chat CSS Editor (Overrides)
+            <div className={styles.cssEditorGrid}>
+              {/* [수정] scenarioCssStyles의 키를 기준으로 순회 */}
+              {Object.keys(scenarioCssStyles).map((key) => (
+                <div key={key} className={styles.cssRuleEditor}>
+                  <label className={styles.cssRuleLabel}>
+                    {/* [수정] 라벨을 Main Chat 기준으로 표시 */}
+                    {key === 'root' ? `.${mainMarkdownStyles.mainChatMarkdown}` : 
+                     key === 'tableWrapper' ? `.${mainMarkdownStyles.mainChatMarkdown} .${markdownStyles.tableWrapper}` : 
+                     `.${mainMarkdownStyles.mainChatMarkdown} ${key}`}
+                  </label>
+                  <textarea
+                    className={`${styles.textarea} ${styles.codeArea} ${styles.cssRuleTextarea}`}
+                    // [수정] 값은 mainChatCssStyles에서 가져오되, 없으면 빈 문자열
+                    value={mainChatCssStyles[key] || ''} 
+                    // [수정] onChange는 항상 'main' 상태를 변경
+                    onChange={(e) => handleCssRuleChange('main', key, e.target.value)}
+                    spellCheck="false"
+                    // [수정] mainChatCssStyles에 값이 없으면 placeholder 표시
+                    placeholder={
+                      !mainChatCssStyles[key] 
+                        ? `` 
+                        : ''
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+          {/* --- 👆 [수정] --- */}
         </div>
       </div>
     </div>

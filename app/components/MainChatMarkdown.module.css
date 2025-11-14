@@ -1,0 +1,35 @@
+/* app/components/MainChatMarkdown.module.css */
+/* 이 클래스명을 통해 메인 챗의 마크다운 스타일을 덮어씁니다. */
+
+.mainChatMarkdown {
+  /*
+    이곳의 스타일은 MarkdownRenderer.module.css의
+    .markdownContent 스타일 위에 덮어씌워집니다.
+  */
+}
+
+/* .mainChatMarkdown h1 {
+  color: #b22222; 
+  font-size: 1.5rem;
+  border-bottom: 2px solid #b22222;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.mainChatMarkdown h2 {
+  color: #4682b4;
+  font-size: 1.25rem;
+  margin-top: 0.8rem;
+  margin-bottom: 0.4rem;
+}
+
+.mainChatMarkdown p {
+  font-size: 1.05rem; 
+  color: #333;
+} */
+
+/* 테이블 스타일(.tableWrapper, .markdownContent table 등)은
+  MarkdownRenderer.module.css의 것을 그대로 상속받습니다.
+  만약 테이블 스타일도 다르게 하고 싶다면 여기서 재정의하면 됩니다.
+  ex: .mainChatMarkdown table { ... }
+*/
