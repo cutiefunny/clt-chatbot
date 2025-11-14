@@ -30,8 +30,9 @@ export const createUISlice = (set, get) => ({
   enableFavorites: true, // 즐겨찾기 기능 활성화 여부 (기본값 true)
   showHistoryOnGreeting: false, // <-- [추가] 초기 화면 히스토리 표시 여부
   mainInputPlaceholder: "", // 메인 입력창 플레이스홀더
-  // --- 👇 [추가] ---
   enableMainChatMarkdown: true, // 메인 챗 마크다운 활성화 여부
+  // --- 👇 [추가] ---
+  mainInputValue: "", // 메인 입력창의 제어되는 값
   // --- 👆 [추가] ---
   llmProvider: "gemini",
   flowiseApiUrl: "",
@@ -68,6 +69,9 @@ export const createUISlice = (set, get) => ({
 
   // Actions
   setIsInitializing: (value) => set({ isInitializing: value }), // <-- [추가]
+  // --- 👇 [추가] ---
+  setMainInputValue: (value) => set({ mainInputValue: value }),
+  // --- 👆 [추가] ---
 
   loadGeneralConfig: async () => {
     try {
@@ -91,12 +95,10 @@ export const createUISlice = (set, get) => ({
               ? config.showHistoryOnGreeting
               : false,
           mainInputPlaceholder: config.mainInputPlaceholder || "",
-          // --- 👇 [추가] ---
           enableMainChatMarkdown:
             typeof config.enableMainChatMarkdown === "boolean"
               ? config.enableMainChatMarkdown
               : true, // 기본값 true
-          // --- 👆 [추가] ---
           llmProvider: config.llmProvider || "gemini",
           flowiseApiUrl: config.flowiseApiUrl || "",
         });
@@ -118,7 +120,6 @@ export const createUISlice = (set, get) => ({
     }
   },
 
-  // --- 👇 [추가] 개인 설정 저장 액션 ---
   savePersonalSettings: async (settings) => {
     const { user, db, showEphemeralToast, language } = get();
     if (!user) return false;
@@ -135,7 +136,6 @@ export const createUISlice = (set, get) => ({
       return false;
     }
   },
-  // --- 👆 [추가] ---
 
   setScrollToMessageId: (id) => set({ scrollToMessageId: id }),
   setForceScrollToBottom: (value) => set({ forceScrollToBottom: value }),

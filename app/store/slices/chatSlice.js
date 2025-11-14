@@ -70,6 +70,9 @@ export const createChatSlice = (set, get) => {
       });
       get().unsubscribeMessages?.();
       set({ unsubscribeMessages: null });
+      // --- 👇 [추가] ---
+      get().setMainInputValue(""); // 입력창 초기화
+      // --- 👆 [추가] ---
     },
 
     loadInitialMessages: async (conversationId) => {
@@ -83,6 +86,9 @@ export const createChatSlice = (set, get) => {
         lastVisibleMessage: null,
         hasMoreMessages: true,
         selectedOptions: {},
+        // --- 👇 [추가] ---
+        mainInputValue: "", // 대화 로드 시 입력창 초기화
+        // --- 👆 [추가] ---
       });
 
       try {
@@ -175,7 +181,6 @@ export const createChatSlice = (set, get) => {
       }
     },
 
-    // --- 👇 [수정] updateLastMessage가 객체 페이로드를 받도록 수정 ---
     /**
      * 스트리밍 중인 마지막 봇 메시지를 업데이트합니다.
      * @param {object} payload - 스트림 이벤트 페이로드
@@ -225,7 +230,6 @@ export const createChatSlice = (set, get) => {
         };
       });
     },
-    // --- 👆 [수정] ---
 
     setSelectedOption: async (messageId, optionValue) => {
       const isTemporaryId = String(messageId).startsWith("temp_");
@@ -356,10 +360,12 @@ export const createChatSlice = (set, get) => {
         setSelectedOption,
         openScenarioPanel,
         handleResponse,
-        // --- 👇 [추가] ---
         availableScenarios, // 시나리오 슬라이스에서 가져옴
         language,
         showEphemeralToast,
+        // --- 👇 [추가] ---
+        setMainInputValue, // uiSlice에서 가져옴
+        focusChatInput, // uiSlice에서 가져옴
         // --- 👆 [추가] ---
       } = get();
 
@@ -375,12 +381,15 @@ export const createChatSlice = (set, get) => {
           text: item.action.value,
           displayText: item.title,
         });
+      // --- 👇 [수정] ---
       } else if (item.action.type === "text") {
-        await handleResponse({
-          text: item.action.value,
-          displayText: item.action.value, // 'text' 타입은 value를 displayText로 사용
-        });
-        // --- 👇 [수정] ---
+        // await handleResponse({
+        //   text: item.action.value,
+        //   displayText: item.action.value, // 'text' 타입은 value를 displayText로 사용
+        // });
+        setMainInputValue(item.action.value); // 입력창에 텍스트 설정
+        focusChatInput(); // 입력창에 포커스
+      // --- 👆 [수정] ---
       } else if (item.action.type === "scenario") {
         const scenarioId = item.action.value;
 
@@ -400,7 +409,6 @@ export const createChatSlice = (set, get) => {
           // 시나리오가 존재하면 패널 열기
           get().openScenarioPanel?.(scenarioId, extractedSlots);
         }
-        // --- 👆 [수정] ---
       } else {
         console.warn(`Unsupported shortcut action type: ${item.action.type}`);
       }

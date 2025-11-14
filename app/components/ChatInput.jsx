@@ -77,12 +77,14 @@ export default function ChatInput() {
     (state) => state.isScenarioPanelExpanded
   );
   const openHistoryPanel = useChatStore((state) => state.openHistoryPanel);
-  // --- 👇 [추가] ---
   const mainInputPlaceholder = useChatStore(
     (state) => state.mainInputPlaceholder
   );
-  // --- 👆 [추가] ---
   const enableFavorites = useChatStore((state) => state.enableFavorites);
+  // --- 👇 [추가] ---
+  const mainInputValue = useChatStore((state) => state.mainInputValue);
+  const setMainInputValue = useChatStore((state) => state.setMainInputValue);
+  // --- 👆 [추가] ---
 
   const { t } = useTranslations();
   const inputRef = useRef(null);
@@ -115,12 +117,14 @@ export default function ChatInput() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const input = e.target.elements.userInput.value;
+    // --- 👇 [수정] ---
+    const input = mainInputValue; // e.target.elements.userInput.value;
     if (!input.trim() || isLoading) return;
 
     await handleResponse({ text: input });
 
-    e.target.reset();
+    setMainInputValue(""); // e.target.reset();
+    // --- 👆 [수정] ---
   };
 
   const handleItemClick = (item) => {
@@ -229,11 +233,13 @@ export default function ChatInput() {
           ref={inputRef}
           name="userInput"
           className={styles.textInput}
-          // --- 👇 [수정] ---
           placeholder={mainInputPlaceholder || t("askAboutService")}
-          // --- 👆 [수정] ---
           autoComplete="off"
           disabled={isInputDisabled}
+          // --- 👇 [추가] ---
+          value={mainInputValue}
+          onChange={(e) => setMainInputValue(e.target.value)}
+          // --- 👆 [추가] ---
         />
         <button
           type="submit"
