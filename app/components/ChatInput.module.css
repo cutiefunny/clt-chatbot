@@ -42,7 +42,9 @@
 }
 
 .categoryWrapper {
-  position: relative;
+  /* --- 👇 [수정] position: relative 제거 --- */
+  /* position: relative; */
+  /* --- 👆 [수정] --- */
 }
 
 .categoryButton {

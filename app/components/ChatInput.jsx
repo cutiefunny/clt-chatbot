@@ -97,6 +97,12 @@ export default function ChatInput() {
   const isInputDisabled = isLoading;
   const currentScenarioNodeId = activeScenario?.state?.currentNodeId;
 
+  // --- 👇 [수정] 현재 열린 카테고리 정보를 찾는 로직 추가 ---
+  const activeCategoryData =
+    shortcutMenuOpen &&
+    scenarioCategories.find((cat) => cat.name === shortcutMenuOpen);
+  // --- 👆 [수정] ---
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -134,22 +140,19 @@ export default function ChatInput() {
 
   return (
     <div className={styles.inputArea}>
+      {/* --- 👇 [수정] .quickActionsContainer 구조 변경 --- */}
       <div className={styles.quickActionsContainer} ref={menuRef}>
+        {/* 1. 카테고리 버튼들 렌더링 */}
         {scenarioCategories.map((category) => (
           <div key={category.name} className={styles.categoryWrapper}>
             <button
               className={`GlassEffect ${styles.categoryButton} ${
                 shortcutMenuOpen === category.name ? styles.active : ""
               }`}
-              
               onClick={() => {
                 const nextMenu =
                   shortcutMenuOpen === category.name ? null : category.name;
                 setShortcutMenuOpen(nextMenu);
-                
-                if (nextMenu && openHistoryPanel) {
-                  openHistoryPanel();
-                }
               }}
             >
               {category.name}{" "}
@@ -162,66 +165,70 @@ export default function ChatInput() {
                 }}
               />
             </button>
-            {shortcutMenuOpen === category.name && (
-              <div className={`GlassEffect ${styles.dropdownMenu}`}>
-                {category.subCategories.map((subCategory) => (
-                  <div
-                    key={subCategory.title}
-                    className={styles.subCategorySection}
-                  >
-                    <h4 className={styles.subCategoryTitle}>
-                      {subCategory.title}
-                    </h4>
-                    {subCategory.items.map((item) => {
-                      const isFavorited = favorites.some(
-                        (fav) =>
-                          fav.action.type === item.action.type &&
-                          fav.action.value === item.action.value
-                      );
-                      return (
-                        <div key={item.title} className={styles.dropdownItem}>
-                          <div
-                            className={styles.itemContentWrapper}
-                            onClick={() => handleItemClick(item)}
-                            role="button"
-                            tabIndex="0"
-                            onKeyDown={(e) =>
-                              (e.key === "Enter" || e.key === " ") &&
-                              handleItemClick(item)
-                            }
-                          >
-                            {enableFavorites && (
-                              <button
-                                className={`${styles.favoriteButton} ${
-                                  isFavorited ? styles.favorited : ""
-                                }`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleFavorite(item);
-                                }}
-                              >
-                                <StarIcon size={18} filled={isFavorited} />
-                              </button>
-                            )}
-                            <div className={styles.itemContent}>
-                              <span className={styles.itemTitle}>
-                                {item.title}
-                              </span>
-                              <span className={styles.itemDescription}>
-                                {item.description}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
-            )}
+            {/* 2. 드롭다운 메뉴를 루프 밖으로 이동시킴 */}
           </div>
         ))}
+
+        {/* 3. 활성화된 드롭다운 메뉴 (루프 밖에 단 하나만 렌더링) */}
+        {activeCategoryData && (
+          <div className={`GlassEffect ${styles.dropdownMenu}`}>
+            {activeCategoryData.subCategories.map((subCategory) => (
+              <div
+                key={subCategory.title}
+                className={styles.subCategorySection}
+              >
+                <h4 className={styles.subCategoryTitle}>
+                  {subCategory.title}
+                </h4>
+                {subCategory.items.map((item) => {
+                  const isFavorited = favorites.some(
+                    (fav) =>
+                      fav.action.type === item.action.type &&
+                      fav.action.value === item.action.value
+                  );
+                  return (
+                    <div key={item.title} className={styles.dropdownItem}>
+                      <div
+                        className={styles.itemContentWrapper}
+                        onClick={() => handleItemClick(item)}
+                        role="button"
+                        tabIndex="0"
+                        onKeyDown={(e) =>
+                          (e.key === "Enter" || e.key === " ") &&
+                          handleItemClick(item)
+                        }
+                      >
+                        {enableFavorites && (
+                          <button
+                            className={`${styles.favoriteButton} ${
+                              isFavorited ? styles.favorited : ""
+                            }`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleFavorite(item);
+                            }}
+                          >
+                            <StarIcon size={18} filled={isFavorited} />
+                          </button>
+                        )}
+                        <div className={styles.itemContent}>
+                          <span className={styles.itemTitle}>
+                            {item.title}
+                          </span>
+                          <span className={styles.itemDescription}>
+                            {item.description}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
+      {/* --- 👆 [수정] --- */}
 
       <form
         className={`${styles.inputForm} ${
