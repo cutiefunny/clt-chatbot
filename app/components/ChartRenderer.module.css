@@ -10,7 +10,7 @@
   width: 100%;
   max-width: 100%; /* 부모 너비를 넘지 않도록 */
   height: auto; /* 높이는 내용에 맞게 자동 조절 (또는 고정값 300px 등) */
-  min-width: 450px; /* 최소 너비 */
+  min-width: 400px; /* 최소 너비 */
   min-height: 250px; /* 최소 높이 */
   padding: 12px;
   box-sizing: border-box;
