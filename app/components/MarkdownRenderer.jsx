@@ -51,9 +51,9 @@ export default function MarkdownRenderer({
     needsTruncation = true;
     truncatedText = safeContent.substring(0, splitIndex);
     
-    // 확장 시 '---' 구분자(와 앞뒤 공백)를 줄바꿈 하나로 변경
-    // (주의: replaceAll이 아닌 첫 번째 '---'만 replace)
-    fullContent = safeContent.replace(delimiterRegex, "\n"); 
+    // --- 👇 [수정] 확장 시 '---'를 이중 줄바꿈(\n\n)으로 변경하여 공백 추가 ---
+    fullContent = safeContent.replace(delimiterRegex, "\n\n"); 
+    // --- 👆 [수정] ---
   } else if (needsTruncationByLine) {
     // '---'가 없고, 줄 수 제한에 걸리면 기존 로직대로 자름
     needsTruncation = true;
