@@ -32,18 +32,7 @@ const getInitialMessages = (lang = "ko") => {
   return [{ id: "initial", sender: "bot", text: initialText }];
 };
 
-// --- 👇 [제거] processFlowiseStream 헬퍼 (lib/streamProcessors.js로 이동) ---
-// async function* processFlowiseStream(reader, decoder, get) { ... }
-// --- 👆 [제거] ---
-
-// --- 👇 [제거] processGeminiStream 헬퍼 (lib/streamProcessors.js로 이동) ---
-// async function* processGeminiStream(reader, decoder, get) { ... }
-// --- 👆 [제거] ---
-
 export const createChatSlice = (set, get) => {
-  // --- 👇 [제거] responseHandlers (actions/chatResponseHandler.js로 이동) ---
-  // const responseHandlers = { ... };
-  // --- 👆 [제거] ---
 
   return {
     // State
@@ -52,6 +41,9 @@ export const createChatSlice = (set, get) => {
     pendingResponses: new Set(),
     completedResponses: new Set(),
     slots: {},
+    // --- 💡 [추가] ---
+    setSlots: (newSlots) => set({ slots: newSlots }),
+    // --- 💡 [추가 끝] ---
     extractedSlots: {},
     llmRawResponse: null,
     selectedOptions: {},
@@ -671,9 +663,5 @@ export const createChatSlice = (set, get) => {
     // --- 👇 [수정] handleResponse를 외부 파일에서 가져와 연결 ---
     handleResponse: (messagePayload) => handleResponse(get, set, messagePayload),
     // --- 👆 [수정] ---
-    //
-    // --- 👇 [제거] handleResponse의 거대한 함수 블록 (actions/chatResponseHandler.js로 이동) ---
-    // handleResponse: async (messagePayload) => { ... }
-    // --- 👆 [제거] ---
   }; // end return store object
 }; // end createChatSlice

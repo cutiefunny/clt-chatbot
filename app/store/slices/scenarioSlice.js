@@ -25,6 +25,32 @@ export const createScenarioSlice = (set, get) => ({
   availableScenarios: [],
   unsubscribeScenariosMap: {},
 
+  // --- 💡 [추가] 시나리오 전용 슬롯을 로컬에서 업데이트하는 함수 ---
+  setScenarioSlots: (sessionId, newSlots) => {
+    set(state => {
+      // 세션 ID가 유효한지, 해당 세션 상태가 존재하는지 확인
+      if (!sessionId || !state.scenarioStates[sessionId]) {
+        console.warn(`[setScenarioSlots] Invalid or non-existent scenario session ID: ${sessionId}`);
+        return state; // 상태 변경 없음
+      }
+      
+      // 해당 시나리오 세션의 상태를 업데이트
+      const updatedScenarioState = {
+        ...state.scenarioStates[sessionId],
+        slots: newSlots, // 새 슬롯 객체로 교체
+      };
+
+      // 전체 scenarioStates를 업데이트
+      return {
+        scenarioStates: {
+          ...state.scenarioStates,
+          [sessionId]: updatedScenarioState,
+        }
+      };
+    });
+  },
+  // --- 💡 [추가 끝] ---
+
   loadAvailableScenarios: async () => {
     // --- 👇 [수정] Firestore 작업 오류 처리 ---
     try {
@@ -106,6 +132,9 @@ export const createScenarioSlice = (set, get) => ({
       addMessage, // addMessage 가져오기
       setForceScrollToBottom,
       showEphemeralToast,
+      // --- 💡 [추가] ---
+      showScenarioBubbles,
+      // --- 💡 [추가 끝] ---
     } = get();
     if (!user) return;
 
@@ -182,14 +211,14 @@ export const createScenarioSlice = (set, get) => ({
       setActivePanel("main"); // 메인 패널로 포커스 이동 (선택 사항)
       setForceScrollToBottom(true); // 메인 채팅 스크롤 맨 아래로
 
-      // --- 👇 [추가] Scenario Bubble 메시지를 메인 채팅에 추가 ---
-      // 'user' sender를 사용하여 오른쪽 정렬 (사용자가 시작한 것처럼 보이게)
-      await addMessage("user", {
-        type: "scenario_bubble",
-        scenarioSessionId: newScenarioSessionId,
-        // 이 타입은 'text'가 필요 없음
-      });
-      // --- 👆 [추가] ---
+      // --- 👇 [수정] showScenarioBubbles 설정에 따라 버블 추가 ---
+      if (showScenarioBubbles) {
+        await addMessage("user", {
+          type: "scenario_bubble",
+          scenarioSessionId: newScenarioSessionId,
+        });
+      }
+      // --- 👆 [수정] ---
 
       // 4. 새 시나리오 세션 구독 시작 (subscribeToScenarioSession 내부에서 오류 처리됨)
       get().subscribeToScenarioSession(newScenarioSessionId);
@@ -243,7 +272,7 @@ export const createScenarioSlice = (set, get) => ({
 
         if (data.nextNode) {
           // 'setSlot' 노드는 메시지에 추가하지 않음
-          if (data.nextNode.type !== "setSlot") {
+          if (data.nextNode.type !== "setSlot" && data.nextNode.type !== "set-slot") {
             updatePayload.messages.push({
               id: data.nextNode.id,
               sender: "bot",
@@ -320,19 +349,22 @@ export const createScenarioSlice = (set, get) => ({
             `Cleaned up failed scenario session: ${newScenarioSessionId}`
           );
 
-          // 메인 채팅에서 버블 메시지 제거 (타입과 ID로 식별)
-          set((state) => ({
-            messages: state.messages.filter(
-              (msg) =>
-                !(
-                  msg.type === "scenario_bubble" &&
-                  msg.scenarioSessionId === newScenarioSessionId
-                )
-            ),
-          }));
-          console.log(
-            `Removed scenario bubble from main chat for session: ${newScenarioSessionId}`
-          );
+          // --- 👇 [수정] showScenarioBubbles 설정에 따라 버블 제거 ---
+          if (showScenarioBubbles) {
+            set((state) => ({
+              messages: state.messages.filter(
+                (msg) =>
+                  !(
+                    msg.type === "scenario_bubble" &&
+                    msg.scenarioSessionId === newScenarioSessionId
+                  )
+              ),
+            }));
+            console.log(
+              `Removed scenario bubble from main chat for session: ${newScenarioSessionId}`
+            );
+          }
+          // --- 👆 [수정] ---
         } catch (cleanupError) {
           console.error(
             `Error cleaning up failed scenario session ${newScenarioSessionId}:`,
@@ -345,7 +377,6 @@ export const createScenarioSlice = (set, get) => ({
     }
   },
 
-  // ... (기존 setScenarioSelectedOption, subscribeToScenarioSession 등 함수 유지) ...
   setScenarioSelectedOption: async (scenarioSessionId, messageNodeId, selectedValue) => {
     const { user, currentConversationId, scenarioStates, language, showEphemeralToast } = get(); // --- 👈 [추가] ---
     if (!user || !currentConversationId || !scenarioSessionId) return;
@@ -597,7 +628,7 @@ export const createScenarioSlice = (set, get) => ({
         handleEvents(data.events, scenarioSessionId, currentConversationId); // 이벤트 처리
 
         // 'setSlot' 노드는 메시지로 표시하지 않음
-        if (data.nextNode && data.nextNode.type !== 'setSlot') {
+        if (data.nextNode && data.nextNode.type !== 'setSlot' && data.nextNode.type !== 'set-slot') {
             newMessages.push({ id: data.nextNode.id, sender: 'bot', node: data.nextNode });
         } else if (data.message && data.type !== 'scenario_validation_fail') {
             newMessages.push({ id: `bot-end-${Date.now()}`, sender: 'bot', text: data.message });

@@ -1,9 +1,8 @@
 // app/components/ScenarioChat.jsx
 "use client";
 
-// --- 👇 [수정] 임포트 정리 (xlsx 제거, 컴포넌트 추가) ---
+// --- 👇 [수정] 임포트 정리 (useCallback 추가) ---
 import { useEffect, useRef, useState, useCallback } from "react";
-// import * as XLSX from "xlsx"; // [제거]
 // --- 👆 [수정] ---
 import { useChatStore } from "../store";
 import { useTranslations } from "../hooks/useTranslations";
@@ -29,18 +28,6 @@ import {
   delayParentAnimationIfNeeded,
 } from "../lib/parentMessaging";
 
-// --- 👇 [제거] 엑셀 날짜 변환 헬퍼 (FormRenderer.jsx로 이동) ---
-// function convertExcelDate(serial) { ... }
-// --- 👆 [제거] ---
-
-// --- 👇 [제거] FormRenderer 컴포넌트 (FormRenderer.jsx로 이동) ---
-// const FormRenderer = ({ ... }) => { ... };
-// --- 👆 [제거] ---
-
-// --- 👇 [제거] ScenarioStatusBadge 컴포넌트 (ScenarioStatusBadge.jsx로 이동) ---
-// const ScenarioStatusBadge = ({ ... }) => { ... };
-// --- 👆 [제거] ---
-
 // ScenarioChat 컴포넌트 본체
 export default function ScenarioChat() {
   const {
@@ -52,6 +39,9 @@ export default function ScenarioChat() {
     setScenarioSelectedOption,
     isScenarioPanelExpanded,
     toggleScenarioPanelExpanded,
+    // --- 👇 [수정] setSlots 대신 setScenarioSlots 가져오기 ---
+    setScenarioSlots,
+    // --- 👆 [수정] ---
   } = useChatStore();
   const { t, language } = useTranslations();
 
@@ -66,11 +56,14 @@ export default function ScenarioChat() {
   const isScenarioLoading = activeScenario?.isLoading || false;
   const currentScenarioNodeId = activeScenario?.state?.currentNodeId;
   const scenarioId = activeScenario?.scenarioId;
+  // --- 👇 [수정] 현재 시나리오의 슬롯 가져오기 (이전과 동일) ---
+  const currentSlots = activeScenario?.slots || {};
+  // --- 👆 [수정] ---
 
   const historyRef = useRef(null);
   const wasAtBottomRef = useRef(true);
 
-  // 스크롤 관련 함수 및 useEffect
+  // 스크롤 관련 함수 및 useEffect (기존과 동일)
   const updateWasAtBottom = useCallback(() => {
     const scrollContainer = historyRef.current;
     if (!scrollContainer) return;
@@ -112,7 +105,7 @@ export default function ScenarioChat() {
     return () => observer.disconnect();
   }, [scenarioMessages, isScenarioLoading]);
 
-  // 로딩 상태 렌더링
+  // 로딩 상태 렌더링 (기존과 동일)
   if (!activeScenario) {
     return (
       <div className={styles.scenarioChatContainer}>
@@ -139,28 +132,66 @@ export default function ScenarioChat() {
     });
   };
 
-  const handleGridRowSelected = (gridElement, selectedRowData) => {
-    const targetSlot = gridElement.selectSlot || "selectedRow";
-    const updatedSlots = {
-      ...activeScenario.slots,
-      [targetSlot]: selectedRowData,
-    };
+  // --- 👇 [수정] Form Element API 호출 핸들러 (setScenarioSlots 사용) ---
+  const handleFormElementApiCall = useCallback(async (element, localFormData) => {
+    const currentNode = activeScenario?.messages
+        .find(msg => msg.node?.id === currentScenarioNodeId)?.node;
 
-    handleScenarioResponse({
-      scenarioSessionId: activeScenarioSessionId,
-      currentNodeId: currentScenarioNodeId,
-      sourceHandle: null,
-      userInput: null,
-      formData: updatedSlots,
-    });
-  };
+    if (!currentNode || currentNode.type !== 'form') {
+        console.warn("API Call ABORTED: currentNode is not the form node.");
+        return;
+    }
+    const elementConfig = currentNode.data.elements.find(e => e.id === element.id);
+    
+    if (!elementConfig || !elementConfig.apiConfig || !elementConfig.resultSlot) {
+      alert("Search element is not configured correctly. (Missing API URL or Result Slot)");
+      return;
+    }
 
-  // 메시지 그룹핑 로직
+    const { apiConfig, resultSlot } = elementConfig;
+    const searchTerm = localFormData[elementConfig.name] || '';
+    // 💡 currentSlots (시나리오 슬롯)와 'value' (검색어)를 사용
+    const allValues = { ...currentSlots, value: searchTerm };
+    const method = apiConfig.method || 'POST'; 
+
+    try {
+      const interpolatedUrl = interpolateMessage(apiConfig.url, allValues);
+
+      const fetchOptions = {
+        method: method,
+        headers: {},
+      };
+
+      if (method === 'POST') {
+        const interpolatedBody = interpolateMessage(apiConfig.bodyTemplate, allValues);
+        fetchOptions.headers['Content-Type'] = 'application/json';
+        fetchOptions.body = interpolatedBody;
+      }
+      
+      const response = await fetch(interpolatedUrl, fetchOptions);
+
+      if (!response.ok) {
+        throw new Error(`API call failed with status ${response.status}`);
+      }
+
+      const responseData = await response.json();
+
+      // 💡 [수정] setScenarioSlots (스토어 액션)를 호출하여 *시나리오* 슬롯을 업데이트
+      setScenarioSlots(activeScenarioSessionId, { ...currentSlots, [resultSlot]: responseData });
+      
+    } catch (error) {
+      console.error("Form element API call failed:", error);
+      alert(`Search failed: ${error.message}`);
+    }
+  }, [activeScenario, currentScenarioNodeId, currentSlots, setScenarioSlots, activeScenarioSessionId]); // 💡 의존성 배열 수정
+  // --- 👆 [수정] ---
+
+
+  // 메시지 그룹핑 로직 (기존과 동일)
   const groupedMessages = [];
   let currentChain = [];
-
   scenarioMessages.forEach((msg) => {
-    if (msg.node?.type === "set-slot") {
+    if (msg.node?.type === "set-slot" || msg.node?.type === "setSlot") { // 💡 setSlot 타입 체크
       return;
     }
     const isChained = msg.node?.data?.chainNext === true;
@@ -183,17 +214,13 @@ export default function ScenarioChat() {
     groupedMessages.push(currentChain);
   }
 
-  // --- 👇 [수정] 마크다운 테이블 감지 헬퍼 (로직 동일) ---
   const containsMarkdownTable = (msg) => {
     const content = msg.text || msg.node?.data?.content;
     if (typeof content === "string") {
-      // 마크다운 테이블 헤더 구분자(|---)가 포함되어 있는지 확인
-      // (가장 간단하면서 효과적인 휴리스틱)
       return content.includes("|---");
     }
     return false;
   };
-  // --- 👆 [수정] ---
 
   return (
     <div className={styles.scenarioChatContainer}>
@@ -203,6 +230,7 @@ export default function ScenarioChat() {
             status={activeScenario?.status}
             t={t}
             styles={styles}
+            isSelected={true} 
           />
           <span className={styles.headerTitle}>
             {t("scenarioTitle")(
@@ -263,6 +291,7 @@ export default function ScenarioChat() {
       <div className={styles.history} ref={historyRef}>
         {groupedMessages.map((group, index) => {
           if (!Array.isArray(group)) {
+            // (사용자 메시지 렌더링 - 기존과 동일)
             const msg = group;
             return (
               <div
@@ -287,51 +316,40 @@ export default function ScenarioChat() {
 
           const chain = group;
 
-          // --- 👇 [수정] 3단계 너비 클래스 계산 로직 (가장 긴 '줄' 기준) ---
+          // --- 👇 [수정] isRichContent 계산 로직 (undefined 방지) ---
           const isRichContent = chain.some(
             (msg) =>
               msg.node?.type === "form" ||
-              msg.node?.data?.elements?.some(
-                (el) => el.type === "grid"
-              ) ||
+              (msg.node?.data?.elements && 
+                msg.node.data.elements.some((el) => el.type === "grid")) ||
               msg.node?.type === "iframe" ||
               containsMarkdownTable(msg)
           );
+          // --- 👆 [수정] ---
 
           let widthClass = "";
           if (isRichContent) {
-            // 100% 단계 (가장 넓음) - 기존 .gridMessage 재사용
             widthClass = styles.gridMessage;
           } else {
-            // 1. 모든 텍스트 콘텐츠를 배열로 추출
+            // (너비 계산 로직 - 기존과 동일)
             const allTextContents = chain.map((msg) => {
               return String(msg.text || msg.node?.data?.content || "");
             });
-
-            // 2. 모든 텍스트를 하나의 문자열로 합치고, 줄바꿈(\n) 기준으로 나눔
             const lines = allTextContents.join("\n").split("\n");
-
-            // 3. 가장 긴 줄의 길이를 찾음
             const maxLineLength = lines.reduce((maxLength, currentLine) => {
               return Math.max(maxLength, currentLine.length);
             }, 0);
-
-            // 임계값 (가장 긴 '줄'의 길이를 기준)
-            const SHORT_THRESHOLD = 10; // 30% 너비 임계값 (10자 미만)
-            const MEDIUM_THRESHOLD = 30; // 60% 너비 임계값 (30자 미만)
-
+            const SHORT_THRESHOLD = 10;
+            const MEDIUM_THRESHOLD = 30;
             if (maxLineLength < SHORT_THRESHOLD) {
-              // 30% 단계
               widthClass = styles.width30;
             } else if (maxLineLength < MEDIUM_THRESHOLD) {
-              // 60% 단계
               widthClass = styles.width60;
             } else {
-              // 100% 단계 (긴 텍스트)
-              widthClass = styles.gridMessage; // .gridMessage (90%) 재사용
+              widthClass = styles.gridMessage;
             }
           }
-          // --- 👆 [수정] ---
+
 
           return (
             <div
@@ -339,11 +357,9 @@ export default function ScenarioChat() {
               className={`${styles.messageRow}`}
             >
               <div
-                // --- 👇 [수정] className 정의 수정 ---
                 className={`GlassEffect ${styles.message} ${
                   styles.botMessage
                 } ${widthClass}`}
-                // --- 👆 [수정] ---
               >
                 <div
                   className={
@@ -363,22 +379,21 @@ export default function ScenarioChat() {
                         className={styles.chainedMessageItem}
                       >
                         {msg.node?.type === "form" ? (
+                          // --- 👇 [수정] FormRenderer에 새 props 전달 ---
                           <FormRenderer
                             node={msg.node}
                             onFormSubmit={handleFormSubmit}
-                            // --- 👇 [수정] ---
-                            // 1. 시나리오가 완료되었거나 (isCompleted)
-                            // 2. 이 폼 노드가 더 이상 현재 노드가 아니면 (제출 완료)
-                            // 비활성화합니다.
                             disabled={
                               isCompleted ||
                               msg.node.id !== currentScenarioNodeId
                             }
-                            // --- 👆 [수정] ---
                             language={language}
-                            slots={activeScenario.slots}
-                            onGridRowClick={handleGridRowSelected}
+                            slots={currentSlots} // 💡 현재 시나리오 슬롯 전달
+                            setScenarioSlots={setScenarioSlots} // 💡 시나리오 슬롯 업데이터 전달
+                            activeScenarioSessionId={activeScenarioSessionId} // 💡 세션 ID 전달
+                            onFormElementApiCall={handleFormElementApiCall} // 💡 API 핸들러 전달
                           />
+                          // --- 👆 [수정] ---
                         ) : msg.node?.type === "iframe" ? (
                           <div className={styles.iframeContainer}>
                             <iframe
@@ -435,6 +450,7 @@ export default function ScenarioChat() {
                           msg.node.data.replies && (
                             <div className={styles.scenarioList}>
                               {msg.node.data.replies.map((reply) => {
+                                // (버튼 렌더링 로직 - 기존과 동일)
                                 const selectedOption = msg.selectedOption;
                                 const interpolatedDisplayText =
                                   interpolateMessage(
@@ -495,6 +511,7 @@ export default function ScenarioChat() {
         })}
 
         {isScenarioLoading && (
+          // (로딩 인디케이터 - 기존과 동일)
           <div className={styles.messageRow}>
             <div
               className={`GlassEffect ${styles.message} ${styles.botMessage}`}

@@ -19,6 +19,9 @@ import LikeIcon from "./icons/LikeIcon";
 import DislikeIcon from "./icons/DislikeIcon";
 import UploadIcon from "./icons/UploadIcon";
 import TransferIcon from "./icons/TransferIcon";
+// --- 👇 [추가] 메인 챗 전용 마크다운 스타일 임포트 ---
+import mainMarkdownStyles from "./MainChatMarkdown.module.css";
+// --- 👆 [추가] ---
 
 // --- 👇 [추가] ChartRenderer를 dynamic import로 로드 ---
 const ChartRenderer = dynamic(() => import("./ChartRenderer"), {
@@ -155,10 +158,11 @@ const MessageWithButtons = ({ msg }) => {
       )}
       {/* --- 👆 [수정] --- */}
 
-      {/* --- 👇 [수정] 2. 텍스트를 다음에 렌더링 (children 제거) --- */}
+      {/* --- 👇 [수정] 2. 텍스트를 다음에 렌더링 (wrapperClassName 추가) --- */}
       <MarkdownRenderer
         content={allTextContent}
         renderAsMarkdown={enableMainChatMarkdown}
+        wrapperClassName={mainMarkdownStyles.mainChatMarkdown}
       />
       {/* --- 👆 [수정] --- */}
 
