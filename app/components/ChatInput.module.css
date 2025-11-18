@@ -272,6 +272,12 @@
   font-weight: 400;
   line-height: 24px; /* 150% */
   letter-spacing: -0.24px;
+  
+  /* --- 👇 [추가/수정] --- */
+  min-height: 40px; /* padding (8+8) + line-height (24) */
+  max-height: 136px; /* 5 lines approx: (24*5 + 16) */
+  overflow-y: auto;  /* Show scrollbar when max-height is reached */
+  /* --- 👆 [추가/수정] --- */
 }
 
 .inputForm .addButton {

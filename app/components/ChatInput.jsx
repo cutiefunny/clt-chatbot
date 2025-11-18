@@ -81,13 +81,14 @@ export default function ChatInput() {
     (state) => state.mainInputPlaceholder
   );
   const enableFavorites = useChatStore((state) => state.enableFavorites);
-  // --- 👇 [추가] ---
+  // --- 👇 [수정] ---
   const mainInputValue = useChatStore((state) => state.mainInputValue);
   const setMainInputValue = useChatStore((state) => state.setMainInputValue);
-  // --- 👆 [추가] ---
+  
+  const inputRef = useRef(null); // <textarea>를 참조
+  // --- 👆 [수정] ---
 
   const { t } = useTranslations();
-  const inputRef = useRef(null);
   const quickRepliesSlider = useDraggableScroll();
   const menuRef = useRef(null);
 
@@ -121,17 +122,45 @@ export default function ChatInput() {
     }
   }, [isInputDisabled, focusRequest, activePanel]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    // --- 👇 [수정] ---
-    const input = mainInputValue; // e.target.elements.userInput.value;
-    if (!input.trim() || isLoading) return;
+  // --- 👇 [수정] 메시지 전송 로직 분리 ---
+  const submitMessage = async () => {
+    const input = mainInputValue.trim();
+    if (!input || isLoading) return;
 
     await handleResponse({ text: input });
 
-    setMainInputValue(""); // e.target.reset();
-    // --- 👆 [수정] ---
+    setMainInputValue("");
+
+    // Reset textarea height
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto';
+    }
   };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    submitMessage();
+  };
+
+  const handleKeyDown = (e) => {
+    // Shift + Enter가 아니면서 Enter 키만 눌렀을 때 전송
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      submitMessage();
+    }
+    // Shift + Enter는 기본 동작(줄바꿈)을 허용
+  };
+
+  const handleInputChange = (e) => {
+    setMainInputValue(e.target.value);
+    
+    // Auto-resize logic
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto'; // Reset height to recalculate
+      inputRef.current.style.height = `${inputRef.current.scrollHeight}px`; // Set to scroll height
+    }
+  };
+  // --- 👆 [수정] ---
 
   const handleItemClick = (item) => {
     handleShortcutClick(item);
@@ -236,18 +265,20 @@ export default function ChatInput() {
         }`}
         onSubmit={handleSubmit}
       >
-        <input
+        {/* --- 👇 [수정] <input>을 <textarea>로 변경 --- */}
+        <textarea
           ref={inputRef}
           name="userInput"
+          rows="1"
           className={styles.textInput}
           placeholder={mainInputPlaceholder || t("askAboutService")}
           autoComplete="off"
           disabled={isInputDisabled}
-          // --- 👇 [추가] ---
           value={mainInputValue}
-          onChange={(e) => setMainInputValue(e.target.value)}
-          // --- 👆 [추가] ---
+          onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
         />
+        {/* --- 👆 [수정] --- */}
         <button
           type="submit"
           className={styles.sendButton}
