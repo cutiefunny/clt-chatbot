@@ -5,6 +5,9 @@ import { useState, useEffect } from "react";
 import { useChatStore } from "../../store";
 import styles from "../general/page.module.css"; // general의 CSS 재사용
 import Link from "next/link";
+import { useTranslations } from "../../hooks/useTranslations";
+// --- 👇 [추가] ConfirmModal 임포트 ---
+import ConfirmModal from "../../components/ConfirmModal"; 
 
 export default function PersonalSettingsPage() {
   const {
@@ -16,7 +19,17 @@ export default function PersonalSettingsPage() {
     isDevMode, 
     savePersonalSettings, 
     showEphemeralToast,
+    // --- 👇 [추가] ---
+    openConfirmModal,
+    deleteAllConversations,
+    // --- 👆 [추가] ---
+    // --- 👇 [추가] ConfirmModal 상태 가져오기 ---
+    confirmModal, 
+    closeConfirmModal,
+    // --- 👆 [추가] ---
   } = useChatStore();
+  
+  const { t } = useTranslations();
 
   const [hideCompleted, setHideCompleted] = useState(false);
   const [delayHours, setDelayHours] = useState("0");
@@ -76,6 +89,40 @@ export default function PersonalSettingsPage() {
     }
     setIsLoading(false);
   };
+  
+  // --- 👇 [수정] 대화 목록 전체 삭제 핸들러 (디버그 로그 추가) ---
+  const handleDeleteAllConvos = () => {
+      console.log("[DEBUG] Delete All Conversations button clicked. Current isLoading:", isLoading); // <-- 로그 추가
+      
+      if (isLoading) {
+          console.log("[DEBUG] Exit: isLoading is true. Blocking execution."); // <-- 로그 추가
+          return; 
+      }
+      
+      openConfirmModal({
+          title: "경고",
+          message: t('deleteAllConvosConfirm'), // 💡 지역 t 사용
+          confirmText: t('delete'), // 💡 지역 t 사용
+          cancelText: t('cancel'), // 💡 지역 t 사용
+          onConfirm: async () => {
+              setIsLoading(true);
+              // deleteAllConversations 내부에서 토스트 메시지 처리
+              await deleteAllConversations(); 
+              setIsLoading(false);
+          },
+          confirmVariant: 'danger',
+      });
+      console.log("[DEBUG] openConfirmModal called successfully."); // <-- 로그 추가
+  };
+  // --- 👆 [수정] ---
+
+  const handleConfirm = () => {
+    if (confirmModal.onConfirm) {
+      confirmModal.onConfirm();
+    }
+    closeConfirmModal();
+  };
+
 
   return (
     <div className={styles.container}>
@@ -191,7 +238,7 @@ export default function PersonalSettingsPage() {
           </div>
           {/* --- 👇 [제거] 축소 폰트 크기 섹션 --- */}
           {/*
-          <div className={styles.settingItem}>
+          <div class Name={styles.settingItem}>
             <label htmlFor="font-size-small" className={styles.settingLabel}>
               <h3>축소 폰트 크기</h3>
               <p>
@@ -217,9 +264,34 @@ export default function PersonalSettingsPage() {
           onClick={handleSave}
           disabled={isLoading}
         >
-          {isLoading ? "저장 중..." : "설정 저장하기"}
+          {isLoading ? t('loading') : "설정 저장하기"}
         </button>
+        
+        {/* --- 👇 [수정] 대화 목록 전체 삭제 버튼 --- */}
+        <button
+            className={styles.saveButton} 
+            style={{ backgroundColor: '#e74c3c', marginTop: '30px' }}
+            onClick={handleDeleteAllConvos}
+            disabled={isLoading}
+        >
+            {isLoading ? t('loading') : t('deleteAllConvos')}
+        </button>
+        {/* --- 👆 [수정] --- */}
       </main>
+
+      {/* --- 👇 [추가] ConfirmModal 렌더링 --- */}
+      {confirmModal.isOpen && (
+        <ConfirmModal
+          title={confirmModal.title}
+          message={confirmModal.message}
+          confirmText={confirmModal.confirmText}
+          onConfirm={handleConfirm}
+          onClose={closeConfirmModal}
+          confirmVariant={confirmModal.confirmVariant}
+          cancelText={confirmModal.cancelText}
+        />
+      )}
+      {/* --- 👆 [추가] --- */}
     </div>
   );
 }

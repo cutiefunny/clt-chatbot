@@ -389,6 +389,84 @@ export const createConversationSlice = (set, get) => ({
     );
   },
 
+  deleteAllConversations: async () => {
+    const { user, language, showEphemeralToast, unsubscribeAllMessagesAndScenarios, resetMessages } = get();
+    if (!user) return;
+
+    try {
+        // 1. 모든 리스너 해제 및 UI 초기화 준비
+        unsubscribeAllMessagesAndScenarios();
+        resetMessages(language);
+        set({
+            currentConversationId: null,
+            expandedConversationId: null,
+            conversations: [], // Optimistic UI update
+        });
+
+        // 2. 모든 대화 ID 가져오기
+        const conversationsRef = collection(get().db, "chats", user.uid, "conversations");
+        const allConversationsSnapshot = await getDocs(conversationsRef);
+        const conversationIds = allConversationsSnapshot.docs.map(doc => doc.id);
+
+        if (conversationIds.length === 0) {
+            showEphemeralToast(locales[language]?.deleteAllConvosSuccess || "All conversation history successfully deleted.", "success");
+            return;
+        }
+
+        let batch = writeBatch(get().db);
+        let batchCount = 0;
+
+        for (const convoId of conversationIds) {
+            const conversationRef = doc(get().db, "chats", user.uid, "conversations", convoId);
+
+            // 3. 메시지 서브컬렉션 삭제
+            const messagesRef = collection(conversationRef, "messages");
+            const messagesSnapshot = await getDocs(messagesRef);
+            messagesSnapshot.forEach((doc) => {
+                batch.delete(doc.ref);
+                batchCount++;
+            });
+
+            // 4. 시나리오 세션 서브컬렉션 삭제
+            const scenariosRef = collection(conversationRef, "scenario_sessions");
+            const scenariosSnapshot = await getDocs(scenariosRef);
+            scenariosSnapshot.forEach((doc) => {
+                batch.delete(doc.ref);
+                batchCount++;
+            });
+
+            // 5. 대화 문서 삭제
+            batch.delete(conversationRef);
+            batchCount++;
+
+            // Firestore는 한 배치에 최대 500개의 작업만 허용합니다.
+            // 안전을 위해 490개마다 커밋하고 새 배치를 시작합니다.
+            if (batchCount >= 490) {
+                await batch.commit();
+                batch = writeBatch(get().db);
+                batchCount = 0;
+            }
+        }
+
+        // 6. 남은 작업 커밋
+        if (batchCount > 0) {
+            await batch.commit();
+        }
+
+        console.log(`All ${conversationIds.length} conversations and their subcollections deleted successfully.`);
+        showEphemeralToast(locales[language]?.deleteAllConvosSuccess || "All conversation history successfully deleted.", "success");
+
+    } catch (error) {
+        console.error("Error deleting all conversations:", error);
+        const errorKey = getErrorKey(error);
+        const message =
+          locales[language]?.[errorKey] ||
+          locales["en"]?.errorUnexpected ||
+          "Failed to delete all conversations.";
+        showEphemeralToast(message, "error");
+    }
+},
+
   // --- 👇 [추가] index.js에서 이동된 복합 액션 ---
   handleScenarioItemClick: (conversationId, scenario) => {
     if (get().currentConversationId !== conversationId) {
