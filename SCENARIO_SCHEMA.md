@@ -363,6 +363,7 @@ JSON
   "apiConfig": {
     "url": "string",
     "method": "'GET' | 'POST'",
+    "headers": "string | undefined", // (Optional) JSON string for headers. Supports {slotName} interpolation.
     "bodyTemplate": "string | undefined" // (Optional) JSON string, used if method is 'POST'. '{{value}}' is replaced.
   },
   "resultSlot": "string" // Slot name to store the API response (e.g., an array for a grid)

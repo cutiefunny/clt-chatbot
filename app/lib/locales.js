@@ -11,14 +11,13 @@ export const locales = {
 
     // Error Messages
     errorNetwork: "네트워크 연결을 확인해주세요. 인터넷이 불안정한 것 같아요.",
+    errorApiRequest: "API 요청에 실패했습니다. 네트워크 연결을 확인하거나 관리자에게 문의해주세요.",
     errorServer:
       "서버에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요.",
     errorLLMFail: "응답에 문제가 발생했습니다. 잠시 후 다시 시도해주세요.",
     errorUnexpected: "예상치 못한 오류가 발생했습니다. 다시 시도해주세요.",
-    // --- 👇 [추가] ---
     errorScenarioNotFound:
       "연결된 시나리오를 찾을 수 없습니다. 시나리오 메뉴 편집 페이지에서 해당 숏컷을 확인해주세요.",
-    // --- 👆 [추가] ---
 
     // Validation Messages
     validationEmail: "유효한 이메일 주소를 입력해주세요.",
@@ -157,14 +156,13 @@ export const locales = {
     copied: "Copied!",
 
     // Error Messages
+    errorApiRequest: "API request failed. Please check your network connection or contact an administrator.",
     errorNetwork: "Network error. Please check your internet connection.",
     errorServer: "There was a problem with the server. Please try again later.",
     errorLLMFail: "There was a problem with the response. Please try again later.",
     errorUnexpected: "An unexpected error occurred. Please try again.",
-    // --- 👇 [추가] ---
     errorScenarioNotFound:
       "The linked scenario could not be found. Please check the shortcut in the scenario menu edit page.",
-    // --- 👆 [추가] ---
 
     // Validation Messages
     validationEmail: "Please enter a valid email address.",
