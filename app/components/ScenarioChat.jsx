@@ -132,7 +132,7 @@ export default function ScenarioChat() {
     });
   };
 
-  // --- 👇 [수정] Form Element API 호출 핸들러 (setScenarioSlots 사용) ---
+  // --- 👇 [수정] Form Element API 호출 핸들러 (headers 반영 + 토스트 에러 메시지) ---
   const handleFormElementApiCall = useCallback(async (element, localFormData) => {
     const currentNode = activeScenario?.messages
         .find(msg => msg.node?.id === currentScenarioNodeId)?.node;
@@ -153,38 +153,86 @@ export default function ScenarioChat() {
     // 💡 currentSlots (시나리오 슬롯)와 'value' (검색어)를 사용
     const allValues = { ...currentSlots, value: searchTerm };
     const method = apiConfig.method || 'POST'; 
+    
+    // store의 showEphemeralToast를 가져옵니다.
+    const { showEphemeralToast } = useChatStore.getState();
 
     try {
       const interpolatedUrl = interpolateMessage(apiConfig.url, allValues);
+      
+      let customHeaders = {};
+      if (apiConfig.headers) {
+          try {
+              // 1. 슬롯을 사용하여 헤더 문자열 보간
+              const interpolatedHeadersString = interpolateMessage(apiConfig.headers, allValues);
+              // 2. JSON 파싱
+              customHeaders = JSON.parse(interpolatedHeadersString);
+          } catch (e) {
+              console.error("Error processing or parsing API headers JSON:", e, apiConfig.headers);
+              // 파싱 오류 시 경고만 출력하고 기본 헤더만 사용
+          }
+      }
 
       const fetchOptions = {
         method: method,
-        headers: {},
+        // 모든 메소드에 사용자 정의 헤더 적용
+        headers: {
+            ...customHeaders
+        },
       };
 
       if (method === 'POST') {
         const interpolatedBody = interpolateMessage(apiConfig.bodyTemplate, allValues);
-        fetchOptions.headers['Content-Type'] = 'application/json';
+        // POST 시 Content-Type: application/json 기본 추가 (customHeaders가 덮어쓸 수 있도록 먼저 추가)
+        fetchOptions.headers = {
+            'Content-Type': 'application/json',
+            ...fetchOptions.headers
+        };
         fetchOptions.body = interpolatedBody;
       }
       
       const response = await fetch(interpolatedUrl, fetchOptions);
 
       if (!response.ok) {
-        throw new Error(`API call failed with status ${response.status}`);
+        let errorBody = await response.text();
+        let errorMessage = `(${response.status}) `;
+        try {
+            const errorJson = JSON.parse(errorBody);
+            // JSON 응답에 'message' 필드가 있으면 사용
+            errorMessage += errorJson.message || t('errorServer');
+        } catch (e) {
+            // JSON 파싱 실패 시, 범용 오류 메시지 사용
+            errorMessage += t('errorServer');
+        }
+        throw new Error(errorMessage); 
       }
 
       const responseData = await response.json();
 
-      // 💡 [수정] setScenarioSlots (스토어 액션)를 호출하여 *시나리오* 슬롯을 업데이트
+      // 💡 setScenarioSlots (성공 로직 유지)
       setScenarioSlots(activeScenarioSessionId, { ...currentSlots, [resultSlot]: responseData });
       
-    } catch (error) {
+    } catch (error) { // --- 👈 [수정된 catch 블록] ---
       console.error("Form element API call failed:", error);
-      alert(`Search failed: ${error.message}`);
+      
+      let toastMessage;
+      
+      // 'fetch failed' 또는 'Failed to fetch'와 같은 메시지로 네트워크 오류를 판단합니다.
+      if (error.name === 'AbortError' || error.message.includes('fetch failed') || error.message.includes('Failed to fetch')) {
+          // 네트워크/타임아웃 오류 시 errorApiRequest 사용
+          toastMessage = t('errorApiRequest'); 
+      } else if (error.message.includes('(')) {
+          // HTTP 상태 코드나 서버 메시지가 포함된 오류
+          toastMessage = `${t('errorApiRequest')} ${error.message}`;
+      } else {
+          // 기타 예상치 못한 오류
+          toastMessage = t('errorUnexpected');
+      }
+
+      showEphemeralToast(toastMessage, 'error');
     }
-  }, [activeScenario, currentScenarioNodeId, currentSlots, setScenarioSlots, activeScenarioSessionId]); // 💡 의존성 배열 수정
-  // --- 👆 [수정] ---
+  }, [activeScenario, currentScenarioNodeId, currentSlots, setScenarioSlots, activeScenarioSessionId, t]); // t를 의존성 배열에 추가
+  // --- 👆 [수정] Form Element API 호출 핸들러 (headers 반영 + 토스트 에러 메시지) ---
 
 
   // 메시지 그룹핑 로직 (기존과 동일)
