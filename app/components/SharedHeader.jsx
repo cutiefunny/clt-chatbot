@@ -41,7 +41,7 @@ export default function SharedHeader({
     <div className={styles.chatContainer}>
       <div className={headerClasses.join(" ")}>
         <div className={styles.headerContent}>
-          <span className={styles.headerTitle}>AI Chatbot</span>
+          <span className={styles.headerTitle}>AI Chatbot (To be naming...)</span>
           <button className={styles.headerButton}>
             <ScenarioExpandIcon />
           </button>

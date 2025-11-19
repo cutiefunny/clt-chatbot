@@ -57,6 +57,7 @@
         .textBox {
             max-height: 0;
             opacity: 0;
+            transform: translateY(30px);
         }
 
         /* iconbg 애니메이션 */
@@ -83,49 +84,20 @@
             7.14% {
                 transform: scale(1) rotate(0deg);
             }
-            /* 0.5-0.7s: 시계방향 45도 회전 (0.2초, 7.14~10%) */
-            10% {
-                transform: scale(1) rotate(45deg);
+            35.14% {
+                transform: scale(1) rotate(135deg);
             }
-            /* 0.7-1.2s: 0.5초 멈춤 (10~17.14%) */
-            17.14% {
-                transform: scale(1) rotate(45deg);
-            }
-            /* 1.2-1.4s: 시계방향 45도 회전(총 90도, 0.2초, 17.14~20%) */
-            20% {
-                transform: scale(1) rotate(90deg);
-            }
-            /* 1.4-1.9s: 0.5초 멈춤 (20~27.14%) */
-            27.14% {
-                transform: scale(1) rotate(90deg);
-            }
-            /* 1.9-2.4s: 0.5초 멈춤 (27.14~34.29%) */
-            34.29% {
-                transform: scale(1) rotate(90deg);
-            }
-            /* 2.4-2.9s: scale 1 → 0.8로 축소 (0.5초, 34.29~41.43%) */
+            /* 2.4-2.9s: scale 1 → 0.8로 축소 (0.5초, 20~41.43%) */
             41.43% {
-                transform: scale(0.8) rotate(90deg);
+                transform: scale(0.8) rotate(135deg);
             }
-            /* 2.9-3.9s: 1초 멈춤 (41.43~55.71%) */
-            55.71% {
-                transform: scale(0.8) rotate(90deg);
-            }
-            /* 3.9-4.4s: 멈춤 (0.5초, 55.71~62.86%) */
-            62.86% {
-                transform: scale(0.8) rotate(90deg);
-            }
-            /* 4.4-5.4s: 시계방향 360도 회전 (1초, 62.86~77.14%) */
+            /* 4.4-5.4s: 시계방향 360도 회전 (1초, 41.43~77.14%) */
             77.14% {
                 transform: scale(0.8) rotate(450deg);
             }
-            /* 5.4-6.4s: 멈춤 (1초, 77.14~91.43%) */
-            91.43% {
-                transform: scale(0.8) rotate(450deg);
-            }
-            /* 6.4-7.0s: 시계방향 360도 회전 (0.6초, 91.43~100%) */
+            /* 6.4-7.0s: 시계방향 360도 회전 (0.6초, 77.14~100%) */
             100% {
-                transform: scale(0.8) rotate(810deg);
+                transform: scale(0.8) rotate(357deg);
             }
         }
 
@@ -140,16 +112,12 @@
                 opacity: 0;
                 transform: scale(1);
             }
-            27.14% {
+            35.14% {
                 opacity: 1;
                 transform: scale(1);
             }
-            /* 1.9-2.4s: 0.5초 멈춤 (27.14~34.29%) */
-            34.29% {
-                opacity: 1;
-                transform: scale(1);
-            }
-            /* 2.4-2.9s: scale 1 → 0.8로 축소 (0.5초, 34.29~41.43%) */
+            /* 2.4-2.9s: scale 1 → 0.8로 축소 (0.5초, 20~41.43%, iconbgAnimation과 동시에) */
+            /* iconbgAnimation과 동일한 구간(20~41.43%)에 축소되도록 설정 */
             41.43% {
                 opacity: 1;
                 transform: scale(0.8);
@@ -166,20 +134,24 @@
             0% {
                 max-height: 0;
                 opacity: 0;
+                transform: translateY(200px);
             }
-            /* 2.9-3.9s: textBox fadeIn + 1초 멈춤 (41.43~55.71%) */
+            /* 2.9-3.9s: textBox fadeIn (41.43~55.71%) */
             41.43% {
                 max-height: 0;
                 opacity: 0;
+                transform: translateY(200px);
             }
             55.71% {
                 max-height: 200px;
                 opacity: 1;
+                transform: translateY(0);
             }
             /* 3.9-7s: 유지 */
             100% {
                 max-height: 200px;
                 opacity: 1;
+                transform: translateY(0);
             }
         }
 
