@@ -327,6 +327,8 @@ const FormRenderer = ({
       if (fillKey) {
           const valueToFill = rowData[fillKey] || '';
           newSlotsUpdate[searchElement.name] = valueToFill; // 💡 검색창 슬롯 업데이트
+          // 로컬 폼 데이터도 업데이트하여 UI에 즉시 반영
+          setFormData((prev) => ({ ...prev, [searchElement.name]: valueToFill }));
       }
 
       // 6. setScenarioSlots를 호출하여 슬롯을 업데이트
@@ -334,11 +336,6 @@ const FormRenderer = ({
         ...slots,
         ...newSlotsUpdate
       });
-
-      // 7. 로컬 폼 상태 업데이트 (UI에 즉시 반영)
-      if (fillKey) {
-          setFormData((prev) => ({ ...prev, [searchElement.name]: rowData[fillKey] || '' }));
-      }
 
       return; // 여기서 함수 종료 (다음 노드로 진행 방지)
 
@@ -353,7 +350,7 @@ const FormRenderer = ({
       }
     }
   };
-// --- 👆 [수정] 그리드 클릭 핸들러 (Deep Path 클리어 로직 강화) ---
+  // --- 👆 [수정] 그리드 클릭 핸들러 (Deep Path 클리어 로직 강화) ---
 
   const hasSlotBoundGrid = node.data.elements?.some(
     (el) => {
