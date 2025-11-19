@@ -346,6 +346,7 @@ input:checked + .slider:before {
 .botMessageRichContent .messageContentWrapper,
 .botMessageRichContent .messageContent {
   width: 100%;
+  min-width: calc(100% - 100px);
 }
 
 .botMessage svg {

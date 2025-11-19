@@ -94,7 +94,7 @@ const initialScenarioCssState = {
   li: `  margin-bottom: -10px;
   /* 리스트 번호 붙이기 */
   list-style-type: disc;
-  /* margin-left: 20px; (ul에서 padding-left로 대체) */`,
+  /* margin-left: 200px; (ul에서 padding-left로 대체) */`,
   code: `  font-family: var(--font-geist-mono), monospace;
   background-color: var(--button-hover-bg); /* 코드 배경 */
   padding: 2px 5px;
@@ -150,6 +150,10 @@ const initialMainChatCssState = {
   margin-bottom: 0.4rem;`,
   p: `  font-size: 1.05rem; /* 메인 챗 p 태그는 약간 크게 */
   color: #333;`,
+  li: `  margin-bottom: -10px;
+  /* 리스트 번호 붙이기 */
+  list-style-type: disc;
+  /* margin-left: 0px; (ul에서 padding-left로 대체) */`,
 };
 // --- 👆 [추가] ---
 
