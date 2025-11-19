@@ -308,7 +308,7 @@ JSON
   "type": "grid",
   "name": "string | undefined",         // Optional slot name (less common for display grids)
   "label": "string",
-  "optionsSlot": "string | undefined", // Slot containing array data (usually objects)
+  "optionsSlot": "string | undefined", // Slot containing array data (e.g., 'slotName' or 'slotName.path.to.array')
   // --- 👇 [수정] displayKeys 타입 및 설명 변경 ---
   "displayKeys": "{ key: string, label: string }[] | undefined", // Array of objects defining columns. 'key' = data key, 'label' = header text.
   // --- 👆 [수정 끝] ---

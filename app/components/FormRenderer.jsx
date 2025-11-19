@@ -7,7 +7,9 @@ import { XLSX, convertExcelDate } from "../lib/excelUtils";
 // --- 👆 [수정] ---
 import { useTranslations } from "../hooks/useTranslations";
 import styles from "./Chat.module.css";
-import { validateInput, interpolateMessage } from "../lib/chatbotEngine";
+// --- 👇 [수정] getDeepValue 임포트 추가 ---
+import { validateInput, interpolateMessage, getDeepValue } from "../lib/chatbotEngine";
+// --- 👆 [수정] ---
 import ArrowDropDownIcon from "./icons/ArrowDropDownIcon";
 import LogoIcon from "./icons/LogoIcon";
 
@@ -276,13 +278,15 @@ const FormRenderer = ({
   // --- 👆 [수정] ---
 
   const hasSlotBoundGrid = node.data.elements?.some(
-    (el) =>
-      el.type === "grid" &&
-      el.optionsSlot &&
-      Array.isArray(slots[el.optionsSlot]) &&
-      slots[el.optionsSlot].length > 0 &&
-      typeof slots[el.optionsSlot][0] === "object" &&
-      slots[el.optionsSlot][0] !== null
+    (el) => {
+        if (el.type !== "grid" || !el.optionsSlot) return false;
+        // --- 👇 [수정] getDeepValue를 사용하여 깊은 경로의 배열 데이터 확인 ---
+        const gridData = getDeepValue(slots, el.optionsSlot);
+        const hasData = Array.isArray(gridData) && gridData.length > 0;
+        const isObjectArray = hasData && typeof gridData[0] === "object" && gridData[0] !== null;
+        return isObjectArray;
+        // --- 👆 [수정] ---
+    }
   );
 
   const renderFormElements = () => {
@@ -439,9 +443,11 @@ const FormRenderer = ({
             {/* --- 👇 [수정] Grid 렌더링 로직 (tableLayout: fixed + % width) --- */}
             {el.type === "grid"
               ? (() => {
+                  // --- 👇 [수정] getDeepValue를 사용하여 슬롯 값 가져오기 ---
                   const gridDataFromSlot = el.optionsSlot
-                    ? slots[el.optionsSlot]
+                    ? getDeepValue(slots, el.optionsSlot) // <-- 수정: getDeepValue 사용
                     : null;
+                  // --- 👆 [수정] ---
                   const hasSlotData =
                     Array.isArray(gridDataFromSlot) &&
                     gridDataFromSlot.length > 0;
