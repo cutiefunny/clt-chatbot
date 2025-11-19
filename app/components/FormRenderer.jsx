@@ -239,7 +239,7 @@ const FormRenderer = ({
     reader.readAsArrayBuffer(file);
   };
   
-  // --- 👇 [수정] 그리드 클릭 핸들러 (inputFillKey 반영 및 search element 매칭 수정) ---
+  // --- 👇 [수정] 그리드 클릭 핸들러 (inputFillKey 반영 및 search element 매칭 수정, 다음 노드 진행 방지) ---
   const handleGridRowClick = (gridElement, rowData) => {
     if (disabled) return;
 
@@ -250,10 +250,10 @@ const FormRenderer = ({
 
     // 1. 이 그리드와 연결된 'search' 엘리먼트 찾기 (rootOptionsSlotKey 사용)
     const searchElement = node.data.elements.find(
-      (e) => e.type === "search" && e.resultSlot === rootOptionsSlotKey // <-- 수정된 매칭 로직
+      (e) => e.type === "search" && e.resultSlot === rootOptionsSlotKey
     );
     
-    // 2. setScenarioSlots 함수가 있는지 확인
+    // 2. setScenarioSlots 함수가 있고 연결된 search가 있는 경우 (핵심 로직)
     if (searchElement && searchElement.name && setScenarioSlots && activeScenarioSessionId) {
       
       const gridKeys = (gridElement.displayKeys && gridElement.displayKeys.length > 0) 
@@ -262,13 +262,13 @@ const FormRenderer = ({
           
       const firstColumnKey = gridKeys[0];
 
-      // 3. [추가] inputFillKey 처리: null이면 채우지 않고, undefined/missing이면 firstColumnKey로 대체
+      // 3. inputFillKey 처리: null이면 채우지 않고, undefined/missing이면 firstColumnKey로 대체
       const fillKey = searchElement.inputFillKey === null
-          ? null // 명시적 null이면 채우지 않음
-          : (searchElement.inputFillKey || firstColumnKey); // undefined/missing이면 firstColumnKey로 대체
+          ? null 
+          : (searchElement.inputFillKey || firstColumnKey); 
 
       const newSlotsUpdate = {
-          [gridElement.optionsSlot]: [],   // 💡 그리드 슬롯 숨기기
+          [gridElement.optionsSlot]: [],   // 💡 그리드 슬롯 숨기기: 그리드를 숨기기 위해 빈 배열로 업데이트
           selectedRow: rowData             // 💡 selectedRow 슬롯 저장
       };
 
@@ -277,24 +277,36 @@ const FormRenderer = ({
           const valueToFill = rowData[fillKey] || '';
           newSlotsUpdate[searchElement.name] = valueToFill; // 💡 검색창 슬롯 업데이트
       }
-      // else: fillKey가 null이면 searchElement.name 슬롯은 업데이트하지 않음 (기존 값 유지)
 
-      // 4. setScenarioSlots를 한번만 호출하여 모든 슬롯을 업데이트
+      // 4. setScenarioSlots를 호출하여 슬롯을 업데이트 (이것은 상태 변경만 유발하고 다음 노드로 진행하지 않음)
       setScenarioSlots(activeScenarioSessionId, {
         ...slots,
         ...newSlotsUpdate
       });
+
+      // 5. [추가] 다음 노드 진행 방지 (onFormSubmit 호출을 건너뜀)
+      //    (별도의 "Row selected" 메시지 생성도 방지됨)
+      console.log(`Grid row selected (linked to search). Updating slots but preventing node progression.`);
+      
+      // 6. 로컬 폼 상태 업데이트 (UI에 즉시 반영)
+      if (fillKey) {
+          setFormData((prev) => ({ ...prev, [searchElement.name]: rowData[fillKey] || '' }));
+      }
+
+      return; // 여기서 함수 종료
+
     } else {
-      // 5. (Fallback 로직 - 유지)
+      // 5. (Fallback 로직: 연결된 search가 없거나 setScenarioSlots가 없는 경우)
       if (onGridRowClick) { 
         onGridRowClick(gridElement, rowData);
       } else {
+        // Fallback 시에는 다음 노드로 진행 (기존 Form 제출 로직)
         const finalSubmissionData = { ...formData, selectedRow: rowData };
-        onFormSubmit(finalSubmissionData);
+        onFormSubmit(finalSubmissionData); // <-- 다음 노드로 진행
       }
     }
   };
-  // --- 👆 [수정] 그리드 클릭 핸들러 (inputFillKey 반영 및 search element 매칭 수정) ---
+  // --- 👆 [수정] 그리드 클릭 핸들러 (inputFillKey 반영 및 search element 매칭 수정, 다음 노드 진행 방지) ---
 
   const hasSlotBoundGrid = node.data.elements?.some(
     (el) => {
