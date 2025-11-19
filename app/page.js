@@ -2,6 +2,7 @@
 "use client";
 
 import { useChatStore } from "../app/store";
+import { useState, useEffect } from "react";
 import Login from "../app/components/Login";
 import Toast from "../app/components/Toast";
 import styles from "./page.module.css";
@@ -50,12 +51,21 @@ export default function HomePage() {
   const showInitialGreeting = messages.length <= 1;
 
   // [추가] 설정값을 반영하여 패널을 숨길지 여부 결정
-  const shouldHidePanel =
+  const rawShouldHidePanel =
     !isHistoryPanelOpen &&
     !currentConversationId &&
     showInitialGreeting &&
-    !showHistoryOnGreeting &&
     !shortcutMenuOpen;
+
+  const [hasInteracted, setHasInteracted] = useState(false);
+
+  useEffect(() => {
+    if (!rawShouldHidePanel && !isInitializing) {
+      setHasInteracted(true);
+    }
+  }, [rawShouldHidePanel, isInitializing]);
+
+  const shouldHidePanel = rawShouldHidePanel && !hasInteracted;
 
   // 히스토리 패널 너비 계산: 숨겨야 하면 0px, 아니면 상태에 따라 60px 또는 320px
   const historyPanelWidth = shouldHidePanel
