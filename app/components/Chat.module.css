@@ -304,7 +304,7 @@ input:checked + .slider:before {
 }
 
 .botMessage .messageContentWrapper {
-  padding: 16px 20px;
+  padding: 16px 20px 16px 12px;
   display: flex;
   align-items: flex-start;
   gap: 12px;
@@ -337,15 +337,16 @@ input:checked + .slider:before {
 }
 
 .botMessageRichContent {
-  width: 90%;
-  max-width: 90%;
-  flex: 0 0 90%;
+  width: 100%;
+  max-width: 100%;
+  flex: 0 0 100%;
   min-width: var(--bot-rich-content-min-width, 0);
 }
 
 .botMessageRichContent .messageContentWrapper,
 .botMessageRichContent .messageContent {
   width: 100%;
+  min-width: calc(100% - 100px);
 }
 
 .botMessage svg {

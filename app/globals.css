@@ -112,7 +112,7 @@ body.font-small {
   --glass-contrast: 1.05;
   --glass-brightness: 1.05;
 
-  background: var(--White-Opacity-64, rgba(255, 255, 255, 0.64));
+  background: var(--White-Opacity-64, rgba(255, 255, 255, 1));
   -webkit-backdrop-filter: blur(var(--glass-blur))
     saturate(var(--glass-saturate)) contrast(var(--glass-contrast))
     brightness(var(--glass-brightness));
@@ -124,7 +124,7 @@ body.font-small {
 }
 
 .GlassEffect.active {
-  background: rgba(255, 255, 255, 0.48);
+  background: rgba(255, 255, 255, 1);
 }
 
 .GlassEffect.noOpacity {
