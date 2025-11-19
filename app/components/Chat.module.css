@@ -334,6 +334,7 @@ input:checked + .slider:before {
 .botMessage {
   color: var(--text-color); /* Themed */
   transition: background-color 0.2s;
+  max-width: 100%;
 }
 
 .botMessageRichContent {
