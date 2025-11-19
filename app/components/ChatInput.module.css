@@ -243,6 +243,7 @@
 
 .inputForm {
   display: flex;
+  min-height: 107px;
   flex-direction: column;
   gap: 8px;
   padding: 8px;
