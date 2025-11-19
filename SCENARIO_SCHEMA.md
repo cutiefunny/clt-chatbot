@@ -308,10 +308,8 @@ JSON
   "type": "grid",
   "name": "string | undefined",         // Optional slot name (less common for display grids)
   "label": "string",
-  "optionsSlot": "string | undefined", // Slot containing array data (e.g., 'slotName' or 'slotName.path.to.array')
-  // --- 👇 [수정] displayKeys 타입 및 설명 변경 ---
+  "optionsSlot": "string | undefined", // Slot containing array data. Supports dot notation for nested paths (e.g., 'slotName.path.to.array'). NOTE: When linking to a 'search' element, only the root key (e.g., 'slotName') is used to match the 'search' element's 'resultSlot'.
   "displayKeys": "{ key: string, label: string }[] | undefined", // Array of objects defining columns. 'key' = data key, 'label' = header text.
-  // --- 👆 [수정 끝] ---
   "hideNullColumns": "boolean | undefined", // Whether to hide columns if all values are null/empty
   // --- Fallback if optionsSlot is not used ---
   "rows": "number | undefined",

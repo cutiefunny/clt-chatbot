@@ -239,13 +239,18 @@ const FormRenderer = ({
     reader.readAsArrayBuffer(file);
   };
   
-  // --- 👇 [수정] 그리드 클릭 핸들러 (inputFillKey 반영) ---
+  // --- 👇 [수정] 그리드 클릭 핸들러 (inputFillKey 반영 및 search element 매칭 수정) ---
   const handleGridRowClick = (gridElement, rowData) => {
     if (disabled) return;
 
-    // 1. 이 그리드와 연결된 'search' 엘리먼트 찾기
+    // [추가] optionsSlot에서 루트 키 추출 (dot notation 지원 반영)
+    const rootOptionsSlotKey = gridElement.optionsSlot 
+        ? gridElement.optionsSlot.split('.')[0] 
+        : null;
+
+    // 1. 이 그리드와 연결된 'search' 엘리먼트 찾기 (rootOptionsSlotKey 사용)
     const searchElement = node.data.elements.find(
-      (e) => e.type === "search" && e.resultSlot === gridElement.optionsSlot
+      (e) => e.type === "search" && e.resultSlot === rootOptionsSlotKey // <-- 수정된 매칭 로직
     );
     
     // 2. setScenarioSlots 함수가 있는지 확인
@@ -289,7 +294,7 @@ const FormRenderer = ({
       }
     }
   };
-  // --- 👆 [수정] 그리드 클릭 핸들러 (inputFillKey 반영) ---
+  // --- 👆 [수정] 그리드 클릭 핸들러 (inputFillKey 반영 및 search element 매칭 수정) ---
 
   const hasSlotBoundGrid = node.data.elements?.some(
     (el) => {
