@@ -94,7 +94,7 @@ const initialScenarioCssState = {
   li: `  margin-bottom: -10px;
   /* 리스트 번호 붙이기 */
   list-style-type: disc;
-  /* margin-left: 20px; (ul에서 padding-left로 대체) */`,
+  /* margin-left: 200px; (ul에서 padding-left로 대체) */`,
   code: `  font-family: var(--font-geist-mono), monospace;
   background-color: var(--button-hover-bg); /* 코드 배경 */
   padding: 2px 5px;
@@ -139,17 +139,10 @@ const initialScenarioCssState = {
 
 // --- 👇 [추가] 메인 챗 전용 (덮어쓰기) CSS 규칙 ---
 const initialMainChatCssState = {
-  h1: `  color: #b22222; /* Firebrick - 예시용 빨간색 */
-  font-size: 1.5rem; /* 메인 챗 H1은 더 크게 */
-  border-bottom: 2px solid #b22222;
-  margin-top: 1rem;
-  margin-bottom: 0.5rem;`,
-  h2: `  color: #4682b4; /* SteelBlue - 예시용 파란색 */
-  font-size: 1.25rem;
-  margin-top: 0.8rem;
-  margin-bottom: 0.4rem;`,
-  p: `  font-size: 1.05rem; /* 메인 챗 p 태그는 약간 크게 */
-  color: #333;`,
+  root: `line-height: 1.3;`,
+  h2: `margin-bottom: -25px;`,
+  h3: `margin-bottom: -10px;`,
+  ul: `padding-left: 5px;`,
 };
 // --- 👆 [추가] ---
 
