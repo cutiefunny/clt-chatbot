@@ -337,9 +337,9 @@ input:checked + .slider:before {
 }
 
 .botMessageRichContent {
-  width: 90%;
-  max-width: 90%;
-  flex: 0 0 90%;
+  width: 100%;
+  max-width: 100%;
+  flex: 0 0 100%;
   min-width: var(--bot-rich-content-min-width, 0);
 }
 

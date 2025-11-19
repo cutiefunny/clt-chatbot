@@ -150,10 +150,11 @@ const initialMainChatCssState = {
   margin-bottom: 0.4rem;`,
   p: `  font-size: 1.05rem; /* 메인 챗 p 태그는 약간 크게 */
   color: #333;`,
-  li: `  margin-bottom: -10px;
-  /* 리스트 번호 붙이기 */
+  ul: `  margin-bottom: 0px;
+  margin-top: -10px;
+  /* react-markdown 기본 리스트 스타일 적용을 위해 추가 */
   list-style-type: disc;
-  /* margin-left: 0px; (ul에서 padding-left로 대체) */`,
+  padding-left: 10px;`,
 };
 // --- 👆 [추가] ---
 
