@@ -239,7 +239,7 @@ const FormRenderer = ({
     reader.readAsArrayBuffer(file);
   };
   
-  // --- 👇 [수정] 그리드 클릭 핸들러 (setScenarioSlots만 사용) ---
+  // --- 👇 [수정] 그리드 클릭 핸들러 (inputFillKey 반영) ---
   const handleGridRowClick = (gridElement, rowData) => {
     if (disabled) return;
 
@@ -250,23 +250,37 @@ const FormRenderer = ({
     
     // 2. setScenarioSlots 함수가 있는지 확인
     if (searchElement && searchElement.name && setScenarioSlots && activeScenarioSessionId) {
-      // 3. (Search 연동 로직)
+      
       const gridKeys = (gridElement.displayKeys && gridElement.displayKeys.length > 0) 
         ? gridElement.displayKeys.map(k => k.key) 
         : Object.keys(rowData);
-        
+          
       const firstColumnKey = gridKeys[0];
-      const firstColumnValue = firstColumnKey ? rowData[firstColumnKey] : '';
 
-      // 4. [수정] setScenarioSlots를 한번만 호출하여 모든 슬롯을 업데이트
+      // 3. [추가] inputFillKey 처리: null이면 채우지 않고, undefined/missing이면 firstColumnKey로 대체
+      const fillKey = searchElement.inputFillKey === null
+          ? null // 명시적 null이면 채우지 않음
+          : (searchElement.inputFillKey || firstColumnKey); // undefined/missing이면 firstColumnKey로 대체
+
+      const newSlotsUpdate = {
+          [gridElement.optionsSlot]: [],   // 💡 그리드 슬롯 숨기기
+          selectedRow: rowData             // 💡 selectedRow 슬롯 저장
+      };
+
+      if (fillKey) {
+          // 추출한 값을 search input 슬롯에 저장
+          const valueToFill = rowData[fillKey] || '';
+          newSlotsUpdate[searchElement.name] = valueToFill; // 💡 검색창 슬롯 업데이트
+      }
+      // else: fillKey가 null이면 searchElement.name 슬롯은 업데이트하지 않음 (기존 값 유지)
+
+      // 4. setScenarioSlots를 한번만 호출하여 모든 슬롯을 업데이트
       setScenarioSlots(activeScenarioSessionId, {
         ...slots,
-        [searchElement.name]: firstColumnValue, // 💡 검색창 슬롯 업데이트
-        [gridElement.optionsSlot]: [],           // 💡 그리드 슬롯 숨기기
-        selectedRow: rowData                   // 💡 selectedRow는 여전히 저장
+        ...newSlotsUpdate
       });
     } else {
-      // 5. (Fallback 로직)
+      // 5. (Fallback 로직 - 유지)
       if (onGridRowClick) { 
         onGridRowClick(gridElement, rowData);
       } else {
@@ -275,7 +289,7 @@ const FormRenderer = ({
       }
     }
   };
-  // --- 👆 [수정] ---
+  // --- 👆 [수정] 그리드 클릭 핸들러 (inputFillKey 반영) ---
 
   const hasSlotBoundGrid = node.data.elements?.some(
     (el) => {
@@ -443,7 +457,7 @@ const FormRenderer = ({
             {/* --- 👇 [수정] Grid 렌더링 로직 (tableLayout: fixed + % width) --- */}
             {el.type === "grid"
               ? (() => {
-                  // --- 👇 [수정] getDeepValue를 사용하여 슬롯 값 가져오기 ---
+                  // --- 👇 [수정] getDeepValue를 사용하여 깊은 경로의 배열 데이터 확인 ---
                   const gridDataFromSlot = el.optionsSlot
                     ? getDeepValue(slots, el.optionsSlot) // <-- 수정: getDeepValue 사용
                     : null;

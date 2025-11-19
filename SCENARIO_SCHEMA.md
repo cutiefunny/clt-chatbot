@@ -366,6 +366,7 @@ JSON
     "headers": "string | undefined", // (Optional) JSON string for headers. Supports {slotName} interpolation.
     "bodyTemplate": "string | undefined" // (Optional) JSON string, used if method is 'POST'. '{{value}}' is replaced.
   },
+  "inputFillKey": "string | null | undefined", // Key from the selected grid row data to fill the search input field. Defaults to the first column key.
   "resultSlot": "string" // Slot name to store the API response (e.g., an array for a grid)
 }
 
