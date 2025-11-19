@@ -61,6 +61,7 @@ export default function SharedHeader({
             <ScenarioExpandIcon />
           </button>
           <button
+            id="ai-close-button"
             className={styles.headerButton}
             onClick={async () => {
               console.log(
