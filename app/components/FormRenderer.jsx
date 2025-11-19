@@ -239,21 +239,24 @@ const FormRenderer = ({
     reader.readAsArrayBuffer(file);
   };
   
-  // --- 👇 [수정] 그리드 클릭 핸들러 (inputFillKey 반영 및 search element 매칭 수정, 다음 노드 진행 방지) ---
+  // --- 👇 [수정] 그리드 클릭 핸들러 (Deep Path 클리어 로직 강화) ---
   const handleGridRowClick = (gridElement, rowData) => {
     if (disabled) return;
 
-    // [추가] optionsSlot에서 루트 키 추출 (dot notation 지원 반영)
-    const rootOptionsSlotKey = gridElement.optionsSlot 
-        ? gridElement.optionsSlot.split('.')[0] 
+    const fullOptionsSlotPath = gridElement.optionsSlot;
+    const hasDeepPath = fullOptionsSlotPath && fullOptionsSlotPath.includes('.');
+    
+    // 1. 루트 키 추출 (optionsSlot이 vvdinfo.result.vvdInfo 이면 vvdinfo)
+    const rootOptionsSlotKey = fullOptionsSlotPath 
+        ? fullOptionsSlotPath.split('.')[0] 
         : null;
 
-    // 1. 이 그리드와 연결된 'search' 엘리먼트 찾기 (rootOptionsSlotKey 사용)
+    // 2. 연결된 'search' 엘리먼트 찾기
     const searchElement = node.data.elements.find(
       (e) => e.type === "search" && e.resultSlot === rootOptionsSlotKey
     );
     
-    // 2. setScenarioSlots 함수가 있고 연결된 search가 있는 경우 (핵심 로직)
+    // 3. 연결된 search가 있는 경우 (특수 동작 시작)
     if (searchElement && searchElement.name && setScenarioSlots && activeScenarioSessionId) {
       
       const gridKeys = (gridElement.displayKeys && gridElement.displayKeys.length > 0) 
@@ -262,51 +265,95 @@ const FormRenderer = ({
           
       const firstColumnKey = gridKeys[0];
 
-      // 3. inputFillKey 처리: null이면 채우지 않고, undefined/missing이면 firstColumnKey로 대체
+      // inputFillKey 처리: null이면 채우지 않고, undefined/missing이면 firstColumnKey로 대체
       const fillKey = searchElement.inputFillKey === null
           ? null 
           : (searchElement.inputFillKey || firstColumnKey); 
 
-      const newSlotsUpdate = {
-          [gridElement.optionsSlot]: [],   // 💡 그리드 슬롯 숨기기: 그리드를 숨기기 위해 빈 배열로 업데이트
-          selectedRow: rowData             // 💡 selectedRow 슬롯 저장
+      let newSlotsUpdate = {
+          selectedRow: rowData // selectedRow 슬롯 저장
       };
 
+      // 4. 그리드 슬롯 숨기기 로직 (심층 경로 지원)
+      if (hasDeepPath) {
+          // 4-1. 루트 슬롯 객체를 깊은 복사
+          const rootSlotKey = rootOptionsSlotKey;
+          let updatedRootSlot = JSON.parse(JSON.stringify(getDeepValue(slots, rootSlotKey) || {}));
+          
+          // 4-2. 업데이트할 위치를 찾기 위한 경로 (vvdinfo.result.vvdInfo -> result.vvdInfo)
+          const deepPathToClear = fullOptionsSlotPath.substring(rootSlotKey.length + 1); 
+          const deepKeys = deepPathToClear.split('.');
+          
+          let temp = updatedRootSlot;
+          let success = true;
+
+          for (let i = 0; i < deepKeys.length; i++) {
+              const key = deepKeys[i];
+              if (i === deepKeys.length - 1) {
+                  // 마지막 키에 빈 배열 설정 (그리드 숨김)
+                  if (temp && typeof temp === 'object' && temp[key] !== undefined) {
+                      temp[key] = []; 
+                  } else {
+                      // 마지막 경로가 존재하지 않으면, 클리어할 대상이 없는 것.
+                      success = false; 
+                  }
+              } else {
+                  // 중간 경로 탐색
+                  if (temp[key] && typeof temp[key] === 'object') {
+                      temp = temp[key];
+                  } else {
+                      // 중간 경로가 없으면 클리어할 대상이 없는 것.
+                      success = false; 
+                      break;
+                  }
+              }
+          }
+          
+          // 4-3. 루트 객체를 업데이트 맵에 포함하여 기존 슬롯을 덮어쓰기
+          if (success) {
+              newSlotsUpdate[rootSlotKey] = updatedRootSlot; // 💡 루트 객체 전체를 업데이트
+          } else {
+             // 루트 객체 업데이트에 실패했더라도, 안전하게 shallow update 시도
+             newSlotsUpdate[fullOptionsSlotPath] = [];
+             console.warn(`[handleGridRowClick] Deep path clearing failed for ${fullOptionsSlotPath}. Falling back to shallow clear.`);
+          }
+
+      } else {
+          // 단순 키인 경우: 기존 로직대로 빈 배열 설정
+          newSlotsUpdate[fullOptionsSlotPath] = [];   
+      }
+      
+      // 5. 검색 필드 값 채우기
       if (fillKey) {
-          // 추출한 값을 search input 슬롯에 저장
           const valueToFill = rowData[fillKey] || '';
           newSlotsUpdate[searchElement.name] = valueToFill; // 💡 검색창 슬롯 업데이트
       }
 
-      // 4. setScenarioSlots를 호출하여 슬롯을 업데이트 (이것은 상태 변경만 유발하고 다음 노드로 진행하지 않음)
+      // 6. setScenarioSlots를 호출하여 슬롯을 업데이트
       setScenarioSlots(activeScenarioSessionId, {
         ...slots,
         ...newSlotsUpdate
       });
 
-      // 5. [추가] 다음 노드 진행 방지 (onFormSubmit 호출을 건너뜀)
-      //    (별도의 "Row selected" 메시지 생성도 방지됨)
-      console.log(`Grid row selected (linked to search). Updating slots but preventing node progression.`);
-      
-      // 6. 로컬 폼 상태 업데이트 (UI에 즉시 반영)
+      // 7. 로컬 폼 상태 업데이트 (UI에 즉시 반영)
       if (fillKey) {
           setFormData((prev) => ({ ...prev, [searchElement.name]: rowData[fillKey] || '' }));
       }
 
-      return; // 여기서 함수 종료
+      return; // 여기서 함수 종료 (다음 노드로 진행 방지)
 
     } else {
-      // 5. (Fallback 로직: 연결된 search가 없거나 setScenarioSlots가 없는 경우)
+      // 8. (Fallback 로직: 연결된 search가 없는 경우)
       if (onGridRowClick) { 
         onGridRowClick(gridElement, rowData);
       } else {
         // Fallback 시에는 다음 노드로 진행 (기존 Form 제출 로직)
         const finalSubmissionData = { ...formData, selectedRow: rowData };
-        onFormSubmit(finalSubmissionData); // <-- 다음 노드로 진행
+        onFormSubmit(finalSubmissionData); 
       }
     }
   };
-  // --- 👆 [수정] 그리드 클릭 핸들러 (inputFillKey 반영 및 search element 매칭 수정, 다음 노드 진행 방지) ---
+// --- 👆 [수정] 그리드 클릭 핸들러 (Deep Path 클리어 로직 강화) ---
 
   const hasSlotBoundGrid = node.data.elements?.some(
     (el) => {
