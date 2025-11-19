@@ -8,7 +8,7 @@
             width: 100%;
             position: relative;
             padding-bottom: 160px;
-            gap: 16px;
+            gap: 40px;
         }
 
         .iconContainer {
@@ -46,6 +46,7 @@
             color:  rgba(255, 255, 255, 0.64);
             font-size: 16px;
             font-weight: 400;
+            margin-top: 12px;
         }
 
         /* iconcon 초기 숨김 */
@@ -63,23 +64,23 @@
         /* iconbg 애니메이션 */
         .iconbg {
             transform: scale(2);
-            animation: iconbgAnimation 7s ease-in-out forwards;
+            animation: iconbgAnimation 4s ease-in-out forwards;
         }
 
         /* iconcon 애니메이션 */
         .iconcon {
-            animation: iconconAnimation 7s ease-in-out forwards;
+            animation: iconconAnimation 4s ease-in-out forwards;
         }
 
         /* textBox 애니메이션 */
         .textBox {
-            animation: textBoxAnimation 7s ease-in-out forwards;
+            animation: textBoxAnimation 4s ease-in-out forwards;
         }
 
         @keyframes iconbgAnimation {
             /* 0-0.5s: scale 2 → 1로 축소 (7.14%) */
             0% {
-                transform: scale(2) rotate(0deg);
+                transform: scale(2.4) rotate(0deg);
             }
             7.14% {
                 transform: scale(1) rotate(0deg);
@@ -89,15 +90,15 @@
             }
             /* 2.4-2.9s: scale 1 → 0.8로 축소 (0.5초, 20~41.43%) */
             41.43% {
-                transform: scale(0.8) rotate(135deg);
+                transform: scale(1) rotate(135deg);
             }
             /* 4.4-5.4s: 시계방향 360도 회전 (1초, 41.43~77.14%) */
             77.14% {
-                transform: scale(0.8) rotate(450deg);
+                transform: scale(1) rotate(450deg);
             }
             /* 6.4-7.0s: 시계방향 360도 회전 (0.6초, 77.14~100%) */
             100% {
-                transform: scale(0.8) rotate(357deg);
+                transform: scale(1) rotate(630deg);
             }
         }
 
@@ -120,12 +121,12 @@
             /* iconbgAnimation과 동일한 구간(20~41.43%)에 축소되도록 설정 */
             41.43% {
                 opacity: 1;
-                transform: scale(0.8);
+                transform: scale(1);
             }
             /* 2.9-7s: scale 유지 (회전 없음) */
             100% {
                 opacity: 1;
-                transform: scale(0.8);
+                transform: scale(1);
             }
         }
 
