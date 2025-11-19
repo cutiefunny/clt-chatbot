@@ -132,8 +132,9 @@ export default function ScenarioChat() {
     });
   };
 
-  // --- 👇 [수정] Form Element API 호출 핸들러 (headers 반영 + 토스트 에러 메시지) ---
+  // --- 👇 [수정] Form Element API 호출 핸들러 (폼 내 모든 input 값을 슬롯에 반영) ---
   const handleFormElementApiCall = useCallback(async (element, localFormData) => {
+    // 1. 현재 노드 및 엘리먼트 설정 확인
     const currentNode = activeScenario?.messages
         .find(msg => msg.node?.id === currentScenarioNodeId)?.node;
 
@@ -141,7 +142,8 @@ export default function ScenarioChat() {
         console.warn("API Call ABORTED: currentNode is not the form node.");
         return;
     }
-    const elementConfig = currentNode.data.elements.find(e => e.id === element.id);
+    const formElements = currentNode.data.elements; // 모든 폼 엘리먼트
+    const elementConfig = formElements.find(e => e.id === element.id);
     
     if (!elementConfig || !elementConfig.apiConfig || !elementConfig.resultSlot) {
       alert("Search element is not configured correctly. (Missing API URL or Result Slot)");
@@ -150,11 +152,26 @@ export default function ScenarioChat() {
 
     const { apiConfig, resultSlot } = elementConfig;
     const searchTerm = localFormData[elementConfig.name] || '';
-    // 💡 currentSlots (시나리오 슬롯)와 'value' (검색어)를 사용
-    const allValues = { ...currentSlots, value: searchTerm };
+    
+    // 2. [추가] 폼 내 모든 입력 필드 값을 슬롯에 반영하여 상태 업데이트
+    let formSlotUpdates = {};
+    if (Array.isArray(formElements)) {
+        formElements.forEach(el => {
+            // name이 있고 localFormData에 값이 있는 필드만 수집 (체크박스 등 배열 값 포함)
+            if (el.name && localFormData.hasOwnProperty(el.name)) {
+                formSlotUpdates[el.name] = localFormData[el.name];
+            }
+        });
+    }
+
+    // 3. [추가] 시나리오 상태를 먼저 업데이트하고, 이를 기반으로 API 호출 슬롯 구성
+    let updatedSlotsForApi = { ...currentSlots, ...formSlotUpdates };
+    setScenarioSlots(activeScenarioSessionId, updatedSlotsForApi);
+
+    // 4. API 호출에 사용할 최종 슬롯 구성 (updatedSlotsForApi + search term value)
+    const allValues = { ...updatedSlotsForApi, value: searchTerm };
     const method = apiConfig.method || 'POST'; 
     
-    // store의 showEphemeralToast를 가져옵니다.
     const { showEphemeralToast } = useChatStore.getState();
 
     try {
@@ -209,15 +226,15 @@ export default function ScenarioChat() {
 
       const responseData = await response.json();
 
+      // 5. 성공 시: API 결과 슬롯에 반영
       // 💡 setScenarioSlots (성공 로직 유지)
-      setScenarioSlots(activeScenarioSessionId, { ...currentSlots, [resultSlot]: responseData });
+      setScenarioSlots(activeScenarioSessionId, { ...updatedSlotsForApi, [resultSlot]: responseData });
       
-    } catch (error) { // --- 👈 [수정된 catch 블록] ---
+    } catch (error) { 
       console.error("Form element API call failed:", error);
       
       let toastMessage;
       
-      // 'fetch failed' 또는 'Failed to fetch'와 같은 메시지로 네트워크 오류를 판단합니다.
       if (error.name === 'AbortError' || error.message.includes('fetch failed') || error.message.includes('Failed to fetch')) {
           // 네트워크/타임아웃 오류 시 errorApiRequest 사용
           toastMessage = t('errorApiRequest'); 
@@ -231,8 +248,8 @@ export default function ScenarioChat() {
 
       showEphemeralToast(toastMessage, 'error');
     }
-  }, [activeScenario, currentScenarioNodeId, currentSlots, setScenarioSlots, activeScenarioSessionId, t]); // t를 의존성 배열에 추가
-  // --- 👆 [수정] Form Element API 호출 핸들러 (headers 반영 + 토스트 에러 메시지) ---
+  }, [activeScenario, currentScenarioNodeId, currentSlots, setScenarioSlots, activeScenarioSessionId, t]); 
+// --- 👆 [수정] Form Element API 호출 핸들러 (폼 내 모든 input 값을 슬롯에 반영) ---
 
 
   // 메시지 그룹핑 로직 (기존과 동일)

@@ -7,7 +7,9 @@ import { XLSX, convertExcelDate } from "../lib/excelUtils";
 // --- 👆 [수정] ---
 import { useTranslations } from "../hooks/useTranslations";
 import styles from "./Chat.module.css";
-import { validateInput, interpolateMessage } from "../lib/chatbotEngine";
+// --- 👇 [수정] getDeepValue 임포트 추가 ---
+import { validateInput, interpolateMessage, getDeepValue } from "../lib/chatbotEngine";
+// --- 👆 [수정] ---
 import ArrowDropDownIcon from "./icons/ArrowDropDownIcon";
 import LogoIcon from "./icons/LogoIcon";
 
@@ -237,52 +239,129 @@ const FormRenderer = ({
     reader.readAsArrayBuffer(file);
   };
   
-  // --- 👇 [수정] 그리드 클릭 핸들러 (setScenarioSlots만 사용) ---
+  // --- 👇 [수정] 그리드 클릭 핸들러 (Deep Path 클리어 로직 강화) ---
   const handleGridRowClick = (gridElement, rowData) => {
     if (disabled) return;
 
-    // 1. 이 그리드와 연결된 'search' 엘리먼트 찾기
+    const fullOptionsSlotPath = gridElement.optionsSlot;
+    const hasDeepPath = fullOptionsSlotPath && fullOptionsSlotPath.includes('.');
+    
+    // 1. 루트 키 추출 (optionsSlot이 vvdinfo.result.vvdInfo 이면 vvdinfo)
+    const rootOptionsSlotKey = fullOptionsSlotPath 
+        ? fullOptionsSlotPath.split('.')[0] 
+        : null;
+
+    // 2. 연결된 'search' 엘리먼트 찾기
     const searchElement = node.data.elements.find(
-      (e) => e.type === "search" && e.resultSlot === gridElement.optionsSlot
+      (e) => e.type === "search" && e.resultSlot === rootOptionsSlotKey
     );
     
-    // 2. setScenarioSlots 함수가 있는지 확인
+    // 3. 연결된 search가 있는 경우 (특수 동작 시작)
     if (searchElement && searchElement.name && setScenarioSlots && activeScenarioSessionId) {
-      // 3. (Search 연동 로직)
+      
       const gridKeys = (gridElement.displayKeys && gridElement.displayKeys.length > 0) 
         ? gridElement.displayKeys.map(k => k.key) 
         : Object.keys(rowData);
-        
+          
       const firstColumnKey = gridKeys[0];
-      const firstColumnValue = firstColumnKey ? rowData[firstColumnKey] : '';
 
-      // 4. [수정] setScenarioSlots를 한번만 호출하여 모든 슬롯을 업데이트
+      // inputFillKey 처리: null이면 채우지 않고, undefined/missing이면 firstColumnKey로 대체
+      const fillKey = searchElement.inputFillKey === null
+          ? null 
+          : (searchElement.inputFillKey || firstColumnKey); 
+
+      let newSlotsUpdate = {
+          selectedRow: rowData // selectedRow 슬롯 저장
+      };
+
+      // 4. 그리드 슬롯 숨기기 로직 (심층 경로 지원)
+      if (hasDeepPath) {
+          // 4-1. 루트 슬롯 객체를 깊은 복사
+          const rootSlotKey = rootOptionsSlotKey;
+          let updatedRootSlot = JSON.parse(JSON.stringify(getDeepValue(slots, rootSlotKey) || {}));
+          
+          // 4-2. 업데이트할 위치를 찾기 위한 경로 (vvdinfo.result.vvdInfo -> result.vvdInfo)
+          const deepPathToClear = fullOptionsSlotPath.substring(rootSlotKey.length + 1); 
+          const deepKeys = deepPathToClear.split('.');
+          
+          let temp = updatedRootSlot;
+          let success = true;
+
+          for (let i = 0; i < deepKeys.length; i++) {
+              const key = deepKeys[i];
+              if (i === deepKeys.length - 1) {
+                  // 마지막 키에 빈 배열 설정 (그리드 숨김)
+                  if (temp && typeof temp === 'object' && temp[key] !== undefined) {
+                      temp[key] = []; 
+                  } else {
+                      // 마지막 경로가 존재하지 않으면, 클리어할 대상이 없는 것.
+                      success = false; 
+                  }
+              } else {
+                  // 중간 경로 탐색
+                  if (temp[key] && typeof temp[key] === 'object') {
+                      temp = temp[key];
+                  } else {
+                      // 중간 경로가 없으면 클리어할 대상이 없는 것.
+                      success = false; 
+                      break;
+                  }
+              }
+          }
+          
+          // 4-3. 루트 객체를 업데이트 맵에 포함하여 기존 슬롯을 덮어쓰기
+          if (success) {
+              newSlotsUpdate[rootSlotKey] = updatedRootSlot; // 💡 루트 객체 전체를 업데이트
+          } else {
+             // 루트 객체 업데이트에 실패했더라도, 안전하게 shallow update 시도
+             newSlotsUpdate[fullOptionsSlotPath] = [];
+             console.warn(`[handleGridRowClick] Deep path clearing failed for ${fullOptionsSlotPath}. Falling back to shallow clear.`);
+          }
+
+      } else {
+          // 단순 키인 경우: 기존 로직대로 빈 배열 설정
+          newSlotsUpdate[fullOptionsSlotPath] = [];   
+      }
+      
+      // 5. 검색 필드 값 채우기
+      if (fillKey) {
+          const valueToFill = rowData[fillKey] || '';
+          newSlotsUpdate[searchElement.name] = valueToFill; // 💡 검색창 슬롯 업데이트
+          // 로컬 폼 데이터도 업데이트하여 UI에 즉시 반영
+          setFormData((prev) => ({ ...prev, [searchElement.name]: valueToFill }));
+      }
+
+      // 6. setScenarioSlots를 호출하여 슬롯을 업데이트
       setScenarioSlots(activeScenarioSessionId, {
         ...slots,
-        [searchElement.name]: firstColumnValue, // 💡 검색창 슬롯 업데이트
-        [gridElement.optionsSlot]: [],           // 💡 그리드 슬롯 숨기기
-        selectedRow: rowData                   // 💡 selectedRow는 여전히 저장
+        ...newSlotsUpdate
       });
+
+      return; // 여기서 함수 종료 (다음 노드로 진행 방지)
+
     } else {
-      // 5. (Fallback 로직)
+      // 8. (Fallback 로직: 연결된 search가 없는 경우)
       if (onGridRowClick) { 
         onGridRowClick(gridElement, rowData);
       } else {
+        // Fallback 시에는 다음 노드로 진행 (기존 Form 제출 로직)
         const finalSubmissionData = { ...formData, selectedRow: rowData };
-        onFormSubmit(finalSubmissionData);
+        onFormSubmit(finalSubmissionData); 
       }
     }
   };
-  // --- 👆 [수정] ---
+  // --- 👆 [수정] 그리드 클릭 핸들러 (Deep Path 클리어 로직 강화) ---
 
   const hasSlotBoundGrid = node.data.elements?.some(
-    (el) =>
-      el.type === "grid" &&
-      el.optionsSlot &&
-      Array.isArray(slots[el.optionsSlot]) &&
-      slots[el.optionsSlot].length > 0 &&
-      typeof slots[el.optionsSlot][0] === "object" &&
-      slots[el.optionsSlot][0] !== null
+    (el) => {
+        if (el.type !== "grid" || !el.optionsSlot) return false;
+        // --- 👇 [수정] getDeepValue를 사용하여 깊은 경로의 배열 데이터 확인 ---
+        const gridData = getDeepValue(slots, el.optionsSlot);
+        const hasData = Array.isArray(gridData) && gridData.length > 0;
+        const isObjectArray = hasData && typeof gridData[0] === "object" && gridData[0] !== null;
+        return isObjectArray;
+        // --- 👆 [수정] ---
+    }
   );
 
   const renderFormElements = () => {
@@ -439,9 +518,11 @@ const FormRenderer = ({
             {/* --- 👇 [수정] Grid 렌더링 로직 (tableLayout: fixed + % width) --- */}
             {el.type === "grid"
               ? (() => {
+                  // --- 👇 [수정] getDeepValue를 사용하여 깊은 경로의 배열 데이터 확인 ---
                   const gridDataFromSlot = el.optionsSlot
-                    ? slots[el.optionsSlot]
+                    ? getDeepValue(slots, el.optionsSlot) // <-- 수정: getDeepValue 사용
                     : null;
+                  // --- 👆 [수정] ---
                   const hasSlotData =
                     Array.isArray(gridDataFromSlot) &&
                     gridDataFromSlot.length > 0;
