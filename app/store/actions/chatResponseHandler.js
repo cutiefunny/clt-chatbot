@@ -90,11 +90,32 @@ export async function handleResponse(get, set, messagePayload) {
     await updateConversationTitle(conversationIdForBotResponse, newTitle);
   }
 
-  let lastBotMessageId = null;
+  // --- 👇 [수정] 즉시 임시 메시지 추가 ---
+  const thinkingText = locales[language]?.["statusRequesting"] || "Requesting...";
+  const tempBotMessageId = `temp_pending_${conversationIdForBotResponse}`;
+  const tempBotMessage = {
+    id: tempBotMessageId,
+    sender: "bot",
+    text: thinkingText,
+    isStreaming: true,
+    feedback: null,
+  };
+
+  set((state) => ({
+    messages: [...state.messages, tempBotMessage],
+    pendingResponses: new Set(state.pendingResponses).add(conversationIdForBotResponse),
+  }));
+
+  let lastBotMessageId = tempBotMessageId;
   let finalMessageId = null;
   let finalStreamText = "";
   let isStream = false;
-  const thinkingText = locales[language]?.["statusGenerating"] || "Generating...";
+
+  // --- 👇 [수정] 5초 타임아웃 설정 ---
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    controller.abort();
+  }, 10000);
 
   try {
     const response = await fetch("/api/chat", {
@@ -108,7 +129,10 @@ export async function handleResponse(get, set, messagePayload) {
         llmProvider: llmProvider,
         flowiseApiUrl: get().flowiseApiUrl,
       }),
+      signal: controller.signal, // 타임아웃 시그널 전달
     });
+
+    clearTimeout(timeoutId); // 응답 시작 시 타임아웃 해제
 
     if (!response.ok) {
       const errorData = await response
@@ -121,60 +145,47 @@ export async function handleResponse(get, set, messagePayload) {
       isStream = true;
       console.log("[handleResponse] Processing text/event-stream response.");
 
-      set((state) => ({
-        pendingResponses: new Set(state.pendingResponses).add(
-          conversationIdForBotResponse
-        ),
-      }));
-      const tempBotMessage = {
-        id: `temp_pending_${conversationIdForBotResponse}`,
-        sender: "bot",
-        text: thinkingText,
-        isStreaming: true,
-        feedback: null,
-      };
-      set((state) => ({ messages: [...state.messages, tempBotMessage] }));
-      lastBotMessageId = tempBotMessage.id;
+      // 기존에 여기서 메시지를 추가하던 로직은 위에서 미리 처리했으므로 제거됨
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let streamProcessor;
 
-      // --- 👇 [수정] streamProcessors 임포트 사용 및 인자 변경 ---
       if (llmProvider === "gemini")
         streamProcessor = processGeminiStream(reader, decoder);
       else if (llmProvider === "flowise")
         streamProcessor = processFlowiseStream(reader, decoder, language);
-      // --- 👆 [수정] ---
       else
         throw new Error(
           `Unsupported LLM provider for streaming: ${llmProvider}`
         );
 
-      // --- 👇 [수정] updateLastMessage 호출 방식을 객체 페이로드로 변경 ---
       for await (const result of streamProcessor) {
         if (conversationIdForBotResponse === get().currentConversationId) {
-          // 'text', 'button', 'chart' 타입은 updateLastMessage로 전달
           if (
             result.type === "text" ||
             result.type === "button" ||
             result.type === "chart"
           ) {
-            updateLastMessage(result); // result 객체({ type, data, ... })를 그대로 전달
+            updateLastMessage(result);
           }
         }
-        // 다른 타입들은 기존 로직대로 처리
         if (result.type === "slots") setExtractedSlots(result.data);
         else if (result.type === "rawResponse")
           set({ llmRawResponse: result.data });
         else if (result.type === "finalText") finalStreamText = result.data;
         else if (result.type === "error") throw result.data;
       }
-      // --- 👆 [수정] ---
     } else {
+      // JSON 응답 처리
       isStream = false;
       const data = await response.json();
       set({ llmRawResponse: data });
+
+      // --- 👇 [수정] JSON 응답인 경우 선점했던 임시 메시지 제거 ---
+      set((state) => ({
+        messages: state.messages.filter((m) => m.id !== tempBotMessageId),
+      }));
 
       if (data.type === "error") {
         throw new Error(data.message || "API returned an unknown error.");
@@ -231,11 +242,17 @@ export async function handleResponse(get, set, messagePayload) {
     }
   } catch (error) {
     console.error("[handleResponse] Error:", error);
-    const errorMessage =
-      error.message ||
-      locales[language]?.["errorLLMFail"] ||
-      locales["en"]?.["errorLLMFail"] ||
-      "There was a problem with the response. Please try again later.";
+
+    // --- 👇 [수정] 타임아웃 에러 분기 처리 ---
+    let errorMessage;
+    if (error.name === 'AbortError') {
+        errorMessage = "응답을 찾지 못 했습니다";
+    } else {
+        errorMessage = error.message ||
+          locales[language]?.["errorLLMFail"] ||
+          locales["en"]?.["errorLLMFail"] ||
+          "There was a problem with the response. Please try again later.";
+    }
 
     let messageSaved = false;
     const isStillOnSameConversation =
@@ -243,6 +260,7 @@ export async function handleResponse(get, set, messagePayload) {
 
     if (isStillOnSameConversation) {
       set((state) => {
+        // 미리 띄워둔 '생성중...' 메시지를 찾아 에러 메시지로 교체
         const lastMessageIndex = state.messages.length - 1;
         const lastMessage = state.messages[lastMessageIndex];
 
@@ -302,6 +320,7 @@ export async function handleResponse(get, set, messagePayload) {
           };
         }
 
+        // 혹시 메시지가 없다면 새로 추가
         addMessage("bot", { text: errorMessage });
         const newSet = new Set(state.pendingResponses);
         newSet.delete(conversationIdForBotResponse);
@@ -377,7 +396,6 @@ export async function handleResponse(get, set, messagePayload) {
               text: finalMessageText,
               isStreaming: false,
               feedback: null,
-              // ...lastMessage에 chartData가 포함되어 있으므로 저장됨
             };
 
             saveMessage(finalMessage, conversationIdForBotResponse).then(
@@ -438,15 +456,6 @@ export async function handleResponse(get, set, messagePayload) {
           const messagesWithoutThinking = state.messages.filter(
             (m) => m.id !== lastBotMessageId
           );
-          
-          // --- 👇 [수정] 마지막 메시지 상태를 가져와서 저장 ---
-          // (참고: 이 시점에는 lastMessage가 로컬 상태에 정확히 반영되지 않을 수 있으나,
-          // finalStreamText와 stream에서 받은 chartData를 기반으로 구성해야 함)
-          // 이 로직은 현재 복잡하며, 스위칭 시 정확한 '마지막 상태'를 저장하는 데 한계가 있을 수 있음.
-          // 현재 로직은 finalStreamText만 저장함. chartData 저장은 누락될 수 있음.
-          // (개선하려면 handleResponse에서 stream 중 chartData를 임시 변수에 저장해야 함)
-          // (우선 현재 로직 유지)
-          // --- 👆 [수정] ---
 
           if (finalStreamText) {
             const finalMessageText =
@@ -461,7 +470,6 @@ export async function handleResponse(get, set, messagePayload) {
               text: finalMessageText,
               isStreaming: false,
               feedback: null,
-              // chartData: ... (현재 로직에서는 누락됨. 개선 필요)
             };
 
             saveMessage(finalMessage, conversationIdForBotResponse);
