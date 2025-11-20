@@ -3,13 +3,13 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   signOut,
-  doc, // [추가]
-  getDoc, // [추가]
-  collection, // [추가]
-  getDocs, // [추가]
-  writeBatch, // [추가]
-} from "../../lib/firebase"; // [수정]
-import { locales } from "../../lib/locales"; // [추가]
+  doc,
+  getDoc,
+  collection,
+  getDocs,
+  writeBatch,
+} from "../../lib/firebase";
+import { locales } from "../../lib/locales";
 
 export const createAuthSlice = (set, get) => ({
   user: null,
@@ -49,9 +49,7 @@ export const createAuthSlice = (set, get) => ({
     }
   },
 
-  // --- 👇 [수정] index.js에서 이동된 복합 액션 ---
   setUserAndLoadData: async (user) => {
-    // --- [수정] isInitializing을 true로 설정 ---
     set({ user, isInitializing: true });
 
     // 1. 데이터 마이그레이션 (Await)
@@ -89,7 +87,8 @@ export const createAuthSlice = (set, get) => ({
       hideCompletedScenarios = false,
       hideDelayInHours = 0,
       fontSizeDefault = "16px",
-      isDevMode = false;
+      isDevMode = false,
+      sendTextShortcutImmediately = false; // [추가] 변수 선언
 
     try {
       const userSettingsRef = doc(get().db, "settings", user.uid);
@@ -113,6 +112,14 @@ export const createAuthSlice = (set, get) => ({
       fontSizeDefault = settings.fontSizeDefault || fontSizeDefault;
       isDevMode =
         typeof settings.isDevMode === "boolean" ? settings.isDevMode : isDevMode;
+      
+      // --- 👇 [추가] 설정 로드 ---
+      sendTextShortcutImmediately =
+        typeof settings.sendTextShortcutImmediately === "boolean"
+          ? settings.sendTextShortcutImmediately
+          : sendTextShortcutImmediately;
+      // --- 👆 [추가] ---
+
     } catch (error) {
       console.error("Error loading settings from Firestore:", error);
       fontSize = localStorage.getItem("fontSize") || fontSize;
@@ -127,6 +134,9 @@ export const createAuthSlice = (set, get) => ({
         hideDelayInHours,
         fontSizeDefault,
         isDevMode,
+        // --- 👇 [추가] 상태 설정 ---
+        sendTextShortcutImmediately,
+        // --- 👆 [추가] ---
       });
       get().resetMessages?.(language);
     }
@@ -139,7 +149,7 @@ export const createAuthSlice = (set, get) => ({
     get().subscribeToUnreadScenarioNotifications(user.uid);
     get().loadFavorites(user.uid);
 
-    // --- [추가] 2초 타이머 (Await) ---
+    // 2초 타이머 (Await)
     console.log("Starting 2-second splash screen timer...");
     await new Promise(resolve => setTimeout(resolve, 4000));
     console.log("Timer finished. Hiding splash screen.");
@@ -168,6 +178,9 @@ export const createAuthSlice = (set, get) => ({
       hideDelayInHours: 0,
       fontSizeDefault: "16px",
       isDevMode: false,
+      // --- 👇 [추가] 초기화 시 기본값으로 리셋 ---
+      sendTextShortcutImmediately: false,
+      // --- 👆 [추가] ---
       conversations: [],
       currentConversationId: null,
       expandedConversationId: null,
@@ -206,10 +219,9 @@ export const createAuthSlice = (set, get) => ({
         onConfirm: () => {},
         confirmVariant: "default",
       },
-      isInitializing: false, // <-- [추가]
+      isInitializing: false, 
       activePanel: "main",
     });
     get().resetMessages?.(language);
   },
-  // --- 👆 [추가] ---
 });

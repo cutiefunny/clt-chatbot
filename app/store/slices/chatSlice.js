@@ -7,19 +7,15 @@ import {
   onSnapshot,
   getDocs,
   serverTimestamp,
-  // deleteDoc, // conversationSlice에서 사용
   doc,
   updateDoc,
   limit,
   startAfter,
-  // where, // 검색 슬라이스에서 사용
-  writeBatch, // 메시지 저장 관련 로직에서 필요할 수 있음
+  writeBatch, 
 } from "firebase/firestore";
 import { locales } from "../../lib/locales";
 import { getErrorKey } from "../../lib/errorHandler";
-// --- 👇 [추가] handleResponse 임포트 ---
 import { handleResponse } from "../actions/chatResponseHandler";
-// --- 👆 [추가] ---
 
 const MESSAGE_LIMIT = 15;
 
@@ -41,9 +37,7 @@ export const createChatSlice = (set, get) => {
     pendingResponses: new Set(),
     completedResponses: new Set(),
     slots: {},
-    // --- 💡 [추가] ---
     setSlots: (newSlots) => set({ slots: newSlots }),
-    // --- 💡 [추가 끝] ---
     extractedSlots: {},
     llmRawResponse: null,
     selectedOptions: {},
@@ -62,9 +56,7 @@ export const createChatSlice = (set, get) => {
       });
       get().unsubscribeMessages?.();
       set({ unsubscribeMessages: null });
-      // --- 👇 [추가] ---
       get().setMainInputValue(""); // 입력창 초기화
-      // --- 👆 [추가] ---
     },
 
     loadInitialMessages: async (conversationId) => {
@@ -78,9 +70,7 @@ export const createChatSlice = (set, get) => {
         lastVisibleMessage: null,
         hasMoreMessages: true,
         selectedOptions: {},
-        // --- 👇 [추가] ---
         mainInputValue: "", // 대화 로드 시 입력창 초기화
-        // --- 👆 [추가] ---
       });
 
       try {
@@ -173,11 +163,6 @@ export const createChatSlice = (set, get) => {
       }
     },
 
-    /**
-     * 스트리밍 중인 마지막 봇 메시지를 업데이트합니다.
-     * @param {object} payload - 스트림 이벤트 페이로드
-     * (e.g., { type: 'text', data: '...', replace: false } or { type: 'chart', data: '...' })
-     */
     updateLastMessage: (payload) => {
       set((state) => {
         const lastMessage = state.messages[state.messages.length - 1];
@@ -186,26 +171,22 @@ export const createChatSlice = (set, get) => {
           lastMessage.sender !== "bot" ||
           !lastMessage.isStreaming
         ) {
-          return state; // 스트리밍 중인 봇 메시지가 아니면 아무것도 안 함
+          return state; 
         }
 
         let updatedMessage = { ...lastMessage };
 
         switch (payload.type) {
           case "text":
-            // 텍스트 청크 업데이트
             updatedMessage.text = payload.replace
               ? payload.data
               : (lastMessage.text || "") + payload.data;
             break;
           case "button":
-            // 버튼 텍스트 추가 (기존 텍스트에 연결)
             updatedMessage.text = (lastMessage.text || "") + payload.data;
             break;
           case "chart":
-            // 차트 데이터(JSON 문자열) 추가
             updatedMessage.chartData = payload.data;
-            // 리치 컨텐츠 플래그 설정 (Chat.jsx에서 너비 조절 등에 사용 가능)
             updatedMessage.hasRichContent = true;
             break;
           default:
@@ -213,10 +194,9 @@ export const createChatSlice = (set, get) => {
               "updateLastMessage received unknown payload type:",
               payload.type
             );
-            return state; // 모르는 타입이면 상태 변경 없음
+            return state; 
         }
 
-        // 메시지 배열의 마지막 요소를 업데이트된 메시지로 교체
         return {
           messages: [...state.messages.slice(0, -1), updatedMessage],
         };
@@ -352,12 +332,13 @@ export const createChatSlice = (set, get) => {
         setSelectedOption,
         openScenarioPanel,
         handleResponse,
-        availableScenarios, // 시나리오 슬라이스에서 가져옴
+        availableScenarios, 
         language,
         showEphemeralToast,
+        setMainInputValue, 
+        focusChatInput, 
         // --- 👇 [추가] ---
-        setMainInputValue, // uiSlice에서 가져옴
-        focusChatInput, // uiSlice에서 가져옴
+        sendTextShortcutImmediately // 설정값 가져오기
         // --- 👆 [추가] ---
       } = get();
 
@@ -373,32 +354,33 @@ export const createChatSlice = (set, get) => {
           text: item.action.value,
           displayText: item.title,
         });
-      // --- 👇 [수정] ---
       } else if (item.action.type === "text") {
-        // await handleResponse({
-        //   text: item.action.value,
-        //   displayText: item.action.value, // 'text' 타입은 value를 displayText로 사용
-        // });
-        setMainInputValue(item.action.value); // 입력창에 텍스트 설정
-        focusChatInput(); // 입력창에 포커스
-      // --- 👆 [수정] ---
+        // --- 👇 [수정] 설정에 따른 분기 로직 ---
+        if (sendTextShortcutImmediately) {
+           // 즉시 전송 (설정 ON)
+           await handleResponse({
+            text: item.action.value,
+            displayText: item.action.value, 
+          });
+        } else {
+           // 입력창 채우기 (설정 OFF - 기본값)
+           setMainInputValue(item.action.value); 
+           focusChatInput();
+        }
+        // --- 👆 [수정] ---
       } else if (item.action.type === "scenario") {
         const scenarioId = item.action.value;
 
-        // 시나리오 ID가 availableScenarios 목록에 있는지 확인
         if (!availableScenarios.includes(scenarioId)) {
           console.warn(
             `[handleShortcutClick] Scenario not found: ${scenarioId}. Shortcut title: "${item.title}"`
           );
-          // locales.js에 새로 추가한 에러 메시지 사용
           const errorMessage =
             locales[language]?.["errorScenarioNotFound"] ||
             "The linked scenario could not be found. Please contact an administrator.";
           
           showEphemeralToast(errorMessage, "error");
-          // clearExtractedSlots()는 finally처럼 맨 마지막에 호출되므로 여기서는 return
         } else {
-          // 시나리오가 존재하면 패널 열기
           get().openScenarioPanel?.(scenarioId, extractedSlots);
         }
       } else {
@@ -571,7 +553,6 @@ export const createChatSlice = (set, get) => {
           scenarioId: messageData.scenarioId,
           scenarioSessionId: messageData.scenarioSessionId,
           feedback: null,
-          // [추가] chartData 필드도 전달받을 수 있도록
           chartData: messageData.chartData || null,
         };
       }
@@ -660,8 +641,6 @@ export const createChatSlice = (set, get) => {
       }
     },
 
-    // --- 👇 [수정] handleResponse를 외부 파일에서 가져와 연결 ---
     handleResponse: (messagePayload) => handleResponse(get, set, messagePayload),
-    // --- 👆 [수정] ---
-  }; // end return store object
-}; // end createChatSlice
+  };
+};
