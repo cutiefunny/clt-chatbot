@@ -6,15 +6,14 @@ import { useChatStore } from "../store";
 import ChevronDownIcon from "./icons/ChevronDownIcon";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { openLinkThroughParent } from "../lib/parentMessaging";
 
-// --- 👇 [수정] children prop 및 wrapperClassName prop 추가 ---
 export default function MarkdownRenderer({
   content,
   renderAsMarkdown = true,
   children,
-  wrapperClassName, // 이 prop을 추가합니다.
+  wrapperClassName,
 }) {
-  // --- 👆 [수정] ---
   const { t } = useTranslations();
   const [isExpanded, setIsExpanded] = useState(false);
   const LINE_LIMIT = useChatStore((state) => state.contentTruncateLimit);
@@ -25,14 +24,21 @@ export default function MarkdownRenderer({
         <table {...props} />
       </div>
     ),
+    
+    a: ({ node: _node, href, children, ...props }) => (
+      <a
+        href={href}
+        {...props}
+      >
+        {children}
+      </a>
+    ),
   };
 
   const safeContent = String(content || "");
 
-  // --- 👇 [수정됨] '---' 구분자 및 줄 수 제한 로직 통합 (테이블 버그 수정) ---
-
-  // 1. '---' 구분자 확인 (줄바꿈으로 둘러싸인 경우만 해당)
-  const delimiterRegex = /\n\s*---\s*\n/; // 테이블 헤더( |---| )와 구분하기 위해 new-line으로 감싸진 '---'를 찾음
+  // 1. '---' 구분자 확인
+  const delimiterRegex = /\n\s*---\s*\n/;
   const match = delimiterRegex.exec(safeContent);
   const needsTruncationByDelimiter = match !== null;
 
@@ -43,27 +49,19 @@ export default function MarkdownRenderer({
   // 3. 최종 상태 결정
   let needsTruncation = false;
   let truncatedText = "";
-  let fullContent = safeContent; // 기본값은 원본 텍스트
+  let fullContent = safeContent;
 
   if (needsTruncationByDelimiter) {
-    // '---'가 있으면, '---' 기준으로 자름
-    const splitIndex = match.index; // '---' 시작 지점이 아닌, 매치된 패턴(\n---)의 시작 지점
+    const splitIndex = match.index;
     needsTruncation = true;
     truncatedText = safeContent.substring(0, splitIndex);
-    
-    // --- 👇 [수정] 확장 시 '---'를 이중 줄바꿈(\n\n)으로 변경하여 공백 추가 ---
-    fullContent = safeContent.replace(delimiterRegex, "\n\n"); 
-    // --- 👆 [수정] ---
+    fullContent = safeContent.replace(delimiterRegex, "\n\n");
   } else if (needsTruncationByLine) {
-    // '---'가 없고, 줄 수 제한에 걸리면 기존 로직대로 자름
     needsTruncation = true;
     truncatedText = `${lines.slice(0, LINE_LIMIT).join("\n")}...`;
-    // fullContent는 원본(safeContent) 그대로 사용
   }
 
-  // 표시할 내용 결정
   const displayContent = needsTruncation && !isExpanded ? truncatedText : fullContent;
-  // --- 👆 [수정됨] ---
 
   const handleToggle = (e) => {
     e.stopPropagation();
@@ -71,9 +69,7 @@ export default function MarkdownRenderer({
   };
 
   return (
-    // --- 👇 [수정] className에 wrapperClassName을 추가합니다. ---
     <div className={`${styles.markdownContent} ${wrapperClassName || ""}`}>
-      {/* --- 👆 [수정] --- */}
       {renderAsMarkdown ? (
         <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
           {displayContent}
@@ -84,7 +80,6 @@ export default function MarkdownRenderer({
         </div>
       )}
 
-      {/* "더 보기"가 필요 없거나, 확장된 상태일 때만 children(차트)을 렌더링 */}
       {(!needsTruncation || isExpanded) && children}
 
       {needsTruncation && (
