@@ -65,7 +65,7 @@
 .categoryButton.active {
   background: var(
     --Color-Light-Gradation-01,
-    linear-gradient(90deg, #8f9aff 0%, #634ce2 100%)
+   linear-gradient(90deg, #BCA8FF 0%, #6941DF 100%)
   );
   color: var(--White-Opacity-100, #fff);
 }

@@ -58,7 +58,7 @@ body.dark .modalBody p {
   border-radius: var(--1, 8px);
   background: var(
     --Color-Light-Gradation-01,
-    linear-gradient(90deg, #8f9aff 0%, #634ce2 100%)
+    linear-gradient(90deg, #BCA8FF 0%, #6941DF 100%)
   );
   box-shadow: 0 6px 16px 0 #dfe2fe;
 }
