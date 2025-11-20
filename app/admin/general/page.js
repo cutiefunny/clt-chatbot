@@ -258,7 +258,7 @@ export default function GeneralSettingsPage() {
         </div>
 
         {/* 즐겨찾기 기능 설정 */}
-        <div className={styles.settingItem}>
+        {/* <div className={styles.settingItem}>
           <label className={styles.settingLabel}>
             <h3>즐겨찾기 기능</h3>
             <p>
@@ -274,10 +274,10 @@ export default function GeneralSettingsPage() {
             />
             <span className={styles.slider}></span>
           </label>
-        </div>
+        </div> */}
 
         {/* 포커스 흐림 설정 */}
-        <div className={styles.settingItem}>
+        {/* <div className={styles.settingItem}>
           <label className={styles.settingLabel}>
             <h3>포커스 잃은 창 흐리게</h3>
             <p>
@@ -293,10 +293,10 @@ export default function GeneralSettingsPage() {
             />
             <span className={styles.slider}></span>
           </label>
-        </div>
+        </div> */}
 
         {/* 초기 화면 히스토리 패널 표시 */}
-        <div className={styles.settingItem}>
+        {/* <div className={styles.settingItem}>
           <label className={styles.settingLabel}>
             <h3>초기 화면 히스토리 표시</h3>
             <p>
@@ -312,10 +312,10 @@ export default function GeneralSettingsPage() {
             />
             <span className={styles.slider}></span>
           </label>
-        </div>
+        </div> */}
 
         {/* 즐겨찾기 개수 설정 (기존 코드 유지) */}
-        <div className={styles.settingItem}>
+        {/* <div className={styles.settingItem}>
           <label htmlFor="max-favorites" className={styles.settingLabel}>
             <h3>최대 즐겨찾기 개수</h3>
             <p>
@@ -330,7 +330,7 @@ export default function GeneralSettingsPage() {
             className={styles.settingInput}
             min="0"
           />
-        </div>
+        </div> */}
 
         {/* 저장 버튼 (기존 코드 유지) */}
         <button
