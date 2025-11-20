@@ -1,5 +1,5 @@
 /* app/markdown/page.module.css */
-
+.pageWrapper button{cursor: pointer;}
 .pageWrapper {
   width: 100%;
   min-height: 100vh;
@@ -10,8 +10,8 @@
 
 .header {
   max-width: 100%; /* 너비 꽉 채우기 */
-  margin: 0 auto 20px auto;
-  padding-bottom: 20px;
+  margin: 0 auto 10px auto;
+  padding-bottom: 10px;
   border-bottom: 1px solid #d8e0eb;
 }
 
@@ -19,20 +19,20 @@
   font-size: 1.8rem;
   font-weight: 600;
   color: #282166;
-  margin-bottom: 8px;
+  margin-bottom: 0px;
 }
 
-.header p {
+.header h1 span {
   font-size: 1rem;
   color: #5e7599;
-  margin: 0;
+  margin-left: 10px;
 }
 
 .header a {
   color: #634ce2;
   text-decoration: none;
   font-weight: 500;
-  margin-top: 10px;
+  margin-top: 0px;
   display: inline-block;
 }
 .header a:hover {
@@ -64,7 +64,7 @@
   font-size: 1.2rem;
   font-weight: 500;
   color: #5e7599;
-  margin-bottom: 10px;
+  margin-bottom: 5px;
 }
 
 .editorContainer h2 code {

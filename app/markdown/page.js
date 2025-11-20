@@ -236,8 +236,12 @@ export default function MarkdownTestPage() {
   return (
     <div className={styles.pageWrapper}>
       <header className={styles.header}>
-        <h1>Markdown 렌더러 샌드박스</h1>
-        <p>마크다운 입력(AS-IS)과 스타일(CSS)을 수정하여 실시간으로 렌더링 결과(TO-BE)를 확인합니다.</p>
+        <h1>Markdown 렌더러 샌드박스 
+          <span> 
+            마크다운 입력(AS-IS)과 스타일(CSS)을 수정하여 실시간으로 렌더링 결과(TO-BE)를 확인합니다.
+            </span>
+        </h1>
+       
         <Link href="/">← 챗봇으로 돌아가기</Link>
       </header>
 
@@ -260,13 +264,17 @@ export default function MarkdownTestPage() {
           <div className={styles.previewHeader}>
             <h2>
               {isPreviewMainChat ? "TO-BE (Main Chat)" : "TO-BE (Scenario Chat)"}
+              <span>
+                ↔️
+                <button
+                  className={`${styles.toggleButton} ${isPreviewMainChat ? styles.active : ""}`}
+                  onClick={() => setIsPreviewMainChat(!isPreviewMainChat)}
+                  >
+                  {isPreviewMainChat ? "Showing Main Chat" : "Showing Scenario"}
+                </button>
+            </span>
             </h2>
-            <button
-              className={`${styles.toggleButton} ${isPreviewMainChat ? styles.active : ""}`}
-              onClick={() => setIsPreviewMainChat(!isPreviewMainChat)}
-            >
-              {isPreviewMainChat ? "Showing Main Chat" : "Showing Scenario"}
-            </button>
+            
           </div>
           {/* --- 👆 [추가] --- */}
           
