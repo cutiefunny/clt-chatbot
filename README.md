@@ -26,8 +26,17 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 * **Deployment**: [Vercel](https://vercel.com)
 
 ## 📂 Project Structure
-
-. ├── app/ # Next.js App Router │ ├── api/ # API routes │ ├── components/ # React components │ ├── lib/ # Core logic (Firebase, LLM, Chatbot Engine) │ ├── store/ # Zustand state management slices │ └── admin/ # Admin pages (Scenario Editor, General Settings) │ └── ... ├── public/ # Static assets (images, fonts) └── ...
+```
+├── app/                    # Next.js App Router
+│   ├── api/               # API routes
+│   ├── components/        # React components
+│   ├── lib/               # Core logic (Firebase, LLM, Chatbot Engine)
+│   ├── store/             # Zustand state management slices
+│   ├── admin/             # Admin pages (Scenario Editor, General Settings)
+│   └── ...
+├── public/                # Static assets (images, fonts)
+└── ...
+```
 
 
 * **`app/api`**: 서버 사이드 로직을 처리하는 API 라우트가 위치합니다. 챗봇의 핵심 백엔드 로직이 이곳에 구현되어 있습니다.
