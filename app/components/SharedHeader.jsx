@@ -1,9 +1,9 @@
 // app/components/SharedHeader.jsx
 "use client";
 
-import dynamic from "next/dynamic"; // [추가] dynamic import
-import { useRouter } from "next/navigation"; // [추가] 라우터 훅
-import { useChatStore } from "../store"; // [추가] 스토어 훅
+import dynamic from "next/dynamic"; 
+import { useRouter } from "next/navigation"; 
+import { useChatStore } from "../store"; 
 
 import HistoryPanel from "./HistoryPanel";
 import ScenarioModal from "./ScenarioModal";
@@ -19,7 +19,7 @@ import {
 import styles from "./SharedHeader.module.css";
 import ScenarioExpandIcon from "./icons/ScenarioExpandIcon";
 
-// [추가] ManualModal Lazy Loading
+// ManualModal Lazy Loading
 const ManualModal = dynamic(() => import("./ManualModal"));
 
 export default function SharedHeader({
@@ -35,9 +35,8 @@ export default function SharedHeader({
   isScenarioModalOpen,
   isDevMode,
 }) {
-  // [추가] 라우터 및 스토어 상태 가져오기
   const router = useRouter();
-  const { openManualModal, isManualModalOpen } = useChatStore();
+  const { openManualModal, isManualModalOpen, headerTitle } = useChatStore(); // headerTitle 가져오기
 
   const headerClasses = [styles.chatHeader];
 
@@ -53,12 +52,16 @@ export default function SharedHeader({
     <div className={styles.chatContainer}>
       <div className={headerClasses.join(" ")}>
         <div className={styles.headerContent}>
-          <span className={styles.headerTitle}>AI Chatbot (To be naming...)</span>
+          {/* --- 👇 [수정] 스토어의 headerTitle 사용 --- */}
+          <span className={styles.headerTitle}>
+            {headerTitle || "AI Chatbot"}
+          </span>
+          {/* --- 👆 [수정] --- */}
 
           {/* 설정 아이콘 */}
           <button
             className={styles.headerButton}
-            onClick={() => router.push("/admin/general")} // [수정] 설정 페이지 이동
+            onClick={() => router.push("/admin/general")} 
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -77,7 +80,7 @@ export default function SharedHeader({
           {/* 인포 아이콘 */}
           <button
             className={styles.headerButton}
-            onClick={openManualModal} // [수정] 매뉴얼 모달 열기
+            onClick={openManualModal} 
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -124,7 +127,7 @@ export default function SharedHeader({
         />
       </div>
       {isScenarioModalOpen && <ScenarioModal />}
-      {/* [추가] 매뉴얼 모달 렌더링 */}
+      {/* 매뉴얼 모달 렌더링 */}
       {isManualModalOpen && <ManualModal />}
       {isDevMode && <DevStateDisplay />}
     </div>
