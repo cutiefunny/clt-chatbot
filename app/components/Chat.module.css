@@ -269,7 +269,7 @@ input:checked + .slider:before {
 .message {
   border-radius: 16px;
   width: fit-content;
-  max-width: 90%;
+  max-width: 100%;
   word-wrap: break-word;
   line-height: 1.4;
   white-space: pre-wrap;
@@ -329,6 +329,7 @@ input:checked + .slider:before {
   letter-spacing: -0.14px;
   /* max-width: calc(100% - 32px); */
   max-width: 100%;
+  width: 100%;
 }
 
 .botMessage {

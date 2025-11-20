@@ -25,7 +25,9 @@
             position: absolute;
         }
         .iconcon{padding-top:6px}
-        .iconbg img, .iconcon img {
+
+        .iconbg img, 
+        .iconcon img {
             width: 100%;
             height: 100%;
             object-fit: contain;
@@ -64,17 +66,17 @@
         /* iconbg 애니메이션 */
         .iconbg {
             transform: scale(2);
-            animation: iconbgAnimation 4s ease-in-out forwards;
+            animation: iconbgAnimation 3s ease-in-out forwards;
         }
 
         /* iconcon 애니메이션 */
         .iconcon {
-            animation: iconconAnimation 4s ease-in-out forwards;
+            animation: iconconAnimation 3s ease-in-out forwards;
         }
 
         /* textBox 애니메이션 */
         .textBox {
-            animation: textBoxAnimation 4s ease-in-out forwards;
+            animation: textBoxAnimation 3s ease-in-out forwards;
         }
 
         @keyframes iconbgAnimation {
@@ -98,7 +100,7 @@
             }
             /* 6.4-7.0s: 시계방향 360도 회전 (0.6초, 77.14~100%) */
             100% {
-                transform: scale(1) rotate(630deg);
+                transform: scale(1) rotate(636deg);
             }
         }
 
