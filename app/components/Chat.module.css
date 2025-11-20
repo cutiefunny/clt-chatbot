@@ -334,6 +334,7 @@ input:checked + .slider:before {
 .botMessage {
   color: var(--text-color); /* Themed */
   transition: background-color 0.2s;
+  width: 100%;
   max-width: 100%;
 }
 
@@ -395,10 +396,8 @@ input:checked + .slider:before {
   color: var(--White, #fff); /* Themed */
   border-top-right-radius: 4px;
   border-radius: var(--2, 16px);
-  background: var(
-    --Color-Light-Gradation-01,
-    linear-gradient(90deg, #8f9aff 0%, #634ce2 100%)
-  ) !important;
+  background: #8362E9;
+  box-shadow: 0 6px 16px 0 #DFE2FE;
   font-size: 14px;
 }
 
