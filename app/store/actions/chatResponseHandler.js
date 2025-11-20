@@ -5,6 +5,20 @@ import {
 } from "../../lib/streamProcessors";
 import { locales } from "../../lib/locales";
 
+// --- 👇 [추가] 자동 팝업을 트리거할 타겟 URL 정의 ---
+const TARGET_AUTO_OPEN_URL = "http://172.20.130.91:9110/oceans/BPM_P1002.do?tenId=2000&stgId=TST&pgmNr=BKD_M3201";
+
+// --- 👇 [추가] URL 포함 여부 확인 및 새 창 열기 헬퍼 함수 ---
+const checkAndOpenUrl = (text) => {
+  if (typeof text === 'string' && text.includes(TARGET_AUTO_OPEN_URL)) {
+    if (typeof window !== 'undefined') {
+      console.log(`[AutoOpen] Target URL detected. Opening: ${TARGET_AUTO_OPEN_URL}`);
+      window.open(TARGET_AUTO_OPEN_URL, '_blank', 'noopener,noreferrer');
+    }
+  }
+};
+// --- 👆 [추가] ---
+
 // responseHandlers는 이 스코프 내에서만 사용되므로 여기에 정의
 const responseHandlers = {
   scenario_list: (data, getFn) => {
@@ -23,6 +37,9 @@ const responseHandlers = {
   },
   llm_response_with_slots: (data, getFn) => {
     getFn().addMessage("bot", { text: data.message });
+    // --- 👇 [추가] LLM 응답(slots 포함)에서도 URL 체크 ---
+    checkAndOpenUrl(data.message);
+    // --- 👆 [추가] ---
     if (data.slots && Object.keys(data.slots).length > 0) {
       getFn().setExtractedSlots(data.slots);
     }
@@ -213,6 +230,10 @@ export async function handleResponse(get, set, messagePayload) {
       } else {
         const responseText = data.response || data.text || data.message;
         if (responseText) {
+          // --- 👇 [추가] 일반 텍스트 응답에서 URL 체크 ---
+          checkAndOpenUrl(responseText);
+          // --- 👆 [추가] ---
+
           if (conversationIdForBotResponse === get().currentConversationId) {
             await addMessage("bot", { text: responseText });
           } else {
@@ -392,6 +413,11 @@ export async function handleResponse(get, set, messagePayload) {
                 ? locales[language]?.["errorLLMFail"] ||
                   "(Response failed. Please try again later.)"
                 : finalText;
+            
+            // --- 👇 [추가] 스트리밍 완료 후 최종 텍스트에서 URL 체크 ---
+            checkAndOpenUrl(finalMessageText);
+            // --- 👆 [추가] ---
+
             const finalMessage = {
               ...lastMessage,
               text: finalMessageText,
@@ -433,6 +459,9 @@ export async function handleResponse(get, set, messagePayload) {
              // ...
              if (finalStreamText) {
                  // ... saveMessage ...
+                 // --- 👇 [추가] 다른 대화방에 있어도 스트리밍 완료 시 URL 체크 ---
+                 checkAndOpenUrl(finalStreamText);
+                 // --- 👆 [추가] ---
              }
              const newSet = new Set(state.pendingResponses);
             newSet.delete(conversationIdForBotResponse);
