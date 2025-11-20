@@ -1,25 +1,21 @@
 // app/components/ScenarioChat.jsx
 "use client";
 
-// --- 👇 [수정] 임포트 정리 (useCallback 추가) ---
-import { useEffect, useRef, useState, useCallback } from "react";
-// --- 👆 [수정] ---
+import { useCallback } from "react";
 import { useChatStore } from "../store";
 import { useTranslations } from "../hooks/useTranslations";
+import { useAutoScroll } from "../hooks/useAutoScroll"; // [추가] 훅 임포트
 import styles from "./Chat.module.css";
 import { validateInput, interpolateMessage } from "../lib/chatbotEngine";
 import LogoIcon from "./icons/LogoIcon";
-import ArrowDropDownIcon from "./icons/ArrowDropDownIcon";
 import CheckCircle from "./icons/CheckCircle";
 import OpenInNewIcon from "./icons/OpenInNew";
 import CloseIcon from "./icons/CloseIcon";
 import ScenarioExpandIcon from "./icons/ScenarioExpandIcon";
 import ScenarioCollapseIcon from "./icons/ScenarioCollapseIcon";
 import MarkdownRenderer from "./MarkdownRenderer";
-// --- 👇 [추가] 추출된 컴포넌트 임포트 ---
 import FormRenderer from "./FormRenderer";
 import ScenarioStatusBadge from "./ScenarioStatusBadge";
-// --- 👆 [추가] ---
 import {
   openLinkThroughParent,
   postToParent,
@@ -28,7 +24,6 @@ import {
   delayParentAnimationIfNeeded,
 } from "../lib/parentMessaging";
 
-// ScenarioChat 컴포넌트 본체
 export default function ScenarioChat() {
   const {
     activeScenarioSessionId,
@@ -39,9 +34,7 @@ export default function ScenarioChat() {
     setScenarioSelectedOption,
     isScenarioPanelExpanded,
     toggleScenarioPanelExpanded,
-    // --- 👇 [수정] setSlots 대신 setScenarioSlots 가져오기 ---
     setScenarioSlots,
-    // --- 👆 [수정] ---
   } = useChatStore();
   const { t, language } = useTranslations();
 
@@ -56,56 +49,12 @@ export default function ScenarioChat() {
   const isScenarioLoading = activeScenario?.isLoading || false;
   const currentScenarioNodeId = activeScenario?.state?.currentNodeId;
   const scenarioId = activeScenario?.scenarioId;
-  // --- 👇 [수정] 현재 시나리오의 슬롯 가져오기 (이전과 동일) ---
   const currentSlots = activeScenario?.slots || {};
-  // --- 👆 [수정] ---
 
-  const historyRef = useRef(null);
-  const wasAtBottomRef = useRef(true);
+  // [리팩토링] 커스텀 스크롤 훅 사용 (ref 및 effect 로직 대체)
+  const { scrollRef } = useAutoScroll(scenarioMessages, isScenarioLoading);
 
-  // 스크롤 관련 함수 및 useEffect (기존과 동일)
-  const updateWasAtBottom = useCallback(() => {
-    const scrollContainer = historyRef.current;
-    if (!scrollContainer) return;
-    const scrollableDistance =
-      scrollContainer.scrollHeight -
-      scrollContainer.clientHeight -
-      scrollContainer.scrollTop;
-    wasAtBottomRef.current = scrollableDistance <= 5;
-  }, []);
-
-  useEffect(() => {
-    const scrollContainer = historyRef.current;
-    if (!scrollContainer) return;
-    const handleScrollEvent = () => {
-      updateWasAtBottom();
-    };
-    updateWasAtBottom();
-    scrollContainer.addEventListener("scroll", handleScrollEvent);
-    return () => {
-      scrollContainer.removeEventListener("scroll", handleScrollEvent);
-    };
-  }, [updateWasAtBottom]);
-
-  useEffect(() => {
-    const scrollContainer = historyRef.current;
-    if (!scrollContainer) return;
-    const scrollToBottomIfNeeded = () => {
-      if (wasAtBottomRef.current) {
-        requestAnimationFrame(() => {
-          if (scrollContainer) {
-            scrollContainer.scrollTop = scrollContainer.scrollHeight;
-          }
-        });
-      }
-    };
-    const observer = new MutationObserver(scrollToBottomIfNeeded);
-    observer.observe(scrollContainer, { childList: true, subtree: true });
-    scrollToBottomIfNeeded();
-    return () => observer.disconnect();
-  }, [scenarioMessages, isScenarioLoading]);
-
-  // 로딩 상태 렌더링 (기존과 동일)
+  // 로딩 상태 렌더링
   if (!activeScenario) {
     return (
       <div className={styles.scenarioChatContainer}>
@@ -121,7 +70,6 @@ export default function ScenarioChat() {
     );
   }
 
-  // 핸들러 함수들
   const handleFormSubmit = (formData) => {
     handleScenarioResponse({
       scenarioSessionId: activeScenarioSessionId,
@@ -132,9 +80,7 @@ export default function ScenarioChat() {
     });
   };
 
-  // --- 👇 [수정] Form Element API 호출 핸들러 (폼 내 모든 input 값을 슬롯에 반영) ---
-  const handleFormElementApiCall = useCallback(async (element, localFormData) => {
-    // 1. 현재 노드 및 엘리먼트 설정 확인
+  const handleFormElementApiCall = async (element, localFormData) => {
     const currentNode = activeScenario?.messages
         .find(msg => msg.node?.id === currentScenarioNodeId)?.node;
 
@@ -142,7 +88,7 @@ export default function ScenarioChat() {
         console.warn("API Call ABORTED: currentNode is not the form node.");
         return;
     }
-    const formElements = currentNode.data.elements; // 모든 폼 엘리먼트
+    const formElements = currentNode.data.elements;
     const elementConfig = formElements.find(e => e.id === element.id);
     
     if (!elementConfig || !elementConfig.apiConfig || !elementConfig.resultSlot) {
@@ -153,22 +99,18 @@ export default function ScenarioChat() {
     const { apiConfig, resultSlot } = elementConfig;
     const searchTerm = localFormData[elementConfig.name] || '';
     
-    // 2. [추가] 폼 내 모든 입력 필드 값을 슬롯에 반영하여 상태 업데이트
     let formSlotUpdates = {};
     if (Array.isArray(formElements)) {
         formElements.forEach(el => {
-            // name이 있고 localFormData에 값이 있는 필드만 수집 (체크박스 등 배열 값 포함)
             if (el.name && localFormData.hasOwnProperty(el.name)) {
                 formSlotUpdates[el.name] = localFormData[el.name];
             }
         });
     }
 
-    // 3. [추가] 시나리오 상태를 먼저 업데이트하고, 이를 기반으로 API 호출 슬롯 구성
     let updatedSlotsForApi = { ...currentSlots, ...formSlotUpdates };
     setScenarioSlots(activeScenarioSessionId, updatedSlotsForApi);
 
-    // 4. API 호출에 사용할 최종 슬롯 구성 (updatedSlotsForApi + search term value)
     const allValues = { ...updatedSlotsForApi, value: searchTerm };
     const method = apiConfig.method || 'POST'; 
     
@@ -180,19 +122,15 @@ export default function ScenarioChat() {
       let customHeaders = {};
       if (apiConfig.headers) {
           try {
-              // 1. 슬롯을 사용하여 헤더 문자열 보간
               const interpolatedHeadersString = interpolateMessage(apiConfig.headers, allValues);
-              // 2. JSON 파싱
               customHeaders = JSON.parse(interpolatedHeadersString);
           } catch (e) {
               console.error("Error processing or parsing API headers JSON:", e, apiConfig.headers);
-              // 파싱 오류 시 경고만 출력하고 기본 헤더만 사용
           }
       }
 
       const fetchOptions = {
         method: method,
-        // 모든 메소드에 사용자 정의 헤더 적용
         headers: {
             ...customHeaders
         },
@@ -200,7 +138,6 @@ export default function ScenarioChat() {
 
       if (method === 'POST') {
         const interpolatedBody = interpolateMessage(apiConfig.bodyTemplate, allValues);
-        // POST 시 Content-Type: application/json 기본 추가 (customHeaders가 덮어쓸 수 있도록 먼저 추가)
         fetchOptions.headers = {
             'Content-Type': 'application/json',
             ...fetchOptions.headers
@@ -215,48 +152,36 @@ export default function ScenarioChat() {
         let errorMessage = `(${response.status}) `;
         try {
             const errorJson = JSON.parse(errorBody);
-            // JSON 응답에 'message' 필드가 있으면 사용
             errorMessage += errorJson.message || t('errorServer');
         } catch (e) {
-            // JSON 파싱 실패 시, 범용 오류 메시지 사용
             errorMessage += t('errorServer');
         }
         throw new Error(errorMessage); 
       }
 
       const responseData = await response.json();
-
-      // 5. 성공 시: API 결과 슬롯에 반영
-      // 💡 setScenarioSlots (성공 로직 유지)
       setScenarioSlots(activeScenarioSessionId, { ...updatedSlotsForApi, [resultSlot]: responseData });
       
     } catch (error) { 
       console.error("Form element API call failed:", error);
-      
       let toastMessage;
       
       if (error.name === 'AbortError' || error.message.includes('fetch failed') || error.message.includes('Failed to fetch')) {
-          // 네트워크/타임아웃 오류 시 errorApiRequest 사용
           toastMessage = t('errorApiRequest'); 
       } else if (error.message.includes('(')) {
-          // HTTP 상태 코드나 서버 메시지가 포함된 오류
           toastMessage = `${t('errorApiRequest')} ${error.message}`;
       } else {
-          // 기타 예상치 못한 오류
           toastMessage = t('errorUnexpected');
       }
 
       showEphemeralToast(toastMessage, 'error');
     }
-  }, [activeScenario, currentScenarioNodeId, currentSlots, setScenarioSlots, activeScenarioSessionId, t]); 
-// --- 👆 [수정] Form Element API 호출 핸들러 (폼 내 모든 input 값을 슬롯에 반영) ---
+  };
 
-
-  // 메시지 그룹핑 로직 (기존과 동일)
   const groupedMessages = [];
   let currentChain = [];
   scenarioMessages.forEach((msg) => {
-    if (msg.node?.type === "set-slot" || msg.node?.type === "setSlot") { // 💡 setSlot 타입 체크
+    if (msg.node?.type === "set-slot" || msg.node?.type === "setSlot") {
       return;
     }
     const isChained = msg.node?.data?.chainNext === true;
@@ -353,10 +278,9 @@ export default function ScenarioChat() {
         </div>
       </div>
 
-      <div className={styles.history} ref={historyRef}>
+      <div className={styles.history} ref={scrollRef}>
         {groupedMessages.map((group, index) => {
           if (!Array.isArray(group)) {
-            // (사용자 메시지 렌더링 - 기존과 동일)
             const msg = group;
             return (
               <div
@@ -380,8 +304,6 @@ export default function ScenarioChat() {
           }
 
           const chain = group;
-
-          // --- 👇 [수정] isRichContent 계산 로직 (undefined 방지) ---
           const isRichContent = chain.some(
             (msg) =>
               msg.node?.type === "form" ||
@@ -390,13 +312,11 @@ export default function ScenarioChat() {
               msg.node?.type === "iframe" ||
               containsMarkdownTable(msg)
           );
-          // --- 👆 [수정] ---
 
           let widthClass = "";
           if (isRichContent) {
             widthClass = styles.gridMessage;
           } else {
-            // (너비 계산 로직 - 기존과 동일)
             const allTextContents = chain.map((msg) => {
               return String(msg.text || msg.node?.data?.content || "");
             });
@@ -444,7 +364,6 @@ export default function ScenarioChat() {
                         className={styles.chainedMessageItem}
                       >
                         {msg.node?.type === "form" ? (
-                          // --- 👇 [수정] FormRenderer에 새 props 전달 ---
                           <FormRenderer
                             node={msg.node}
                             onFormSubmit={handleFormSubmit}
@@ -453,12 +372,11 @@ export default function ScenarioChat() {
                               msg.node.id !== currentScenarioNodeId
                             }
                             language={language}
-                            slots={currentSlots} // 💡 현재 시나리오 슬롯 전달
-                            setScenarioSlots={setScenarioSlots} // 💡 시나리오 슬롯 업데이터 전달
-                            activeScenarioSessionId={activeScenarioSessionId} // 💡 세션 ID 전달
-                            onFormElementApiCall={handleFormElementApiCall} // 💡 API 핸들러 전달
+                            slots={currentSlots}
+                            setScenarioSlots={setScenarioSlots}
+                            activeScenarioSessionId={activeScenarioSessionId}
+                            onFormElementApiCall={handleFormElementApiCall}
                           />
-                          // --- 👆 [수정] ---
                         ) : msg.node?.type === "iframe" ? (
                           <div className={styles.iframeContainer}>
                             <iframe
@@ -515,7 +433,6 @@ export default function ScenarioChat() {
                           msg.node.data.replies && (
                             <div className={styles.scenarioList}>
                               {msg.node.data.replies.map((reply) => {
-                                // (버튼 렌더링 로직 - 기존과 동일)
                                 const selectedOption = msg.selectedOption;
                                 const interpolatedDisplayText =
                                   interpolateMessage(
@@ -576,7 +493,6 @@ export default function ScenarioChat() {
         })}
 
         {isScenarioLoading && (
-          // (로딩 인디케이터 - 기존과 동일)
           <div className={styles.messageRow}>
             <div
               className={`GlassEffect ${styles.message} ${styles.botMessage}`}
