@@ -17,6 +17,7 @@
   padding-left: 5px;
 } 
 
+
 /* 테이블 스타일(.tableWrapper, .markdownContent table 등)은
   MarkdownRenderer.module.css의 것을 그대로 상속받습니다.
   만약 테이블 스타일도 다르게 하고 싶다면 여기서 재정의하면 됩니다.

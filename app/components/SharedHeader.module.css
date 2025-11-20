@@ -18,11 +18,12 @@
   flex-shrink: 0;
   height: 48px;
   position: relative;
+  z-index: 15;
   width: 100%;
   background: linear-gradient(90deg, #BCA8FF 0%, #6941DF 100%);
   overflow: hidden;
   isolation: isolate;
-  transition: height 0.3s ease-in-out;
+  transition: height 3s ease-in-out;
 }
 
 .chatHeader::before {

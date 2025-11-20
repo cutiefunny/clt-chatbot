@@ -397,7 +397,7 @@ input:checked + .slider:before {
   color: var(--White, #fff); /* Themed */
   border-top-right-radius: 4px;
   border-radius: var(--2, 16px);
-  background: #8362E9;
+  background: #8362E9 !important;
   box-shadow: 0 6px 16px 0 #DFE2FE;
   font-size: 14px;
 }
