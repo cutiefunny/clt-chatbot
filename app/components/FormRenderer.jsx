@@ -239,9 +239,15 @@ const FormRenderer = ({
     reader.readAsArrayBuffer(file);
   };
   
-  // --- 👇 [수정] 그리드 클릭 핸들러 (Deep Path 클리어 로직 강화) ---
+  // --- 그리드 클릭 핸들러 (Deep Path 클리어 로직 강화) ---
   const handleGridRowClick = (gridElement, rowData) => {
     if (disabled) return;
+
+    // optionsSlot이 유효하지 않으면 실행 중단 (가드 절 추가)
+    if (!gridElement.optionsSlot) {
+        console.warn("[handleGridRowClick] Missing optionsSlot for grid element:", gridElement);
+        return;
+    }
 
     const fullOptionsSlotPath = gridElement.optionsSlot;
     const hasDeepPath = fullOptionsSlotPath && fullOptionsSlotPath.includes('.');

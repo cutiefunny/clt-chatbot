@@ -378,13 +378,13 @@ export const createScenarioSlice = (set, get) => ({
   },
 
   setScenarioSelectedOption: async (scenarioSessionId, messageNodeId, selectedValue) => {
-    const { user, currentConversationId, scenarioStates, language, showEphemeralToast } = get(); // --- 👈 [추가] ---
+    const { user, currentConversationId, scenarioStates, language, showEphemeralToast } = get();
     if (!user || !currentConversationId || !scenarioSessionId) return;
 
     const scenarioState = scenarioStates[scenarioSessionId];
     if (!scenarioState) return;
 
-    const originalMessages = scenarioState.messages; // --- 👈 [추가] 롤백용 원본 저장
+    const originalMessages = Array.isArray(scenarioState.messages) ? scenarioState.messages : [];
     const updatedMessages = originalMessages.map(msg => {
         if (msg.node && msg.node.id === messageNodeId) {
             // Firestore는 undefined 저장을 지원하지 않으므로 null 사용 고려

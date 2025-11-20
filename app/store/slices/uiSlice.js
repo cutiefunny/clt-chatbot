@@ -127,16 +127,31 @@ export const createUISlice = (set, get) => ({
   savePersonalSettings: async (settings) => {
     const { user, db, showEphemeralToast, language } = get();
     if (!user) return false;
+
+    // [수정] 롤백을 위한 이전 설정 백업
+    const previousSettings = {};
+    Object.keys(settings).forEach((key) => {
+      if (get()[key] !== undefined) {
+        previousSettings[key] = get()[key];
+      }
+    });
+
     try {
+      set(settings); // 1. 낙관적 업데이트 (UI 즉시 반영)
+
       const userSettingsRef = doc(db, "settings", user.uid);
-      await setDoc(userSettingsRef, settings, { merge: true });
-      set(settings); // 로컬 스토어 상태 즉시 업데이트
+      await setDoc(userSettingsRef, settings, { merge: true }); // 2. Firestore 저장
       return true;
     } catch (error) {
       console.error("Error saving personal settings:", error);
       const errorMsg =
         locales[language]?.errorUnexpected || "Failed to save settings.";
       showEphemeralToast(errorMsg, "error");
+
+      // [수정] 저장 실패 시 롤백
+      console.log("Rolling back settings due to error...", previousSettings);
+      set(previousSettings); 
+      
       return false;
     }
   },

@@ -3,15 +3,22 @@ import { getGeminiResponseWithSlots } from './gemini'; // 또는 getLlmResponse 
 import { getNextNode, interpolateMessage, getDeepValue } from './chatbotEngine';
 // import { getLlmResponse } from './llm';
 
-// JSON 내부 문자열 재귀 보간 함수
-function interpolateObjectStrings(obj, slots) {
+// [수정] JSON 내부 문자열 재귀 보간 함수 (순환 참조 방지 추가)
+function interpolateObjectStrings(obj, slots, visited = new WeakSet()) {
   if (typeof obj !== 'object' || obj === null) {
     return obj; // 객체가 아니면 그대로 반환
   }
 
+  // 순환 참조 감지
+  if (visited.has(obj)) {
+      console.warn("[interpolateObjectStrings] Circular reference detected. Skipping object:", obj);
+      return obj; // 이미 방문한 객체는 그대로 반환
+  }
+  visited.add(obj);
+
   if (Array.isArray(obj)) {
     // 배열이면 각 요소를 재귀적으로 처리
-    return obj.map(item => interpolateObjectStrings(item, slots));
+    return obj.map(item => interpolateObjectStrings(item, slots, visited));
   }
 
   // 객체면 각 속성 값을 재귀적으로 처리
@@ -22,7 +29,7 @@ function interpolateObjectStrings(obj, slots) {
       if (typeof value === 'string') {
         newObj[key] = interpolateMessage(value, slots); // 문자열이면 보간
       } else {
-        newObj[key] = interpolateObjectStrings(value, slots); // 객체/배열이면 재귀 호출
+        newObj[key] = interpolateObjectStrings(value, slots, visited); // 객체/배열이면 재귀 호출 (visited 전달)
       }
     }
   }
