@@ -14,9 +14,8 @@ export default function GeneralSettingsPage() {
     showHistoryOnGreeting,
     mainInputPlaceholder,
     enableMainChatMarkdown,
-    // --- 👇 [추가] ---
+    headerTitle,
     showScenarioBubbles,
-    // --- 👆 [추가] ---
     llmProvider,
     flowiseApiUrl,
     loadGeneralConfig,
@@ -32,9 +31,8 @@ export default function GeneralSettingsPage() {
   const [apiUrl, setApiUrl] = useState("");
   const [placeholder, setPlaceholder] = useState("");
   const [markdownEnabled, setMarkdownEnabled] = useState(true);
-  // --- 👇 [추가] ---
+  const [customHeaderTitle, setCustomHeaderTitle] = useState("");
   const [bubblesVisible, setBubblesVisible] = useState(true);
-  // --- 👆 [추가] ---
   const [isLoading, setIsLoading] = useState(false);
   const [apiUrlError, setApiUrlError] = useState("");
 
@@ -51,9 +49,8 @@ export default function GeneralSettingsPage() {
     setApiUrl(flowiseApiUrl);
     setPlaceholder(mainInputPlaceholder || "");
     setMarkdownEnabled(enableMainChatMarkdown);
-    // --- 👇 [추가] ---
+    setCustomHeaderTitle(headerTitle || "");
     setBubblesVisible(showScenarioBubbles);
-    // --- 👆 [추가] ---
   }, [
     maxFavorites,
     dimUnfocusedPanels,
@@ -61,9 +58,8 @@ export default function GeneralSettingsPage() {
     showHistoryOnGreeting,
     mainInputPlaceholder,
     enableMainChatMarkdown,
-    // --- 👇 [추가] ---
+    headerTitle,
     showScenarioBubbles,
-    // --- 👆 [추가] ---
     llmProvider,
     flowiseApiUrl,
   ]);
@@ -99,9 +95,8 @@ export default function GeneralSettingsPage() {
       showHistoryOnGreeting: showHistory,
       mainInputPlaceholder: placeholder,
       enableMainChatMarkdown: markdownEnabled,
-      // --- 👇 [추가] ---
+      headerTitle: customHeaderTitle,
       showScenarioBubbles: bubblesVisible,
-      // --- 👆 [추가] ---
       llmProvider: provider,
       flowiseApiUrl: apiUrl,
     };
@@ -127,7 +122,7 @@ export default function GeneralSettingsPage() {
 
       <main className={styles.editorContainer}>
         {/* LLM 공급자 설정 (기존 코드 유지) */}
-        <div className={styles.settingGroup}>
+        {/* <div className={styles.settingGroup}>
           <div className={styles.settingItem}>
             <label className={styles.settingLabel}>
               <h3>LLM 공급자</h3>
@@ -192,6 +187,28 @@ export default function GeneralSettingsPage() {
               />
             </div>
           )}
+        </div> */}
+
+        <div className={styles.settingItem}>
+          <label htmlFor="header-title" className={styles.settingLabel}>
+            <h3>헤더 타이틀</h3>
+            <p>
+              상단 헤더에 표시될 서비스 이름을 설정합니다. (기본값: AI Chatbot)
+            </p>
+          </label>
+          <input
+            id="header-title"
+            type="text"
+            value={customHeaderTitle}
+            onChange={(e) => setCustomHeaderTitle(e.target.value)}
+            className={styles.settingInput}
+            style={{
+              width: "100%",
+              textAlign: "left",
+              maxWidth: "400px",
+            }}
+            placeholder="예: CLT 챗봇"
+          />
         </div>
 
         {/* 메인 입력창 플레이스홀더 */}

@@ -25,15 +25,19 @@ export const createUISlice = (set, get) => ({
   contentTruncateLimit: 10, // 봇 답변 줄임 줄 수 (기본값 10)
   fontSizeDefault: "16px", // 기본값
   isDevMode: false,
+  // --- 👇 [추가] 텍스트 숏컷 즉시 전송 설정 (기본값: false) ---
+  sendTextShortcutImmediately: false,
+  // --- 👆 [추가] ---
   dimUnfocusedPanels: true,
   enableFavorites: true, // 즐겨찾기 기능 활성화 여부 (기본값 true)
   showHistoryOnGreeting: false, // 초기 화면 히스토리 표시 여부
   mainInputPlaceholder: "", // 메인 입력창 플레이스홀더
+  // --- 👇 [추가] 헤더 타이틀 설정 ---
+  headerTitle: "AI Chatbot", // 기본값
+  // --- 👆 [추가] ---
   enableMainChatMarkdown: true, // 메인 챗 마크다운 활성화 여부
   mainInputValue: "", // 메인 입력창의 제어되는 값
-  // --- 👇 [추가] ---
   showScenarioBubbles: true, // 시나리오 버블 표시 여부 (기본값 true)
-  // --- 👆 [추가] ---
   llmProvider: "gemini",
   flowiseApiUrl: "",
   isProfileModalOpen: false,
@@ -93,16 +97,17 @@ export const createUISlice = (set, get) => ({
               ? config.showHistoryOnGreeting
               : false,
           mainInputPlaceholder: config.mainInputPlaceholder || "",
+          // --- 👇 [추가] 헤더 타이틀 로드 ---
+          headerTitle: config.headerTitle || "AI Chatbot",
+          // --- 👆 [추가] ---
           enableMainChatMarkdown:
             typeof config.enableMainChatMarkdown === "boolean"
               ? config.enableMainChatMarkdown
               : true,
-          // --- 👇 [추가] ---
           showScenarioBubbles:
             typeof config.showScenarioBubbles === "boolean"
               ? config.showScenarioBubbles
               : true,
-          // --- 👆 [추가] ---
           llmProvider: config.llmProvider || "gemini",
           flowiseApiUrl: config.flowiseApiUrl || "",
         });
@@ -128,7 +133,7 @@ export const createUISlice = (set, get) => ({
     const { user, db, showEphemeralToast, language } = get();
     if (!user) return false;
 
-    // [수정] 롤백을 위한 이전 설정 백업
+    // 롤백을 위한 이전 설정 백업
     const previousSettings = {};
     Object.keys(settings).forEach((key) => {
       if (get()[key] !== undefined) {
@@ -148,9 +153,9 @@ export const createUISlice = (set, get) => ({
         locales[language]?.errorUnexpected || "Failed to save settings.";
       showEphemeralToast(errorMsg, "error");
 
-      // [수정] 저장 실패 시 롤백
+      // 저장 실패 시 롤백
       console.log("Rolling back settings due to error...", previousSettings);
-      set(previousSettings); 
+      set(previousSettings);
       
       return false;
     }
@@ -342,15 +347,19 @@ export const createUISlice = (set, get) => ({
       contentTruncateLimit: 10,
       fontSizeDefault: "16px",
       isDevMode: false,
+      // --- 👇 [추가] ---
+      sendTextShortcutImmediately: false,
+      // --- 👆 [추가] ---
       dimUnfocusedPanels: true,
       enableFavorites: true,
       showHistoryOnGreeting: false,
       mainInputPlaceholder: "",
-      enableMainChatMarkdown: true,
       // --- 👇 [추가] ---
+      headerTitle: "AI Chatbot", 
+      // --- 👆 [추가] ---
+      enableMainChatMarkdown: true,
       showScenarioBubbles: true,
       mainInputValue: "",
-      // --- 👆 [추가] ---
       llmProvider: "gemini",
       flowiseApiUrl: "",
       isProfileModalOpen: false,
