@@ -18,6 +18,7 @@
   flex-shrink: 0;
   height: 48px;
   position: relative;
+  z-index: 15;
   width: 100%;
   background: linear-gradient(90deg, #BCA8FF 0%, #6941DF 100%);
   overflow: hidden;
