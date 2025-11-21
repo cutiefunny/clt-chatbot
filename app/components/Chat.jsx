@@ -20,6 +20,17 @@ import UploadIcon from "./icons/UploadIcon";
 import TransferIcon from "./icons/TransferIcon";
 import mainMarkdownStyles from "./MainChatMarkdown.module.css";
 
+// --- 👇 [유지] 대체할 URL과 문구 정의 ---
+const TARGET_AUTO_OPEN_URL = "http://172.20.130.91:9110/oceans/BPM_P1002.do?tenId=2000&stgId=TST&pgmNr=BKD_M3201";
+const REPLACEMENT_TEXT = "e-SOP 링크 호출 완료했습니다.";
+// --- 👆 [유지] ---
+
+// --- 👇 [추가] 정규식 특수문자 이스케이프 함수 ---
+const escapeRegExp = (string) => {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); 
+};
+// --- 👆 [추가] ---
+
 const ChartRenderer = dynamic(() => import("./ChartRenderer"), {
   loading: () => <p>Loading chart...</p>,
   ssr: false,
@@ -42,7 +53,9 @@ const tryParseJson = (text) => {
 };
 
 const MessageWithButtons = ({ msg }) => {
-  const { text, id: messageId, isStreaming, chartData } = msg;
+  // --- 👇 [유지] sender 추가 ---
+  const { text, id: messageId, isStreaming, chartData, sender } = msg; 
+  // --- 👆 [유지] ---
   const { handleShortcutClick, scenarioCategories, selectedOptions } =
     useChatStore();
   const enableMainChatMarkdown = useChatStore(
@@ -107,26 +120,64 @@ const MessageWithButtons = ({ msg }) => {
     );
   }
 
+  // --- 👇 [수정] 텍스트 치환 로직 강화 (중복 제거 로직 추가) ---
+  let processedText = text;
+
+  // 봇 메시지이고 URL이 포함된 경우에만 로직 수행 (성능 최적화)
+  if (sender === 'bot' && typeof processedText === "string" && 
+     (processedText.includes('172.20.130.91') || processedText.includes('BPM_P1002'))) {
+    
+    const replacement = REPLACEMENT_TEXT;
+
+    // 1. URL 자체를 문구로 치환 (HTML 엔티티 &amp; 대응)
+    const escapedUrl = escapeRegExp(TARGET_AUTO_OPEN_URL);
+    const flexibleUrlPattern = escapedUrl.replace(/&/g, '(&|&amp;)'); // & 또는 &amp; 허용
+    const urlRegex = new RegExp(flexibleUrlPattern, 'g');
+    
+    // 먼저 URL을 문구로 바꿉니다.
+    // 예: "링크는 http://... 입니다" -> "링크는 완료문구 입니다"
+    // 예: "[http://...](http://...)" -> "[완료문구](완료문구)"
+    processedText = processedText.replace(urlRegex, replacement);
+
+    // 2. Markdown 링크 형태 [텍스트](완료문구) 감지 및 제거
+    // URL 치환 후 남은 마크다운 래퍼([SomeText](Replacement))를 제거하여 Replacement만 남김
+    const escapedReplacement = escapeRegExp(replacement);
+    // \[.*?\] : 대괄호 안의 임의 텍스트 (Link Title)
+    // \(escapedReplacement\) : 소괄호 안의 치환된 문구 (Link URL 자리)
+    const markdownWrapperRegex = new RegExp(`\\[.*?\\]\\(${escapedReplacement}\\)`, 'g');
+    
+    if (markdownWrapperRegex.test(processedText)) {
+        processedText = processedText.replace(markdownWrapperRegex, replacement);
+    }
+    
+    // 3. "NN" 잔여 텍스트 제거 (이전 요청사항)
+    const nnTarget = `${replacement}NN`;
+    if (processedText.includes(nnTarget)) {
+       processedText = processedText.replaceAll(nnTarget, replacement);
+    }
+  }
+  // --- 👆 [수정] ---
+
   const regex = /\[BUTTON:(.+?)\]/g;
   const textParts = [];
   const buttonParts = [];
   let lastIndex = 0;
   let match;
 
-  if (typeof text === "string") {
-    while ((match = regex.exec(text)) !== null) {
+  if (typeof processedText === "string") {
+    while ((match = regex.exec(processedText)) !== null) {
       if (match.index > lastIndex) {
-        textParts.push(text.substring(lastIndex, match.index));
+        textParts.push(processedText.substring(lastIndex, match.index));
       }
       buttonParts.push(match[1]);
       lastIndex = regex.lastIndex;
     }
-    textParts.push(text.substring(lastIndex));
+    textParts.push(processedText.substring(lastIndex));
   } else {
     try {
-      textParts.push(JSON.stringify(text));
+      textParts.push(JSON.stringify(processedText));
     } catch (e) {
-      textParts.push(String(text));
+      textParts.push(String(processedText));
     }
   }
 
@@ -217,9 +268,7 @@ export default function Chat() {
   const { t } = useTranslations();
 
   // [리팩토링] 커스텀 스크롤 훅 사용 (기존 historyRef, wasAtBottomRef 대체)
-  // --- 👇 [수정] enableSmoothScroll 추가 Destructuring ---
   const { scrollRef, scrollToBottom, enableSmoothScroll } = useAutoScroll(messages, isLoading);
-  // --- 👆 [수정] ---
 
   const handleHistoryClick = () => {
     if (activePanel === "scenario") {
@@ -261,10 +310,8 @@ export default function Chat() {
   // [리팩토링] Force Scroll to Bottom 처리 (Store 상태 연동)
   useEffect(() => {
     if (forceScrollToBottom) {
-        // --- 👇 [수정] 메시지 전송 시 부드러운 스크롤 적용 ---
-        enableSmoothScroll(); // Hook에게 다음 업데이트는 smooth하게 하라고 알림
-        scrollToBottom("smooth"); // 즉시 부드럽게 스크롤
-        // --- 👆 [수정] ---
+        enableSmoothScroll();
+        scrollToBottom("smooth");
         setForceScrollToBottom(false);
     }
   }, [forceScrollToBottom, setForceScrollToBottom, scrollToBottom, enableSmoothScroll]);
