@@ -248,15 +248,7 @@ export default function ScenarioChat() {
             }`}
             onClick={(e) => {
               e.stopPropagation();
-              // 시나리오: scenarioPanel에 scenarioPanelOpen 클래스가 있으면 postToParent 호출 방지
-              const panelElem = document.querySelector('.scenarioPanel');
-              if (panelElem && panelElem.classList.contains('scenarioPanelOpen')) {
-                // 이미 열려있으면(확장상태), 리사이즈 메시지(postToParent) 보내지 않고 패널 전환만
-                toggleScenarioPanelExpanded(false); // 내부에서 확장/축소만 처리(후킹 가능하도록 인자 추가)
-              } else {
-                // 아니면 기본동작
-                toggleScenarioPanelExpanded();
-              }
+              toggleScenarioPanelExpanded();
             }}
             aria-pressed={isScenarioPanelExpanded}
           >
