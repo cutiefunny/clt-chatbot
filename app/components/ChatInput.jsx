@@ -157,7 +157,6 @@ export default function ChatInput() {
     }
   };
   // --- 👆 [수정] ---
-
   const handleItemClick = (item) => {
     handleShortcutClick(item);
     setShortcutMenuOpen(null);
