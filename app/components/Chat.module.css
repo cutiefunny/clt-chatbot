@@ -296,10 +296,10 @@ input:checked + .slider:before {
 /* 100% 단계 (90% 너비) */
 .gridMessage,
 .iframeMessage {
-  width: 90%;
-  max-width: 90%;
+  width: 100%;
+  max-width: 100%;
   min-width: 248px;
-  flex: 0 0 90%;
+  flex: 0 0 100%;
   box-sizing: border-box;
 }
 
