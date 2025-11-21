@@ -217,7 +217,9 @@ export default function Chat() {
   const { t } = useTranslations();
 
   // [리팩토링] 커스텀 스크롤 훅 사용 (기존 historyRef, wasAtBottomRef 대체)
-  const { scrollRef, scrollToBottom } = useAutoScroll(messages, isLoading);
+  // --- 👇 [수정] enableSmoothScroll 추가 Destructuring ---
+  const { scrollRef, scrollToBottom, enableSmoothScroll } = useAutoScroll(messages, isLoading);
+  // --- 👆 [수정] ---
 
   const handleHistoryClick = () => {
     if (activePanel === "scenario") {
@@ -259,10 +261,13 @@ export default function Chat() {
   // [리팩토링] Force Scroll to Bottom 처리 (Store 상태 연동)
   useEffect(() => {
     if (forceScrollToBottom) {
-        scrollToBottom();
+        // --- 👇 [수정] 메시지 전송 시 부드러운 스크롤 적용 ---
+        enableSmoothScroll(); // Hook에게 다음 업데이트는 smooth하게 하라고 알림
+        scrollToBottom("smooth"); // 즉시 부드럽게 스크롤
+        // --- 👆 [수정] ---
         setForceScrollToBottom(false);
     }
-  }, [forceScrollToBottom, setForceScrollToBottom, scrollToBottom]);
+  }, [forceScrollToBottom, setForceScrollToBottom, scrollToBottom, enableSmoothScroll]);
 
   // [리팩토링] Store의 scrollAmount 처리 (수동 스크롤 조정)
   useEffect(() => {
