@@ -81,12 +81,10 @@ export default function ChatInput() {
     (state) => state.mainInputPlaceholder
   );
   const enableFavorites = useChatStore((state) => state.enableFavorites);
-  // --- 👇 [수정] ---
   const mainInputValue = useChatStore((state) => state.mainInputValue);
   const setMainInputValue = useChatStore((state) => state.setMainInputValue);
   
   const inputRef = useRef(null); // <textarea>를 참조
-  // --- 👆 [수정] ---
 
   const { t } = useTranslations();
   const quickRepliesSlider = useDraggableScroll();
@@ -98,11 +96,9 @@ export default function ChatInput() {
   const isInputDisabled = isLoading;
   const currentScenarioNodeId = activeScenario?.state?.currentNodeId;
 
-  // --- 👇 [수정] 현재 열린 카테고리 정보를 찾는 로직 추가 ---
   const activeCategoryData =
     shortcutMenuOpen &&
     scenarioCategories.find((cat) => cat.name === shortcutMenuOpen);
-  // --- 👆 [수정] ---
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -122,19 +118,19 @@ export default function ChatInput() {
     }
   }, [isInputDisabled, focusRequest, activePanel]);
 
-  // --- 👇 [수정] 메시지 전송 로직 분리 ---
+  // --- 👇 [수정] 메시지 전송 로직 분리 및 순서 변경 ---
   const submitMessage = async () => {
     const input = mainInputValue.trim();
     if (!input || isLoading) return;
 
-    await handleResponse({ text: input });
-
+    // 1. 입력창 내용 및 높이 즉시 초기화 (UX 개선)
     setMainInputValue("");
-
-    // Reset textarea height
     if (inputRef.current) {
       inputRef.current.style.height = 'auto';
     }
+
+    // 2. 응답 처리 요청 (입력창 비운 후 실행)
+    await handleResponse({ text: input });
   };
 
   const handleSubmit = (e) => {
@@ -168,7 +164,6 @@ export default function ChatInput() {
 
   return (
     <div className={styles.inputArea}>
-      {/* --- 👇 [수정] .quickActionsContainer 구조 변경 --- */}
       <div className={styles.quickActionsContainer} ref={menuRef}>
         {/* 1. 카테고리 버튼들 렌더링 */}
         {scenarioCategories.map((category) => (
@@ -193,7 +188,6 @@ export default function ChatInput() {
                 }}
               />
             </button>
-            {/* 2. 드롭다운 메뉴를 루프 밖으로 이동시킴 */}
           </div>
         ))}
 
@@ -256,7 +250,6 @@ export default function ChatInput() {
           </div>
         )}
       </div>
-      {/* --- 👆 [수정] --- */}
 
       <form
         className={`${styles.inputForm} ${
@@ -264,7 +257,6 @@ export default function ChatInput() {
         }`}
         onSubmit={handleSubmit}
       >
-        {/* --- 👇 [수정] <input>을 <textarea>로 변경 --- */}
         <textarea
           ref={inputRef}
           name="userInput"
@@ -277,7 +269,6 @@ export default function ChatInput() {
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
         />
-        {/* --- 👆 [수정] --- */}
         <button
           type="submit"
           className={styles.sendButton}
