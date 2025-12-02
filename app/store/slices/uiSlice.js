@@ -25,16 +25,15 @@ export const createUISlice = (set, get) => ({
   contentTruncateLimit: 10, // 봇 답변 줄임 줄 수 (기본값 10)
   fontSizeDefault: "16px", // 기본값
   isDevMode: false,
-  // --- 👇 [추가] 텍스트 숏컷 즉시 전송 설정 (기본값: false) ---
   sendTextShortcutImmediately: false,
+  // --- 👇 [추가] FastAPI 사용 여부 상태 ---
+  useFastApi: false, 
   // --- 👆 [추가] ---
   dimUnfocusedPanels: true,
   enableFavorites: true, // 즐겨찾기 기능 활성화 여부 (기본값 true)
   showHistoryOnGreeting: false, // 초기 화면 히스토리 표시 여부
   mainInputPlaceholder: "", // 메인 입력창 플레이스홀더
-  // --- 👇 [추가] 헤더 타이틀 설정 ---
   headerTitle: "AI Chatbot", // 기본값
-  // --- 👆 [추가] ---
   enableMainChatMarkdown: true, // 메인 챗 마크다운 활성화 여부
   mainInputValue: "", // 메인 입력창의 제어되는 값
   showScenarioBubbles: true, // 시나리오 버블 표시 여부 (기본값 true)
@@ -97,9 +96,7 @@ export const createUISlice = (set, get) => ({
               ? config.showHistoryOnGreeting
               : false,
           mainInputPlaceholder: config.mainInputPlaceholder || "",
-          // --- 👇 [추가] 헤더 타이틀 로드 ---
           headerTitle: config.headerTitle || "AI Chatbot",
-          // --- 👆 [추가] ---
           enableMainChatMarkdown:
             typeof config.enableMainChatMarkdown === "boolean"
               ? config.enableMainChatMarkdown
@@ -335,7 +332,6 @@ export const createUISlice = (set, get) => ({
   focusChatInput: () =>
     set((state) => ({ focusRequest: state.focusRequest + 1 })),
   
-  // clearUserAndData는 authSlice로 이동했지만, uiSlice 필드를 여기서 초기화해야 함
   clearUserAndData: () => {
     set({
       theme: "light",
@@ -347,16 +343,15 @@ export const createUISlice = (set, get) => ({
       contentTruncateLimit: 10,
       fontSizeDefault: "16px",
       isDevMode: false,
-      // --- 👇 [추가] ---
       sendTextShortcutImmediately: false,
+      // --- 👇 [추가] 초기화 시 false ---
+      useFastApi: false, 
       // --- 👆 [추가] ---
       dimUnfocusedPanels: true,
       enableFavorites: true,
       showHistoryOnGreeting: false,
       mainInputPlaceholder: "",
-      // --- 👇 [추가] ---
       headerTitle: "AI Chatbot", 
-      // --- 👆 [추가] ---
       enableMainChatMarkdown: true,
       showScenarioBubbles: true,
       mainInputValue: "",

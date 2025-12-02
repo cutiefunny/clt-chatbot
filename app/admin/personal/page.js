@@ -15,8 +15,9 @@ export default function PersonalSettingsPage() {
     contentTruncateLimit,
     fontSizeDefault,
     isDevMode, 
-    // --- 👇 [추가] ---
     sendTextShortcutImmediately, 
+    // --- 👇 [추가] ---
+    useFastApi, 
     // --- 👆 [추가] ---
     savePersonalSettings, 
     showEphemeralToast,
@@ -33,8 +34,9 @@ export default function PersonalSettingsPage() {
   const [truncateLimit, setTruncateLimit] = useState("");
   const [defaultSize, setDefaultSize] = useState("");
   const [devMode, setDevMode] = useState(false); 
-  // --- 👇 [추가] 로컬 상태 ---
   const [textShortcutAutoSend, setTextShortcutAutoSend] = useState(false); 
+  // --- 👇 [추가] 로컬 상태 ---
+  const [fastApiEnabled, setFastApiEnabled] = useState(false); 
   // --- 👆 [추가] ---
   const [isLoading, setIsLoading] = useState(false);
 
@@ -46,8 +48,9 @@ export default function PersonalSettingsPage() {
       setTruncateLimit(String(contentTruncateLimit));
     if (fontSizeDefault) setDefaultSize(fontSizeDefault);
     setDevMode(isDevMode); 
-    // --- 👇 [추가] ---
     setTextShortcutAutoSend(sendTextShortcutImmediately);
+    // --- 👇 [추가] ---
+    setFastApiEnabled(useFastApi);
     // --- 👆 [추가] ---
   }, [
     hideCompletedScenarios,
@@ -55,8 +58,9 @@ export default function PersonalSettingsPage() {
     contentTruncateLimit,
     fontSizeDefault,
     isDevMode, 
-    // --- 👇 [추가] ---
     sendTextShortcutImmediately,
+    // --- 👇 [추가] ---
+    useFastApi,
     // --- 👆 [추가] ---
   ]);
 
@@ -83,8 +87,9 @@ export default function PersonalSettingsPage() {
       fontSizeDefault: defaultSize,
       contentTruncateLimit: newTruncateLimit,
       isDevMode: devMode, 
-      // --- 👇 [추가] ---
       sendTextShortcutImmediately: textShortcutAutoSend,
+      // --- 👇 [추가] ---
+      useFastApi: fastApiEnabled,
       // --- 👆 [추가] ---
     };
 
@@ -156,7 +161,26 @@ export default function PersonalSettingsPage() {
           </label>
         </div>
 
-        {/* --- 👇 [추가] 텍스트 숏컷 즉시 전송 설정 --- */}
+        {/* --- 👇 [추가] FastAPI 사용 설정 --- */}
+        <div className={styles.settingItem} style={{ border: '1px solid #806bf5', backgroundColor: 'rgba(128, 107, 245, 0.05)' }}>
+          <label className={styles.settingLabel}>
+            <h3 style={{ color: '#634ce2' }}>FastAPI 백엔드 사용 (Experimental)</h3>
+            <p>
+              활성화 시, 기존 Firebase 백엔드 대신 Vercel에 배포된 FastAPI 서버를 사용합니다.
+            </p>
+          </label>
+          <label className={styles.switch}>
+            <input
+              type="checkbox"
+              checked={fastApiEnabled}
+              onChange={(e) => setFastApiEnabled(e.target.checked)}
+            />
+            <span className={styles.slider}></span>
+          </label>
+        </div>
+        {/* --- 👆 [추가] --- */}
+
+        {/* 텍스트 숏컷 즉시 전송 설정 */}
         <div className={styles.settingItem}>
           <label className={styles.settingLabel}>
             <h3>텍스트 숏컷 즉시 전송</h3>
@@ -173,7 +197,6 @@ export default function PersonalSettingsPage() {
             <span className={styles.slider}></span>
           </label>
         </div>
-        {/* --- 👆 [추가] --- */}
 
         {/* 본문 줄임 줄 수 */}
         <div className={styles.settingItem}>

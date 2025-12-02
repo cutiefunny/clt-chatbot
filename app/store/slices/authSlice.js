@@ -88,7 +88,8 @@ export const createAuthSlice = (set, get) => ({
       hideDelayInHours = 0,
       fontSizeDefault = "16px",
       isDevMode = false,
-      sendTextShortcutImmediately = false; // [추가] 변수 선언
+      sendTextShortcutImmediately = false,
+      useFastApi = false; // [추가] 기본값 설정
 
     try {
       const userSettingsRef = doc(get().db, "settings", user.uid);
@@ -113,11 +114,16 @@ export const createAuthSlice = (set, get) => ({
       isDevMode =
         typeof settings.isDevMode === "boolean" ? settings.isDevMode : isDevMode;
       
-      // --- 👇 [추가] 설정 로드 ---
       sendTextShortcutImmediately =
         typeof settings.sendTextShortcutImmediately === "boolean"
           ? settings.sendTextShortcutImmediately
           : sendTextShortcutImmediately;
+      
+      // --- 👇 [추가] useFastApi 로드 ---
+      useFastApi =
+        typeof settings.useFastApi === "boolean"
+          ? settings.useFastApi
+          : useFastApi;
       // --- 👆 [추가] ---
 
     } catch (error) {
@@ -134,8 +140,9 @@ export const createAuthSlice = (set, get) => ({
         hideDelayInHours,
         fontSizeDefault,
         isDevMode,
-        // --- 👇 [추가] 상태 설정 ---
         sendTextShortcutImmediately,
+        // --- 👇 [추가] 상태 적용 ---
+        useFastApi,
         // --- 👆 [추가] ---
       });
       get().resetMessages?.(language);
@@ -178,8 +185,9 @@ export const createAuthSlice = (set, get) => ({
       hideDelayInHours: 0,
       fontSizeDefault: "16px",
       isDevMode: false,
-      // --- 👇 [추가] 초기화 시 기본값으로 리셋 ---
       sendTextShortcutImmediately: false,
+      // --- 👇 [추가] 초기화 ---
+      useFastApi: false, 
       // --- 👆 [추가] ---
       conversations: [],
       currentConversationId: null,

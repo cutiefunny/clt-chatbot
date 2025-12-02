@@ -10,29 +10,42 @@ import {
   deleteDoc,
   doc,
   updateDoc,
-  limit, // loadConversation에서 사용될 수 있으므로 유지
-  startAfter, // loadConversation에서 사용될 수 있으므로 유지
   writeBatch,
 } from "firebase/firestore";
 import { locales } from "../../lib/locales";
 import { getErrorKey } from "../../lib/errorHandler";
 
-const MESSAGE_LIMIT = 15; // 메시지 로드 제한 (chatSlice와 일치)
+const FASTAPI_BASE_URL = "https://musclecat-api.vercel.app"; // FastAPI 주소
 
 export const createConversationSlice = (set, get) => ({
   // State
-  conversations: [], // 전체 대화 목록
-  currentConversationId: null, // 현재 활성화된 대화 ID
-  unsubscribeConversations: null, // 대화 목록 리스너 해제 함수
-  scenariosForConversation: {}, // 각 대화별 시나리오 세션 목록 (확장 시 로드)
-  expandedConversationId: null, // 히스토리 패널에서 확장된 대화 ID
+  conversations: [],
+  currentConversationId: null,
+  unsubscribeConversations: null,
+  scenariosForConversation: {},
+  expandedConversationId: null,
 
   // Actions
-  loadConversations: (userId) => {
-    if (get().unsubscribeConversations) {
-      console.log("Conversations listener already active.");
+  loadConversations: async (userId) => {
+    // --- 👇 [수정] FastAPI 사용 시 분기 처리 ---
+    if (get().useFastApi) {
+      get().unsubscribeConversations?.(); // 기존 리스너 해제
+      set({ unsubscribeConversations: null });
+
+      try {
+        const response = await fetch(`${FASTAPI_BASE_URL}/conversations`);
+        if (!response.ok) throw new Error("Failed to fetch conversations");
+        const conversations = await response.json();
+        set({ conversations });
+      } catch (error) {
+        console.error("FastAPI loadConversations error:", error);
+        // 에러 처리 (토스트 등)
+      }
       return;
     }
+    // --- 👆 [수정] ---
+
+    if (get().unsubscribeConversations) return;
 
     const q = query(
       collection(get().db, "chats", userId, "conversations"),
@@ -50,7 +63,7 @@ export const createConversationSlice = (set, get) => ({
         set({ conversations });
       },
       (error) => {
-        console.error("Error listening to conversations changes:", error);
+        console.error("Error listening to conversations:", error);
         const { language, showEphemeralToast } = get();
         const errorKey = getErrorKey(error);
         const message =
@@ -65,7 +78,7 @@ export const createConversationSlice = (set, get) => ({
   },
 
   loadConversation: async (conversationId) => {
-    const user = get().user;
+    const { user, language, useFastApi, showEphemeralToast } = get();
     if (
       !user ||
       get().currentConversationId === conversationId ||
@@ -80,9 +93,7 @@ export const createConversationSlice = (set, get) => ({
       return;
     }
 
-    const { language, showEphemeralToast } = get();
-
-    set(state => {
+    set((state) => {
         if (state.completedResponses.has(conversationId)) {
             const newCompletedSet = new Set(state.completedResponses);
             newCompletedSet.delete(conversationId);
@@ -91,13 +102,22 @@ export const createConversationSlice = (set, get) => ({
         return {};
     });
 
-    get().unsubscribeAllMessagesAndScenarios?.();
-    get().resetMessages?.(language);
-
     set({
       currentConversationId: conversationId,
       expandedConversationId: null,
     });
+
+    // --- 👇 [수정] FastAPI 모드일 때 리스너 해제 및 메시지 로드 호출 ---
+    if (useFastApi) {
+       get().unsubscribeAllMessagesAndScenarios?.(); 
+       get().resetMessages?.(language); // 메시지 초기화
+       await get().loadInitialMessages(conversationId);
+       return;
+    }
+    // --- 👆 [수정] ---
+
+    get().unsubscribeAllMessagesAndScenarios?.();
+    get().resetMessages?.(language);
     get().setIsLoading?.(true);
 
     try {
@@ -136,19 +156,50 @@ export const createConversationSlice = (set, get) => ({
   },
 
   createNewConversation: async (returnId = false) => {
+    // 현재 대화가 없고 returnId가 false이면 중단 (불필요한 생성 방지)
     if (get().currentConversationId === null && !returnId) return null;
 
     get().unsubscribeAllMessagesAndScenarios?.();
     get().resetMessages?.(get().language);
 
-    const { language, user, showEphemeralToast } = get();
+    const { language, user, showEphemeralToast, useFastApi } = get();
+    const title = locales[language]?.["newChat"] || "New Chat";
+
+    // --- 👇 [수정] FastAPI 사용 시 ---
+    if (useFastApi) {
+      try {
+        const response = await fetch(`${FASTAPI_BASE_URL}/conversations`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title }),
+        });
+        if (!response.ok) throw new Error("Failed to create conversation");
+        
+        const newConvo = await response.json();
+        await get().loadConversations(user.uid); // 목록 갱신
+        
+        // returnId가 true일 때만 로드 (저장 시 자동 생성 등의 경우)
+        // 또는 명시적으로 새 대화 버튼을 눌렀을 때
+        await get().loadConversation(newConvo.id); 
+        
+        console.log(`New conversation (FastAPI) ${newConvo.id} created and loaded.`);
+        return returnId ? newConvo.id : null;
+      } catch (error) {
+        console.error("FastAPI createNewConversation error:", error);
+        showEphemeralToast("Failed to create conversation (API).", "error");
+        set({ currentConversationId: null, expandedConversationId: null });
+        get().setIsLoading?.(false);
+        return null;
+      }
+    }
+    // --- 👆 [수정] ---
 
     if (user) {
       try {
         const conversationRef = await addDoc(
           collection(get().db, "chats", user.uid, "conversations"),
           {
-            title: locales[language]?.["newChat"] || "New Conversation",
+            title,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
             pinned: false,
@@ -196,12 +247,39 @@ export const createConversationSlice = (set, get) => ({
   },
 
   deleteConversation: async (conversationId) => {
-    const { user, language, showEphemeralToast } = get();
+    const { user, language, showEphemeralToast, useFastApi } = get();
     if (!user || typeof conversationId !== "string" || !conversationId) {
       if (typeof conversationId !== "string" || !conversationId)
         console.error("deleteConversation invalid ID:", conversationId);
       return;
     }
+
+    // --- 👇 [수정] FastAPI 사용 시 ---
+    if (useFastApi) {
+      try {
+        const response = await fetch(`${FASTAPI_BASE_URL}/conversations/${conversationId}`, {
+          method: "DELETE",
+        });
+        if (!response.ok) throw new Error("Failed to delete conversation");
+
+        await get().loadConversations(user.uid); // 목록 갱신
+        
+        if (get().currentConversationId === conversationId) {
+           get().unsubscribeAllMessagesAndScenarios?.();
+           get().resetMessages?.(get().language);
+           set({ 
+             currentConversationId: null, 
+             expandedConversationId: null 
+           });
+        }
+        showEphemeralToast("Conversation deleted (API).", "success");
+      } catch (error) {
+        console.error("FastAPI deleteConversation error:", error);
+        showEphemeralToast("Failed to delete conversation.", "error");
+      }
+      return;
+    }
+    // --- 👆 [수정] ---
 
     const conversationRef = doc(
       get().db,
@@ -250,7 +328,7 @@ export const createConversationSlice = (set, get) => ({
   },
 
   updateConversationTitle: async (conversationId, newTitle) => {
-    const { user, language, showEphemeralToast } = get();
+    const { user, language, showEphemeralToast, useFastApi } = get();
     if (
       !user ||
       typeof conversationId !== "string" ||
@@ -263,6 +341,24 @@ export const createConversationSlice = (set, get) => ({
       return;
     }
     const trimmedTitle = newTitle.trim().substring(0, 100);
+
+    // --- 👇 [수정] FastAPI 사용 시 ---
+    if (useFastApi) {
+      try {
+        await fetch(`${FASTAPI_BASE_URL}/conversations/${conversationId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: trimmedTitle }),
+        });
+        await get().loadConversations(user.uid);
+      } catch (error) {
+        console.error("FastAPI updateConversationTitle error:", error);
+        showEphemeralToast("Failed to update title.", "error");
+      }
+      return;
+    }
+    // --- 👆 [수정] ---
+
     try {
       const conversationRef = doc(
         get().db,
@@ -287,7 +383,7 @@ export const createConversationSlice = (set, get) => ({
   },
 
   pinConversation: async (conversationId, pinned) => {
-    const { user, language, showEphemeralToast } = get();
+    const { user, language, showEphemeralToast, useFastApi } = get();
     if (
       !user ||
       typeof conversationId !== "string" ||
@@ -295,6 +391,24 @@ export const createConversationSlice = (set, get) => ({
       typeof pinned !== "boolean"
     )
       return;
+
+    // --- 👇 [수정] FastAPI 사용 시 ---
+    if (useFastApi) {
+      try {
+        await fetch(`${FASTAPI_BASE_URL}/conversations/${conversationId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ is_pinned: pinned }),
+        });
+        await get().loadConversations(user.uid);
+      } catch (error) {
+        console.error("FastAPI pinConversation error:", error);
+        showEphemeralToast("Failed to update pin status.", "error");
+      }
+      return;
+    }
+    // --- 👆 [수정] ---
+
     try {
       const conversationRef = doc(
         get().db,
@@ -340,6 +454,9 @@ export const createConversationSlice = (set, get) => ({
     set({ expandedConversationId: conversationId });
     if (!user) return;
 
+    // NOTE: FastAPI 모드에서는 시나리오 세션 서브컬렉션이 없을 수 있으므로
+    // 이 부분은 Firebase 모드에서만 동작하거나, API가 지원하도록 수정 필요.
+    // 현재는 기존 Firebase 로직 유지.
     const scenariosRef = collection(
       get().db,
       "chats",
@@ -467,7 +584,6 @@ export const createConversationSlice = (set, get) => ({
     }
 },
 
-  // --- 👇 [추가] index.js에서 이동된 복합 액션 ---
   handleScenarioItemClick: (conversationId, scenario) => {
     if (get().currentConversationId !== conversationId) {
       get().loadConversation(conversationId);
@@ -487,5 +603,4 @@ export const createConversationSlice = (set, get) => ({
       get().subscribeToScenarioSession?.(scenario.sessionId);
     }
   },
-  // --- 👆 [추가] ---
 });

@@ -12,10 +12,12 @@ import {
   query,
   orderBy,
   where,
-  deleteDoc, // deleteDoc 임포트 추가
+  deleteDoc,
 } from "firebase/firestore";
 import { locales } from "../../lib/locales";
 import { getErrorKey } from "../../lib/errorHandler";
+
+const FASTAPI_BASE_URL = "https://musclecat-api.vercel.app"; // FastAPI 주소
 
 export const createScenarioSlice = (set, get) => ({
   scenarioStates: {},
@@ -25,22 +27,18 @@ export const createScenarioSlice = (set, get) => ({
   availableScenarios: [],
   unsubscribeScenariosMap: {},
 
-  // --- 💡 [추가] 시나리오 전용 슬롯을 로컬에서 업데이트하는 함수 ---
   setScenarioSlots: (sessionId, newSlots) => {
     set(state => {
-      // 세션 ID가 유효한지, 해당 세션 상태가 존재하는지 확인
       if (!sessionId || !state.scenarioStates[sessionId]) {
         console.warn(`[setScenarioSlots] Invalid or non-existent scenario session ID: ${sessionId}`);
-        return state; // 상태 변경 없음
+        return state;
       }
       
-      // 해당 시나리오 세션의 상태를 업데이트
       const updatedScenarioState = {
         ...state.scenarioStates[sessionId],
-        slots: newSlots, // 새 슬롯 객체로 교체
+        slots: newSlots,
       };
 
-      // 전체 scenarioStates를 업데이트
       return {
         scenarioStates: {
           ...state.scenarioStates,
@@ -49,13 +47,33 @@ export const createScenarioSlice = (set, get) => ({
       };
     });
   },
-  // --- 💡 [추가 끝] ---
 
   loadAvailableScenarios: async () => {
-    // --- 👇 [수정] Firestore 작업 오류 처리 ---
+    // --- 👇 [수정] FastAPI 사용 시 ---
+    if (get().useFastApi) {
+        try {
+            const response = await fetch(`${FASTAPI_BASE_URL}/scenarios`);
+            if (response.ok) {
+                const scenarios = await response.json();
+                // API가 카테고리 구조로 준다면 평탄화하거나 그대로 사용
+                // 여기서는 시나리오 ID 목록만 추출한다고 가정
+                const ids = [];
+                if(Array.isArray(scenarios)) {
+                    scenarios.forEach(cat => {
+                        if(cat.items) cat.items.forEach(item => ids.push(item.id));
+                    });
+                }
+                set({ availableScenarios: ids, scenarioCategories: scenarios });
+                return;
+            }
+        } catch (e) { console.error(e); }
+    }
+    // --- 👆 [수정] ---
+
+    // 기존 Firebase 로직
     try {
       const scenariosCollection = collection(get().db, "scenarios");
-      const querySnapshot = await getDocs(scenariosCollection); // 오류 발생 가능
+      const querySnapshot = await getDocs(scenariosCollection);
       const scenarioIds = querySnapshot.docs.map((doc) => doc.id);
       set({ availableScenarios: scenarioIds });
     } catch (error) {
@@ -65,16 +83,17 @@ export const createScenarioSlice = (set, get) => ({
       const message =
         locales[language]?.[errorKey] || "Failed to load scenario list.";
       showEphemeralToast(message, "error");
-      set({ availableScenarios: [] }); // 실패 시 빈 배열 설정
+      set({ availableScenarios: [] });
     }
-    // --- 👆 [수정] ---
   },
 
   loadScenarioCategories: async () => {
-    // --- 👇 [수정] Firestore 작업 오류 처리 ---
+    // FastAPI 모드에서는 loadAvailableScenarios에서 카테고리도 함께 로드하므로 중복 로드 방지
+    if (get().useFastApi) return; 
+
     try {
       const shortcutRef = doc(get().db, "shortcut", "main");
-      const docSnap = await getDoc(shortcutRef); // 오류 발생 가능
+      const docSnap = await getDoc(shortcutRef);
 
       if (docSnap.exists() && docSnap.data().categories) {
         set({ scenarioCategories: docSnap.data().categories });
@@ -84,7 +103,6 @@ export const createScenarioSlice = (set, get) => ({
         );
         const initialData = [];
         set({ scenarioCategories: initialData });
-        // 초기 데이터 저장 시도 (오류 발생 가능)
         await setDoc(shortcutRef, { categories: initialData });
       }
     } catch (error) {
@@ -97,21 +115,18 @@ export const createScenarioSlice = (set, get) => ({
       const message =
         locales[language]?.[errorKey] || "Failed to load scenario categories.";
       showEphemeralToast(message, "error");
-      set({ scenarioCategories: [] }); // 실패 시 빈 배열 설정
+      set({ scenarioCategories: [] });
     }
-    // --- 👆 [수정] ---
   },
 
   saveScenarioCategories: async (newCategories) => {
     const shortcutRef = doc(get().db, "shortcut", "main");
-    // --- 👇 [수정] Firestore 작업 오류 처리 ---
     try {
-      await setDoc(shortcutRef, { categories: newCategories }); // 오류 발생 가능
+      await setDoc(shortcutRef, { categories: newCategories });
       set({ scenarioCategories: newCategories });
       return true;
     } catch (error) {
       console.error("Error saving scenario categories to Firestore:", error);
-      // 오류 발생 시 사용자에게 알림 (showEphemeralToast 사용)
       const { language, showEphemeralToast } = get();
       const errorKey = getErrorKey(error);
       const message =
@@ -119,7 +134,6 @@ export const createScenarioSlice = (set, get) => ({
       showEphemeralToast(message, "error");
       return false;
     }
-    // --- 👆 [수정] ---
   },
 
   openScenarioPanel: async (scenarioId, initialSlots = {}) => {
@@ -129,20 +143,17 @@ export const createScenarioSlice = (set, get) => ({
       handleEvents,
       language,
       setActivePanel,
-      addMessage, // addMessage 가져오기
+      addMessage,
       setForceScrollToBottom,
       showEphemeralToast,
-      // --- 💡 [추가] ---
       showScenarioBubbles,
-      // --- 💡 [추가 끝] ---
     } = get();
     if (!user) return;
 
     let conversationId = currentConversationId;
-    let newScenarioSessionId = null; // 세션 ID 저장용 변수
+    let newScenarioSessionId = null;
 
     try {
-      // --- 👇 [추가] 시나리오 호출 시, scenarios 컬렉션의 lastUsedAt 타임스탬프 업데이트 ---
       try {
         const scenarioRef = doc(get().db, "scenarios", scenarioId);
         await updateDoc(scenarioRef, {
@@ -150,43 +161,37 @@ export const createScenarioSlice = (set, get) => ({
         });
         console.log(`Updated lastUsedAt for scenario: ${scenarioId}`);
       } catch (error) {
-        // 이 작업이 실패하더라도 시나리오 진행 자체를 막지는 않음 (권한 문제 등이 있을 수 있음)
         console.warn(
           `[openScenarioPanel] Failed to update lastUsedAt for scenario ${scenarioId}:`,
           error
         );
       }
-      // --- 👆 [추가] ---
 
-      // 1. 현재 대화 ID 없으면 새로 생성 (createNewConversation 내부에서 오류 처리됨)
       if (!conversationId) {
         const newConversationId = await get().createNewConversation(true);
         if (!newConversationId) {
-          // createNewConversation 실패 시 (오류 메시지는 내부에서 표시됨)
           throw new Error(
             "Failed to ensure conversation ID for starting scenario."
           );
         }
-        // 새 대화 로드가 완료될 때까지 기다림 (상태 변경 감지)
         await new Promise((resolve, reject) => {
           const timeout = setTimeout(
             () => reject(new Error("Timeout waiting for conversation load")),
             5000
-          ); // 5초 타임아웃
+          );
           const check = () => {
             if (get().currentConversationId === newConversationId) {
               clearTimeout(timeout);
               resolve();
             } else {
-              setTimeout(check, 100); // 100ms 간격으로 확인
+              setTimeout(check, 100);
             }
           };
           check();
         });
-        conversationId = newConversationId; // 업데이트된 ID 사용
+        conversationId = newConversationId;
       }
 
-      // 2. 시나리오 세션 문서 생성
       const scenarioSessionsRef = collection(
         get().db,
         "chats",
@@ -196,52 +201,43 @@ export const createScenarioSlice = (set, get) => ({
         "scenario_sessions"
       );
       const newSessionDoc = await addDoc(scenarioSessionsRef, {
-        // 오류 발생 가능
         scenarioId: scenarioId,
-        status: "starting", // 초기 상태 변경: starting
+        status: "starting",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         messages: [],
         state: null,
         slots: initialSlots,
       });
-      newScenarioSessionId = newSessionDoc.id; // 생성된 ID 저장
+      newScenarioSessionId = newSessionDoc.id;
 
-      // 3. UI 업데이트 (메인 패널 포커스, 버블 추가)
-      setActivePanel("main"); // 메인 패널로 포커스 이동 (선택 사항)
-      setForceScrollToBottom(true); // 메인 채팅 스크롤 맨 아래로
+      setActivePanel("main");
+      setForceScrollToBottom(true);
 
-      // --- 👇 [수정] showScenarioBubbles 설정에 따라 버블 추가 ---
       if (showScenarioBubbles) {
         await addMessage("user", {
           type: "scenario_bubble",
           scenarioSessionId: newScenarioSessionId,
         });
       }
-      // --- 👆 [수정] ---
 
-      // 4. 새 시나리오 세션 구독 시작 (subscribeToScenarioSession 내부에서 오류 처리됨)
       get().subscribeToScenarioSession(newScenarioSessionId);
 
-      // 5. 시나리오 패널 활성화 (약간의 딜레이 후)
       setTimeout(() => {
         setActivePanel("scenario", newScenarioSessionId);
-      }, 100); // 딜레이 살짝 증가
+      }, 100);
 
-      // 6. 백엔드 API 호출하여 시나리오 시작
       const response = await fetch("/api/chat", {
-        // 오류 발생 가능 (네트워크 등)
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: { text: scenarioId }, // 시작 시에는 시나리오 ID를 메시지로 전달
+          message: { text: scenarioId },
           scenarioSessionId: newScenarioSessionId,
           slots: initialSlots,
           language: language,
         }),
       });
       if (!response.ok) {
-        // API 라우트 자체 오류 (500 등)
         const errorData = await response
           .json()
           .catch(() => ({ message: `Server error: ${response.statusText}` }));
@@ -249,10 +245,9 @@ export const createScenarioSlice = (set, get) => ({
           errorData.message || `Server error: ${response.statusText}`
         );
       }
-      const data = await response.json(); // API 응답 파싱 오류 발생 가능
+      const data = await response.json();
 
-      // 7. API 응답 처리 (이벤트, Firestore 업데이트 등)
-      handleEvents(data.events, newScenarioSessionId, conversationId); // 이벤트 처리
+      handleEvents(data.events, newScenarioSessionId, conversationId);
 
       const sessionRef = doc(
         get().db,
@@ -263,15 +258,14 @@ export const createScenarioSlice = (set, get) => ({
         "scenario_sessions",
         newScenarioSessionId
       );
-      let updatePayload = { updatedAt: serverTimestamp() }; // 공통 업데이트 필드
+      let updatePayload = { updatedAt: serverTimestamp() };
 
       if (data.type === "scenario_start" || data.type === "scenario") {
         updatePayload.slots = { ...initialSlots, ...(data.slots || {}) };
         updatePayload.messages = [];
-        updatePayload.state = null; // 기본값 null
+        updatePayload.state = null;
 
         if (data.nextNode) {
-          // 'setSlot' 노드는 메시지에 추가하지 않음
           if (data.nextNode.type !== "setSlot" && data.nextNode.type !== "set-slot") {
             updatePayload.messages.push({
               id: data.nextNode.id,
@@ -290,19 +284,17 @@ export const createScenarioSlice = (set, get) => ({
             awaitingInput: isFirstNodeSlotFillingOrForm,
           };
         } else if (data.message) {
-          // 시나리오 시작 직후 종료되는 경우 (예: 조건 분기 실패)
           updatePayload.messages.push({
             id: "end-message",
             sender: "bot",
             text: data.message,
           });
-          updatePayload.status = data.status || "completed"; // API에서 status 주면 사용
+          updatePayload.status = data.status || "completed";
         }
-        updatePayload.status = data.status || "active"; // 최종 상태 설정
+        updatePayload.status = data.status || "active";
 
-        await updateDoc(sessionRef, updatePayload); // Firestore 업데이트 (오류 발생 가능)
+        await updateDoc(sessionRef, updatePayload);
 
-        // 시작 노드가 대화형이 아닌 경우 자동 진행 (continueScenarioIfNeeded 내부 오류 처리)
         if (
           data.nextNode &&
           data.nextNode.type !== "slotfilling" &&
@@ -318,10 +310,8 @@ export const createScenarioSlice = (set, get) => ({
           );
         }
       } else if (data.type === "error") {
-        // API 라우트에서 명시적으로 에러 반환 시
         throw new Error(data.message || "Failed to start scenario from API.");
       } else {
-        // 예상치 못한 응답 타입
         throw new Error(`Unexpected response type from API: ${data.type}`);
       }
     } catch (error) {
@@ -331,10 +321,8 @@ export const createScenarioSlice = (set, get) => ({
         locales[language]?.[errorKey] || "Failed to start scenario.";
       showEphemeralToast(message, "error");
 
-      // 오류 발생 시 생성된 세션 문서 및 버블 메시지 삭제 시도
       if (user && conversationId && newScenarioSessionId) {
         try {
-          // 세션 문서 삭제
           const sessionRef = doc(
             get().db,
             "chats",
@@ -349,7 +337,6 @@ export const createScenarioSlice = (set, get) => ({
             `Cleaned up failed scenario session: ${newScenarioSessionId}`
           );
 
-          // --- 👇 [수정] showScenarioBubbles 설정에 따라 버블 제거 ---
           if (showScenarioBubbles) {
             set((state) => ({
               messages: state.messages.filter(
@@ -364,7 +351,6 @@ export const createScenarioSlice = (set, get) => ({
               `Removed scenario bubble from main chat for session: ${newScenarioSessionId}`
             );
           }
-          // --- 👆 [수정] ---
         } catch (cleanupError) {
           console.error(
             `Error cleaning up failed scenario session ${newScenarioSessionId}:`,
@@ -372,7 +358,6 @@ export const createScenarioSlice = (set, get) => ({
           );
         }
       }
-      // 활성 패널을 메인으로 되돌림
       setActivePanel("main");
     }
   },
@@ -387,13 +372,11 @@ export const createScenarioSlice = (set, get) => ({
     const originalMessages = Array.isArray(scenarioState.messages) ? scenarioState.messages : [];
     const updatedMessages = originalMessages.map(msg => {
         if (msg.node && msg.node.id === messageNodeId) {
-            // Firestore는 undefined 저장을 지원하지 않으므로 null 사용 고려
             return { ...msg, selectedOption: selectedValue };
         }
         return msg;
     });
 
-    // 1. Optimistic UI update
     set(state => ({
         scenarioStates: {
             ...state.scenarioStates,
@@ -404,97 +387,84 @@ export const createScenarioSlice = (set, get) => ({
         },
     }));
 
-    // 2. Update Firestore
-    try { // --- 👇 [수정] Firestore 작업 오류 처리 및 롤백 ---
+    try {
         const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", scenarioSessionId);
         await updateDoc(sessionRef, {
-            messages: updatedMessages // 업데이트된 메시지 배열 전체 저장
-        }); // 오류 발생 가능
+            messages: updatedMessages
+        });
     } catch (error) {
         console.error("Error updating scenario selected option in Firestore:", error);
         const errorKey = getErrorKey(error);
         const message = locales[language]?.[errorKey] || 'Failed to save selection in scenario.';
         showEphemeralToast(message, 'error');
-        // Rollback UI on error
         set(state => ({
             scenarioStates: {
                 ...state.scenarioStates,
                 [scenarioSessionId]: {
                   ...state.scenarioStates[scenarioSessionId],
-                  messages: originalMessages, // 원본 메시지 배열로 복구
+                  messages: originalMessages,
                 }
             },
         }));
-    } // --- 👆 [수정] ---
+    }
   },
 
   subscribeToScenarioSession: (sessionId) => {
-    const { user, currentConversationId, unsubscribeScenariosMap, language, showEphemeralToast } = get(); // --- 👈 [추가] ---
-    // 구독 중복 방지 및 기본 조건 검사
+    const { user, currentConversationId, unsubscribeScenariosMap, language, showEphemeralToast } = get();
     if (!user || !currentConversationId || unsubscribeScenariosMap[sessionId]) return;
 
-    // --- 👇 [수정] Firestore 리스너 오류 처리 ---
     const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", sessionId);
     const unsubscribe = onSnapshot(sessionRef, (doc) => {
       if (doc.exists()) {
         const scenarioData = doc.data();
         set(state => {
-            // isLoading 상태는 여기서 직접 변경하지 않고, API 호출 로직에서 관리
             const currentLocalState = state.scenarioStates[sessionId];
             const newScenarioStates = {
                 ...state.scenarioStates,
                 [sessionId]: {
-                    ...(currentLocalState || {}), // 기존 로컬 상태 유지 (isLoading 등)
-                    ...scenarioData // Firestore 데이터로 덮어쓰기
+                    ...(currentLocalState || {}),
+                    ...scenarioData
                 }
             };
-            const newActiveSessions = Object.keys(newScenarioStates); // 필요 시 업데이트
+            const newActiveSessions = Object.keys(newScenarioStates);
 
             return {
                 scenarioStates: newScenarioStates,
-                activeScenarioSessions: newActiveSessions, // 필요 시 업데이트
+                activeScenarioSessions: newActiveSessions,
             };
         });
       } else {
-        // 문서가 삭제된 경우: 구독 해지 및 로컬 상태 정리
         console.log(`Scenario session ${sessionId} not found or deleted.`);
-        get().unsubscribeFromScenarioSession(sessionId); // 구독 해지 함수 호출
-        // set 내부에서 관련 상태 정리 (unsubscribeFromScenarioSession이 처리)
+        get().unsubscribeFromScenarioSession(sessionId);
       }
-    }, (error) => { // 오류 콜백
+    }, (error) => {
         console.error(`Error listening to scenario session ${sessionId}:`, error);
         const errorKey = getErrorKey(error);
         const message = locales[language]?.[errorKey] || 'Error syncing scenario state.';
         showEphemeralToast(message, 'error');
-        get().unsubscribeFromScenarioSession(sessionId); // 오류 발생 시 구독 해지
+        get().unsubscribeFromScenarioSession(sessionId);
     });
 
-    // 구독 해제 함수 저장
     set(state => ({
         unsubscribeScenariosMap: {
             ...state.unsubscribeScenariosMap,
             [sessionId]: unsubscribe
         }
     }));
-    // --- 👆 [수정] ---
   },
 
   unsubscribeFromScenarioSession: (sessionId) => {
       set(state => {
           const newUnsubscribeMap = { ...state.unsubscribeScenariosMap };
           if (newUnsubscribeMap[sessionId]) {
-              newUnsubscribeMap[sessionId](); // Firestore 구독 해지 함수 호출
-              delete newUnsubscribeMap[sessionId]; // 맵에서 제거
-          } else {
-              // 이미 해제되었거나 없는 경우 경고 로그 (선택 사항)
-              // console.warn(`Attempted to unsubscribe from non-existent or already unsubscribed session: ${sessionId}`);
+              newUnsubscribeMap[sessionId]();
+              delete newUnsubscribeMap[sessionId];
           }
 
           const updatedStates = { ...state.scenarioStates };
-          delete updatedStates[sessionId]; // 로컬 상태에서도 제거
+          delete updatedStates[sessionId];
           const updatedActiveSessions = Object.keys(updatedStates);
 
-          // 현재 활성 패널/세션 ID가 해제된 세션이면 초기화
           const shouldResetActivePanel = state.activeScenarioSessionId === sessionId || state.lastFocusedScenarioSessionId === sessionId;
 
           return {
@@ -503,38 +473,29 @@ export const createScenarioSlice = (set, get) => ({
               activeScenarioSessions: updatedActiveSessions,
               ...(shouldResetActivePanel ? {
                   activeScenarioSessionId: null,
-                  lastFocusedScenarioSessionId: null, // lastFocused도 초기화
+                  lastFocusedScenarioSessionId: null,
                   activePanel: 'main'
               } : {})
           };
       });
   },
 
-    // --- 👇 [추가] 모든 시나리오 리스너 해제 함수 ---
   unsubscribeAllScenarioListeners: () => {
     const { unsubscribeScenariosMap } = get();
     Object.keys(unsubscribeScenariosMap).forEach(sessionId => {
       get().unsubscribeFromScenarioSession(sessionId);
     });
-    // 상태 초기화는 unsubscribeFromScenarioSession 내부에서 처리됨
-    // set({ unsubscribeScenariosMap: {} }); // 필요 없음
   },
-  // --- 👆 [추가] ---
 
-
-  // --- 👇 [수정된 부분 시작]: endScenario에서 딜레이 및 패널 닫기 로직 제거 ---
   endScenario: async (scenarioSessionId, status = 'completed') => {
-    // setActivePanel 제거
     const { user, currentConversationId, language, showEphemeralToast } = get(); 
     if (!user || !currentConversationId || !scenarioSessionId) return;
 
     const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", scenarioSessionId);
     
     try {
-        // 1. Firestore 상태 즉시 업데이트 (완료/실패)
         await updateDoc(sessionRef, { status, state: null, updatedAt: serverTimestamp() }); 
         
-        // 2. 로컬 상태 즉시 업데이트 (UI에 '완료' 배지 표시)
         set(state => {
             const updatedState = state.scenarioStates[scenarioSessionId]
                 ? { ...state.scenarioStates[scenarioSessionId], status: status, state: null } 
@@ -548,7 +509,6 @@ export const createScenarioSlice = (set, get) => ({
             };
         });
 
-        // 3. 2초 딜레이 및 패널 닫기 로직 (제거됨)
         console.log(`[endScenario] Scenario ${scenarioSessionId} marked as ${status}. Panel will remain open.`);
 
     } catch (error) {
@@ -556,55 +516,48 @@ export const createScenarioSlice = (set, get) => ({
         const errorKey = getErrorKey(error);
         const message = locales[language]?.[errorKey] || 'Failed to update scenario status.';
         showEphemeralToast(message, 'error');
-        // Firestore 업데이트 실패 시에도 패널은 닫지 않음 (setActivePanel('main') 제거)
     }
   },
-  // --- 👆 [수정된 부분 끝] ---
 
   handleScenarioResponse: async (payload) => {
     const { scenarioSessionId } = payload;
-    const { handleEvents, showToast, user, currentConversationId, language, endScenario, showEphemeralToast } = get(); // --- 👈 [추가] ---
+    const { handleEvents, showToast, user, currentConversationId, language, endScenario, showEphemeralToast } = get();
     if (!user || !currentConversationId || !scenarioSessionId) return;
 
     const currentScenario = get().scenarioStates[scenarioSessionId];
     if (!currentScenario) {
         console.warn(`handleScenarioResponse called for non-existent session: ${scenarioSessionId}`);
-        // 존재하지 않는 세션에 대한 응답 시도 시 사용자 알림
         showEphemeralToast(locales[language]?.errorUnexpected || 'An unexpected error occurred.', 'error');
         return;
     }
     const existingMessages = Array.isArray(currentScenario.messages) ? currentScenario.messages : [];
 
-    // 로딩 상태 설정 (UI 즉시 반영)
     set(state => ({
         scenarioStates: { ...state.scenarioStates, [scenarioSessionId]: { ...currentScenario, isLoading: true } }
     }));
 
     const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", scenarioSessionId);
 
-    try { // --- 👇 [수정] API 호출 및 후속 처리 전체를 try 블록으로 감쌈 ---
+    try {
         let newMessages = [...existingMessages];
 
-        // 사용자 입력이 있으면 메시지 배열에 추가하고 Firestore 업데이트 (오류 처리 추가)
         if (payload.userInput) {
             newMessages.push({ id: `user-${Date.now()}`, sender: 'user', text: payload.userInput });
             try {
                 await updateDoc(sessionRef, { messages: newMessages, updatedAt: serverTimestamp() });
             } catch (error) {
                 console.error("Error updating user message in Firestore:", error);
-                // 오류 발생 시 로딩 상태 해제 및 함수 종료 (사용자에게 알림)
                 const errorKey = getErrorKey(error);
                 const message = locales[language]?.[errorKey] || 'Failed to send message.';
                 showEphemeralToast(message, 'error');
                 set(state => ({
                   scenarioStates: { ...state.scenarioStates, [scenarioSessionId]: { ...state.scenarioStates[scenarioSessionId], isLoading: false } }
                 }));
-                return; // 여기서 함수 종료
+                return;
             }
         }
 
-        // 백엔드 API 호출
-        const response = await fetch('/api/chat', { // 네트워크 오류 발생 가능
+        const response = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -618,60 +571,51 @@ export const createScenarioSlice = (set, get) => ({
               scenarioSessionId: scenarioSessionId,
             }),
         });
-        if (!response.ok) { // API 라우트 오류
+        if (!response.ok) {
             const errorData = await response.json().catch(() => ({ message: `Server error: ${response.statusText}` }));
             throw new Error(errorData.message || `Server error: ${response.statusText}`);
         }
-        const data = await response.json(); // 응답 파싱 오류 발생 가능
+        const data = await response.json();
 
-        // API 응답 처리
-        handleEvents(data.events, scenarioSessionId, currentConversationId); // 이벤트 처리
+        handleEvents(data.events, scenarioSessionId, currentConversationId);
 
-        // 'setSlot' 노드는 메시지로 표시하지 않음
         if (data.nextNode && data.nextNode.type !== 'setSlot' && data.nextNode.type !== 'set-slot') {
             newMessages.push({ id: data.nextNode.id, sender: 'bot', node: data.nextNode });
         } else if (data.message && data.type !== 'scenario_validation_fail') {
             newMessages.push({ id: `bot-end-${Date.now()}`, sender: 'bot', text: data.message });
         }
 
-        // Firestore 업데이트 페이로드 준비
         let updatePayload = {
             messages: newMessages,
             updatedAt: serverTimestamp(),
         };
 
         if (data.type === 'scenario_validation_fail') {
-            // showToast 대신 showEphemeralToast 사용 가능
-            showEphemeralToast(data.message, 'error'); // 토스트 알림
-            updatePayload.status = 'active'; // 상태를 다시 active로
+            showEphemeralToast(data.message, 'error');
+            updatePayload.status = 'active';
         } else if (data.type === 'scenario_end') {
             const finalStatus = data.slots?.apiFailed ? 'failed' : 'completed';
             updatePayload.status = finalStatus;
-            updatePayload.state = null; // 시나리오 종료 시 상태 초기화
-            updatePayload.slots = data.slots || currentScenario.slots; // 최종 슬롯 업데이트
-            await updateDoc(sessionRef, updatePayload); // Firestore 업데이트 먼저 (오류 발생 가능)
+            updatePayload.state = null;
+            updatePayload.slots = data.slots || currentScenario.slots;
+            await updateDoc(sessionRef, updatePayload);
             
-            // --- 👇 [수정] endScenario 호출 (내부에 딜레이 포함됨) ---
             endScenario(scenarioSessionId, finalStatus); 
-            // --- 👆 [수정] ---
             
-            return; // 자동 진행 불필요
-        } else if (data.type === 'scenario') { // 진행 중
+            return;
+        } else if (data.type === 'scenario') {
             updatePayload.status = 'active';
             updatePayload.state = data.scenarioState;
             updatePayload.slots = data.slots || currentScenario.slots;
-        } else if (data.type === 'error') { // API 라우트에서 명시적 에러 반환
+        } else if (data.type === 'error') {
             throw new Error(data.message || "Scenario step failed.");
-        } else { // 예상치 못한 응답
+        } else {
             throw new Error(`Unexpected response type from API: ${data.type}`);
         }
 
-        // Firestore 업데이트 (진행 중 또는 검증 실패 시)
-        await updateDoc(sessionRef, updatePayload); // 오류 발생 가능
+        await updateDoc(sessionRef, updatePayload);
 
-        // 자동 진행 로직 (오류 처리는 continueScenarioIfNeeded 내부에서)
         if (data.type === 'scenario' && data.nextNode) {
-            // setSlot 노드 포함 모든 비대화형 노드 자동 진행 시도
             const isInteractive = data.nextNode.type === 'slotfilling' ||
                                   data.nextNode.type === 'form' ||
                                   (data.nextNode.type === 'branch' && data.nextNode.data?.evaluationType !== 'CONDITION');
@@ -680,48 +624,40 @@ export const createScenarioSlice = (set, get) => ({
             }
         }
 
-    } catch (error) { // --- 👆 [수정] 전체 로직 감싸기 완료 ---
+    } catch (error) {
         console.error(`Error handling scenario response for ${scenarioSessionId}:`, error);
         const errorKey = getErrorKey(error);
         const errorMessage = locales[language]?.[errorKey] || 'An error occurred during the scenario.';
         showEphemeralToast(errorMessage, 'error');
 
-        // 오류 메시지를 시나리오 메시지 목록에 추가하고 상태를 failed로 업데이트
         const errorMessages = [...existingMessages, { id: `bot-error-${Date.now()}`, sender: 'bot', text: errorMessage }];
         try {
-            // --- 👇 [수정] endScenario 호출 (내부에 딜레이 포함됨) ---
-            // Firestore 업데이트는 endScenario 내부에서 처리하도록 맡기거나, 여기서 먼저 하고 endScenario 호출
             await updateDoc(sessionRef, { messages: errorMessages, status: 'failed', state: null, updatedAt: serverTimestamp() });
-            endScenario(scenarioSessionId, 'failed'); // 로컬 상태 변경 및 딜레이 후 패널 닫기
-            // --- 👆 [수정] ---
+            endScenario(scenarioSessionId, 'failed');
         } catch (updateError) {
              console.error(`Failed to update scenario status to failed for ${scenarioSessionId}:`, updateError);
-             // 추가적인 오류 처리 (예: UI 강제 업데이트)
               set(state => ({
                 scenarioStates: {
                     ...state.scenarioStates,
                     [scenarioSessionId]: {
                         ...(state.scenarioStates[scenarioSessionId] || {}),
-                        messages: errorMessages, // 메시지만이라도 업데이트
+                        messages: errorMessages,
                         status: 'failed',
                         state: null,
-                        isLoading: false // 로딩 확실히 해제
+                        isLoading: false
                     }
                 }
              }));
-             // 이 경우에도 딜레이 후 닫기를 시도
              endScenario(scenarioSessionId, 'failed');
         }
     } finally {
-      // 로딩 상태 해제 (Firestore 구독이 최종 상태를 반영하지만, 즉각적인 해제를 위해 추가)
       set(state => {
-         // 세션이 아직 존재하는지 확인 후 isLoading 업데이트
          if(state.scenarioStates[scenarioSessionId]) {
             return {
                 scenarioStates: { ...state.scenarioStates, [scenarioSessionId]: { ...state.scenarioStates[scenarioSessionId], isLoading: false } }
             };
          }
-         return state; // 세션이 중간에 삭제된 경우 상태 변경 없음
+         return state;
       });
     }
   },
@@ -736,31 +672,24 @@ export const createScenarioSlice = (set, get) => ({
                           lastNode.type === 'form' ||
                           (lastNode.type === 'branch' && lastNode.data?.evaluationType !== 'CONDITION');
 
-    // 'end' 노드도 진행 중지 조건에 포함
     if (!isInteractive && lastNode.id !== 'end') {
       console.log(`Node ${lastNode.id} (${lastNode.type}) is not interactive, continuing...`);
-      // --- 👇 [수정] 자동 진행 시 handleScenarioResponse 호출 (오류 처리 포함) ---
       try {
-          // 약간의 지연 (선택 사항)
           await new Promise(resolve => setTimeout(resolve, 300));
-          // handleScenarioResponse 호출 (내부에서 오류 처리됨)
           await get().handleScenarioResponse({
             scenarioSessionId: scenarioSessionId,
-            currentNodeId: lastNode.id, // 마지막 노드 ID 전달
-            sourceHandle: null, // 자동 진행
-            userInput: null, // 자동 진행
+            currentNodeId: lastNode.id,
+            sourceHandle: null,
+            userInput: null,
           });
       } catch (error) {
-          // handleScenarioResponse 내부에서 catch되지 않은 예외 처리 (거의 발생 안 함)
           console.error(`[continueScenarioIfNeeded] Unexpected error during auto-continue for session ${scenarioSessionId}:`, error);
           const { language, showEphemeralToast, endScenario } = get();
           const errorKey = getErrorKey(error);
           const message = locales[language]?.[errorKey] || 'Scenario auto-continue failed.';
           showEphemeralToast(message, 'error');
-          // 자동 진행 실패 시 시나리오를 failed 상태로 종료
           endScenario(scenarioSessionId, 'failed');
       }
-      // --- 👆 [수정] ---
     } else {
         console.log(`Node ${lastNode.id} (${lastNode.type}) is interactive or end node, stopping auto-continue.`);
     }

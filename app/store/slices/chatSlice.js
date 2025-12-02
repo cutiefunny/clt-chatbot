@@ -18,6 +18,7 @@ import { getErrorKey } from "../../lib/errorHandler";
 import { handleResponse } from "../actions/chatResponseHandler";
 
 const MESSAGE_LIMIT = 15;
+const FASTAPI_BASE_URL = "https://musclecat-api.vercel.app"; // FastAPI 주소
 
 // 초기 메시지 함수 (chatSlice가 관리)
 const getInitialMessages = (lang = "ko") => {
@@ -60,7 +61,7 @@ export const createChatSlice = (set, get) => {
     },
 
     loadInitialMessages: async (conversationId) => {
-      const { user, language, showEphemeralToast } = get();
+      const { user, language, showEphemeralToast, useFastApi } = get();
       if (!user || !conversationId) return;
 
       const initialMessage = getInitialMessages(language)[0];
@@ -72,6 +73,32 @@ export const createChatSlice = (set, get) => {
         selectedOptions: {},
         mainInputValue: "", // 대화 로드 시 입력창 초기화
       });
+
+      // --- 👇 [수정] FastAPI 사용 시 메시지 로드 ---
+      if (useFastApi) {
+        try {
+          const response = await fetch(`${FASTAPI_BASE_URL}/conversations/${conversationId}`);
+          if (!response.ok) throw new Error("Failed to load messages");
+          
+          const data = await response.json();
+          // API 응답 구조: { id: "...", messages: [...] }
+          // messages 배열을 받아옵니다.
+          const apiMessages = data.messages || [];
+          
+          // 초기 메시지와 합치기
+          set({
+            messages: [initialMessage, ...apiMessages],
+            isLoading: false,
+            hasMoreMessages: false, // API 페이징 미구현 시 false 처리
+          });
+        } catch (error) {
+          console.error("FastAPI loadInitialMessages error:", error);
+          showEphemeralToast("Failed to load messages (API).", "error");
+          set({ isLoading: false });
+        }
+        return;
+      }
+      // --- 👆 [수정] ---
 
       try {
         const messagesRef = collection(
@@ -337,9 +364,7 @@ export const createChatSlice = (set, get) => {
         showEphemeralToast,
         setMainInputValue, 
         focusChatInput, 
-        // --- 👇 [추가] ---
-        sendTextShortcutImmediately // 설정값 가져오기
-        // --- 👆 [추가] ---
+        sendTextShortcutImmediately 
       } = get();
 
       if (messageId) {
@@ -355,7 +380,7 @@ export const createChatSlice = (set, get) => {
           displayText: item.title,
         });
       } else if (item.action.type === "text") {
-        // --- 👇 [수정] 설정에 따른 분기 로직 ---
+        // 설정에 따른 분기 로직
         if (sendTextShortcutImmediately) {
            // 즉시 전송 (설정 ON)
            await handleResponse({
@@ -367,7 +392,6 @@ export const createChatSlice = (set, get) => {
            setMainInputValue(item.action.value); 
            focusChatInput();
         }
-        // --- 👆 [수정] ---
       } else if (item.action.type === "scenario") {
         const scenarioId = item.action.value;
 
