@@ -11,7 +11,7 @@ import {
   updateDoc,
   limit,
   startAfter,
-  writeBatch, 
+  writeBatch,
 } from "firebase/firestore";
 import { locales } from "../../lib/locales";
 import { getErrorKey } from "../../lib/errorHandler";
@@ -74,20 +74,28 @@ export const createChatSlice = (set, get) => {
         mainInputValue: "", // 대화 로드 시 입력창 초기화
       });
 
-      // --- 👇 [수정] FastAPI 사용 시 메시지 로드 ---
+      // --- 👇 [수정] FastAPI 사용 시 메시지 로드 및 데이터 매핑 ---
       if (useFastApi) {
         try {
           const response = await fetch(`${FASTAPI_BASE_URL}/conversations/${conversationId}`);
           if (!response.ok) throw new Error("Failed to load messages");
           
           const data = await response.json();
-          // API 응답 구조: { id: "...", messages: [...] }
-          // messages 배열을 받아옵니다.
-          const apiMessages = data.messages || [];
+          // API 응답 구조: { id: "...", messages: [{ role: "...", content: "...", ... }] }
+          const apiMessagesRaw = data.messages || [];
+          
+          // 백엔드 데이터(role, content)를 프론트엔드 데이터(sender, text)로 매핑
+          const mappedMessages = apiMessagesRaw.map((msg) => ({
+            id: msg.id,
+            sender: msg.role === 'user' ? 'user' : 'bot', // role -> sender 변환
+            text: msg.content, // content -> text 변환
+            createdAt: msg.created_at,
+            // 필요한 경우 추가 필드 매핑
+          }));
           
           // 초기 메시지와 합치기
           set({
-            messages: [initialMessage, ...apiMessages],
+            messages: [initialMessage, ...mappedMessages],
             isLoading: false,
             hasMoreMessages: false, // API 페이징 미구현 시 false 처리
           });
@@ -420,7 +428,16 @@ export const createChatSlice = (set, get) => {
         showEphemeralToast,
         currentConversationId: globalConversationId,
         createNewConversation,
+        useFastApi, // --- 👇 [추가] ---
       } = get();
+
+      // --- 👇 [수정] FastAPI 모드일 경우 Firestore 저장 로직 건너뛰기 ---
+      if (useFastApi) {
+        // console.log("FastAPI mode enabled. Skipping Firestore save in saveMessage.");
+        return null;
+      }
+      // --- 👆 [수정] ---
+
       if (!user || !message || typeof message !== "object") {
         if (!message || typeof message !== "object")
           console.error("saveMessage invalid message:", message);
