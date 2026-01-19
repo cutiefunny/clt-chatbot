@@ -16,8 +16,6 @@ import CopyIcon from "./icons/CopyIcon";
 import MarkdownRenderer from "./MarkdownRenderer";
 import LikeIcon from "./icons/LikeIcon";
 import DislikeIcon from "./icons/DislikeIcon";
-import UploadIcon from "./icons/UploadIcon";
-import TransferIcon from "./icons/TransferIcon";
 import mainMarkdownStyles from "./MainChatMarkdown.module.css";
 
 // --- 👇 [유지] 대체할 URL과 문구 정의 ---
@@ -619,18 +617,6 @@ export default function Chat() {
                             }
                           >
                             <DislikeIcon />
-                          </button>
-                          <button
-                            className={styles.actionButton}
-                            onClick={() => handleUpload(msg.id)}
-                          >
-                            <UploadIcon />
-                          </button>
-                          <button
-                            className={styles.actionButton}
-                            onClick={() => handleTransfer(msg.id)}
-                          >
-                            <TransferIcon />
                           </button>
                         </div>
                       )}
