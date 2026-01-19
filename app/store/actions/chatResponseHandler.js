@@ -75,7 +75,6 @@ export async function handleResponse(get, set, messagePayload) {
   set({ isLoading: true, llmRawResponse: null });
   const {
     language,
-    showEphemeralToast,
     addMessage,
     updateLastMessage,
     saveMessage,
@@ -83,12 +82,10 @@ export async function handleResponse(get, set, messagePayload) {
     llmProvider,
     messages,
     currentConversationId,
-    conversations,
-    updateConversationTitle,
+    // conversations, // 👈 [삭제] React Query로 이관되어 스토어에 없음
+    // updateConversationTitle, // 👈 [삭제] 스토어 액션에서 제거됨
     setForceScrollToBottom, 
-    // --- 👇 [추가] 설정값 가져오기 ---
     useFastApi, 
-    // --- 👆 [추가] ---
   } = get();
 
   const textForUser = messagePayload.displayText || messagePayload.text;
@@ -96,6 +93,9 @@ export async function handleResponse(get, set, messagePayload) {
   // 사용자가 메시지를 보내면 무조건 맨 아래로 스크롤 강제 이동
   setForceScrollToBottom(true);
 
+  // 👇 [수정] conversations 의존성 제거로 인해 자동 제목 수정 로직 삭제
+  // (필요 시 ChatInput 컴포넌트나 백엔드에서 처리해야 함)
+  /*
   const defaultTitle = locales[language]?.["newChat"] || "New Conversation";
   const isFirstUserMessage =
     messages.filter((m) => m.id !== "initial").length === 0;
@@ -106,6 +106,7 @@ export async function handleResponse(get, set, messagePayload) {
     isFirstUserMessage &&
     textForUser &&
     (!currentConvo || currentConvo.title === defaultTitle);
+  */
 
   if (textForUser) {
     await addMessage("user", { text: textForUser });
@@ -119,10 +120,13 @@ export async function handleResponse(get, set, messagePayload) {
     return;
   }
 
+  // 👇 [수정] 제목 업데이트 호출 제거
+  /*
   if (needsTitleUpdate) {
     const newTitle = textForUser.substring(0, 100);
     await updateConversationTitle(conversationIdForBotResponse, newTitle);
   }
+  */
 
   // 말풍선 표시 여부 결정 (커스텀 액션 등은 숨김)
   const isCustomAction = messagePayload.text === "GET_SCENARIO_LIST"; 
@@ -160,7 +164,6 @@ export async function handleResponse(get, set, messagePayload) {
   try {
     let response;
 
-    // --- 👇 [수정] FastAPI 사용 여부에 따른 분기 ---
     if (useFastApi) {
       console.log(`[handleResponse] Using FastAPI Backend: ${FASTAPI_URL}`);
       response = await fetch(FASTAPI_URL, {
@@ -190,7 +193,6 @@ export async function handleResponse(get, set, messagePayload) {
         signal: controller.signal,
       });
     }
-    // --- 👆 [수정] ---
 
     clearTimeout(timeoutId); // 응답 시작 시 타임아웃 해제
 
@@ -375,7 +377,7 @@ export async function handleResponse(get, set, messagePayload) {
           };
         }
 
-        // 말풍선이 없었다면(shouldShowBubble=false 였거나 제거된 경우) 새로 추가 (에러 메시지 표시)
+        // 말풍선이 없었다면 새로 추가
         addMessage("bot", { text: errorMessage });
         const newSet = new Set(state.pendingResponses);
         newSet.delete(conversationIdForBotResponse);
@@ -460,7 +462,7 @@ export async function handleResponse(get, set, messagePayload) {
                   const newSet = new Set(s.pendingResponses);
                   newSet.delete(conversationIdForBotResponse);
                   return {
-                    messages: s.messages.map((m) => m.id === lastMessage.id ? {...finalMessage, id: savedId} : m), // Simplified
+                    messages: s.messages.map((m) => m.id === lastMessage.id ? {...finalMessage, id: savedId} : m), 
                     isLoading: false,
                     pendingResponses: newSet,
                   };

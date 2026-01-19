@@ -1,6 +1,14 @@
-// app/components/HistoryPanel.jsx
 "use client";
+
 import dynamic from "next/dynamic";
+// 👇 React Query 훅 임포트
+import {
+  useConversations,
+  useCreateConversation,
+  useDeleteConversation,
+  useUpdateTitle,
+  usePinConversation,
+} from "../hooks/useQueries";
 import { useChatStore } from "../store";
 import { useTranslations } from "../hooks/useTranslations";
 import styles from "./HistoryPanel.module.css";
@@ -23,13 +31,13 @@ const ManualModal = dynamic(() => import("./ManualModal"));
 export default function HistoryPanel() {
   const {
     user,
-    conversations,
+    // conversations,       // [제거] React Query로 대체
     loadConversation,
-    createNewConversation,
+    // createNewConversation, // [제거] Mutation으로 대체
     currentConversationId,
-    deleteConversation,
-    updateConversationTitle,
-    pinConversation,
+    // deleteConversation,    // [제거] Mutation으로 대체
+    // updateConversationTitle, // [제거] Mutation으로 대체
+    // pinConversation,       // [제거] Mutation으로 대체
     isHistoryPanelOpen,
     toggleHistoryPanel,
     isSearchModalOpen,
@@ -50,14 +58,33 @@ export default function HistoryPanel() {
     unreadScenarioSessions,
     unreadConversations,
     pendingResponses,
-    // --- 👇 [추가] completedResponses 상태 가져오기 ---
     completedResponses,
-    // --- 👆 [추가] ---
   } = useChatStore();
   const { t } = useTranslations();
 
-  if (!user) return null;
+  // 👇 React Query: 데이터 조회 및 변경 훅 사용
+  const { data: conversations = [], isLoading, isError } = useConversations();
+  const createMutation = useCreateConversation();
+  const deleteMutation = useDeleteConversation();
+  const updateTitleMutation = useUpdateTitle();
+  const pinMutation = usePinConversation();
 
+  // 핸들러: 대화 생성
+  const handleCreate = () => {
+    createMutation.mutate("New Chat", {
+      onSuccess: (newConvo) => {
+        // 생성 후 해당 대화로 자동 이동
+        if (newConvo && newConvo.id) {
+          loadConversation(newConvo.id);
+        }
+      },
+      onError: (error) => {
+        console.error("Failed to create conversation:", error);
+      },
+    });
+  };
+
+  // 핸들러: 대화 삭제
   const handleDeleteRequest = (e, convoId) => {
     e.stopPropagation();
     openConfirmModal({
@@ -65,14 +92,34 @@ export default function HistoryPanel() {
       message: t("deleteConvoConfirm"),
       confirmText: "Delete",
       cancelText: "Cancel",
-      onConfirm: () => deleteConversation(convoId),
+      onConfirm: () => {
+        deleteMutation.mutate(convoId, {
+            onSuccess: () => {
+                // 필요 시 추가 작업 (예: 현재 보고 있는 대화였다면 홈으로 이동 등)
+            }
+        });
+      },
       confirmVariant: "danger",
     });
   };
 
+  // 핸들러: 제목 수정
+  const handleUpdateTitle = (id, newTitle) => {
+    updateTitleMutation.mutate({ id, title: newTitle });
+  };
+
+  // 핸들러: 고정 토글
+  const handlePin = (id, isPinned) => {
+    pinMutation.mutate({ id, isPinned });
+  };
+
+  if (isLoading) return <div className={styles.loadingState}>로딩 중...</div>;
+  if (isError) return <div className={styles.errorState}>목록을 불러올 수 없습니다.</div>;
+
+  if (!user) return null;
+
   return (
     <>
-      {/* Global SVG gradient defs for hover fills */}
       <svg
         width="0"
         height="0"
@@ -106,12 +153,11 @@ export default function HistoryPanel() {
         >
           <MenuIcon />
         </button>
-        {/* --- 👇 [수정된 부분 시작] --- */}
-        {/* currentConversationId가 null이 아닐 때만 (즉, 대화가 로드되었을 때만) 버튼 표시 */}
-        {/* --- 👆 [수정된 부분 끝] --- */}
+
+        {/* 상단 새 대화 버튼 */}
         <button
           className={styles.newChatButton}
-          onClick={createNewConversation}
+          onClick={handleCreate}
         >
           <NewChatIcon />
         </button>
@@ -139,24 +185,23 @@ export default function HistoryPanel() {
           </div>
 
           <div className={styles.panelContent}>
-            {/* currentConversationId가 null이 아닐 때만 (즉, 대화가 로드되었을 때만) 버튼 표시 */}
+            {/* 리스트 내부 새 대화 버튼 */}
             <button
               className={styles.sidePanelButton}
-              onClick={createNewConversation}
+              onClick={handleCreate}
             >
               <EditIcon />
               <span className={styles.newChatText}>{t("newChat")}</span>
             </button>
             <span className={styles.commonText}>{t("History")}</span>
+            
             <div className={styles.conversationList}>
               {conversations.length > 0 &&
                 conversations.map((convo) => {
                   const scenarios = scenariosForConversation[convo.id] || [];
                   const hasUnread = unreadConversations.has(convo.id);
                   const isPending = pendingResponses.has(convo.id);
-                  // --- 👇 [추가] hasCompleted 계산 ---
                   const hasCompleted = completedResponses.has(convo.id);
-                  // --- 👆 [추가] ---
 
                   return (
                     <ConversationItem
@@ -164,9 +209,9 @@ export default function HistoryPanel() {
                       convo={convo}
                       isActive={convo.id === currentConversationId}
                       onClick={loadConversation}
-                      onDelete={handleDeleteRequest}
-                      onUpdateTitle={updateConversationTitle}
-                      onPin={pinConversation}
+                      onDelete={handleDeleteRequest} // 변경된 핸들러 전달
+                      onUpdateTitle={handleUpdateTitle} // 변경된 핸들러 전달
+                      onPin={handlePin} // 변경된 핸들러 전달
                       isExpanded={convo.id === expandedConversationId}
                       scenarios={scenarios}
                       onToggleExpand={toggleConversationExpansion}
@@ -174,9 +219,7 @@ export default function HistoryPanel() {
                       unreadScenarioSessions={unreadScenarioSessions}
                       hasUnreadScenarios={hasUnread}
                       isPending={isPending}
-                      // --- 👇 [추가] hasCompletedResponse 프롭 전달 ---
                       hasCompletedResponse={hasCompleted}
-                      // --- 👆 [추가] ---
                     />
                   );
                 })}

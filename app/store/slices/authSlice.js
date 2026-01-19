@@ -1,4 +1,3 @@
-// app/store/slices/authSlice.js
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -89,7 +88,7 @@ export const createAuthSlice = (set, get) => ({
       fontSizeDefault = "16px",
       isDevMode = false,
       sendTextShortcutImmediately = false,
-      useFastApi = false; // [추가] 기본값 설정
+      useFastApi = true; // [수정] 백엔드 전환을 위해 기본값을 true로 권장
 
     try {
       const userSettingsRef = doc(get().db, "settings", user.uid);
@@ -119,12 +118,13 @@ export const createAuthSlice = (set, get) => ({
           ? settings.sendTextShortcutImmediately
           : sendTextShortcutImmediately;
       
-      // --- 👇 [추가] useFastApi 로드 ---
-      useFastApi =
-        typeof settings.useFastApi === "boolean"
-          ? settings.useFastApi
-          : useFastApi;
-      // --- 👆 [추가] ---
+      // useFastApi =
+      //   typeof settings.useFastApi === "boolean"
+      //     ? settings.useFastApi
+      //     : useFastApi;
+      
+      // [수정] 과도기 동안 DB 설정을 무시하고 true로 강제 (필요시 주석 해제하여 원래대로 복구)
+      useFastApi = true;
 
     } catch (error) {
       console.error("Error loading settings from Firestore:", error);
@@ -141,16 +141,18 @@ export const createAuthSlice = (set, get) => ({
         fontSizeDefault,
         isDevMode,
         sendTextShortcutImmediately,
-        // --- 👇 [추가] 상태 적용 ---
         useFastApi,
-        // --- 👆 [추가] ---
       });
       get().resetMessages?.(language);
     }
 
     // 3. 리스너 구독 시작 (No Await)
     get().unsubscribeAll();
-    get().loadConversations(user.uid);
+    
+    // 👇 [삭제됨] loadConversations는 이제 React Query가 컴포넌트 마운트 시 알아서 수행합니다.
+    // get().loadConversations(user.uid); 
+
+    // 아직 React Query로 이전하지 않은 나머지 데이터 로드 함수들은 유지
     get().loadDevMemos();
     get().subscribeToUnreadStatus(user.uid);
     get().subscribeToUnreadScenarioNotifications(user.uid);
@@ -186,10 +188,8 @@ export const createAuthSlice = (set, get) => ({
       fontSizeDefault: "16px",
       isDevMode: false,
       sendTextShortcutImmediately: false,
-      // --- 👇 [추가] 초기화 ---
       useFastApi: false, 
-      // --- 👆 [추가] ---
-      conversations: [],
+      // conversations: [], // [참고] conversationSlice에서 이미 삭제했으므로 여기서도 불필요하지만, 안전하게 두거나 삭제 가능
       currentConversationId: null,
       expandedConversationId: null,
       scenariosForConversation: {},

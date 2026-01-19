@@ -4,6 +4,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useChatStore } from "../store";
 import { useTranslations } from "../hooks/useTranslations";
+// 👇 [추가] 대화 생성 훅 임포트
+import { useCreateConversation } from "../hooks/useQueries"; 
 import styles from "./ChatInput.module.css";
 import StarIcon from "./icons/StarIcon";
 
@@ -54,6 +56,11 @@ const useDraggableScroll = () => {
 export default function ChatInput() {
   const isLoading = useChatStore((state) => state.isLoading);
   const handleResponse = useChatStore((state) => state.handleResponse);
+  
+  // 👇 [추가] 현재 대화 ID와 로드 함수 가져오기
+  const currentConversationId = useChatStore((state) => state.currentConversationId);
+  const loadConversation = useChatStore((state) => state.loadConversation);
+
   const activePanel = useChatStore((state) => state.activePanel);
   const activeScenarioSessionId = useChatStore(
     (state) => state.activeScenarioSessionId
@@ -84,9 +91,12 @@ export default function ChatInput() {
   const mainInputValue = useChatStore((state) => state.mainInputValue);
   const setMainInputValue = useChatStore((state) => state.setMainInputValue);
   
-  const inputRef = useRef(null); // <textarea>를 참조
+  const inputRef = useRef(null); 
 
   const { t } = useTranslations();
+  // 👇 [추가] 대화 생성 뮤테이션
+  const createMutation = useCreateConversation(); 
+
   const quickRepliesSlider = useDraggableScroll();
   const menuRef = useRef(null);
 
@@ -118,18 +128,32 @@ export default function ChatInput() {
     }
   }, [isInputDisabled, focusRequest, activePanel]);
 
-  // --- 👇 [수정] 메시지 전송 로직 분리 및 순서 변경 ---
+  // --- 👇 [수정] 메시지 전송 로직 (대화방 자동 생성 추가) ---
   const submitMessage = async () => {
     const input = mainInputValue.trim();
     if (!input || isLoading) return;
 
-    // 1. 입력창 내용 및 높이 즉시 초기화 (UX 개선)
+    // 1. 입력창 내용 및 높이 즉시 초기화
     setMainInputValue("");
     if (inputRef.current) {
       inputRef.current.style.height = 'auto';
     }
 
-    // 2. 응답 처리 요청 (입력창 비운 후 실행)
+    // 2. 대화방이 없으면 자동으로 생성
+    if (!currentConversationId) {
+      try {
+        const newConvo = await createMutation.mutateAsync("New Chat");
+        if (newConvo && newConvo.id) {
+          // 생성된 대화방 로드 (ID를 스토어에 설정)
+          await loadConversation(newConvo.id);
+        }
+      } catch (error) {
+        console.error("Failed to create conversation automatically:", error);
+        return; // 생성 실패 시 중단
+      }
+    }
+
+    // 3. 응답 처리 요청 (이제 ID가 있으므로 안전함)
     await handleResponse({ text: input });
   };
 
@@ -139,24 +163,22 @@ export default function ChatInput() {
   };
 
   const handleKeyDown = (e) => {
-    // Shift + Enter가 아니면서 Enter 키만 눌렀을 때 전송
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       submitMessage();
     }
-    // Shift + Enter는 기본 동작(줄바꿈)을 허용
   };
 
   const handleInputChange = (e) => {
     setMainInputValue(e.target.value);
     
-    // Auto-resize logic
     if (inputRef.current) {
-      inputRef.current.style.height = 'auto'; // Reset height to recalculate
-      inputRef.current.style.height = `${inputRef.current.scrollHeight}px`; // Set to scroll height
+      inputRef.current.style.height = 'auto'; 
+      inputRef.current.style.height = `${inputRef.current.scrollHeight}px`; 
     }
   };
-  // --- 👆 [수정] ---
+  // --- 👆 [수정 완료] ---
+
   const handleItemClick = (item) => {
     handleShortcutClick(item);
     setShortcutMenuOpen(null);
@@ -191,7 +213,7 @@ export default function ChatInput() {
           </div>
         ))}
 
-        {/* 3. 활성화된 드롭다운 메뉴 (루프 밖에 단 하나만 렌더링) */}
+        {/* 3. 활성화된 드롭다운 메뉴 */}
         {activeCategoryData && (
           <div className={`GlassEffect ${styles.dropdownMenu}`}>
             {activeCategoryData.subCategories.map((subCategory) => (
