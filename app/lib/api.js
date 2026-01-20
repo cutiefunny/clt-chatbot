@@ -1,5 +1,5 @@
 // app/lib/api.js
-const BASE_URL = "https://musclecat-api.vercel.app"; // FastAPI 주소
+const BASE_URL = "http://210.114.17.65:8001"; // FastAPI 주소
 
 export async function fetchConversations() {
   const res = await fetch(`${BASE_URL}/conversations`);
