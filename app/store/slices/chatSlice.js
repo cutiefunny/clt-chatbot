@@ -18,9 +18,9 @@ import { getErrorKey } from "../../lib/errorHandler";
 import { handleResponse } from "../actions/chatResponseHandler";
 
 const MESSAGE_LIMIT = 15;
-const FASTAPI_BASE_URL = "http://210.114.17.65:8001"; // FastAPI 주소
+// --- 👇 [수정] 상수 제거 또는 동적 사용을 위해 주석 처리 ---
+// const FASTAPI_BASE_URL = "http://210.114.17.65:8001"; 
 
-// 초기 메시지 함수 (chatSlice가 관리)
 const getInitialMessages = (lang = "ko") => {
   const initialText =
     locales[lang]?.initialBotMessage ||
@@ -45,8 +45,12 @@ export const createChatSlice = (set, get) => {
     unsubscribeMessages: null,
     lastVisibleMessage: null,
     hasMoreMessages: true,
+    // --- 👇 [추가] SSE 연결 객체 저장 ---
+    sseEventSource: null,
+    // --- 👆 [추가] ---
 
     // Actions
+    // ... (resetMessages 등 기존 액션 유지) ...
     resetMessages: (language) => {
       set({
         messages: getInitialMessages(language),
@@ -57,11 +61,65 @@ export const createChatSlice = (set, get) => {
       });
       get().unsubscribeMessages?.();
       set({ unsubscribeMessages: null });
-      get().setMainInputValue(""); // 입력창 초기화
+      get().setMainInputValue("");
+    },
+
+    // --- 👇 [추가] SSE 연결 및 해제 액션 ---
+    connectToSSE: () => {
+        const { useFastApi, useLocalFastApiUrl, sseEventSource, addMessage } = get();
+        
+        // FastAPI 모드가 아니거나 이미 연결되어 있으면 중단
+        if (!useFastApi || sseEventSource) return;
+
+        // URL 결정 (기존 포트 8001 사용, 필요시 변경 가능)
+        const baseUrl = useLocalFastApiUrl ? "http://localhost:8001" : "http://210.114.17.65:8001";
+        const sseUrl = `${baseUrl}/events`;
+
+        console.log(`[SSE] Connecting to ${sseUrl}...`);
+
+        const newEventSource = new EventSource(sseUrl);
+
+        newEventSource.onmessage = (event) => {
+            try {
+                // 참고 코드의 로직 적용: 싱글 쿼트를 더블 쿼트로 변환하여 파싱
+                const rawData = event.data.replace(/'/g, '"');
+                const data = JSON.parse(rawData);
+                console.log("[SSE] Message received:", data);
+
+                // 메시지 내용 추출 (참고 코드의 data.message 사용)
+                const messageText = data.message || JSON.stringify(data);
+                
+                // 채팅창에 봇 메시지로 추가
+                addMessage('bot', { 
+                    text: messageText,
+                    type: 'text' 
+                });
+            } catch (error) {
+                console.error("[SSE] Error parsing message:", error, event.data);
+            }
+        };
+
+        newEventSource.onerror = (err) => {
+            console.error("[SSE] Connection error:", err);
+            newEventSource.close();
+            set({ sseEventSource: null });
+            // 필요하다면 여기서 재연결 로직(setTimeout 등) 추가 가능
+        };
+
+        set({ sseEventSource: newEventSource });
+    },
+
+    disconnectSSE: () => {
+        const { sseEventSource } = get();
+        if (sseEventSource) {
+            console.log("[SSE] Disconnecting...");
+            sseEventSource.close();
+            set({ sseEventSource: null });
+        }
     },
 
     loadInitialMessages: async (conversationId) => {
-      const { user, language, showEphemeralToast, useFastApi } = get();
+      const { user, language, showEphemeralToast, useFastApi, useLocalFastApiUrl } = get(); // useLocalFastApiUrl 추가
       if (!user || !conversationId) return;
 
       const initialMessage = getInitialMessages(language)[0];
@@ -71,33 +129,31 @@ export const createChatSlice = (set, get) => {
         lastVisibleMessage: null,
         hasMoreMessages: true,
         selectedOptions: {},
-        mainInputValue: "", // 대화 로드 시 입력창 초기화
+        mainInputValue: "",
       });
 
-      // --- 👇 [수정] FastAPI 사용 시 메시지 로드 및 데이터 매핑 ---
       if (useFastApi) {
         try {
-          const response = await fetch(`${FASTAPI_BASE_URL}/conversations/${conversationId}`);
+
+          const baseUrl = useLocalFastApiUrl ? "http://localhost:8001" : "http://210.114.17.65:8001";
+          const response = await fetch(`${baseUrl}/conversations/${conversationId}`);
+          
           if (!response.ok) throw new Error("Failed to load messages");
           
           const data = await response.json();
-          // API 응답 구조: { id: "...", messages: [{ role: "...", content: "...", ... }] }
           const apiMessagesRaw = data.messages || [];
           
-          // 백엔드 데이터(role, content)를 프론트엔드 데이터(sender, text)로 매핑
           const mappedMessages = apiMessagesRaw.map((msg) => ({
             id: msg.id,
-            sender: msg.role === 'user' ? 'user' : 'bot', // role -> sender 변환
-            text: msg.content, // content -> text 변환
+            sender: msg.role === 'user' ? 'user' : 'bot',
+            text: msg.content,
             createdAt: msg.created_at,
-            // 필요한 경우 추가 필드 매핑
           }));
           
-          // 초기 메시지와 합치기
           set({
             messages: [initialMessage, ...mappedMessages],
             isLoading: false,
-            hasMoreMessages: false, // API 페이징 미구현 시 false 처리
+            hasMoreMessages: false,
           });
         } catch (error) {
           console.error("FastAPI loadInitialMessages error:", error);
@@ -106,7 +162,6 @@ export const createChatSlice = (set, get) => {
         }
         return;
       }
-      // --- 👆 [수정] ---
 
       try {
         const messagesRef = collection(
@@ -163,6 +218,7 @@ export const createChatSlice = (set, get) => {
             });
           },
           (error) => {
+            // ... (에러 핸들링 유지) ...
             console.error(
               `Error listening to initial messages for ${conversationId}:`,
               error
@@ -180,6 +236,7 @@ export const createChatSlice = (set, get) => {
         );
         set({ unsubscribeMessages: unsubscribe });
       } catch (error) {
+        // ... (에러 핸들링 유지) ...
         console.error(
           `Error setting up initial message listener for ${conversationId}:`,
           error
@@ -198,6 +255,8 @@ export const createChatSlice = (set, get) => {
       }
     },
 
+    // ... (updateLastMessage, setSelectedOption, setMessageFeedback 등 나머지 액션 유지) ...
+    
     updateLastMessage: (payload) => {
       set((state) => {
         const lastMessage = state.messages[state.messages.length - 1];
@@ -388,15 +447,12 @@ export const createChatSlice = (set, get) => {
           displayText: item.title,
         });
       } else if (item.action.type === "text") {
-        // 설정에 따른 분기 로직
         if (sendTextShortcutImmediately) {
-           // 즉시 전송 (설정 ON)
            await handleResponse({
             text: item.action.value,
             displayText: item.action.value, 
           });
         } else {
-           // 입력창 채우기 (설정 OFF - 기본값)
            setMainInputValue(item.action.value); 
            focusChatInput();
         }
@@ -428,15 +484,13 @@ export const createChatSlice = (set, get) => {
         showEphemeralToast,
         currentConversationId: globalConversationId,
         createNewConversation,
-        useFastApi, // --- 👇 [추가] ---
+        useFastApi, 
       } = get();
 
-      // --- 👇 [수정] FastAPI 모드일 경우 Firestore 저장 로직 건너뛰기 ---
       if (useFastApi) {
         // console.log("FastAPI mode enabled. Skipping Firestore save in saveMessage.");
         return null;
       }
-      // --- 👆 [수정] ---
 
       if (!user || !message || typeof message !== "object") {
         if (!message || typeof message !== "object")

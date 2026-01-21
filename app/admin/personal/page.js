@@ -16,8 +16,10 @@ export default function PersonalSettingsPage() {
     fontSizeDefault,
     isDevMode, 
     sendTextShortcutImmediately, 
-    // --- 👇 [추가] ---
     useFastApi, 
+    // --- 👇 [추가] 스토어에서 가져오기 ---
+    useLocalFastApiUrl,
+    setLocalFastApiUrl,
     // --- 👆 [추가] ---
     savePersonalSettings, 
     showEphemeralToast,
@@ -35,8 +37,9 @@ export default function PersonalSettingsPage() {
   const [defaultSize, setDefaultSize] = useState("");
   const [devMode, setDevMode] = useState(false); 
   const [textShortcutAutoSend, setTextShortcutAutoSend] = useState(false); 
-  // --- 👇 [추가] 로컬 상태 ---
   const [fastApiEnabled, setFastApiEnabled] = useState(false); 
+  // --- 👇 [추가] 로컬 상태 ---
+  const [localFastApiEnabled, setLocalFastApiEnabled] = useState(false);
   // --- 👆 [추가] ---
   const [isLoading, setIsLoading] = useState(false);
 
@@ -49,8 +52,9 @@ export default function PersonalSettingsPage() {
     if (fontSizeDefault) setDefaultSize(fontSizeDefault);
     setDevMode(isDevMode); 
     setTextShortcutAutoSend(sendTextShortcutImmediately);
-    // --- 👇 [추가] ---
     setFastApiEnabled(useFastApi);
+    // --- 👇 [추가] 초기화 ---
+    setLocalFastApiEnabled(useLocalFastApiUrl);
     // --- 👆 [추가] ---
   }, [
     hideCompletedScenarios,
@@ -59,8 +63,9 @@ export default function PersonalSettingsPage() {
     fontSizeDefault,
     isDevMode, 
     sendTextShortcutImmediately,
-    // --- 👇 [추가] ---
     useFastApi,
+    // --- 👇 [추가] 의존성 추가 ---
+    useLocalFastApiUrl,
     // --- 👆 [추가] ---
   ]);
 
@@ -88,12 +93,14 @@ export default function PersonalSettingsPage() {
       contentTruncateLimit: newTruncateLimit,
       isDevMode: devMode, 
       sendTextShortcutImmediately: textShortcutAutoSend,
-      // --- 👇 [추가] ---
       useFastApi: fastApiEnabled,
-      // --- 👆 [추가] ---
     };
 
-    const success = await savePersonalSettings(settings); // 개인 설정 저장
+    // --- 👇 [추가] 로컬 API 설정 저장 (Firestore가 아닌 LocalStorage/State에 저장) ---
+    setLocalFastApiUrl(localFastApiEnabled);
+    // --- 👆 [추가] ---
+
+    const success = await savePersonalSettings(settings); // 개인 설정 저장 (Firestore)
     if (success) {
       showEphemeralToast("설정이 성공적으로 저장되었습니다.", "success");
     }
@@ -142,7 +149,7 @@ export default function PersonalSettingsPage() {
       </header>
 
       <main className={styles.editorContainer}>
-        {/* [추가] 개발자 모드 설정 */}
+        {/* 개발자 모드 설정 */}
         <div className={styles.settingItem}>
           <label className={styles.settingLabel}>
             <h3>개발자 모드</h3>
@@ -161,7 +168,7 @@ export default function PersonalSettingsPage() {
           </label>
         </div>
 
-        {/* --- 👇 [추가] FastAPI 사용 설정 --- */}
+        {/* FastAPI 사용 설정 */}
         <div className={styles.settingItem} style={{ border: '1px solid #806bf5', backgroundColor: 'rgba(128, 107, 245, 0.05)' }}>
           <label className={styles.settingLabel}>
             <h3 style={{ color: '#634ce2' }}>FastAPI 백엔드 사용 (Experimental)</h3>
@@ -178,6 +185,26 @@ export default function PersonalSettingsPage() {
             <span className={styles.slider}></span>
           </label>
         </div>
+
+        {/* --- 👇 [추가] Local FastAPI 설정 --- */}
+        {fastApiEnabled && (
+          <div className={styles.settingItem} style={{ borderLeft: '3px solid #806bf5', marginLeft: '10px', backgroundColor: 'rgba(128, 107, 245, 0.02)' }}>
+            <label className={styles.settingLabel}>
+              <h3>FastAPI 로컬 모드</h3>
+              <p>
+                활성화 시, 원격 서버 대신 <code>localhost:8001</code>을 API 서버로 사용합니다.
+              </p>
+            </label>
+            <label className={styles.switch}>
+              <input
+                type="checkbox"
+                checked={localFastApiEnabled}
+                onChange={(e) => setLocalFastApiEnabled(e.target.checked)}
+              />
+              <span className={styles.slider}></span>
+            </label>
+          </div>
+        )}
         {/* --- 👆 [추가] --- */}
 
         {/* 텍스트 숏컷 즉시 전송 설정 */}
@@ -198,6 +225,8 @@ export default function PersonalSettingsPage() {
           </label>
         </div>
 
+        {/* ... (나머지 UI 코드 동일) ... */}
+        
         {/* 본문 줄임 줄 수 */}
         <div className={styles.settingItem}>
           <label htmlFor="truncate-limit" className={styles.settingLabel}>

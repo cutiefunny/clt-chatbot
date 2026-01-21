@@ -1,10 +1,9 @@
 // app/components/MainAreaLayout.jsx
 "use client";
 
-// --- 👇 [추가] ---
+import { useEffect } from "react";
 import { useChatStore } from "../store";
 import InitialGreeting from "./InitialGreeting";
-// --- 👆 [추가] ---
 import Chat from "./Chat";
 import ChatInput from "./ChatInput";
 import ScenarioChat from "./ScenarioChat";
@@ -16,11 +15,24 @@ export default function MainAreaLayout({
   activePanel,
   hideMainContent = false,
 }) {
-  // --- 👇 [추가] ---
   const messages = useChatStore((state) => state.messages);
-  // 초기 메시지("initial")만 있는지 확인
+  const { useFastApi, useLocalFastApiUrl, connectToSSE, disconnectSSE } = useChatStore();
+  
   const showInitialGreeting = messages.length <= 1;
-  // --- 👆 [추가] ---
+
+  useEffect(() => {
+    // FastAPI 사용 설정이 켜져 있을 때만 연결 시도
+    if (useFastApi) {
+        connectToSSE();
+    } else {
+        disconnectSSE(); // 꺼지면 연결 해제
+    }
+
+    // 컴포넌트 언마운트 시 연결 해제
+    return () => {
+        disconnectSSE();
+    };
+  }, [useFastApi, useLocalFastApiUrl, connectToSSE, disconnectSSE]);
 
   return (
     <div

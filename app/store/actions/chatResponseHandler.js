@@ -7,8 +7,11 @@ import { locales } from "../../lib/locales";
 
 // 자동 팝업을 트리거할 타겟 URL 정의
 const TARGET_AUTO_OPEN_URL = "http://172.20.130.91:9110/oceans/BPM_P1002.do?tenId=2000&stgId=TST&pgmNr=BKD_M3201";
-// FastAPI 서버 주소
-const FASTAPI_URL = "http://210.114.17.65:8001/chat";
+
+// --- 👇 [수정] URL 상수 분리 및 환경변수 적용 ---
+const REMOTE_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://210.114.17.65:8001";
+const LOCAL_BASE_URL = "http://localhost:8001";
+// --- 👆 [수정] ---
 
 // URL 포함 여부 확인 및 새 창 열기 헬퍼 함수
 const checkAndOpenUrl = (text) => {
@@ -43,17 +46,14 @@ const responseHandlers = {
       getFn().setExtractedSlots(data.slots);
     }
   },
-  // --- 👇 [추가] text 타입 (FastAPI용) 핸들러 ---
   text: (data, getFn) => {
     const responseText = data.message || data.text || "(No Content)";
     getFn().addMessage("bot", { text: responseText });
     checkAndOpenUrl(responseText);
-    // 슬롯이 있다면 업데이트 (FastAPI 응답에 slots가 포함된다면)
     if (data.slots && Object.keys(data.slots).length > 0) {
       getFn().setExtractedSlots(data.slots);
     }
   },
-  // --- 👆 [추가] ---
   error: (data, getFn) => {
     getFn().addMessage("bot", {
       text:
@@ -66,10 +66,6 @@ const responseHandlers = {
 
 /**
  * 사용자 메시지 처리 및 봇 응답 요청/처리
- * (chatSlice.js에서 분리됨)
- * @param {function} get - Zustand 스토어의 get 함수
- * @param {function} set - Zustand 스토어의 set 함수
- * @param {object} messagePayload - 사용자 입력 페이로드 (e.g., { text: "..." })
  */
 export async function handleResponse(get, set, messagePayload) {
   set({ isLoading: true, llmRawResponse: null });
@@ -82,31 +78,17 @@ export async function handleResponse(get, set, messagePayload) {
     llmProvider,
     messages,
     currentConversationId,
-    // conversations, // 👈 [삭제] React Query로 이관되어 스토어에 없음
-    // updateConversationTitle, // 👈 [삭제] 스토어 액션에서 제거됨
     setForceScrollToBottom, 
-    useFastApi, 
+    useFastApi,
+    // --- 👇 [추가] 로컬 API 사용 여부 가져오기 ---
+    useLocalFastApiUrl, 
+    // --- 👆 [추가] ---
   } = get();
 
   const textForUser = messagePayload.displayText || messagePayload.text;
 
   // 사용자가 메시지를 보내면 무조건 맨 아래로 스크롤 강제 이동
   setForceScrollToBottom(true);
-
-  // 👇 [수정] conversations 의존성 제거로 인해 자동 제목 수정 로직 삭제
-  // (필요 시 ChatInput 컴포넌트나 백엔드에서 처리해야 함)
-  /*
-  const defaultTitle = locales[language]?.["newChat"] || "New Conversation";
-  const isFirstUserMessage =
-    messages.filter((m) => m.id !== "initial").length === 0;
-  const currentConvo = currentConversationId
-    ? conversations.find((c) => c.id === currentConversationId)
-    : null;
-  const needsTitleUpdate =
-    isFirstUserMessage &&
-    textForUser &&
-    (!currentConvo || currentConvo.title === defaultTitle);
-  */
 
   if (textForUser) {
     await addMessage("user", { text: textForUser });
@@ -120,15 +102,7 @@ export async function handleResponse(get, set, messagePayload) {
     return;
   }
 
-  // 👇 [수정] 제목 업데이트 호출 제거
-  /*
-  if (needsTitleUpdate) {
-    const newTitle = textForUser.substring(0, 100);
-    await updateConversationTitle(conversationIdForBotResponse, newTitle);
-  }
-  */
-
-  // 말풍선 표시 여부 결정 (커스텀 액션 등은 숨김)
+  // 말풍선 표시 여부 결정
   const isCustomAction = messagePayload.text === "GET_SCENARIO_LIST"; 
   const shouldShowBubble = !isCustomAction;
 
@@ -142,7 +116,6 @@ export async function handleResponse(get, set, messagePayload) {
     feedback: null,
   };
 
-  // 조건부로 임시 메시지 및 pending 상태 추가
   if (shouldShowBubble) {
     set((state) => ({
       messages: [...state.messages, tempBotMessage],
@@ -155,7 +128,6 @@ export async function handleResponse(get, set, messagePayload) {
   let finalStreamText = "";
   let isStream = false;
 
-  // 5초 타임아웃 설정
   const controller = new AbortController();
   const timeoutId = setTimeout(() => {
     controller.abort();
@@ -165,15 +137,21 @@ export async function handleResponse(get, set, messagePayload) {
     let response;
 
     if (useFastApi) {
-      console.log(`[handleResponse] Using FastAPI Backend: ${FASTAPI_URL}`);
-      response = await fetch(FASTAPI_URL, {
+      // --- 👇 [수정] 설정에 따라 API URL 결정 ---
+      const baseUrl = useLocalFastApiUrl ? LOCAL_BASE_URL : REMOTE_BASE_URL;
+      const apiUrl = `${baseUrl}/chat`;
+      
+      console.log(`[handleResponse] Using FastAPI Backend (${useLocalFastApiUrl ? 'Local' : 'Remote'}): ${apiUrl}`);
+      // --- 👆 [수정] ---
+
+      response = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           conversation_id: conversationIdForBotResponse,
           content: messagePayload.text,
           language: language,
-          slots: get().slots, // 기존 슬롯 전달
+          slots: get().slots,
         }),
         signal: controller.signal,
       });
@@ -194,7 +172,7 @@ export async function handleResponse(get, set, messagePayload) {
       });
     }
 
-    clearTimeout(timeoutId); // 응답 시작 시 타임아웃 해제
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorData = await response
@@ -241,7 +219,6 @@ export async function handleResponse(get, set, messagePayload) {
       const data = await response.json();
       set({ llmRawResponse: data });
 
-      // 말풍선을 띄웠던 경우에만 제거 시도
       if (shouldShowBubble) {
         set((state) => ({
           messages: state.messages.filter((m) => m.id !== tempBotMessageId),
@@ -266,7 +243,6 @@ export async function handleResponse(get, set, messagePayload) {
       } else {
         const responseText = data.response || data.text || data.message;
         if (responseText) {
-          // 일반 텍스트 응답에서 URL 체크
           checkAndOpenUrl(responseText);
 
           if (conversationIdForBotResponse === get().currentConversationId) {
@@ -320,7 +296,6 @@ export async function handleResponse(get, set, messagePayload) {
         const lastMessageIndex = state.messages.length - 1;
         const lastMessage = state.messages[lastMessageIndex];
 
-        // 말풍선이 존재하고 스트리밍 중이었다면 교체
         if (
           lastMessage &&
           lastMessage.id === lastBotMessageId &&
@@ -377,7 +352,6 @@ export async function handleResponse(get, set, messagePayload) {
           };
         }
 
-        // 말풍선이 없었다면 새로 추가
         addMessage("bot", { text: errorMessage });
         const newSet = new Set(state.pendingResponses);
         newSet.delete(conversationIdForBotResponse);
