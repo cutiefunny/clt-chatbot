@@ -133,8 +133,8 @@ export default function ScenarioEditorPage() {
     return (
         <div className={styles.container}>
             <header className={styles.header}>
-                <h1>Scenario Categories Editor</h1>
-                <p>챗봇 입력창 좌측의 시나리오 메뉴를 편집합니다.</p>
+                <h1>Shortscut List Editor</h1>
+                <p>챗봇 입력창 상단의 숏컷 목록을 편집합니다.</p>
                 <Link href="/" className={styles.backLink}>← 챗봇으로 돌아가기</Link>
             </header>
 
