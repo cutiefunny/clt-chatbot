@@ -17,7 +17,7 @@ import {
 import { locales } from "../../lib/locales";
 import { getErrorKey } from "../../lib/errorHandler";
 
-const FASTAPI_BASE_URL = "http://210.114.17.65:8001"; // FastAPI 주소
+const FASTAPI_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://210.114.17.65:8001"; // FastAPI 주소
 
 export const createScenarioSlice = (set, get) => ({
   scenarioStates: {},

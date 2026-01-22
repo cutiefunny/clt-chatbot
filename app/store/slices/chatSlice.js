@@ -72,7 +72,7 @@ export const createChatSlice = (set, get) => {
         if (!useFastApi || sseEventSource) return;
 
         // URL 결정 (기존 포트 8001 사용, 필요시 변경 가능)
-        const baseUrl = useLocalFastApiUrl ? "http://localhost:8001" : "http://210.114.17.65:8001";
+        const baseUrl = useLocalFastApiUrl ? "http://localhost:8001" : process.env.NEXT_PUBLIC_API_BASE_URL || "http://210.114.17.65:8001";
         const sseUrl = `${baseUrl}/events`;
 
         console.log(`[SSE] Connecting to ${sseUrl}...`);
@@ -135,7 +135,7 @@ export const createChatSlice = (set, get) => {
       if (useFastApi) {
         try {
 
-          const baseUrl = useLocalFastApiUrl ? "http://localhost:8001" : "http://210.114.17.65:8001";
+          const baseUrl = useLocalFastApiUrl ? "http://localhost:8001" : process.env.NEXT_PUBLIC_API_BASE_URL || "http://210.114.17.65:8001";
           const response = await fetch(`${baseUrl}/conversations/${conversationId}`);
           
           if (!response.ok) throw new Error("Failed to load messages");

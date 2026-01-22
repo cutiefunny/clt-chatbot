@@ -3,7 +3,7 @@ import { useQuery, useMutation, useInfiniteQuery, useQueryClient } from '@tansta
 import { fetchConversations, fetchMessages } from '../lib/api';
 
 // 👇 여기에 BASE_URL이 꼭 있어야 합니다.
-const BASE_URL = "http://210.114.17.65:8001";
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
 
 // [대화 목록] 불러오기
 export const useConversations = () => {
