@@ -49,8 +49,9 @@ export const useDeleteConversation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (conversationId) => {
-      const res = await fetch(`${BASE_URL}/conversations/${conversationId}`, {
-        method: "DELETE",
+      // 백엔드 변경 사항 반영: DELETE -> POST /conversations/{id}/delete
+      const res = await fetch(`${BASE_URL}/conversations/${conversationId}/delete`, {
+        method: "POST",
       });
       if (!res.ok) throw new Error("Failed to delete conversation");
       return conversationId;
