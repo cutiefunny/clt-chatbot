@@ -7,7 +7,7 @@ import Login from "../app/components/Login";
 import Toast from "../app/components/Toast";
 import styles from "./page.module.css";
 import ConfirmModal from "../app/components/ConfirmModal";
-import SharedHeader from "../app/components/SharedHeader";
+import SharedHeader from "../app/components/SharedHeader"; 
 
 export default function HomePage() {
   // --- 👇 [수정] 스토어 셀렉터를 개별적으로 분리 ---
