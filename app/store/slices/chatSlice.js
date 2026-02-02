@@ -4,8 +4,8 @@ import {
   addDoc,
   query,
   orderBy,
-  onSnapshot,
-  getDocs,
+  // onSnapshot, // 👈 [수정] 실시간 리스너 제거
+  getDocs,      // 👈 [수정] 단건 조회 사용
   serverTimestamp,
   doc,
   updateDoc,
@@ -66,62 +66,16 @@ export const createChatSlice = (set, get) => {
     // --- 👇 [주석 처리] SSE 연결 및 해제 액션 ---
     /*
     connectToSSE: () => {
-        const { useFastApi, useLocalFastApiUrl, sseEventSource, addMessage } = get();
-        
-        // FastAPI 모드가 아니거나 이미 연결되어 있으면 중단
-        if (!useFastApi || sseEventSource) return;
-
-        // URL 결정 (기존 포트 8001 사용, 필요시 변경 가능)
-        const baseUrl = useLocalFastApiUrl ? "http://localhost:8001" : process.env.NEXT_PUBLIC_API_BASE_URL || "http://210.114.17.65:8001";
-        const sseUrl = `${baseUrl}/events`;
-
-        console.log(`[SSE] Connecting to ${sseUrl}...`);
-
-        const newEventSource = new EventSource(sseUrl);
-
-        newEventSource.onmessage = (event) => {
-            try {
-                // 참고 코드의 로직 적용: 싱글 쿼트를 더블 쿼트로 변환하여 파싱
-                const rawData = event.data.replace(/'/g, '"');
-                const data = JSON.parse(rawData);
-                console.log("[SSE] Message received:", data);
-
-                // 메시지 내용 추출 (참고 코드의 data.message 사용)
-                const messageText = data.message || JSON.stringify(data);
-                
-                // 채팅창에 봇 메시지로 추가
-                addMessage('bot', { 
-                    text: messageText,
-                    type: 'text' 
-                });
-            } catch (error) {
-                console.error("[SSE] Error parsing message:", error, event.data);
-            }
-        };
-
-        newEventSource.onerror = (err) => {
-            console.error("[SSE] Connection error:", err);
-            newEventSource.close();
-            set({ sseEventSource: null });
-            // 필요하다면 여기서 재연결 로직(setTimeout 등) 추가 가능
-        };
-
-        set({ sseEventSource: newEventSource });
+        // ... (기존 코드 유지) ...
     },
-
     disconnectSSE: () => {
-        const { sseEventSource } = get();
-        if (sseEventSource) {
-            console.log("[SSE] Disconnecting...");
-            sseEventSource.close();
-            set({ sseEventSource: null });
-        }
+        // ... (기존 코드 유지) ...
     },
     */
     // --- 👆 [주석 처리] ---
 
     loadInitialMessages: async (conversationId) => {
-      const { user, language, showEphemeralToast, useFastApi, useLocalFastApiUrl } = get(); // useLocalFastApiUrl 추가
+      const { user, language, showEphemeralToast, useFastApi, useLocalFastApiUrl } = get();
       if (!user || !conversationId) return;
 
       const initialMessage = getInitialMessages(language)[0];
@@ -179,65 +133,52 @@ export const createChatSlice = (set, get) => {
           limit(MESSAGE_LIMIT)
         );
 
+        // 기존 리스너가 있다면 해제
         get().unsubscribeMessages?.();
+        set({ unsubscribeMessages: null });
 
-        const unsubscribe = onSnapshot(
-          q,
-          (messagesSnapshot) => {
-            const newMessages = messagesSnapshot.docs
-              .map((doc) => ({ id: doc.id, ...doc.data() }))
-              .reverse();
-            const lastVisible =
-              messagesSnapshot.docs[messagesSnapshot.docs.length - 1];
-            const newSelectedOptions = {};
-            newMessages.forEach((msg) => {
-              if (msg.selectedOption)
-                newSelectedOptions[msg.id] = msg.selectedOption;
-            });
+        // --- 👇 [수정] onSnapshot(실시간) 대신 getDocs(단건) 사용 ---
+        // onSnapshot을 제거하여 페이지 로드 시 'Firestore/Listen' 채널 연결을 방지합니다.
+        const messagesSnapshot = await getDocs(q);
 
-            let finalMessages = [initialMessage, ...newMessages];
+        const newMessages = messagesSnapshot.docs
+          .map((doc) => ({ id: doc.id, ...doc.data() }))
+          .reverse();
+        const lastVisible =
+          messagesSnapshot.docs[messagesSnapshot.docs.length - 1];
+        const newSelectedOptions = {};
+        newMessages.forEach((msg) => {
+          if (msg.selectedOption)
+            newSelectedOptions[msg.id] = msg.selectedOption;
+        });
 
-            if (get().pendingResponses.has(conversationId)) {
-              const thinkingText =
-                locales[language]?.["statusGenerating"] || "Generating...";
-              const tempBotMessage = {
-                id: `temp_pending_${conversationId}`,
-                sender: "bot",
-                text: thinkingText,
-                isStreaming: true,
-                feedback: null,
-              };
-              finalMessages.push(tempBotMessage);
-            }
+        let finalMessages = [initialMessage, ...newMessages];
 
-            set({
-              messages: finalMessages,
-              lastVisibleMessage: lastVisible,
-              hasMoreMessages: messagesSnapshot.docs.length === MESSAGE_LIMIT,
-              isLoading: false,
-              selectedOptions: newSelectedOptions,
-            });
-          },
-          (error) => {
-            console.error(
-              `Error listening to initial messages for ${conversationId}:`,
-              error
-            );
-            const errorKey = getErrorKey(error);
-            const message =
-              locales[language]?.[errorKey] ||
-              locales["en"]?.errorUnexpected ||
-              "Failed to load messages.";
-            showEphemeralToast(message, "error");
-            set({ isLoading: false, hasMoreMessages: false });
-            unsubscribe();
-            set({ unsubscribeMessages: null });
-          }
-        );
-        set({ unsubscribeMessages: unsubscribe });
+        if (get().pendingResponses.has(conversationId)) {
+          const thinkingText =
+            locales[language]?.["statusGenerating"] || "Generating...";
+          const tempBotMessage = {
+            id: `temp_pending_${conversationId}`,
+            sender: "bot",
+            text: thinkingText,
+            isStreaming: true,
+            feedback: null,
+          };
+          finalMessages.push(tempBotMessage);
+        }
+
+        set({
+          messages: finalMessages,
+          lastVisibleMessage: lastVisible,
+          hasMoreMessages: messagesSnapshot.docs.length === MESSAGE_LIMIT,
+          isLoading: false,
+          selectedOptions: newSelectedOptions,
+        });
+        // --- 👆 [수정 완료] ---
+
       } catch (error) {
         console.error(
-          `Error setting up initial message listener for ${conversationId}:`,
+          `Error setting up initial message fetch for ${conversationId}:`,
           error
         );
         const errorKey = getErrorKey(error);
