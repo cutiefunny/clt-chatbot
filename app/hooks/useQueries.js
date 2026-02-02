@@ -1,15 +1,18 @@
 // app/hooks/useQueries.js
 import { useQuery, useMutation, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
-import { fetchConversations, fetchMessages } from '../lib/api';
-
-// 👇 여기에 BASE_URL이 꼭 있어야 합니다.
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
+import { 
+  fetchConversations, 
+  fetchMessages, 
+  createConversation, 
+  deleteConversation, 
+  updateConversation 
+} from '../lib/api'; // ★ 반드시 api.js에서 함수를 가져와야 합니다.
 
 // [대화 목록] 불러오기
 export const useConversations = () => {
   return useQuery({
     queryKey: ['conversations'],
-    queryFn: fetchConversations,
+    queryFn: ({ pageParam = 0 }) => fetchConversations(pageParam),
   });
 };
 
@@ -19,7 +22,8 @@ export const useMessages = (conversationId) => {
     queryKey: ['messages', conversationId],
     queryFn: ({ pageParam = 0 }) => fetchMessages({ queryKey: [null, conversationId], pageParam }),
     getNextPageParam: (lastPage, allPages) => {
-      return lastPage.length === 15 ? allPages.length * 15 : undefined;
+      // 15개 미만이면 다음 페이지 없음
+      return lastPage && lastPage.length === 15 ? allPages.length * 15 : undefined;
     },
     enabled: !!conversationId,
   });
@@ -29,15 +33,8 @@ export const useMessages = (conversationId) => {
 export const useCreateConversation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (title) => {
-      const res = await fetch(`${BASE_URL}/conversations`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title }),
-      });
-      if (!res.ok) throw new Error("Failed to create conversation");
-      return res.json();
-    },
+    // ★ 직접 fetch하지 않고 api.js의 함수 호출 (usr_id 자동 주입됨)
+    mutationFn: (title) => createConversation(title),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
     },
@@ -48,14 +45,7 @@ export const useCreateConversation = () => {
 export const useDeleteConversation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (conversationId) => {
-      // 백엔드 변경 사항 반영: DELETE -> POST /conversations/{id}/delete
-      const res = await fetch(`${BASE_URL}/conversations/${conversationId}/delete`, {
-        method: "POST",
-      });
-      if (!res.ok) throw new Error("Failed to delete conversation");
-      return conversationId;
-    },
+    mutationFn: (conversationId) => deleteConversation(conversationId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
     },
@@ -66,15 +56,7 @@ export const useDeleteConversation = () => {
 export const useUpdateTitle = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, title }) => {
-      const res = await fetch(`${BASE_URL}/conversations/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title }),
-      });
-      if (!res.ok) throw new Error("Failed to update title");
-      return { id, title };
-    },
+    mutationFn: ({ id, title }) => updateConversation(id, { title }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
     },
@@ -85,15 +67,7 @@ export const useUpdateTitle = () => {
 export const usePinConversation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, isPinned }) => {
-      const res = await fetch(`${BASE_URL}/conversations/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ is_pinned: isPinned }),
-      });
-      if (!res.ok) throw new Error("Failed to pin conversation");
-      return { id, isPinned };
-    },
+    mutationFn: ({ id, isPinned }) => updateConversation(id, { isPinned }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
     },

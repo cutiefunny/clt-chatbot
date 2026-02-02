@@ -18,7 +18,6 @@ import { getErrorKey } from "../../lib/errorHandler";
 import { handleResponse } from "../actions/chatResponseHandler";
 
 const MESSAGE_LIMIT = 15;
-// --- 👇 [수정] 상수 제거 또는 동적 사용을 위해 주석 처리 ---
 // const FASTAPI_BASE_URL = "http://210.114.17.65:8001"; 
 
 const getInitialMessages = (lang = "ko") => {
@@ -45,12 +44,12 @@ export const createChatSlice = (set, get) => {
     unsubscribeMessages: null,
     lastVisibleMessage: null,
     hasMoreMessages: true,
-    // --- 👇 [추가] SSE 연결 객체 저장 ---
-    sseEventSource: null,
-    // --- 👆 [추가] ---
+    
+    // --- 👇 [주석 처리] SSE 연결 객체 저장 ---
+    // sseEventSource: null,
+    // --- 👆 [주석 처리] ---
 
     // Actions
-    // ... (resetMessages 등 기존 액션 유지) ...
     resetMessages: (language) => {
       set({
         messages: getInitialMessages(language),
@@ -64,7 +63,8 @@ export const createChatSlice = (set, get) => {
       get().setMainInputValue("");
     },
 
-    // --- 👇 [추가] SSE 연결 및 해제 액션 ---
+    // --- 👇 [주석 처리] SSE 연결 및 해제 액션 ---
+    /*
     connectToSSE: () => {
         const { useFastApi, useLocalFastApiUrl, sseEventSource, addMessage } = get();
         
@@ -117,6 +117,8 @@ export const createChatSlice = (set, get) => {
             set({ sseEventSource: null });
         }
     },
+    */
+    // --- 👆 [주석 처리] ---
 
     loadInitialMessages: async (conversationId) => {
       const { user, language, showEphemeralToast, useFastApi, useLocalFastApiUrl } = get(); // useLocalFastApiUrl 추가
@@ -134,7 +136,6 @@ export const createChatSlice = (set, get) => {
 
       if (useFastApi) {
         try {
-
           const baseUrl = useLocalFastApiUrl ? "http://localhost:8001" : process.env.NEXT_PUBLIC_API_BASE_URL || "http://210.114.17.65:8001";
           const response = await fetch(`${baseUrl}/conversations/${conversationId}`);
           
@@ -218,7 +219,6 @@ export const createChatSlice = (set, get) => {
             });
           },
           (error) => {
-            // ... (에러 핸들링 유지) ...
             console.error(
               `Error listening to initial messages for ${conversationId}:`,
               error
@@ -236,7 +236,6 @@ export const createChatSlice = (set, get) => {
         );
         set({ unsubscribeMessages: unsubscribe });
       } catch (error) {
-        // ... (에러 핸들링 유지) ...
         console.error(
           `Error setting up initial message listener for ${conversationId}:`,
           error
@@ -255,8 +254,6 @@ export const createChatSlice = (set, get) => {
       }
     },
 
-    // ... (updateLastMessage, setSelectedOption, setMessageFeedback 등 나머지 액션 유지) ...
-    
     updateLastMessage: (payload) => {
       set((state) => {
         const lastMessage = state.messages[state.messages.length - 1];

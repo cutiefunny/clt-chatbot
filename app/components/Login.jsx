@@ -1,3 +1,4 @@
+// app/components/Login.jsx
 'use client';
 
 import { useState } from 'react';
@@ -6,40 +7,43 @@ import { useTranslations } from '../hooks/useTranslations';
 import styles from './Login.module.css';
 
 export default function Login() {
-  const loginWithGoogle = useChatStore((state) => state.loginWithGoogle);
-  const loginWithTestId = useChatStore((state) => state.loginWithTestId);
+  const login = useChatStore((state) => state.login); 
   const { t } = useTranslations();
-  const [testId, setTestId] = useState('');
+  const [userId, setUserId] = useState('');
 
-  const handleTestLogin = (e) => {
+  const handleLogin = (e) => {
     e.preventDefault();
-    loginWithTestId(testId);
+    // 입력된 ID의 앞뒤 공백만 제거하고 그대로 사용
+    const trimmedId = userId.trim();
+    if (trimmedId) {
+      login(trimmedId);
+    }
   };
 
   return (
     <div className={styles.loginContainer}>
-      <h2 className={styles.title}>{t('welcome')}</h2>
-      <p className={styles.prompt}>{t('loginPrompt')}</p>
+      <h2 className={styles.title}>{t('welcome') || 'Welcome'}</h2>
+      <p className={styles.prompt}>
+        {t('loginPrompt') || 'Please enter your Test ID to continue.'}
+      </p>
       
       <div className={styles.loginOptions}>
-        <button onClick={loginWithGoogle} className={styles.googleButton}>
-          {t('signInWithGoogle')}
-        </button>
-        
-        <div className={styles.divider}>
-            <span>{t('loginMethodToggle')}</span>
-        </div>
-        
-        <form onSubmit={handleTestLogin} className={styles.testIdForm}>
+        <form onSubmit={handleLogin} className={styles.testIdForm}>
           <input
             type="text"
-            value={testId}
-            onChange={(e) => setTestId(e.target.value)}
-            placeholder={t('testIdPlaceholder')}
+            value={userId}
+            onChange={(e) => setUserId(e.target.value)}
+            placeholder="Test ID (e.g. musclecat)"
             className={styles.testIdInput}
           />
-          <button type="submit" className={styles.testIdButton} disabled={!testId.trim()}>
-            {t('signInWithTestId')}
+          
+          <button 
+            type="submit" 
+            className={styles.testIdButton} 
+            disabled={!userId.trim()}
+            style={{ marginTop: '10px' }}
+          >
+            {t('signInWithTestId') || "Login"}
           </button>
         </form>
       </div>

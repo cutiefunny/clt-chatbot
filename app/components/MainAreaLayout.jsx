@@ -16,10 +16,17 @@ export default function MainAreaLayout({
   hideMainContent = false,
 }) {
   const messages = useChatStore((state) => state.messages);
+  
+  // --- 👇 [수정] SSE 관련 함수 구조 분해 할당 주석 처리 ---
+  /*
   const { useFastApi, useLocalFastApiUrl, connectToSSE, disconnectSSE } = useChatStore();
+  */
+  // --- 👆 [수정] ---
   
   const showInitialGreeting = messages.length <= 1;
 
+  // --- 👇 [수정] SSE 연결/해제 useEffect 주석 처리 ---
+  /*
   useEffect(() => {
     // FastAPI 사용 설정이 켜져 있을 때만 연결 시도
     if (useFastApi) {
@@ -33,6 +40,8 @@ export default function MainAreaLayout({
         disconnectSSE();
     };
   }, [useFastApi, useLocalFastApiUrl, connectToSSE, disconnectSSE]);
+  */
+  // --- 👆 [수정] ---
 
   return (
     <div
