@@ -4,21 +4,20 @@ import {
   addDoc,
   query,
   orderBy,
-  // onSnapshot, // 👈 [수정] 실시간 리스너 제거
-  getDocs,      // 👈 [수정] 단건 조회 사용
+  getDocs, // onSnapshot 대신 getDocs 사용
   serverTimestamp,
   doc,
   updateDoc,
   limit,
   startAfter,
-  writeBatch,
 } from "firebase/firestore";
 import { locales } from "../../lib/locales";
 import { getErrorKey } from "../../lib/errorHandler";
 import { handleResponse } from "../actions/chatResponseHandler";
 
 const MESSAGE_LIMIT = 15;
-// const FASTAPI_BASE_URL = "http://210.114.17.65:8001"; 
+// 이미지 명세에 맞춰 포트 및 주소 기본값 설정
+const DEFAULT_FASTAPI_URL = "http://202.20.84.65:8083";
 
 const getInitialMessages = (lang = "ko") => {
   const initialText =
@@ -29,7 +28,6 @@ const getInitialMessages = (lang = "ko") => {
 };
 
 export const createChatSlice = (set, get) => {
-
   return {
     // State
     messages: getInitialMessages("ko"),
@@ -41,38 +39,26 @@ export const createChatSlice = (set, get) => {
     extractedSlots: {},
     llmRawResponse: null,
     selectedOptions: {},
+    // 리스너가 없으므로 unsubscribeMessages는 null로 초기화하고 관리하지 않음
     unsubscribeMessages: null,
     lastVisibleMessage: null,
     hasMoreMessages: true,
-    
-    // --- 👇 [주석 처리] SSE 연결 객체 저장 ---
-    // sseEventSource: null,
-    // --- 👆 [주석 처리] ---
 
     // Actions
     resetMessages: (language) => {
+      // 기존 리스너가 있다면 해제 (안전장치)
+      get().unsubscribeMessages?.();
+      
       set({
         messages: getInitialMessages(language),
         lastVisibleMessage: null,
         hasMoreMessages: true,
         selectedOptions: {},
         isLoading: false,
+        unsubscribeMessages: null, // 상태 초기화
       });
-      get().unsubscribeMessages?.();
-      set({ unsubscribeMessages: null });
       get().setMainInputValue("");
     },
-
-    // --- 👇 [주석 처리] SSE 연결 및 해제 액션 ---
-    /*
-    connectToSSE: () => {
-        // ... (기존 코드 유지) ...
-    },
-    disconnectSSE: () => {
-        // ... (기존 코드 유지) ...
-    },
-    */
-    // --- 👆 [주석 처리] ---
 
     loadInitialMessages: async (conversationId) => {
       const { user, language, showEphemeralToast, useFastApi, useLocalFastApiUrl } = get();
@@ -88,12 +74,35 @@ export const createChatSlice = (set, get) => {
         mainInputValue: "",
       });
 
+      // --- 1. FastAPI 모드 (POST 요청) ---
       if (useFastApi) {
         try {
-          const baseUrl = useLocalFastApiUrl ? "http://localhost:8001" : process.env.NEXT_PUBLIC_API_BASE_URL || "http://210.114.17.65:8001";
-          const response = await fetch(`${baseUrl}/conversations/${conversationId}`);
+          const baseUrl = useLocalFastApiUrl 
+            ? "http://localhost:8001" 
+            : process.env.NEXT_PUBLIC_API_BASE_URL || DEFAULT_FASTAPI_URL;
+
+          // 쿼리 파라미터 구성 (이미지 명세 참고)
+          // 실제 운영 시에는 user 객체나 설정에서 동적으로 가져오도록 수정 권장
+          const queryParams = new URLSearchParams({
+            usr_id: 'musclecat', 
+            ten_id: '1000',
+            stg_id: 'DEV',
+            sec_ofc_id: '000025'
+          });
+
+          // POST 요청, Body는 비우고 Query String으로 데이터 전송
+          const apiUrl = `${baseUrl}/api/v1/conversations/${conversationId}?${queryParams.toString()}`;
           
-          if (!response.ok) throw new Error("Failed to load messages");
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'accept': '*/*' },
+            body: '' // curl -d '' 에 해당
+          });
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to load messages: ${response.status} ${errorText}`);
+          }
           
           const data = await response.json();
           const apiMessagesRaw = data.messages || [];
@@ -112,12 +121,13 @@ export const createChatSlice = (set, get) => {
           });
         } catch (error) {
           console.error("FastAPI loadInitialMessages error:", error);
-          showEphemeralToast("Failed to load messages (API).", "error");
+          showEphemeralToast(`Failed to load messages (API): ${error.message}`, "error");
           set({ isLoading: false });
         }
         return;
       }
 
+      // --- 2. Firestore 모드 (단건 조회: getDocs) ---
       try {
         const messagesRef = collection(
           get().db,
@@ -133,19 +143,19 @@ export const createChatSlice = (set, get) => {
           limit(MESSAGE_LIMIT)
         );
 
-        // 기존 리스너가 있다면 해제
+        // [중요] 기존 리스너가 혹시라도 살아있다면 확실히 죽이고 시작
         get().unsubscribeMessages?.();
         set({ unsubscribeMessages: null });
 
-        // --- 👇 [수정] onSnapshot(실시간) 대신 getDocs(단건) 사용 ---
-        // onSnapshot을 제거하여 페이지 로드 시 'Firestore/Listen' 채널 연결을 방지합니다.
+        // onSnapshot(실시간) 대신 getDocs(1회성 조회) 사용
+        // 이로써 '/Listen/channel' 요청이 발생하지 않게 됩니다.
         const messagesSnapshot = await getDocs(q);
 
         const newMessages = messagesSnapshot.docs
           .map((doc) => ({ id: doc.id, ...doc.data() }))
           .reverse();
-        const lastVisible =
-          messagesSnapshot.docs[messagesSnapshot.docs.length - 1];
+        const lastVisible = messagesSnapshot.docs[messagesSnapshot.docs.length - 1];
+        
         const newSelectedOptions = {};
         newMessages.forEach((msg) => {
           if (msg.selectedOption)
@@ -154,9 +164,9 @@ export const createChatSlice = (set, get) => {
 
         let finalMessages = [initialMessage, ...newMessages];
 
+        // 펜딩 메시지 처리
         if (get().pendingResponses.has(conversationId)) {
-          const thinkingText =
-            locales[language]?.["statusGenerating"] || "Generating...";
+          const thinkingText = locales[language]?.["statusGenerating"] || "Generating...";
           const tempBotMessage = {
             id: `temp_pending_${conversationId}`,
             sender: "bot",
@@ -173,19 +183,13 @@ export const createChatSlice = (set, get) => {
           hasMoreMessages: messagesSnapshot.docs.length === MESSAGE_LIMIT,
           isLoading: false,
           selectedOptions: newSelectedOptions,
+          // 리스너를 등록하지 않으므로 unsubscribeMessages는 null 유지
         });
-        // --- 👆 [수정 완료] ---
 
       } catch (error) {
-        console.error(
-          `Error setting up initial message fetch for ${conversationId}:`,
-          error
-        );
+        console.error(`Error loading messages for ${conversationId}:`, error);
         const errorKey = getErrorKey(error);
-        const message =
-          locales[language]?.[errorKey] ||
-          locales["en"]?.errorUnexpected ||
-          "Failed to load messages.";
+        const message = locales[language]?.[errorKey] || locales["en"]?.errorUnexpected || "Failed to load messages.";
         showEphemeralToast(message, "error");
         set({
           isLoading: false,
@@ -198,12 +202,8 @@ export const createChatSlice = (set, get) => {
     updateLastMessage: (payload) => {
       set((state) => {
         const lastMessage = state.messages[state.messages.length - 1];
-        if (
-          !lastMessage ||
-          lastMessage.sender !== "bot" ||
-          !lastMessage.isStreaming
-        ) {
-          return state; 
+        if (!lastMessage || lastMessage.sender !== "bot" || !lastMessage.isStreaming) {
+          return state;
         }
 
         let updatedMessage = { ...lastMessage };
@@ -222,11 +222,8 @@ export const createChatSlice = (set, get) => {
             updatedMessage.hasRichContent = true;
             break;
           default:
-            console.warn(
-              "updateLastMessage received unknown payload type:",
-              payload.type
-            );
-            return state; 
+            console.warn("updateLastMessage received unknown payload type:", payload.type);
+            return state;
         }
 
         return {
@@ -238,10 +235,6 @@ export const createChatSlice = (set, get) => {
     setSelectedOption: async (messageId, optionValue) => {
       const isTemporaryId = String(messageId).startsWith("temp_");
       if (isTemporaryId) {
-        console.warn(
-          "setSelectedOption called with temporary ID, skipping Firestore update for now:",
-          messageId
-        );
         set((state) => ({
           selectedOptions: { ...state.selectedOptions, [messageId]: optionValue },
         }));
@@ -253,8 +246,7 @@ export const createChatSlice = (set, get) => {
         selectedOptions: { ...state.selectedOptions, [messageId]: optionValue },
       }));
 
-      const { user, language, showEphemeralToast, currentConversationId } =
-        get();
+      const { user, language, showEphemeralToast, currentConversationId } = get();
       if (!user || !currentConversationId || !messageId) return;
 
       try {
@@ -269,32 +261,20 @@ export const createChatSlice = (set, get) => {
         );
         await updateDoc(messageRef, { selectedOption: optionValue });
       } catch (error) {
-        console.error("Error updating selected option in Firestore:", error);
+        console.error("Error updating selected option:", error);
         const errorKey = getErrorKey(error);
-        const message =
-          locales[language]?.[errorKey] ||
-          locales["en"]?.errorUnexpected ||
-          "Failed to save selection.";
+        const message = locales[language]?.[errorKey] || "Failed to save selection.";
         showEphemeralToast(message, "error");
         set({ selectedOptions: previousSelectedOptions });
       }
     },
 
     setMessageFeedback: async (messageId, feedbackType) => {
-      const { user, language, showEphemeralToast, currentConversationId, messages } =
-        get();
-      if (!user || !currentConversationId || !messageId) {
-        console.warn(
-          "[setMessageFeedback] Missing user, conversationId, or messageId."
-        );
-        return;
-      }
+      const { user, language, showEphemeralToast, currentConversationId, messages } = get();
+      if (!user || !currentConversationId || !messageId) return;
 
       const messageIndex = messages.findIndex((m) => m.id === messageId);
-      if (messageIndex === -1) {
-        console.warn(`[setMessageFeedback] Message not found: ${messageId}`);
-        return;
-      }
+      if (messageIndex === -1) return;
 
       const message = messages[messageIndex];
       const originalFeedback = message.feedback || null;
@@ -315,32 +295,23 @@ export const createChatSlice = (set, get) => {
           messageId
         );
         await updateDoc(messageRef, { feedback: newFeedback });
-        console.log(`Feedback set to '${newFeedback}' for message ${messageId}`);
       } catch (error) {
-        console.error("Error updating message feedback in Firestore:", error);
+        console.error("Error updating feedback:", error);
         const errorKey = getErrorKey(error);
-        const errorMessage =
-          locales[language]?.[errorKey] ||
-          locales["en"]?.errorUnexpected ||
-          "Failed to save feedback.";
+        const errorMessage = locales[language]?.[errorKey] || "Failed to save feedback.";
         showEphemeralToast(errorMessage, "error");
 
+        // Rollback
         const rollbackMessages = [...get().messages];
-        const rollbackMessageIndex = rollbackMessages.findIndex(
-          (m) => m.id === messageId
-        );
-        if (rollbackMessageIndex !== -1) {
-          rollbackMessages[rollbackMessageIndex] = {
-            ...rollbackMessages[rollbackMessageIndex],
-            feedback: originalFeedback,
-          };
+        const rollbackIndex = rollbackMessages.findIndex((m) => m.id === messageId);
+        if (rollbackIndex !== -1) {
+          rollbackMessages[rollbackIndex] = { ...rollbackMessages[rollbackIndex], feedback: originalFeedback };
           set({ messages: rollbackMessages });
         }
       }
     },
 
     setExtractedSlots: (newSlots) => {
-      console.log("[ChatStore] Setting extracted slots:", newSlots);
       set((state) => ({
         extractedSlots: { ...state.extractedSlots, ...newSlots },
       }));
@@ -351,155 +322,86 @@ export const createChatSlice = (set, get) => {
     },
 
     unsubscribeAllMessagesAndScenarios: () => {
+      // 메시지 리스너 해제 (이 코드를 적용하면 unsubscribeMessages는 null이지만 안전상 호출)
       get().unsubscribeMessages?.();
       set({ unsubscribeMessages: null });
+      
+      // [주의] 시나리오 리스너 해제
+      // 시나리오 관련 슬라이스에서 onSnapshot을 쓰고 있다면 여기서 Listen이 발생할 수 있습니다.
       get().unsubscribeAllScenarioListeners?.();
     },
 
     handleShortcutClick: async (item, messageId) => {
       if (!item || !item.action) return;
       const {
-        extractedSlots,
-        clearExtractedSlots,
-        setSelectedOption,
-        openScenarioPanel,
-        handleResponse,
-        availableScenarios, 
-        language,
-        showEphemeralToast,
-        setMainInputValue, 
-        focusChatInput, 
-        sendTextShortcutImmediately 
+        extractedSlots, clearExtractedSlots, setSelectedOption, openScenarioPanel,
+        handleResponse, availableScenarios, language, showEphemeralToast,
+        setMainInputValue, focusChatInput, sendTextShortcutImmediately
       } = get();
 
       if (messageId) {
         set((state) => ({
           selectedOptions: { ...state.selectedOptions, [messageId]: item.title },
         }));
-        get().setSelectedOption(messageId, item.title);
+        setSelectedOption(messageId, item.title);
       }
 
       if (item.action.type === "custom") {
-        await handleResponse({
-          text: item.action.value,
-          displayText: item.title,
-        });
+        await handleResponse({ text: item.action.value, displayText: item.title });
       } else if (item.action.type === "text") {
         if (sendTextShortcutImmediately) {
-           await handleResponse({
-            text: item.action.value,
-            displayText: item.action.value, 
-          });
+           await handleResponse({ text: item.action.value, displayText: item.action.value });
         } else {
-           setMainInputValue(item.action.value); 
+           setMainInputValue(item.action.value);
            focusChatInput();
         }
       } else if (item.action.type === "scenario") {
         const scenarioId = item.action.value;
-
         if (!availableScenarios.includes(scenarioId)) {
-          console.warn(
-            `[handleShortcutClick] Scenario not found: ${scenarioId}. Shortcut title: "${item.title}"`
-          );
-          const errorMessage =
-            locales[language]?.["errorScenarioNotFound"] ||
-            "The linked scenario could not be found. Please contact an administrator.";
-          
+          const errorMessage = locales[language]?.["errorScenarioNotFound"] || "Scenario not found.";
           showEphemeralToast(errorMessage, "error");
         } else {
-          get().openScenarioPanel?.(scenarioId, extractedSlots);
+          openScenarioPanel?.(scenarioId, extractedSlots);
         }
-      } else {
-        console.warn(`Unsupported shortcut action type: ${item.action.type}`);
       }
       clearExtractedSlots();
     },
 
     saveMessage: async (message, conversationId = null) => {
-      const {
-        user,
-        language,
-        showEphemeralToast,
-        currentConversationId: globalConversationId,
-        createNewConversation,
-        useFastApi, 
-      } = get();
+      const { user, language, showEphemeralToast, currentConversationId, createNewConversation, useFastApi } = get();
 
-      if (useFastApi) {
-        // console.log("FastAPI mode enabled. Skipping Firestore save in saveMessage.");
-        return null;
-      }
+      if (useFastApi) return null; // FastAPI 모드에서는 Firestore 저장 스킵
 
-      if (!user || !message || typeof message !== "object") {
-        if (!message || typeof message !== "object")
-          console.error("saveMessage invalid message:", message);
-        return null;
-      }
+      if (!user || !message || typeof message !== "object") return null;
 
-      let activeConversationId = conversationId || globalConversationId;
+      let activeConversationId = conversationId || currentConversationId;
 
       try {
         if (!activeConversationId) {
-          console.log("No active conversation, creating new one and waiting...");
           activeConversationId = await createNewConversation(true);
-          if (!activeConversationId) {
-            throw new Error(
-              "Failed to get conversation ID after creation attempt (returned null)."
-            );
-          }
-          console.log(
-            `Using newly created and loaded conversation ID: ${activeConversationId}`
-          );
+          if (!activeConversationId) throw new Error("Failed to create conversation.");
         }
 
         const messageToSave = { ...message };
-        const tempId = String(messageToSave.id).startsWith("temp_")
-          ? messageToSave.id
-          : null;
+        const tempId = String(messageToSave.id).startsWith("temp_") ? messageToSave.id : null;
         Object.keys(messageToSave).forEach((key) => {
           if (messageToSave[key] === undefined) delete messageToSave[key];
         });
         if (messageToSave.node?.data) {
           const { content, replies } = messageToSave.node.data;
-          messageToSave.node.data = {
-            ...(content && { content }),
-            ...(replies && { replies }),
-          };
+          messageToSave.node.data = { ...(content && { content }), ...(replies && { replies }) };
         }
         if (tempId) delete messageToSave.id;
 
-        console.log(`Saving message to conversation: ${activeConversationId}`);
-        const messagesCollection = collection(
-          get().db,
-          "chats",
-          user.uid,
-          "conversations",
-          activeConversationId,
-          "messages"
-        );
-        const messageRef = await addDoc(messagesCollection, {
-          ...messageToSave,
-          createdAt: serverTimestamp(),
-        });
+        const messagesCollection = collection(get().db, "chats", user.uid, "conversations", activeConversationId, "messages");
+        const messageRef = await addDoc(messagesCollection, { ...messageToSave, createdAt: serverTimestamp() });
 
-        await updateDoc(
-          doc(
-            get().db,
-            "chats",
-            user.uid,
-            "conversations",
-            activeConversationId
-          ),
-          { updatedAt: serverTimestamp() }
-        );
-        console.log(`Message saved with ID: ${messageRef.id}`);
+        await updateDoc(doc(get().db, "chats", user.uid, "conversations", activeConversationId), { updatedAt: serverTimestamp() });
 
+        // 로컬 상태 업데이트 (Temp ID 교체 등)
         if (tempId) {
           let selectedOptionValue = null;
-          const isStillOnSameConversation =
-            activeConversationId === get().currentConversationId;
-
-          if (isStillOnSameConversation) {
+          if (activeConversationId === get().currentConversationId) {
             set((state) => {
               const newSelectedOptions = { ...state.selectedOptions };
               if (newSelectedOptions[tempId]) {
@@ -507,61 +409,28 @@ export const createChatSlice = (set, get) => {
                 newSelectedOptions[messageRef.id] = selectedOptionValue;
                 delete newSelectedOptions[tempId];
               }
-
-              let newMessages = state.messages;
-              const alreadyExists = state.messages.some(
-                (m) => m.id === messageRef.id
+              const newMessages = state.messages.map((msg) =>
+                msg.id === tempId ? { ...message, id: messageRef.id, isStreaming: false } : msg
               );
-
-              if (alreadyExists) {
-                newMessages = state.messages.filter(
-                  (msg) => msg.id !== tempId
-                );
-              } else {
-                newMessages = state.messages.map((msg) =>
-                  msg.id === tempId
-                    ? { ...message, id: messageRef.id, isStreaming: false }
-                    : msg
-                );
-              }
-
-              return {
-                messages: newMessages,
-                selectedOptions: newSelectedOptions,
-              };
+              return { messages: newMessages, selectedOptions: newSelectedOptions };
             });
           } else {
-            console.log(
-              `[saveMessage] User switched conversation. Skipping local state update for tempId: ${tempId}.`
-            );
             selectedOptionValue = get().selectedOptions[tempId];
           }
-
           if (selectedOptionValue) {
             await get().setSelectedOption(messageRef.id, selectedOptionValue);
           }
         }
-
         return messageRef.id;
       } catch (error) {
-        console.error(
-          `Error in saveMessage (target convo ID: ${activeConversationId}):`,
-          error
-        );
+        console.error("saveMessage error:", error);
         const errorKey = getErrorKey(error);
-        const errorMessage =
-          locales[language]?.[errorKey] ||
-          locales["en"]?.errorUnexpected ||
-          "Failed to save message.";
+        const errorMessage = locales[language]?.[errorKey] || "Failed to save message.";
         showEphemeralToast(errorMessage, "error");
-
-        if (
-          String(message?.id).startsWith("temp_") &&
-          activeConversationId === get().currentConversationId
-        ) {
-          set((state) => ({
-            messages: state.messages.filter((msg) => msg.id !== message.id),
-          }));
+        
+        // 에러 시 임시 메시지 롤백
+        if (String(message?.id).startsWith("temp_") && activeConversationId === get().currentConversationId) {
+          set((state) => ({ messages: state.messages.filter((msg) => msg.id !== message.id) }));
         }
         return null;
       }
@@ -569,9 +438,7 @@ export const createChatSlice = (set, get) => {
 
     addMessage: async (sender, messageData) => {
       let newMessage;
-      const temporaryId = `temp_${Date.now()}_${Math.random()
-        .toString(36)
-        .substring(2, 7)}`;
+      const temporaryId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
       if (sender === "user") {
         newMessage = { id: temporaryId, sender, ...messageData };
@@ -598,41 +465,22 @@ export const createChatSlice = (set, get) => {
     },
 
     loadMoreMessages: async () => {
-      const {
-        user,
-        language,
-        showEphemeralToast,
-        currentConversationId,
-        lastVisibleMessage,
-        hasMoreMessages,
-        messages,
-      } = get();
-      if (
-        !user ||
-        !currentConversationId ||
-        !hasMoreMessages ||
-        !lastVisibleMessage ||
-        get().isLoading
-      )
-        return;
+      const { user, language, showEphemeralToast, currentConversationId, lastVisibleMessage, hasMoreMessages, messages } = get();
+
+      if (!user || !currentConversationId || !hasMoreMessages || !lastVisibleMessage || get().isLoading) return;
 
       set({ isLoading: true });
 
       try {
-        const messagesRef = collection(
-          get().db,
-          "chats",
-          user.uid,
-          "conversations",
-          currentConversationId,
-          "messages"
-        );
+        const messagesRef = collection(get().db, "chats", user.uid, "conversations", currentConversationId, "messages");
         const q = query(
           messagesRef,
           orderBy("createdAt", "desc"),
           startAfter(lastVisibleMessage),
           limit(MESSAGE_LIMIT)
         );
+        
+        // 여기도 마찬가지로 onSnapshot 대신 getDocs 사용
         const snapshot = await getDocs(q);
 
         if (snapshot.empty) {
@@ -640,22 +488,16 @@ export const createChatSlice = (set, get) => {
           return;
         }
 
-        const newMessages = snapshot.docs
-          .map((doc) => ({ id: doc.id, ...doc.data() }))
-          .reverse();
-        const newLastVisible =
-          snapshot.docs[snapshot.docs.length - 1];
-        const initialMessage = messages[0];
-        const existingMessages = messages.slice(1);
-
+        const newMessages = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })).reverse();
+        const newLastVisible = snapshot.docs[snapshot.docs.length - 1];
+        
         const newSelectedOptions = { ...get().selectedOptions };
         newMessages.forEach((msg) => {
-          if (msg.selectedOption)
-            newSelectedOptions[msg.id] = msg.selectedOption;
+          if (msg.selectedOption) newSelectedOptions[msg.id] = msg.selectedOption;
         });
 
         set({
-          messages: [initialMessage, ...newMessages, ...existingMessages],
+          messages: [messages[0], ...newMessages, ...messages.slice(1)],
           lastVisibleMessage: newLastVisible,
           hasMoreMessages: snapshot.docs.length === MESSAGE_LIMIT,
           selectedOptions: newSelectedOptions,
@@ -663,10 +505,7 @@ export const createChatSlice = (set, get) => {
       } catch (error) {
         console.error("Error loading more messages:", error);
         const errorKey = getErrorKey(error);
-        const message =
-          locales[language]?.[errorKey] ||
-          locales["en"]?.errorUnexpected ||
-          "Failed to load more messages.";
+        const message = locales[language]?.[errorKey] || "Failed to load more messages.";
         showEphemeralToast(message, "error");
         set({ hasMoreMessages: false });
       } finally {
