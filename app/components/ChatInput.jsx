@@ -187,9 +187,9 @@ export default function ChatInput() {
   return (
     <div className={styles.inputArea}>
       <div className={styles.quickActionsContainer} ref={menuRef}>
-        {/* 1. 카테고리 버튼들 렌더링 */}
-        {scenarioCategories.map((category) => (
-          <div key={category.name} className={styles.categoryWrapper}>
+        {/* 1. 카테고리 버튼들 렌더링 - key 값에 index 추가하여 고유성 보장 */}
+        {scenarioCategories.map((category, idx) => (
+          <div key={`cat-${category.name}-${idx}`} className={styles.categoryWrapper}>
             <button
               className={`GlassEffect ${styles.categoryButton} ${
                 shortcutMenuOpen === category.name ? styles.active : ""
@@ -216,22 +216,22 @@ export default function ChatInput() {
         {/* 3. 활성화된 드롭다운 메뉴 */}
         {activeCategoryData && (
           <div className={`GlassEffect ${styles.dropdownMenu}`}>
-            {activeCategoryData.subCategories.map((subCategory) => (
+            {activeCategoryData.subCategories.map((subCategory, sIdx) => (
               <div
-                key={subCategory.title}
+                key={`sub-${subCategory.title}-${sIdx}`}
                 className={styles.subCategorySection}
               >
                 <h4 className={styles.subCategoryTitle}>
                   {subCategory.title}
                 </h4>
-                {subCategory.items.map((item) => {
+                {subCategory.items.map((item, iIdx) => {
                   const isFavorited = favorites.some(
                     (fav) =>
                       fav.action.type === item.action.type &&
                       fav.action.value === item.action.value
                   );
                   return (
-                    <div key={item.title} className={styles.dropdownItem}>
+                    <div key={`item-${item.title}-${iIdx}`} className={styles.dropdownItem}>
                       <div
                         className={styles.itemContentWrapper}
                         onClick={() => handleItemClick(item)}
