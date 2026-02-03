@@ -85,8 +85,10 @@ export async function createConversation(title) {
 // [GET] 상세 조회 -> URL 쿼리에 usr_id 포함
 export async function getConversation(conversationId) {
   const userId = getUserId();
+  // 중복된 API_PREFIX(/api/v1)가 붙지 않도록 체크하거나 buildUrl을 확인해야 합니다.
+  // 이미지 규격: GET /conversations/{conversation_id}
   const url = buildUrl(`/conversations/${conversationId}`, { 
-    usr_id: userId 
+    usr_id: userId
   });
   
   const res = await fetch(url, { method: "GET", headers: getHeaders() });

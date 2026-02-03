@@ -148,6 +148,7 @@ export async function handleResponse(get, set, messagePayload) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          usr_id: get().user?.uid || "guest",
           conversation_id: conversationIdForBotResponse,
           content: messagePayload.text,
           language: language,

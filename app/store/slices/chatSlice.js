@@ -44,160 +44,41 @@ export const createChatSlice = (set, get) => {
     lastVisibleMessage: null,
     hasMoreMessages: true,
 
-    // Actions
+    // 메시지 초기화
     resetMessages: (language) => {
-      // 기존 리스너가 있다면 해제 (안전장치)
-      get().unsubscribeMessages?.();
-      
       set({
-        messages: getInitialMessages(language),
-        lastVisibleMessage: null,
-        hasMoreMessages: true,
-        selectedOptions: {},
-        isLoading: false,
-        unsubscribeMessages: null, // 상태 초기화
+        messages: [],
+        completedResponses: new Set(),
       });
-      get().setMainInputValue("");
     },
 
     loadInitialMessages: async (conversationId) => {
-      const { user, language, showEphemeralToast, useFastApi, useLocalFastApiUrl } = get();
-      if (!user || !conversationId) return;
-
-      const initialMessage = getInitialMessages(language)[0];
-      set({
-        isLoading: true,
-        messages: [initialMessage],
-        lastVisibleMessage: null,
-        hasMoreMessages: true,
-        selectedOptions: {},
-        mainInputValue: "",
+    if (!conversationId) return;
+    
+    set({ isLoading: true });
+    try {
+      // 1. 대화 기본 정보 로드 (이미지 규격 반영)
+      const conversationData = await getConversation(conversationId);
+      
+      // 2. 해당 대화의 메시지 목록 로드
+      // 이미지 규격: GET /conversations/{conversation_id}/messages
+      const messages = await fetchMessages({ 
+        queryKey: [null, conversationId], 
+        pageParam: 0 
       });
 
-      // --- 1. FastAPI 모드 (POST 요청) ---
-      if (useFastApi) {
-        try {
-          const baseUrl = useLocalFastApiUrl 
-            ? "http://localhost:8001" 
-            : process.env.NEXT_PUBLIC_API_BASE_URL || DEFAULT_FASTAPI_URL;
-
-          // 쿼리 파라미터 구성 (이미지 명세 참고)
-          // 실제 운영 시에는 user 객체나 설정에서 동적으로 가져오도록 수정 권장
-          const queryParams = new URLSearchParams({
-            usr_id: 'musclecat', 
-            ten_id: '1000',
-            stg_id: 'DEV',
-            sec_ofc_id: '000025'
-          });
-
-          // POST 요청, Body는 비우고 Query String으로 데이터 전송
-          const apiUrl = `${baseUrl}/api/v1/conversations/${conversationId}?${queryParams.toString()}`;
-          
-          const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'accept': '*/*' },
-            body: '' // curl -d '' 에 해당
-          });
-          
-          if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Failed to load messages: ${response.status} ${errorText}`);
-          }
-          
-          const data = await response.json();
-          const apiMessagesRaw = data.messages || [];
-          
-          const mappedMessages = apiMessagesRaw.map((msg) => ({
-            id: msg.id,
-            sender: msg.role === 'user' ? 'user' : 'bot',
-            text: msg.content,
-            createdAt: msg.created_at,
-          }));
-          
-          set({
-            messages: [initialMessage, ...mappedMessages],
-            isLoading: false,
-            hasMoreMessages: false,
-          });
-        } catch (error) {
-          console.error("FastAPI loadInitialMessages error:", error);
-          showEphemeralToast(`Failed to load messages (API): ${error.message}`, "error");
-          set({ isLoading: false });
-        }
-        return;
-      }
-
-      // --- 2. Firestore 모드 (단건 조회: getDocs) ---
-      try {
-        const messagesRef = collection(
-          get().db,
-          "chats",
-          user.uid,
-          "conversations",
-          conversationId,
-          "messages"
-        );
-        const q = query(
-          messagesRef,
-          orderBy("createdAt", "desc"),
-          limit(MESSAGE_LIMIT)
-        );
-
-        // [중요] 기존 리스너가 혹시라도 살아있다면 확실히 죽이고 시작
-        get().unsubscribeMessages?.();
-        set({ unsubscribeMessages: null });
-
-        // onSnapshot(실시간) 대신 getDocs(1회성 조회) 사용
-        // 이로써 '/Listen/channel' 요청이 발생하지 않게 됩니다.
-        const messagesSnapshot = await getDocs(q);
-
-        const newMessages = messagesSnapshot.docs
-          .map((doc) => ({ id: doc.id, ...doc.data() }))
-          .reverse();
-        const lastVisible = messagesSnapshot.docs[messagesSnapshot.docs.length - 1];
-        
-        const newSelectedOptions = {};
-        newMessages.forEach((msg) => {
-          if (msg.selectedOption)
-            newSelectedOptions[msg.id] = msg.selectedOption;
-        });
-
-        let finalMessages = [initialMessage, ...newMessages];
-
-        // 펜딩 메시지 처리
-        if (get().pendingResponses.has(conversationId)) {
-          const thinkingText = locales[language]?.["statusGenerating"] || "Generating...";
-          const tempBotMessage = {
-            id: `temp_pending_${conversationId}`,
-            sender: "bot",
-            text: thinkingText,
-            isStreaming: true,
-            feedback: null,
-          };
-          finalMessages.push(tempBotMessage);
-        }
-
-        set({
-          messages: finalMessages,
-          lastVisibleMessage: lastVisible,
-          hasMoreMessages: messagesSnapshot.docs.length === MESSAGE_LIMIT,
-          isLoading: false,
-          selectedOptions: newSelectedOptions,
-          // 리스너를 등록하지 않으므로 unsubscribeMessages는 null 유지
-        });
-
-      } catch (error) {
-        console.error(`Error loading messages for ${conversationId}:`, error);
-        const errorKey = getErrorKey(error);
-        const message = locales[language]?.[errorKey] || locales["en"]?.errorUnexpected || "Failed to load messages.";
-        showEphemeralToast(message, "error");
-        set({
-          isLoading: false,
-          hasMoreMessages: false,
-          messages: [initialMessage],
-        });
-      }
-    },
+      set({ 
+        messages: Array.isArray(messages) ? messages : [],
+        currentConversationTitle: conversationData.title || "New Chat",
+        isLoading: false 
+      });
+    } catch (error) {
+      console.error("Error loading initial messages:", error);
+      const { showEphemeralToast } = get();
+      showEphemeralToast("대화 내용을 불러오는데 실패했습니다.", "error");
+      set({ isLoading: false, messages: [] });
+    }
+  },
 
     updateLastMessage: (payload) => {
       set((state) => {
