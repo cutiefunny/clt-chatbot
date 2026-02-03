@@ -134,22 +134,37 @@ export async function deleteConversation(conversationId) {
  * ==============================================================================
  */
 
-// [GET] 메시지 목록 -> URL 쿼리에 usr_id 포함
+// [GET] 메시지 목록 조회 (이미지 명세 반영: /conversations/{id})
 export async function fetchMessages({ queryKey, pageParam = 0 }) {
   const [_, conversationId] = queryKey;
   if (!conversationId) return [];
   
   const userId = getUserId();
-  const limit = 15;
-  const url = buildUrl(`/conversations/${conversationId}/messages`, {
+  
+  // 이미지 규격 파라미터 적용
+  const url = buildUrl(`/conversations/${conversationId}`, {
     skip: pageParam,
-    limit: limit,
+    limit: 15,
     usr_id: userId
   });
 
   const res = await fetch(url, { method: "GET", headers: getHeaders() });
   if (!res.ok) throw new Error(`Failed to fetch messages: ${res.status}`);
-  return res.json();
+  
+  const data = await res.json();
+  
+  // 응답 데이터에서 messages 배열만 추출하여 반환
+  // 데이터 구조: { id: "...", messages: [...] }
+  if (data && Array.isArray(data.messages)) {
+    return data.messages.map(msg => ({
+      id: msg.id,
+      sender: msg.role === "user" ? "user" : "bot",
+      text: msg.content,
+      createdAt: msg.created_at
+    }));
+  }
+  
+  return [];
 }
 
 // [POST] 메시지 전송 -> Body에만 usr_id 포함

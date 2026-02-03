@@ -12,6 +12,7 @@ import {
   startAfter,
 } from "firebase/firestore";
 import { locales } from "../../lib/locales";
+import { getConversation, fetchMessages } from "@/app/lib/api";
 import { getErrorKey } from "../../lib/errorHandler";
 import { handleResponse } from "../actions/chatResponseHandler";
 
@@ -53,32 +54,36 @@ export const createChatSlice = (set, get) => {
     },
 
     loadInitialMessages: async (conversationId) => {
-    if (!conversationId) return;
-    
-    set({ isLoading: true });
-    try {
-      // 1. 대화 기본 정보 로드 (이미지 규격 반영)
-      const conversationData = await getConversation(conversationId);
-      
-      // 2. 해당 대화의 메시지 목록 로드
-      // 이미지 규격: GET /conversations/{conversation_id}/messages
-      const messages = await fetchMessages({ 
-        queryKey: [null, conversationId], 
-        pageParam: 0 
-      });
+      if (!conversationId) return;
 
-      set({ 
-        messages: Array.isArray(messages) ? messages : [],
-        currentConversationTitle: conversationData.title || "New Chat",
-        isLoading: false 
-      });
-    } catch (error) {
-      console.error("Error loading initial messages:", error);
-      const { showEphemeralToast } = get();
-      showEphemeralToast("대화 내용을 불러오는데 실패했습니다.", "error");
-      set({ isLoading: false, messages: [] });
-    }
-  },
+      set({ isLoading: true });
+      try {
+        // 1. 대화 상세 정보 로드 (제목 등)
+        const conversationData = await getConversation(conversationId);
+
+        // 2. 해당 대화의 메시지 목록 로드 (가공된 배열 반환됨)
+        const messages = await fetchMessages({
+          queryKey: [null, conversationId],
+          pageParam: 0,
+        });
+
+        // 3. 상태 업데이트
+        set({
+          messages: messages, // 가공된 배열 직접 할당
+          currentConversationTitle: conversationData.title || "New Chat",
+          isLoading: false,
+        });
+        
+        console.log(`[chatSlice] Successfully loaded ${messages.length} messages.`);
+      } catch (error) {
+        console.error("Error loading initial messages:", error);
+        const { showEphemeralToast } = get();
+        if (showEphemeralToast) {
+          showEphemeralToast("대화 내용을 불러오는데 실패했습니다.", "error");
+        }
+        set({ isLoading: false, messages: [] });
+      }
+    },
 
     updateLastMessage: (payload) => {
       set((state) => {
