@@ -87,7 +87,10 @@ export const createAuthSlice = (set, get) => ({
 
     // 기타 로드 함수 호출
     get().loadDevMemos();
-    // get().loadFavorites(user.uid); // 필요시 복구
+    
+    // [나중 구현] 즐겨찾기 및 알림 로드 일시 중단
+    // if (get().loadFavorites) get().loadFavorites(); 
+    // if (get().loadNotifications) get().loadNotifications();
 
     // 스플래시 스크린용 짧은 지연
     await new Promise(resolve => setTimeout(resolve, 500));

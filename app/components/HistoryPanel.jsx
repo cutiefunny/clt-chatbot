@@ -31,7 +31,8 @@ const ManualModal = dynamic(() => import("./ManualModal"));
 export default function HistoryPanel() {
   const {
     user,
-    loadConversation,
+    loadInitialMessages, // chatSlice의 메시지 로드 함수
+    selectConversation,   // conversationSlice의 선택 함수
     currentConversationId,
     isHistoryPanelOpen,
     toggleHistoryPanel,
@@ -45,12 +46,11 @@ export default function HistoryPanel() {
     hasUnreadNotifications,
     isManualModalOpen,
     openManualModal,
-    scenariosForConversation = {}, // 기본값 설정
+    scenariosForConversation = {},
     expandedConversationId,
     toggleConversationExpansion,
     handleScenarioItemClick,
     openConfirmModal,
-    // 👇 [수정] 아래 Set 객체들이 undefined일 경우를 대비해 기본값(new Set()) 설정
     unreadScenarioSessions = new Set(),
     unreadConversations = new Set(),
     pendingResponses = new Set(),
@@ -59,6 +59,7 @@ export default function HistoryPanel() {
   
   const { t } = useTranslations();
 
+  // 대화 목록 가져오기
   const { data: conversations = [], isLoading, isError } = useConversations();
   const createMutation = useCreateConversation();
   const deleteMutation = useDeleteConversation();
@@ -69,11 +70,13 @@ export default function HistoryPanel() {
     createMutation.mutate("New Chat", {
       onSuccess: (newConvo) => {
         if (newConvo && newConvo.id) {
-          loadConversation(newConvo.id);
+          // selectConversation이 있으면 사용, 없으면 직접 set 로직 수행
+          if (selectConversation) {
+            selectConversation(newConvo.id);
+          } else {
+            loadInitialMessages?.(newConvo.id);
+          }
         }
-      },
-      onError: (error) => {
-        console.error("Failed to create conversation:", error);
       },
     });
   };
@@ -102,7 +105,6 @@ export default function HistoryPanel() {
 
   if (isLoading) return <div className={styles.loadingState}>로딩 중...</div>;
   if (isError) return <div className={styles.errorState}>목록을 불러올 수 없습니다.</div>;
-
   if (!user) return null;
 
   return (
@@ -155,10 +157,12 @@ export default function HistoryPanel() {
             <span className={styles.commonText}>{t("History")}</span>
             
             <div className={styles.conversationList}>
-              {conversations.length > 0 &&
+              {Array.isArray(conversations) && conversations.length > 0 ? (
                 conversations.map((convo) => {
+                  // 👈 [에러 방지 핵심] convo 항목 자체가 유효한지 검사
+                  if (!convo || typeof convo !== 'object' || !convo.id) return null;
+
                   const scenarios = scenariosForConversation[convo.id] || [];
-                  // 👇 [해결] 옵셔널 체이닝 및 기본값 보장으로 .has() 에러 방지
                   const hasUnread = unreadConversations?.has?.(convo.id) || false;
                   const isPending = pendingResponses?.has?.(convo.id) || false;
                   const hasCompleted = completedResponses?.has?.(convo.id) || false;
@@ -168,7 +172,8 @@ export default function HistoryPanel() {
                       key={convo.id}
                       convo={convo}
                       isActive={convo.id === currentConversationId}
-                      onClick={loadConversation}
+                      // selectConversation이 있으면 그것을, 없으면 loadInitialMessages를 바인딩
+                      onClick={selectConversation || loadInitialMessages}
                       onDelete={handleDeleteRequest}
                       onUpdateTitle={handleUpdateTitle}
                       onPin={handlePin}
@@ -182,8 +187,8 @@ export default function HistoryPanel() {
                       hasCompletedResponse={hasCompleted}
                     />
                   );
-                })}
-              {conversations.length === 0 && (
+                })
+              ) : (
                 <div className={styles.historyTileWrapper}>
                   <div className={styles.noHistoryBox}>
                     <NoHistoryIcon />
@@ -194,7 +199,7 @@ export default function HistoryPanel() {
             </div>
             <div className={styles.footer}>
               <div className={styles.avatarWrapper} onClick={openProfileModal}>
-                <img src={user.photoURL} alt="User Avatar" className={styles.userAvatar} />
+                <img src={user.photoURL || "/images/avatar.png"} alt="User Avatar" className={styles.userAvatar} />
               </div>
               <button className={styles.iconButton} onClick={openManualModal}>
                 <ManualIcon />

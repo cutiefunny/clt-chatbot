@@ -1,24 +1,15 @@
 // app/store/slices/chatSlice.js
-import {
-  collection,
-  addDoc,
-  query,
-  orderBy,
-  getDocs, // onSnapshot 대신 getDocs 사용
-  serverTimestamp,
-  doc,
-  updateDoc,
-  limit,
-  startAfter,
-} from "firebase/firestore";
 import { locales } from "../../lib/locales";
-import { getConversation, fetchMessages } from "@/app/lib/api";
+import { 
+  getConversation, 
+  fetchMessages, 
+  createMessage, 
+  updateMessage 
+} from "@/app/lib/api";
 import { getErrorKey } from "../../lib/errorHandler";
 import { handleResponse } from "../actions/chatResponseHandler";
 
 const MESSAGE_LIMIT = 15;
-// 이미지 명세에 맞춰 포트 및 주소 기본값 설정
-const DEFAULT_FASTAPI_URL = "http://202.20.84.65:8083";
 
 const getInitialMessages = (lang = "ko") => {
   const initialText =
@@ -40,9 +31,8 @@ export const createChatSlice = (set, get) => {
     extractedSlots: {},
     llmRawResponse: null,
     selectedOptions: {},
-    // 리스너가 없으므로 unsubscribeMessages는 null로 초기화하고 관리하지 않음
-    unsubscribeMessages: null,
-    lastVisibleMessage: null,
+    unsubscribeMessages: null, // REST API 환경이므로 항상 null 유지
+    lastVisibleMessage: null, // 페이지네이션용 (skip/offset으로 대체 가능)
     hasMoreMessages: true,
 
     // 메시지 초기화
@@ -53,28 +43,38 @@ export const createChatSlice = (set, get) => {
       });
     },
 
+    /**
+     * 초기 메시지 로드 (FastAPI 기반)
+     */
     loadInitialMessages: async (conversationId) => {
       if (!conversationId) return;
 
       set({ isLoading: true });
       try {
-        // 1. 대화 상세 정보 로드 (제목 등)
+        // 1. 대화 상세 정보 로드
         const conversationData = await getConversation(conversationId);
 
-        // 2. 해당 대화의 메시지 목록 로드 (가공된 배열 반환됨)
+        // 2. 메시지 목록 로드 (api.js에서 이미 가공됨)
         const messages = await fetchMessages({
           queryKey: [null, conversationId],
           pageParam: 0,
         });
 
-        // 3. 상태 업데이트
+        // 3. 선택된 옵션 데이터 추출
+        const newSelectedOptions = {};
+        messages.forEach(msg => {
+          if (msg.selectedOption) newSelectedOptions[msg.id] = msg.selectedOption;
+        });
+
         set({
-          messages: messages, // 가공된 배열 직접 할당
+          messages: messages,
+          selectedOptions: newSelectedOptions,
           currentConversationTitle: conversationData.title || "New Chat",
           isLoading: false,
+          hasMoreMessages: messages.length >= 15, // 초기 리미트 기준
         });
         
-        console.log(`[chatSlice] Successfully loaded ${messages.length} messages.`);
+        console.log(`[chatSlice] Successfully loaded ${messages.length} messages from FastAPI.`);
       } catch (error) {
         console.error("Error loading initial messages:", error);
         const { showEphemeralToast } = get();
@@ -108,7 +108,6 @@ export const createChatSlice = (set, get) => {
             updatedMessage.hasRichContent = true;
             break;
           default:
-            console.warn("updateLastMessage received unknown payload type:", payload.type);
             return state;
         }
 
@@ -118,6 +117,9 @@ export const createChatSlice = (set, get) => {
       });
     },
 
+    /**
+     * 선택 옵션 저장 (FastAPI PATCH 연동)
+     */
     setSelectedOption: async (messageId, optionValue) => {
       const isTemporaryId = String(messageId).startsWith("temp_");
       if (isTemporaryId) {
@@ -132,32 +134,24 @@ export const createChatSlice = (set, get) => {
         selectedOptions: { ...state.selectedOptions, [messageId]: optionValue },
       }));
 
-      const { user, language, showEphemeralToast, currentConversationId } = get();
-      if (!user || !currentConversationId || !messageId) return;
+      const { currentConversationId, showEphemeralToast, language } = get();
+      if (!currentConversationId) return;
 
       try {
-        const messageRef = doc(
-          get().db,
-          "chats",
-          user.uid,
-          "conversations",
-          currentConversationId,
-          "messages",
-          String(messageId)
-        );
-        await updateDoc(messageRef, { selectedOption: optionValue });
+        await updateMessage(currentConversationId, messageId, { selectedOption: optionValue });
       } catch (error) {
         console.error("Error updating selected option:", error);
-        const errorKey = getErrorKey(error);
-        const message = locales[language]?.[errorKey] || "Failed to save selection.";
-        showEphemeralToast(message, "error");
+        showEphemeralToast(locales[language]?.["errorSaveFailed"] || "저장에 실패했습니다.", "error");
         set({ selectedOptions: previousSelectedOptions });
       }
     },
 
+    /**
+     * 피드백 저장 (FastAPI PATCH 연동)
+     */
     setMessageFeedback: async (messageId, feedbackType) => {
-      const { user, language, showEphemeralToast, currentConversationId, messages } = get();
-      if (!user || !currentConversationId || !messageId) return;
+      const { currentConversationId, messages, showEphemeralToast, language } = get();
+      if (!currentConversationId || !messageId) return;
 
       const messageIndex = messages.findIndex((m) => m.id === messageId);
       if (messageIndex === -1) return;
@@ -166,32 +160,21 @@ export const createChatSlice = (set, get) => {
       const originalFeedback = message.feedback || null;
       const newFeedback = originalFeedback === feedbackType ? null : feedbackType;
 
+      // 낙관적 업데이트
       const updatedMessages = [...messages];
       updatedMessages[messageIndex] = { ...message, feedback: newFeedback };
       set({ messages: updatedMessages });
 
       try {
-        const messageRef = doc(
-          get().db,
-          "chats",
-          user.uid,
-          "conversations",
-          currentConversationId,
-          "messages",
-          messageId
-        );
-        await updateDoc(messageRef, { feedback: newFeedback });
+        await updateMessage(currentConversationId, messageId, { feedback: newFeedback });
       } catch (error) {
         console.error("Error updating feedback:", error);
-        const errorKey = getErrorKey(error);
-        const errorMessage = locales[language]?.[errorKey] || "Failed to save feedback.";
-        showEphemeralToast(errorMessage, "error");
-
-        // Rollback
+        showEphemeralToast(locales[language]?.["errorSaveFailed"] || "피드백 저장 실패", "error");
+        
+        // 롤백
         const rollbackMessages = [...get().messages];
-        const rollbackIndex = rollbackMessages.findIndex((m) => m.id === messageId);
-        if (rollbackIndex !== -1) {
-          rollbackMessages[rollbackIndex] = { ...rollbackMessages[rollbackIndex], feedback: originalFeedback };
+        if (messageIndex !== -1) {
+          rollbackMessages[messageIndex] = { ...message, feedback: originalFeedback };
           set({ messages: rollbackMessages });
         }
       }
@@ -208,12 +191,7 @@ export const createChatSlice = (set, get) => {
     },
 
     unsubscribeAllMessagesAndScenarios: () => {
-      // 메시지 리스너 해제 (이 코드를 적용하면 unsubscribeMessages는 null이지만 안전상 호출)
-      get().unsubscribeMessages?.();
-      set({ unsubscribeMessages: null });
-      
-      // [주의] 시나리오 리스너 해제
-      // 시나리오 관련 슬라이스에서 onSnapshot을 쓰고 있다면 여기서 Listen이 발생할 수 있습니다.
+      // REST API에서는 해제할 리스너가 없음
       get().unsubscribeAllScenarioListeners?.();
     },
 
@@ -226,9 +204,6 @@ export const createChatSlice = (set, get) => {
       } = get();
 
       if (messageId) {
-        set((state) => ({
-          selectedOptions: { ...state.selectedOptions, [messageId]: item.title },
-        }));
         setSelectedOption(messageId, item.title);
       }
 
@@ -243,9 +218,9 @@ export const createChatSlice = (set, get) => {
         }
       } else if (item.action.type === "scenario") {
         const scenarioId = item.action.value;
-        if (!availableScenarios.includes(scenarioId)) {
-          const errorMessage = locales[language]?.["errorScenarioNotFound"] || "Scenario not found.";
-          showEphemeralToast(errorMessage, "error");
+        const scenarioExists = availableScenarios.some(s => s.id === scenarioId);
+        if (!scenarioExists) {
+          showEphemeralToast(locales[language]?.["errorScenarioNotFound"] || "시나리오를 찾을 수 없습니다.", "error");
         } else {
           openScenarioPanel?.(scenarioId, extractedSlots);
         }
@@ -253,146 +228,98 @@ export const createChatSlice = (set, get) => {
       clearExtractedSlots();
     },
 
+    /**
+     * 메시지 저장 (FastAPI POST 연동)
+     */
     saveMessage: async (message, conversationId = null) => {
-      const { user, language, showEphemeralToast, currentConversationId, createNewConversation, useFastApi } = get();
-
-      if (useFastApi) return null; // FastAPI 모드에서는 Firestore 저장 스킵
-
-      if (!user || !message || typeof message !== "object") return null;
-
+      const { currentConversationId, createNewConversation, showEphemeralToast, language } = get();
+      
       let activeConversationId = conversationId || currentConversationId;
 
       try {
         if (!activeConversationId) {
           activeConversationId = await createNewConversation(true);
-          if (!activeConversationId) throw new Error("Failed to create conversation.");
         }
 
-        const messageToSave = { ...message };
-        const tempId = String(messageToSave.id).startsWith("temp_") ? messageToSave.id : null;
-        Object.keys(messageToSave).forEach((key) => {
-          if (messageToSave[key] === undefined) delete messageToSave[key];
-        });
-        if (messageToSave.node?.data) {
-          const { content, replies } = messageToSave.node.data;
-          messageToSave.node.data = { ...(content && { content }), ...(replies && { replies }) };
-        }
-        if (tempId) delete messageToSave.id;
-
-        const messagesCollection = collection(get().db, "chats", user.uid, "conversations", activeConversationId, "messages");
-        const messageRef = await addDoc(messagesCollection, { ...messageToSave, createdAt: serverTimestamp() });
-
-        await updateDoc(doc(get().db, "chats", user.uid, "conversations", activeConversationId), { updatedAt: serverTimestamp() });
-
-        // 로컬 상태 업데이트 (Temp ID 교체 등)
-        if (tempId) {
-          let selectedOptionValue = null;
-          if (activeConversationId === get().currentConversationId) {
-            set((state) => {
-              const newSelectedOptions = { ...state.selectedOptions };
-              if (newSelectedOptions[tempId]) {
-                selectedOptionValue = newSelectedOptions[tempId];
-                newSelectedOptions[messageRef.id] = selectedOptionValue;
-                delete newSelectedOptions[tempId];
+        // FastAPI createMessage 호출
+        const savedMessage = await createMessage(activeConversationId, message);
+        
+        // 임시 ID(temp_)를 실제 DB ID로 교체
+        if (String(message.id).startsWith("temp_")) {
+          set((state) => ({
+            messages: state.messages.map((msg) =>
+              msg.id === message.id ? { ...msg, id: savedMessage.id, isStreaming: false } : msg
+            ),
+            // 선택 옵션 맵의 키도 변경
+            selectedOptions: (() => {
+              const newOpts = { ...state.selectedOptions };
+              if (newOpts[message.id]) {
+                newOpts[savedMessage.id] = newOpts[message.id];
+                delete newOpts[message.id];
               }
-              const newMessages = state.messages.map((msg) =>
-                msg.id === tempId ? { ...message, id: messageRef.id, isStreaming: false } : msg
-              );
-              return { messages: newMessages, selectedOptions: newSelectedOptions };
-            });
-          } else {
-            selectedOptionValue = get().selectedOptions[tempId];
-          }
-          if (selectedOptionValue) {
-            await get().setSelectedOption(messageRef.id, selectedOptionValue);
-          }
+              return newOpts;
+            })()
+          }));
         }
-        return messageRef.id;
+
+        return savedMessage.id;
       } catch (error) {
         console.error("saveMessage error:", error);
-        const errorKey = getErrorKey(error);
-        const errorMessage = locales[language]?.[errorKey] || "Failed to save message.";
-        showEphemeralToast(errorMessage, "error");
-        
-        // 에러 시 임시 메시지 롤백
-        if (String(message?.id).startsWith("temp_") && activeConversationId === get().currentConversationId) {
-          set((state) => ({ messages: state.messages.filter((msg) => msg.id !== message.id) }));
-        }
+        showEphemeralToast(locales[language]?.["errorSaveFailed"] || "메시지 저장 실패", "error");
         return null;
       }
     },
 
     addMessage: async (sender, messageData) => {
-      let newMessage;
       const temporaryId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-
-      if (sender === "user") {
-        newMessage = { id: temporaryId, sender, ...messageData };
-      } else {
-        newMessage = {
-          id: messageData.id || temporaryId,
-          sender: "bot",
-          text: messageData.text,
-          scenarios: messageData.scenarios,
-          isStreaming: messageData.isStreaming || false,
-          type: messageData.type,
-          scenarioId: messageData.scenarioId,
-          scenarioSessionId: messageData.scenarioSessionId,
-          feedback: null,
-          chartData: messageData.chartData || null,
-        };
-      }
+      let newMessage = {
+        id: messageData.id || temporaryId,
+        sender: sender === "user" ? "user" : "bot",
+        text: messageData.text,
+        scenarios: messageData.scenarios,
+        isStreaming: messageData.isStreaming || false,
+        type: messageData.type,
+        scenarioId: messageData.scenarioId,
+        scenarioSessionId: messageData.scenarioSessionId,
+        feedback: null,
+        chartData: messageData.chartData || null,
+      };
 
       set((state) => ({ messages: [...state.messages, newMessage] }));
 
       if (!newMessage.isStreaming) {
-        await get().saveMessage(newMessage, null);
+        await get().saveMessage(newMessage);
       }
     },
 
+    /**
+     * 추가 메시지 로드 (FastAPI 페이지네이션)
+     */
     loadMoreMessages: async () => {
-      const { user, language, showEphemeralToast, currentConversationId, lastVisibleMessage, hasMoreMessages, messages } = get();
+      const { currentConversationId, messages, hasMoreMessages, isLoading, showEphemeralToast, language } = get();
 
-      if (!user || !currentConversationId || !hasMoreMessages || !lastVisibleMessage || get().isLoading) return;
+      if (!currentConversationId || !hasMoreMessages || isLoading) return;
 
       set({ isLoading: true });
 
       try {
-        const messagesRef = collection(get().db, "chats", user.uid, "conversations", currentConversationId, "messages");
-        const q = query(
-          messagesRef,
-          orderBy("createdAt", "desc"),
-          startAfter(lastVisibleMessage),
-          limit(MESSAGE_LIMIT)
-        );
-        
-        // 여기도 마찬가지로 onSnapshot 대신 getDocs 사용
-        const snapshot = await getDocs(q);
+        const skip = messages.length;
+        const newMessages = await fetchMessages({
+          queryKey: [null, currentConversationId],
+          pageParam: skip,
+        });
 
-        if (snapshot.empty) {
+        if (newMessages.length === 0) {
           set({ hasMoreMessages: false });
-          return;
+        } else {
+          set({
+            messages: [...newMessages, ...messages],
+            hasMoreMessages: newMessages.length === MESSAGE_LIMIT,
+          });
         }
-
-        const newMessages = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })).reverse();
-        const newLastVisible = snapshot.docs[snapshot.docs.length - 1];
-        
-        const newSelectedOptions = { ...get().selectedOptions };
-        newMessages.forEach((msg) => {
-          if (msg.selectedOption) newSelectedOptions[msg.id] = msg.selectedOption;
-        });
-
-        set({
-          messages: [messages[0], ...newMessages, ...messages.slice(1)],
-          lastVisibleMessage: newLastVisible,
-          hasMoreMessages: snapshot.docs.length === MESSAGE_LIMIT,
-          selectedOptions: newSelectedOptions,
-        });
       } catch (error) {
         console.error("Error loading more messages:", error);
-        const errorKey = getErrorKey(error);
-        const message = locales[language]?.[errorKey] || "Failed to load more messages.";
-        showEphemeralToast(message, "error");
+        showEphemeralToast(locales[language]?.["errorLoadFailed"] || "추가 메시지 로드 실패", "error");
         set({ hasMoreMessages: false });
       } finally {
         set({ isLoading: false });

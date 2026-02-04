@@ -1,16 +1,13 @@
 // app/store/slices/scenarioSlice.js
-import {
-  collection,
-  addDoc,
-  doc,
-  updateDoc,
-  onSnapshot,
-  serverTimestamp,
-} from "firebase/firestore";
 import { locales } from "../../lib/locales";
 import { getErrorKey } from "../../lib/errorHandler";
+import { 
+  fetchScenarios, 
+  fetchScenarioSessions, 
+  createScenarioSession, 
+  updateScenarioSession 
+} from "../../lib/api";
 
-// .env의 NEXT_PUBLIC_API_BASE_URL 사용 (예: http://202.20.84.65:8083/api/v1)
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export const createScenarioSlice = (set, get) => ({
@@ -18,10 +15,10 @@ export const createScenarioSlice = (set, get) => ({
   activeScenarioSessionId: null,
   activeScenarioSessions: [],
   scenarioCategories: [],
-  availableScenarios: [], // [{id, title, description}, ...] 객체 배열로 관리
+  availableScenarios: [], 
+  // Firebase 리스너 맵은 더 이상 필요하지 않지만 인터페이스 유지를 위해 빈 객체로 둠
   unsubscribeScenariosMap: {},
 
-  // 사용자 ID 가져오기 유틸리티 (따옴표 제거 및 공백 처리)
   getStoredUserId: () => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("userId");
@@ -31,19 +28,12 @@ export const createScenarioSlice = (set, get) => ({
   },
 
   /**
-   * 사용 가능한 시나리오 목록 로드 (ID와 제목 바인딩용)
-   * 주소: http://202.20.84.65:8083/api/v1/scenarios
+   * 사용 가능한 시나리오 목록 로드
    */
   loadAvailableScenarios: async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/scenarios`);
-      if (response.ok) {
-        const scenarios = await response.json();
-        // API 응답 구조 [{id, title, description}, ...]를 상태에 저장
-        set({ availableScenarios: Array.isArray(scenarios) ? scenarios : [] });
-      } else {
-        throw new Error(`Failed to load scenarios: ${response.status}`);
-      }
+      const scenarios = await fetchScenarios();
+      set({ availableScenarios: Array.isArray(scenarios) ? scenarios : [] });
     } catch (e) {
       console.error("Failed to load available scenarios:", e);
       set({ availableScenarios: [] });
@@ -52,7 +42,6 @@ export const createScenarioSlice = (set, get) => ({
 
   /**
    * 숏컷(카테고리) 데이터 로드
-   * 주소: http://202.20.84.65:8083/api/v1/shortcut
    */
   loadScenarioCategories: async () => {
     try {
@@ -68,86 +57,63 @@ export const createScenarioSlice = (set, get) => ({
   },
 
   /**
-   * 편집된 숏컷 데이터를 서버에 저장
-   */
-  saveScenarioCategories: async (newCategories) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/shortcut`, {
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newCategories)
-      });
-      if (response.ok) {
-        set({ scenarioCategories: newCategories });
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error("Error saving shortcuts:", error);
-      return false;
-    }
-  },
-
-  /**
    * 시나리오 패널 열기 및 초기 /chat 호출
    */
   openScenarioPanel: async (scenarioId, initialSlots = {}) => {
-    const { user, currentConversationId, handleEvents, language, setActivePanel, addMessage, setForceScrollToBottom, showEphemeralToast, showScenarioBubbles } = get();
-    if (!user) return;
+    const { 
+      currentConversationId, 
+      handleEvents, 
+      language, 
+      setActivePanel, 
+      addMessage, 
+      setForceScrollToBottom, 
+      showScenarioBubbles 
+    } = get();
 
     let conversationId = currentConversationId;
-    let newScenarioSessionId = null;
-    const userId = get().getStoredUserId(); // FastAPI 호출을 위한 usr_id
+    const userId = get().getStoredUserId();
 
     try {
-      // 대화방이 없을 경우 생성
+      // 1. 대화방 보장
       if (!conversationId) {
-        const newConversationId = await get().createNewConversation(true);
-        if (!newConversationId) throw new Error("Failed to ensure conversation ID.");
-        
-        await new Promise((resolve, reject) => {
-          const timeout = setTimeout(() => reject(new Error("Timeout")), 5000);
-          const check = () => {
-            if (get().currentConversationId === newConversationId) {
-              clearTimeout(timeout);
-              resolve();
-            } else {
-              setTimeout(check, 100);
-            }
-          };
-          check();
-        });
-        conversationId = newConversationId;
+        conversationId = await get().createNewConversation(true);
+        if (!conversationId) throw new Error("Failed to create conversation.");
       }
 
-      // Firestore 세션 생성 (상태 공유용)
-      const scenarioSessionsRef = collection(get().db, "chats", user.uid, "conversations", conversationId, "scenario_sessions");
-      const newSessionDoc = await addDoc(scenarioSessionsRef, {
-        scenarioId,
-        status: "starting",
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        messages: [],
-        state: null,
-        slots: initialSlots,
-      });
-      newScenarioSessionId = newSessionDoc.id;
+      // 2. FastAPI를 통한 시나리오 세션 생성
+      const sessionData = await createScenarioSession(conversationId, scenarioId);
+      const newScenarioSessionId = sessionData.id;
+
+      // 로컬 상태 초기화 (리스너 대신 직접 설정)
+      set(state => ({
+        scenarioStates: {
+          ...state.scenarioStates,
+          [newScenarioSessionId]: {
+            ...sessionData,
+            messages: [],
+            slots: initialSlots,
+            isLoading: false
+          }
+        },
+        activeScenarioSessions: [...state.activeScenarioSessions, newScenarioSessionId]
+      }));
 
       setActivePanel("main");
       setForceScrollToBottom(true);
+      
       if (showScenarioBubbles) {
         await addMessage("user", { type: "scenario_bubble", scenarioSessionId: newScenarioSessionId });
       }
 
-      get().subscribeToScenarioSession(newScenarioSessionId);
+      // 패널 전환
       setTimeout(() => setActivePanel("scenario", newScenarioSessionId), 100);
 
-      // --- FastAPI /chat API 호출 (usr_id 바디 최상위에 포함) ---
+      // 3. 엔진 가동 (/api/chat 호출)
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          usr_id: userId, // 👈 필수 사용자 ID 최상단 추가
+          usr_id: userId,
           conversation_id: conversationId,
           scenario_session_id: newScenarioSessionId,
           content: scenarioId,
@@ -158,33 +124,46 @@ export const createScenarioSlice = (set, get) => ({
 
       if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
       const data = await response.json();
+      
+      // 이벤트 처리
       handleEvents(data.events, newScenarioSessionId, conversationId);
 
-      // Firestore 세션 상태 업데이트
-      const sessionRef = doc(get().db, "chats", user.uid, "conversations", conversationId, "scenario_sessions", newScenarioSessionId);
-      let updatePayload = { updatedAt: serverTimestamp() };
+      // 4. 응답 결과를 바탕으로 세션 상태 업데이트 (FastAPI)
+      let updatePayload = { 
+        updated_at: new Date().toISOString(),
+        slots: { ...initialSlots, ...(data.slots || {}) }
+      };
 
-      if (data.type === "scenario_start" || data.type === "scenario") {
-        updatePayload.slots = { ...initialSlots, ...(data.slots || {}) };
-        updatePayload.messages = [];
+      if (data.nextNode) {
+        const isInteractive = data.nextNode.type === "slotfilling" || 
+                             data.nextNode.type === "form" || 
+                             (data.nextNode.type === "branch" && data.nextNode.data?.evaluationType !== "CONDITION");
         
-        if (data.nextNode) {
-          if (data.nextNode.type !== "setSlot" && data.nextNode.type !== "set-slot") {
-            updatePayload.messages.push({ id: data.nextNode.id, sender: "bot", node: data.nextNode });
-          }
-          const isInteractive = data.nextNode.type === "slotfilling" || data.nextNode.type === "form" || (data.nextNode.type === "branch" && data.nextNode.data?.evaluationType !== "CONDITION");
-          updatePayload.state = { scenarioId, currentNodeId: data.nextNode.id, awaitingInput: isInteractive };
-        } else if (data.message) {
-          updatePayload.messages.push({ id: "end-message", sender: "bot", text: data.message });
-          updatePayload.status = data.status || "completed";
-        }
-        updatePayload.status = data.status || "active";
-        await updateDoc(sessionRef, updatePayload);
-
-        if (data.nextNode && !updatePayload.state?.awaitingInput && data.nextNode.id !== 'end') {
-          await get().continueScenarioIfNeeded(data.nextNode, newScenarioSessionId);
-        }
+        updatePayload.state = { 
+          scenarioId, 
+          currentNodeId: data.nextNode.id, 
+          awaitingInput: isInteractive 
+        };
+        updatePayload.status = "active";
       }
+
+      await updateScenarioSession(newScenarioSessionId, updatePayload);
+      
+      // 로컬 상태 동기화
+      set(state => ({
+        scenarioStates: {
+          ...state.scenarioStates,
+          [newScenarioSessionId]: { 
+            ...state.scenarioStates[newScenarioSessionId], 
+            ...updatePayload 
+          }
+        }
+      }));
+
+      if (data.nextNode && !updatePayload.state?.awaitingInput && data.nextNode.id !== 'end') {
+        await get().continueScenarioIfNeeded(data.nextNode, newScenarioSessionId);
+      }
+
     } catch (error) {
       console.error(`Error opening scenario panel:`, error);
       setActivePanel("main");
@@ -196,8 +175,9 @@ export const createScenarioSlice = (set, get) => ({
    */
   handleScenarioResponse: async (payload) => {
     const { scenarioSessionId } = payload;
-    const { user, currentConversationId, language, endScenario, handleEvents } = get();
-    if (!user || !currentConversationId || !scenarioSessionId) return;
+    const { currentConversationId, language, endScenario, handleEvents } = get();
+    
+    if (!currentConversationId || !scenarioSessionId) return;
 
     const currentScenario = get().scenarioStates[scenarioSessionId];
     if (!currentScenario) return;
@@ -205,24 +185,31 @@ export const createScenarioSlice = (set, get) => ({
     const userId = get().getStoredUserId();
 
     set(state => ({
-        scenarioStates: { ...state.scenarioStates, [scenarioSessionId]: { ...currentScenario, isLoading: true } }
+        scenarioStates: { 
+          ...state.scenarioStates, 
+          [scenarioSessionId]: { ...currentScenario, isLoading: true } 
+        }
     }));
-
-    const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", scenarioSessionId);
 
     try {
         let newMessages = [...(currentScenario.messages || [])];
         if (payload.userInput) {
             newMessages.push({ id: `user-${Date.now()}`, sender: 'user', text: payload.userInput });
-            await updateDoc(sessionRef, { messages: newMessages, updatedAt: serverTimestamp() });
+            // 로컬 상태 먼저 업데이트
+            set(state => ({
+              scenarioStates: {
+                ...state.scenarioStates,
+                [scenarioSessionId]: { ...state.scenarioStates[scenarioSessionId], messages: newMessages }
+              }
+            }));
         }
 
-        // --- FastAPI /chat API 호출 (usr_id 바디 최상위에 포함) ---
+        // FastAPI /chat API 호출
         const response = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              usr_id: userId, // 👈 필수 사용자 ID 최상단 추가
+              usr_id: userId,
               conversation_id: currentConversationId,
               scenario_session_id: scenarioSessionId,
               content: payload.userInput || "",
@@ -237,19 +224,21 @@ export const createScenarioSlice = (set, get) => ({
         const data = await response.json();
         handleEvents(data.events, scenarioSessionId, currentConversationId);
 
+        // 메시지 추가 로직
         if (data.nextNode && data.nextNode.type !== 'setSlot' && data.nextNode.type !== 'set-slot') {
             newMessages.push({ id: data.nextNode.id, sender: 'bot', node: data.nextNode });
         } else if (data.message && data.type !== 'scenario_validation_fail') {
             newMessages.push({ id: `bot-end-${Date.now()}`, sender: 'bot', text: data.message });
         }
 
-        let updatePayload = { messages: newMessages, updatedAt: serverTimestamp() };
+        let updatePayload = { messages: newMessages };
 
         if (data.type === 'scenario_end') {
             const finalStatus = data.slots?.apiFailed ? 'failed' : 'completed';
             updatePayload.status = finalStatus;
             updatePayload.state = null;
-            await updateDoc(sessionRef, updatePayload);
+            
+            await updateScenarioSession(scenarioSessionId, updatePayload);
             endScenario(scenarioSessionId, finalStatus); 
             return;
         } else if (data.type === 'scenario') {
@@ -258,27 +247,35 @@ export const createScenarioSlice = (set, get) => ({
             updatePayload.slots = data.slots || currentScenario.slots;
         }
 
-        await updateDoc(sessionRef, updatePayload);
+        // 서버 업데이트
+        await updateScenarioSession(scenarioSessionId, updatePayload);
+
+        // 로컬 상태 동기화
+        set(state => ({
+          scenarioStates: {
+            ...state.scenarioStates,
+            [scenarioSessionId]: { 
+              ...state.scenarioStates[scenarioSessionId], 
+              ...updatePayload,
+              isLoading: false 
+            }
+          }
+        }));
 
         if (data.type === 'scenario' && data.nextNode) {
-            const isInteractive = data.nextNode.type === 'slotfilling' || data.nextNode.type === 'form' || (data.nextNode.type === 'branch' && data.nextNode.data?.evaluationType !== 'CONDITION');
+            const isInteractive = data.nextNode.type === 'slotfilling' || 
+                                 data.nextNode.type === 'form' || 
+                                 (data.nextNode.type === 'branch' && data.nextNode.data?.evaluationType !== 'CONDITION');
             if (!isInteractive) await get().continueScenarioIfNeeded(data.nextNode, scenarioSessionId);
         }
     } catch (error) {
         console.error(`Error in handleScenarioResponse:`, error);
         endScenario(scenarioSessionId, 'failed');
-    } finally {
-      set(state => ({
-        scenarioStates: { ...state.scenarioStates, [scenarioSessionId]: { ...(state.scenarioStates[scenarioSessionId] || {}), isLoading: false } }
-      }));
     }
   },
 
-  // ... (setScenarioSelectedOption, subscribeToScenarioSession, endScenario 등 나머지 기존 함수 유지)
   setScenarioSelectedOption: async (scenarioSessionId, messageNodeId, selectedValue) => {
-    const { user, currentConversationId, scenarioStates } = get();
-    if (!user || !currentConversationId || !scenarioSessionId) return;
-
+    const { scenarioStates } = get();
     const scenarioState = scenarioStates[scenarioSessionId];
     if (!scenarioState) return;
 
@@ -294,66 +291,66 @@ export const createScenarioSlice = (set, get) => ({
     }));
 
     try {
-        const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", scenarioSessionId);
-        await updateDoc(sessionRef, { messages: updatedMessages });
+        await updateScenarioSession(scenarioSessionId, { messages: updatedMessages });
     } catch (error) {
         console.error("Error updating scenario option:", error);
     }
   },
 
-  subscribeToScenarioSession: (sessionId) => {
-    const { user, currentConversationId, unsubscribeScenariosMap } = get();
-    if (!user || !currentConversationId || unsubscribeScenariosMap[sessionId]) return;
+  // 리스너 대신 초기 로드 함수로 대체
+  subscribeToScenarioSession: async (sessionId) => {
+    const { currentConversationId } = get();
+    if (!currentConversationId) return;
 
-    const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", sessionId);
-    const unsubscribe = onSnapshot(sessionRef, (doc) => {
-      if (doc.exists()) {
-        const scenarioData = doc.data();
+    try {
+      // API를 통해 세션 데이터 단발성 조회
+      const sessions = await fetchScenarioSessions(currentConversationId);
+      const sessionData = sessions.find(s => s.id === sessionId);
+      
+      if (sessionData) {
         set(state => ({
-            scenarioStates: { ...state.scenarioStates, [sessionId]: { ...(state.scenarioStates[sessionId] || {}), ...scenarioData } },
-            activeScenarioSessions: Object.keys({ ...state.scenarioStates, [sessionId]: scenarioData })
+          scenarioStates: { 
+            ...state.scenarioStates, 
+            [sessionId]: { ...(state.scenarioStates[sessionId] || {}), ...sessionData } 
+          },
+          activeScenarioSessions: Array.from(new Set([...state.activeScenarioSessions, sessionId]))
         }));
-      } else {
-        get().unsubscribeFromScenarioSession(sessionId);
       }
-    });
-
-    set(state => ({ unsubscribeScenariosMap: { ...state.unsubscribeScenariosMap, [sessionId]: unsubscribe } }));
+    } catch (error) {
+      console.error("Error fetching session data:", error);
+    }
   },
 
   unsubscribeFromScenarioSession: (sessionId) => {
       set(state => {
-          if (state.unsubscribeScenariosMap[sessionId]) state.unsubscribeScenariosMap[sessionId]();
-          const newUnsubscribeMap = { ...state.unsubscribeScenariosMap };
-          delete newUnsubscribeMap[sessionId];
           const updatedStates = { ...state.scenarioStates };
           delete updatedStates[sessionId];
 
           return {
-              unsubscribeScenariosMap: newUnsubscribeMap,
               scenarioStates: updatedStates,
-              activeScenarioSessions: Object.keys(updatedStates),
+              activeScenarioSessions: state.activeScenarioSessions.filter(id => id !== sessionId),
               ...(state.activeScenarioSessionId === sessionId ? { activeScenarioSessionId: null, activePanel: 'main' } : {})
           };
       });
   },
 
   unsubscribeAllScenarioListeners: () => {
-    const { unsubscribeScenariosMap } = get();
-    Object.keys(unsubscribeScenariosMap).forEach(id => get().unsubscribeFromScenarioSession(id));
+    // REST API 환경에서는 정리할 리스너가 없음
+    set({ scenarioStates: {}, activeScenarioSessions: [] });
   },
 
   endScenario: async (scenarioSessionId, status = 'completed') => {
-    const { user, currentConversationId } = get(); 
-    if (!user || !currentConversationId || !scenarioSessionId) return;
-
-    const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", scenarioSessionId);
     try {
-        await updateDoc(sessionRef, { status, state: null, updatedAt: serverTimestamp() }); 
+        const updatePayload = { status, state: null };
+        await updateScenarioSession(scenarioSessionId, updatePayload); 
+        
         set(state => ({
             scenarioStates: {
                 ...state.scenarioStates,
-                [scenarioSessionId]: { ...(state.scenarioStates[scenarioSessionId] || {}), status, state: null }
+                [scenarioSessionId]: { 
+                  ...(state.scenarioStates[scenarioSessionId] || {}), 
+                  ...updatePayload 
+                }
             },
         }));
     } catch (error) {
@@ -363,12 +360,19 @@ export const createScenarioSlice = (set, get) => ({
 
   continueScenarioIfNeeded: async (lastNode, scenarioSessionId) => {
     if (!lastNode || !scenarioSessionId) return;
-    const isInteractive = lastNode.type === 'slotfilling' || lastNode.type === 'form' || (lastNode.type === 'branch' && lastNode.data?.evaluationType !== 'CONDITION');
+    const isInteractive = lastNode.type === 'slotfilling' || 
+                         lastNode.type === 'form' || 
+                         (lastNode.type === 'branch' && lastNode.data?.evaluationType !== 'CONDITION');
 
     if (!isInteractive && lastNode.id !== 'end') {
       try {
           await new Promise(resolve => setTimeout(resolve, 300));
-          await get().handleScenarioResponse({ scenarioSessionId, currentNodeId: lastNode.id, sourceHandle: null, userInput: null });
+          await get().handleScenarioResponse({ 
+            scenarioSessionId, 
+            currentNodeId: lastNode.id, 
+            sourceHandle: null, 
+            userInput: null 
+          });
       } catch (error) {
           get().endScenario(scenarioSessionId, 'failed');
       }

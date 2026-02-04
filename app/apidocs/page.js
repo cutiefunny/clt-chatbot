@@ -106,39 +106,54 @@ export default function ApiDocsPage() {
       <section className={styles.endpoint}>
         <div className={styles.endpointHeader}>
           <span className={`${styles.method} ${styles.get}`}>GET</span>
+          <span className={styles.path}>/conversations/{'{conversation_id}'}/messages</span>
+        </div>
+        <div className={styles.endpointBody}>
+          <h2 style={{ color: '#00e676' }}>대화 메시지 내역 조회 (New)</h2>
+          <p>특정 대화방의 전체 메시지(User/Bot) 이력을 시간순으로 조회합니다.</p>
+          <dl>
+            <dt>응답 (200 OK):</dt>
+            <dd><pre>{`[
+  {
+    "id": "msg-uuid",
+    "role": "user" | "bot",
+    "content": "string",
+    "type": "text" | "scenario",
+    "created_at": "ISO-8601 string",
+    "metadata": { ... } // 시나리오 정보 등
+  }
+]`}</pre></dd>
+          </dl>
+        </div>
+      </section>
+
+      <section className={styles.endpoint}>
+        <div className={styles.endpointHeader}>
+          <span className={`${styles.method} ${styles.patch}`}>PATCH</span>
+          <span className={`${styles.method} ${styles.delete}`}>DELETE</span>
           <span className={styles.path}>/conversations/{'{conversation_id}'}</span>
         </div>
         <div className={styles.endpointBody}>
-          <h2>대화 상세 및 메시지 조회</h2>
-          <p>특정 대화방의 상세 정보와 메시지 이력을 조회합니다.</p>
+          <h2 style={{ color: '#00e676' }}>대화 수정 및 삭제 (New)</h2>
+          <p>대화방의 제목 변경, 고정(Pin) 상태 변경 또는 대화방을 삭제합니다.</p>
           <dl>
-            <dt>Query Parameters:</dt>
-            <dd><code>limit</code>, <code>skip</code> (Paging)</dd>
-            <dt>응답 (200 OK):</dt>
+            <dt>PATCH Body:</dt>
             <dd><pre>{`{
-  "id": "uuid-string",
-  "title": "string",
-  "messages": [
-    {
-      "id": "msg-uuid",
-      "role": "user" | "bot",
-      "content": "string",
-      "created_at": "..."
-    }
-  ]
+  "title": "새로운 제목",
+  "is_pinned": true
 }`}</pre></dd>
           </dl>
         </div>
       </section>
 
-      {/* --- Scenario Sessions (NEW) --- */}
+      {/* --- Scenario Sessions --- */}
       <section className={styles.endpoint}>
         <div className={styles.endpointHeader}>
           <span className={`${styles.method} ${styles.get}`}>GET</span>
           <span className={styles.path}>/conversations/{'{conversation_id}'}/scenario-sessions</span>
         </div>
         <div className={styles.endpointBody}>
-          <h2 style={{ color: '#ffcc00' }}>대화 내 시나리오 세션 목록 조회 (필수 구현)</h2>
+          <h2 style={{ color: '#ffcc00' }}>대화 내 시나리오 세션 목록 조회</h2>
           <p>특정 대화방 안에서 실행된 모든 시나리오 세션 이력을 조회합니다.</p>
           <dl>
             <dt>Path Parameter:</dt>
@@ -147,8 +162,8 @@ export default function ApiDocsPage() {
             <dd><pre>{`[
   {
     "id": "session-uuid",
-    "scenario_id": "string",     // 시나리오 식별자
-    "title": "string",           // 시나리오 명칭
+    "scenario_id": "string",
+    "title": "string",
     "status": "active" | "completed" | "failed",
     "created_at": "...",
     "updated_at": "..."
@@ -157,6 +172,62 @@ export default function ApiDocsPage() {
           </dl>
         </div>
       </section>
+      {/* --- Scenario Sessions CUD (NEW) --- */}
+<section className={styles.endpoint}>
+  <div className={styles.endpointHeader}>
+    <span className={`${styles.method} ${styles.post}`}>POST</span>
+    <span className={styles.path}>/conversations/{'{conversation_id}'}/scenario-sessions</span>
+  </div>
+  <div className={styles.endpointBody}>
+    <h2 style={{ color: '#00e676' }}>시나리오 세션 생성 (Create)</h2>
+    <p>특정 대화 내에서 새로운 시나리오를 시작할 때 세션을 생성합니다.</p>
+    <dl>
+      <dt>Request Body:</dt>
+      <dd><pre>{`{
+  "scenario_id": "string",     // 시작할 시나리오 ID
+  "usr_id": "string",          // 사용자 ID
+  "status": "in_progress",     // 초기 상태
+  "current_node": "start",     // 시작 노드
+  "variables": {}              // 초기 변수/슬롯 데이터
+}`}</pre></dd>
+    </dl>
+  </div>
+</section>
+
+<section className={styles.endpoint}>
+  <div className={styles.endpointHeader}>
+    <span className={`${styles.method} ${styles.patch}`}>PATCH</span>
+    <span className={styles.path}>/scenario-sessions/{'{session_id}'}</span>
+  </div>
+  <div className={styles.endpointBody}>
+    <h2 style={{ color: '#00e676' }}>시나리오 세션 업데이트 (Update)</h2>
+    <p>사용자의 선택이나 입력에 따라 시나리오의 현재 노드, 변수, 상태를 갱신합니다.</p>
+    <dl>
+      <dt>Request Body:</dt>
+      <dd><pre>{`{
+  "usr_id": "string",
+  "current_node": "string",    // 이동한 노드 ID
+  "variables": { ... },        // 누적된 슬롯/변수 값
+  "status": "completed" | "failed" | "in_progress"
+}`}</pre></dd>
+    </dl>
+  </div>
+</section>
+
+<section className={styles.endpoint}>
+  <div className={styles.endpointHeader}>
+    <span className={`${styles.method} ${styles.delete}`}>DELETE</span>
+    <span className={styles.path}>/scenario-sessions/{'{session_id}'}</span>
+  </div>
+  <div className={styles.endpointBody}>
+    <h2 style={{ color: '#ff1744' }}>시나리오 세션 삭제 (Delete)</h2>
+    <p>특정 시나리오 실행 이력을 삭제합니다.</p>
+    <dl>
+      <dt>Query Parameters:</dt>
+      <dd><code>usr_id</code>: 사용자 식별자</dd>
+    </dl>
+  </div>
+</section>
 
       {/* --- Shortcut --- */}
       <section className={styles.endpoint}>

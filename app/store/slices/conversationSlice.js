@@ -1,85 +1,154 @@
 // app/store/slices/conversationSlice.js
-import { fetchScenarioSessions } from "../../lib/api";
+import { 
+  fetchConversations, 
+  createConversation, 
+  updateConversation, 
+  deleteConversation 
+} from "../../lib/api";
 
 export const createConversationSlice = (set, get) => ({
+  conversations: [],
   currentConversationId: null,
-  expandedConversationId: null,
-  scenariosForConversation: {}, 
+  currentConversationTitle: "New Chat",
+  isConversationsLoading: false,
 
-  loadConversation: async (conversationId) => {
-    const { language, useFastApi } = get();
-    if (!conversationId || get().currentConversationId === conversationId) return;
-
-    set({
-      currentConversationId: conversationId,
-      expandedConversationId: null,
-    });
-
-    if (useFastApi) {
-       get().unsubscribeAllMessagesAndScenarios?.(); 
-       get().resetMessages?.(language);
-       await get().loadInitialMessages(conversationId);
-       return;
+  /**
+   * 전체 대화 목록 로드 (FastAPI 기반)
+   */
+  loadConversations: async () => {
+    set({ isConversationsLoading: true });
+    try {
+      const data = await fetchConversations(0, 50);
+      // 서버 응답 데이터 구조에 따라 필터링 및 정렬 (필요 시)
+      set({ 
+        conversations: Array.isArray(data) ? data : [],
+        isConversationsLoading: false 
+      });
+    } catch (error) {
+      console.error("Error loading conversations:", error);
+      set({ isConversationsLoading: false });
     }
   },
 
-  // onSnapshot 제거 후 API 호출 방식
-  toggleConversationExpansion: async (conversationId) => {
-    const { expandedConversationId } = get();
-
-    if (expandedConversationId === conversationId) {
-      set({ expandedConversationId: null });
-      return;
-    }
-
-    set({ expandedConversationId: conversationId });
-
+  /**
+   * 새 대화 생성
+   */
+  createNewConversation: async (shouldSelect = true) => {
     try {
-      // API 호출을 통해 시나리오 세션 목록을 가져옴
-      const scenarios = await fetchScenarioSessions(conversationId);
+      const newConv = await createConversation("New Chat");
       
       set((state) => ({
-        scenariosForConversation: {
-          ...state.scenariosForConversation,
-          [conversationId]: Array.isArray(scenarios) ? scenarios : [],
-        },
+        conversations: [newConv, ...state.conversations],
       }));
+
+      if (shouldSelect) {
+        get().selectConversation(newConv.id);
+      }
+      return newConv.id;
     } catch (error) {
-      console.error(`[ConversationSlice] Failed to fetch scenarios:`, error);
-      // 에러 발생 시 빈 배열로 초기화하여 UI 깨짐 방지
-      set((state) => ({
-        scenariosForConversation: {
-          ...state.scenariosForConversation,
-          [conversationId]: [],
-        },
-      }));
+      console.error("Error creating conversation:", error);
+      return null;
     }
   },
 
-  handleScenarioItemClick: (conversationId, scenario) => {
-    if (get().currentConversationId !== conversationId) {
-      get().loadConversation(conversationId);
-    }
+  /**
+   * 대화 선택 및 관련 데이터 로드
+   */
+  selectConversation: (conversationId) => {
+    const { conversations, loadInitialMessages, unsubscribeAllMessagesAndScenarios } = get();
     
-    // 세션 ID가 존재하는 경우 스크롤 이동
-    const sessionId = scenario.sessionId || scenario.id;
-    if (sessionId) {
-      get().setScrollToMessageId(sessionId);
-    }
+    // 기존 리스너 및 시나리오 정리
+    unsubscribeAllMessagesAndScenarios();
 
-    if (["completed", "failed", "canceled"].includes(scenario.status)) {
-      get().setActivePanel("main");
+    const selected = conversations.find((c) => c.id === conversationId);
+    
+    set({
+      currentConversationId: conversationId,
+      currentConversationTitle: selected ? selected.title : "New Chat",
+    });
+
+    // chatSlice의 메시지 로드 함수 호출
+    loadInitialMessages(conversationId);
+  },
+
+  /**
+   * 대화 제목 수정 (낙관적 업데이트 적용)
+   */
+  updateConversationTitle: async (conversationId, newTitle) => {
+    const previousConversations = get().conversations;
+    
+    // 로컬 상태 먼저 업데이트
+    set((state) => ({
+      conversations: state.conversations.map((c) =>
+        c.id === conversationId ? { ...c, title: newTitle } : c
+      ),
+      currentConversationTitle: state.currentConversationId === conversationId ? newTitle : state.currentConversationTitle,
+    }));
+
+    try {
+      await updateConversation(conversationId, { title: newTitle });
+    } catch (error) {
+      console.error("Error updating conversation title:", error);
+      // 에러 시 롤백
+      set({ conversations: previousConversations });
+    }
+  },
+
+  /**
+   * 대화 고정 상태 변경
+   */
+  togglePinConversation: async (conversationId) => {
+    const { conversations } = get();
+    const target = conversations.find((c) => c.id === conversationId);
+    if (!target) return;
+
+    const newPinnedStatus = !target.is_pinned;
+
+    set((state) => ({
+      conversations: state.conversations.map((c) =>
+        c.id === conversationId ? { ...c, is_pinned: newPinnedStatus } : c
+      ),
+    }));
+
+    try {
+      await updateConversation(conversationId, { isPinned: newPinnedStatus });
+    } catch (error) {
+      console.error("Error toggling pin status:", error);
+      // 에러 시 로컬 상태 복구 (생략 가능 또는 로직 추가)
+    }
+  },
+
+  /**
+   * 대화 삭제
+   */
+  deleteConversationById: async (conversationId) => {
+    const { currentConversationId, conversations, resetMessages } = get();
+    
+    try {
+      await deleteConversation(conversationId);
+      
       set({
-        activeScenarioSessionId: null,
-        lastFocusedScenarioSessionId: sessionId,
+        conversations: conversations.filter((c) => c.id !== conversationId),
       });
-    } else {
-      get().setActivePanel("scenario", sessionId);
-    }
-    
-    // 시나리오 상세 리스너는 다음 단계에서 제거 예정
-    if (sessionId && !get().scenarioStates[sessionId]) {
-      get().subscribeToScenarioSession?.(sessionId);
+
+      // 현재 보고 있는 대화를 삭제한 경우 초기화
+      if (currentConversationId === conversationId) {
+        set({
+          currentConversationId: null,
+          currentConversationTitle: "New Chat",
+        });
+        resetMessages();
+      }
+    } catch (error) {
+      console.error("Error deleting conversation:", error);
     }
   },
+
+  /**
+   * Firebase 리스너 관련 함수 (인터페이스 유지를 위해 빈 함수로 둠)
+   */
+  subscribeToConversations: () => {
+    get().loadConversations();
+  },
+  unsubscribeConversations: () => {},
 });
