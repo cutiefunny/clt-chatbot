@@ -1,7 +1,7 @@
+// app/components/HistoryPanel.jsx
 "use client";
 
 import dynamic from "next/dynamic";
-// 👇 React Query 훅 임포트
 import {
   useConversations,
   useCreateConversation,
@@ -31,13 +31,8 @@ const ManualModal = dynamic(() => import("./ManualModal"));
 export default function HistoryPanel() {
   const {
     user,
-    // conversations,       // [제거] React Query로 대체
     loadConversation,
-    // createNewConversation, // [제거] Mutation으로 대체
     currentConversationId,
-    // deleteConversation,    // [제거] Mutation으로 대체
-    // updateConversationTitle, // [제거] Mutation으로 대체
-    // pinConversation,       // [제거] Mutation으로 대체
     isHistoryPanelOpen,
     toggleHistoryPanel,
     isSearchModalOpen,
@@ -50,30 +45,29 @@ export default function HistoryPanel() {
     hasUnreadNotifications,
     isManualModalOpen,
     openManualModal,
-    scenariosForConversation,
+    scenariosForConversation = {}, // 기본값 설정
     expandedConversationId,
     toggleConversationExpansion,
     handleScenarioItemClick,
     openConfirmModal,
-    unreadScenarioSessions,
-    unreadConversations,
-    pendingResponses,
-    completedResponses,
+    // 👇 [수정] 아래 Set 객체들이 undefined일 경우를 대비해 기본값(new Set()) 설정
+    unreadScenarioSessions = new Set(),
+    unreadConversations = new Set(),
+    pendingResponses = new Set(),
+    completedResponses = new Set(),
   } = useChatStore();
+  
   const { t } = useTranslations();
 
-  // 👇 React Query: 데이터 조회 및 변경 훅 사용
   const { data: conversations = [], isLoading, isError } = useConversations();
   const createMutation = useCreateConversation();
   const deleteMutation = useDeleteConversation();
   const updateTitleMutation = useUpdateTitle();
   const pinMutation = usePinConversation();
 
-  // 핸들러: 대화 생성
   const handleCreate = () => {
     createMutation.mutate("New Chat", {
       onSuccess: (newConvo) => {
-        // 생성 후 해당 대화로 자동 이동
         if (newConvo && newConvo.id) {
           loadConversation(newConvo.id);
         }
@@ -84,7 +78,6 @@ export default function HistoryPanel() {
     });
   };
 
-  // 핸들러: 대화 삭제
   const handleDeleteRequest = (e, convoId) => {
     e.stopPropagation();
     openConfirmModal({
@@ -93,22 +86,16 @@ export default function HistoryPanel() {
       confirmText: "Delete",
       cancelText: "Cancel",
       onConfirm: () => {
-        deleteMutation.mutate(convoId, {
-            onSuccess: () => {
-                // 필요 시 추가 작업 (예: 현재 보고 있는 대화였다면 홈으로 이동 등)
-            }
-        });
+        deleteMutation.mutate(convoId);
       },
       confirmVariant: "danger",
     });
   };
 
-  // 핸들러: 제목 수정
   const handleUpdateTitle = (id, newTitle) => {
     updateTitleMutation.mutate({ id, title: newTitle });
   };
 
-  // 핸들러: 고정 토글
   const handlePin = (id, isPinned) => {
     pinMutation.mutate({ id, isPinned });
   };
@@ -120,45 +107,23 @@ export default function HistoryPanel() {
 
   return (
     <>
-      <svg
-        width="0"
-        height="0"
-        style={{ position: "absolute", width: 0, height: 0 }}
-        aria-hidden="true"
-        focusable="false"
-      >
+      <svg width="0" height="0" style={{ position: "absolute" }}>
         <defs>
-          <linearGradient
-            id="spbIconGradient"
-            x1="0%"
-            y1="0%"
-            x2="100%"
-            y2="100%"
-          >
+          <linearGradient id="spbIconGradient" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#3051ea" />
             <stop offset="100%" stopColor="#7f30c5" />
           </linearGradient>
         </defs>
       </svg>
-      <div
-        className={`${styles.historyPanel} ${
-          isHistoryPanelOpen ? styles.open : styles.closed
-        }`}
-      >
+      <div className={`${styles.historyPanel} ${isHistoryPanelOpen ? styles.open : styles.closed}`}>
         <button
-          className={`${styles.toggleButton} ${
-            !isHistoryPanelOpen ? styles.floatingToggleButton : ""
-          }`}
+          className={`${styles.toggleButton} ${!isHistoryPanelOpen ? styles.floatingToggleButton : ""}`}
           onClick={toggleHistoryPanel}
         >
           <MenuIcon />
         </button>
 
-        {/* 상단 새 대화 버튼 */}
-        <button
-          className={styles.newChatButton}
-          onClick={handleCreate}
-        >
+        <button className={styles.newChatButton} onClick={handleCreate}>
           <NewChatIcon />
         </button>
         <button className={styles.historyButton} onClick={toggleHistoryPanel}>
@@ -170,9 +135,7 @@ export default function HistoryPanel() {
             <div className={styles.headerTopRow}>
               <div className={styles.headerIconGroup}>
                 <button
-                  className={`${styles.iconButton} ${
-                    hasUnreadNotifications ? styles.unread : ""
-                  }`}
+                  className={`${styles.iconButton} ${hasUnreadNotifications ? styles.unread : ""}`}
                   onClick={openNotificationModal}
                 >
                   <BellIcon />
@@ -185,11 +148,7 @@ export default function HistoryPanel() {
           </div>
 
           <div className={styles.panelContent}>
-            {/* 리스트 내부 새 대화 버튼 */}
-            <button
-              className={styles.sidePanelButton}
-              onClick={handleCreate}
-            >
+            <button className={styles.sidePanelButton} onClick={handleCreate}>
               <EditIcon />
               <span className={styles.newChatText}>{t("newChat")}</span>
             </button>
@@ -199,9 +158,10 @@ export default function HistoryPanel() {
               {conversations.length > 0 &&
                 conversations.map((convo) => {
                   const scenarios = scenariosForConversation[convo.id] || [];
-                  const hasUnread = unreadConversations.has(convo.id);
-                  const isPending = pendingResponses.has(convo.id);
-                  const hasCompleted = completedResponses.has(convo.id);
+                  // 👇 [해결] 옵셔널 체이닝 및 기본값 보장으로 .has() 에러 방지
+                  const hasUnread = unreadConversations?.has?.(convo.id) || false;
+                  const isPending = pendingResponses?.has?.(convo.id) || false;
+                  const hasCompleted = completedResponses?.has?.(convo.id) || false;
 
                   return (
                     <ConversationItem
@@ -209,9 +169,9 @@ export default function HistoryPanel() {
                       convo={convo}
                       isActive={convo.id === currentConversationId}
                       onClick={loadConversation}
-                      onDelete={handleDeleteRequest} // 변경된 핸들러 전달
-                      onUpdateTitle={handleUpdateTitle} // 변경된 핸들러 전달
-                      onPin={handlePin} // 변경된 핸들러 전달
+                      onDelete={handleDeleteRequest}
+                      onUpdateTitle={handleUpdateTitle}
+                      onPin={handlePin}
                       isExpanded={convo.id === expandedConversationId}
                       scenarios={scenarios}
                       onToggleExpand={toggleConversationExpansion}
@@ -227,20 +187,14 @@ export default function HistoryPanel() {
                 <div className={styles.historyTileWrapper}>
                   <div className={styles.noHistoryBox}>
                     <NoHistoryIcon />
-                    <span className={styles.noHistoryText}>
-                      {t("noHistory")}
-                    </span>
+                    <span className={styles.noHistoryText}>{t("noHistory")}</span>
                   </div>
                 </div>
               )}
             </div>
             <div className={styles.footer}>
               <div className={styles.avatarWrapper} onClick={openProfileModal}>
-                <img
-                  src={user.photoURL}
-                  alt="User Avatar"
-                  className={styles.userAvatar}
-                />
+                <img src={user.photoURL} alt="User Avatar" className={styles.userAvatar} />
               </div>
               <button className={styles.iconButton} onClick={openManualModal}>
                 <ManualIcon />

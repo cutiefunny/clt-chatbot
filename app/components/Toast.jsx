@@ -1,31 +1,49 @@
-'use client';
+// app/components/Toast.jsx
+"use client";
 
-import { useChatStore } from '../store';
-import styles from './Toast.module.css';
+import React, { useEffect } from "react";
+import { useChatStore } from "../store";
+import styles from "./Toast.module.css";
+import CheckCircle from "./icons/CheckCircle";
+import CloseIcon from "./icons/CloseIcon";
 
 const Toast = () => {
-    const toast = useChatStore((state) => state.toast);
-    const hideToast = useChatStore((state) => state.hideToast);
-    const ephemeralToast = useChatStore((state) => state.ephemeralToast);
-    const hideEphemeralToast = useChatStore((state) => state.hideEphemeralToast);
+  // 스토어에서 toast 상태와 hide 함수를 가져옵니다.
+  const toast = useChatStore((state) => state.toast);
+  const hideEphemeralToast = useChatStore((state) => state.hideEphemeralToast);
 
-    if (ephemeralToast.visible) {
-        return (
-            <div className={`${styles.toast} ${styles[ephemeralToast.type]}`} onClick={hideEphemeralToast}>
-                <p>{ephemeralToast.message}</p>
-            </div>
-        );
+  useEffect(() => {
+    // toast 객체가 존재하고 visible 상태일 때만 타이머를 작동시킵니다.
+    if (toast?.visible) {
+      const timer = setTimeout(() => {
+        hideEphemeralToast();
+      }, 3000);
+      return () => clearTimeout(timer);
     }
+  }, [toast?.visible, hideEphemeralToast]);
 
-    if (toast.visible) {
-        return (
-            <div className={`${styles.toast} ${styles[toast.type]}`} onClick={hideToast}>
-                <p>{toast.message}</p>
-            </div>
-        );
-    }
+  // toast가 없거나 visible이 false면 아무것도 렌더링하지 않습니다.
+  if (!toast || !toast.visible) return null;
 
-    return null;
+  return (
+    <div
+      className={`${styles.toastContainer} ${
+        toast.type === "error" ? styles.error : styles.success
+      } ${toast.visible ? styles.show : ""}`}
+    >
+      <div className={styles.icon}>
+        {toast.type === "success" ? (
+          <CheckCircle size={20} />
+        ) : (
+          <CloseIcon size={20} />
+        )}
+      </div>
+      <div className={styles.message}>{toast.message}</div>
+      <button className={styles.closeButton} onClick={hideEphemeralToast}>
+        <CloseIcon size={16} />
+      </button>
+    </div>
+  );
 };
 
 export default Toast;

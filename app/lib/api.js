@@ -214,6 +214,7 @@ export async function updateMessage(conversationId, messageId, updates) {
 // [GET] 시나리오 세션 -> URL 쿼리에 usr_id 포함
 export async function fetchScenarioSessions(conversationId) {
   const userId = getUserId();
+  // 이미지 규격 파라미터 적용
   const url = buildUrl(`/conversations/${conversationId}/scenario-sessions`, {
     usr_id: userId
   });

@@ -1,63 +1,31 @@
 // app/store/slices/conversationSlice.js
-import {
-  collection,
-  query,
-  orderBy,
-  onSnapshot,
-} from "firebase/firestore";
-
-// 👇 불필요한 import 제거 (FastAPI, addDoc, deleteDoc, updateDoc 등)
+import { fetchScenarioSessions } from "../../lib/api";
 
 export const createConversationSlice = (set, get) => ({
-  // State
   currentConversationId: null,
   expandedConversationId: null,
-  scenariosForConversation: {}, // 하위 시나리오 목록 (필요하다면 React Query로 추후 이관)
-  
-  // [삭제됨] conversations 배열 및 리스너
+  scenariosForConversation: {}, 
 
-  // Actions
   loadConversation: async (conversationId) => {
-    const { user, language, useFastApi } = get();
-    if (
-      !user ||
-      get().currentConversationId === conversationId ||
-      !conversationId
-    ) {
-      return;
-    }
-
-    // 완료 응답 표시 해제
-    set((state) => {
-        if (state.completedResponses.has(conversationId)) {
-            const newCompletedSet = new Set(state.completedResponses);
-            newCompletedSet.delete(conversationId);
-            return { completedResponses: newCompletedSet };
-        }
-        return {};
-    });
+    const { language, useFastApi } = get();
+    if (!conversationId || get().currentConversationId === conversationId) return;
 
     set({
       currentConversationId: conversationId,
       expandedConversationId: null,
     });
 
-    // 메시지 로드 (FastAPI 모드)
     if (useFastApi) {
        get().unsubscribeAllMessagesAndScenarios?.(); 
        get().resetMessages?.(language);
        await get().loadInitialMessages(conversationId);
        return;
     }
-
-    // (기존 Firebase 로직은 useFastApi가 true이므로 실행되지 않으나, 백업용으로 두거나 삭제 가능)
-    // 여기서는 간결함을 위해 유지하되 실행되지 않음
   },
 
-  // [삭제됨] loadConversations, createNewConversation, deleteConversation...
-
-  toggleConversationExpansion: (conversationId) => {
-    const { expandedConversationId, user } = get();
+  // onSnapshot 제거 후 API 호출 방식
+  toggleConversationExpansion: async (conversationId) => {
+    const { expandedConversationId } = get();
 
     if (expandedConversationId === conversationId) {
       set({ expandedConversationId: null });
@@ -65,59 +33,53 @@ export const createConversationSlice = (set, get) => ({
     }
 
     set({ expandedConversationId: conversationId });
-    if (!user) return;
 
-    // 시나리오 세션 목록 구독 (이 부분도 React Query로 추후 전환 권장)
-    const scenariosRef = collection(
-      get().db,
-      "chats",
-      user.uid,
-      "conversations",
-      conversationId,
-      "scenario_sessions"
-    );
-    const q = query(scenariosRef, orderBy("createdAt", "desc"));
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const scenarios = snapshot.docs.map((doc) => ({
-          sessionId: doc.id,
-          ...doc.data(),
-        }));
-        set((state) => ({
-          scenariosForConversation: {
-            ...state.scenariosForConversation,
-            [conversationId]: scenarios,
-          },
-        }));
-      },
-      (error) => {
-        console.error(
-          `Error listening to scenarios for conversation ${conversationId}:`,
-          error
-        );
-      }
-    );
+    try {
+      // API 호출을 통해 시나리오 세션 목록을 가져옴
+      const scenarios = await fetchScenarioSessions(conversationId);
+      
+      set((state) => ({
+        scenariosForConversation: {
+          ...state.scenariosForConversation,
+          [conversationId]: Array.isArray(scenarios) ? scenarios : [],
+        },
+      }));
+    } catch (error) {
+      console.error(`[ConversationSlice] Failed to fetch scenarios:`, error);
+      // 에러 발생 시 빈 배열로 초기화하여 UI 깨짐 방지
+      set((state) => ({
+        scenariosForConversation: {
+          ...state.scenariosForConversation,
+          [conversationId]: [],
+        },
+      }));
+    }
   },
 
   handleScenarioItemClick: (conversationId, scenario) => {
     if (get().currentConversationId !== conversationId) {
       get().loadConversation(conversationId);
     }
-    get().setScrollToMessageId(scenario.sessionId);
+    
+    // 세션 ID가 존재하는 경우 스크롤 이동
+    const sessionId = scenario.sessionId || scenario.id;
+    if (sessionId) {
+      get().setScrollToMessageId(sessionId);
+    }
 
     if (["completed", "failed", "canceled"].includes(scenario.status)) {
       get().setActivePanel("main");
       set({
         activeScenarioSessionId: null,
-        lastFocusedScenarioSessionId: scenario.sessionId,
+        lastFocusedScenarioSessionId: sessionId,
       });
     } else {
-      get().setActivePanel("scenario", scenario.sessionId);
+      get().setActivePanel("scenario", sessionId);
     }
-    if (!get().scenarioStates[scenario.sessionId]) {
-      get().subscribeToScenarioSession?.(scenario.sessionId);
+    
+    // 시나리오 상세 리스너는 다음 단계에서 제거 예정
+    if (sessionId && !get().scenarioStates[sessionId]) {
+      get().subscribeToScenarioSession?.(sessionId);
     }
   },
 });
