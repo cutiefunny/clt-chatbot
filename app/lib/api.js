@@ -35,6 +35,24 @@ function buildUrl(endpoint, params = {}) {
 
 /**
  * ==============================================================================
+ * 채팅 (Chat) 관련 API
+ * ==============================================================================
+ */
+
+// 채팅 메시지 전송 및 AI 응답 생성
+export async function sendChatMessage(payload) {
+  const url = buildUrl(`/chat`);
+  const res = await fetch(url, {
+    method: "POST",
+    headers: getHeaders(),
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) throw new Error(`Failed to send chat message: ${res.status}`);
+  return res.json();
+}
+
+/**
+ * ==============================================================================
  * 대화 (Conversation) 관련 API
  * ==============================================================================
  */
@@ -418,5 +436,47 @@ export async function searchMessages(query) {
   } catch (error) {
     console.error("[API] searchMessages failed:", error);
     return [];
+  }
+}
+
+/**
+ * ==============================================================================
+ * 알림 (Notifications) 관련 API
+ * ==============================================================================
+ */
+
+// 알림 목록 조회
+export async function fetchNotifications() {
+  const userId = getUserId();
+  const url = buildUrl(`/users/notifications`, { 
+    usr_id: userId, 
+    ten_id: 1000, 
+    stg_id: "DEV", 
+    sec_ofc_id: "000025" 
+  });
+  try {
+    const res = await fetch(url, { method: "GET", headers: getHeaders() });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch (error) {
+    console.error("[API] fetchNotifications failed:", error);
+    return [];
+  }
+}
+
+// 알림 읽음 처리
+export async function markNotificationAsRead(notificationId) {
+  const url = buildUrl(`/users/notifications/${notificationId}`);
+  try {
+    const res = await fetch(url, {
+      method: "PATCH",
+      headers: getHeaders(),
+      body: JSON.stringify({ is_read: true })
+    });
+    if (!res.ok) throw new Error(`Failed to mark notification as read: ${res.status}`);
+    return await res.json();
+  } catch (error) {
+    console.error("[API] markNotificationAsRead failed:", error);
+    return null;
   }
 }

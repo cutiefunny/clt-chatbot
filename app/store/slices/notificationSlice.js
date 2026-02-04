@@ -1,6 +1,5 @@
 // app/store/slices/notificationSlice.js
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+import { fetchNotifications, markNotificationAsRead } from "../../lib/api";
 
 export const createNotificationSlice = (set, get) => ({
   notifications: [],
@@ -12,18 +11,12 @@ export const createNotificationSlice = (set, get) => ({
    */
   loadNotifications: async () => {
     try {
-      const userId = localStorage.getItem("userId")?.replace(/['"]+/g, '') || "";
-      const query = `usr_id=${userId}&ten_id=1000&stg_id=DEV&sec_ofc_id=000025`;
-      
-      const response = await fetch(`${API_BASE_URL}/users/notifications?${query}`);
-      if (response.ok) {
-        const data = await response.json();
-        const unread = data.filter(n => !n.is_read).length;
-        set({ 
-          notifications: Array.isArray(data) ? data : [],
-          unreadCount: unread
-        });
-      }
+      const data = await fetchNotifications();
+      const unread = data.filter(n => !n.is_read).length;
+      set({ 
+        notifications: Array.isArray(data) ? data : [],
+        unreadCount: unread
+      });
     } catch (error) {
       console.error("Error loading notifications:", error);
     }
@@ -35,13 +28,9 @@ export const createNotificationSlice = (set, get) => ({
    */
   markAsRead: async (notificationId) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/users/notifications/${notificationId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_read: true })
-      });
-
-      if (response.ok) {
+      const result = await markNotificationAsRead(notificationId);
+      
+      if (result) {
         set((state) => {
           const updated = state.notifications.map(n => 
             n.id === notificationId ? { ...n, is_read: true } : n

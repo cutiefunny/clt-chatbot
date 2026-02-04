@@ -4,6 +4,7 @@ import {
   processGeminiStream,
 } from "../../lib/streamProcessors";
 import { locales } from "../../lib/locales";
+import { sendChatMessage } from "../../lib/api";
 
 // 자동 팝업을 트리거할 타겟 URL 정의
 const TARGET_AUTO_OPEN_URL = "http://172.20.130.91:9110/oceans/BPM_P1002.do?tenId=2000&stgId=TST&pgmNr=BKD_M3201";
@@ -137,40 +138,42 @@ export async function handleResponse(get, set, messagePayload) {
     let response;
 
     if (useFastApi) {
-      // --- 👇 [수정] 설정에 따라 API URL 결정 ---
-      const baseUrl = useLocalFastApiUrl ? LOCAL_BASE_URL : REMOTE_BASE_URL;
-      const apiUrl = `${baseUrl}/chat`;
+      // sendChatMessage를 사용하여 API 호출
+      const data = await sendChatMessage({
+        usr_id: get().user?.uid || "guest",
+        conversation_id: conversationIdForBotResponse,
+        content: messagePayload.text,
+        language: language,
+        slots: get().slots,
+      });
       
-      console.log(`[handleResponse] Using FastAPI Backend (${useLocalFastApiUrl ? 'Local' : 'Remote'}): ${apiUrl}`);
-      // --- 👆 [수정] ---
-
-      response = await fetch(apiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          usr_id: get().user?.uid || "guest",
-          conversation_id: conversationIdForBotResponse,
-          content: messagePayload.text,
-          language: language,
-          slots: get().slots,
-        }),
-        signal: controller.signal,
-      });
+      // response 객체를 흉내내어 기존 코드와 호환성 유지
+      response = {
+        ok: true,
+        json: async () => data,
+        headers: {
+          get: () => "application/json"
+        }
+      };
     } else {
-      // 기존 Firebase API 호출
-      response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: { text: messagePayload.text },
-          scenarioState: null,
-          slots: get().slots,
-          language: language,
-          llmProvider: llmProvider,
-          flowiseApiUrl: get().flowiseApiUrl,
-        }),
-        signal: controller.signal,
+      // 기존 API 호출 (fetch 대신 sendChatMessage 사용)
+      const data = await sendChatMessage({
+        message: { text: messagePayload.text },
+        scenarioState: null,
+        slots: get().slots,
+        language: language,
+        llmProvider: llmProvider,
+        flowiseApiUrl: get().flowiseApiUrl,
       });
+      
+      // response 객체를 흉내내어 기존 코드와 호환성 유지
+      response = {
+        ok: true,
+        json: async () => data,
+        headers: {
+          get: () => "application/json"
+        }
+      };
     }
 
     clearTimeout(timeoutId);

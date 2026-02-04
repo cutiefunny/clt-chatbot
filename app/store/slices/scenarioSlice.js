@@ -5,10 +5,10 @@ import {
   fetchScenarios, 
   fetchScenarioSessions, 
   createScenarioSession, 
-  updateScenarioSession 
+  updateScenarioSession,
+  sendChatMessage,
+  fetchShortcuts
 } from "../../lib/api";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export const createScenarioSlice = (set, get) => ({
   scenarioStates: {},
@@ -45,9 +45,8 @@ export const createScenarioSlice = (set, get) => ({
    */
   loadScenarioCategories: async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/shortcut`);
-      if (response.ok) {
-        const data = await response.json();
+      const data = await fetchShortcuts();
+      if (data) {
         set({ scenarioCategories: data });
         return data;
       }
@@ -108,22 +107,15 @@ export const createScenarioSlice = (set, get) => ({
       // 패널 전환
       setTimeout(() => setActivePanel("scenario", newScenarioSessionId), 100);
 
-      // 3. 엔진 가동 (/api/chat 호출)
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          usr_id: userId,
-          conversation_id: conversationId,
-          scenario_session_id: newScenarioSessionId,
-          content: scenarioId,
-          slots: initialSlots,
-          language: language
-        }),
+      // 3. 엔진 가동 (chat API 호출)
+      const data = await sendChatMessage({
+        usr_id: userId,
+        conversation_id: conversationId,
+        scenario_session_id: newScenarioSessionId,
+        content: scenarioId,
+        slots: initialSlots,
+        language: language
       });
-
-      if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
-      const data = await response.json();
       
       // 이벤트 처리
       handleEvents(data.events, newScenarioSessionId, conversationId);
@@ -204,24 +196,17 @@ export const createScenarioSlice = (set, get) => ({
             }));
         }
 
-        // FastAPI /chat API 호출
-        const response = await fetch('/api/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              usr_id: userId,
-              conversation_id: currentConversationId,
-              scenario_session_id: scenarioSessionId,
-              content: payload.userInput || "",
-              source_handle: payload.sourceHandle,
-              scenario_state: currentScenario.state,
-              slots: { ...currentScenario.slots, ...(payload.formData || {}) },
-              language: language,
-            }),
+        // chat API 호출
+        const data = await sendChatMessage({
+          usr_id: userId,
+          conversation_id: currentConversationId,
+          scenario_session_id: scenarioSessionId,
+          content: payload.userInput || "",
+          source_handle: payload.sourceHandle,
+          scenario_state: currentScenario.state,
+          slots: { ...currentScenario.slots, ...(payload.formData || {}) },
+          language: language,
         });
-        
-        if (!response.ok) throw new Error("Chat API failed");
-        const data = await response.json();
         handleEvents(data.events, scenarioSessionId, currentConversationId);
 
         // 메시지 추가 로직

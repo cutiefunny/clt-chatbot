@@ -57,9 +57,9 @@ export default function ChatInput() {
   const isLoading = useChatStore((state) => state.isLoading);
   const handleResponse = useChatStore((state) => state.handleResponse);
   
-  // 👇 [추가] 현재 대화 ID와 로드 함수 가져오기
+  // 👇 [추가] 현재 대화 ID와 선택 함수 가져오기
   const currentConversationId = useChatStore((state) => state.currentConversationId);
-  const loadConversation = useChatStore((state) => state.loadConversation);
+  const selectConversation = useChatStore((state) => state.selectConversation);
 
   const activePanel = useChatStore((state) => state.activePanel);
   const activeScenarioSessionId = useChatStore(
@@ -144,8 +144,8 @@ export default function ChatInput() {
       try {
         const newConvo = await createMutation.mutateAsync("New Chat");
         if (newConvo && newConvo.id) {
-          // 생성된 대화방 로드 (ID를 스토어에 설정)
-          await loadConversation(newConvo.id);
+          // 생성된 대화방 선택 (ID를 스토어에 설정하고 메시지 로드)
+          selectConversation(newConvo.id);
         }
       } catch (error) {
         console.error("Failed to create conversation automatically:", error);
