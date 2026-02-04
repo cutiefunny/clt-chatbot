@@ -1,6 +1,11 @@
 // app/store/slices/uiSlice.js
-import { doc, setDoc, getDoc } from "firebase/firestore";
 import { locales } from "../../lib/locales";
+import { 
+  fetchGeneralConfig, 
+  updateGeneralConfig, 
+  fetchUserSettings, 
+  updateUserSettings 
+} from "../../lib/api";
 import {
   postToParent,
   PARENT_ORIGIN,
@@ -79,10 +84,8 @@ export const createUISlice = (set, get) => ({
 
   loadGeneralConfig: async () => {
     try {
-      const configRef = doc(get().db, "config", "general");
-      const docSnap = await getDoc(configRef);
-      if (docSnap.exists()) {
-        const config = docSnap.data();
+      const config = await fetchGeneralConfig();
+      if (config) {
         set({
           maxFavorites:
             typeof config.maxFavorites === "number" ? config.maxFavorites : 10,
@@ -127,12 +130,13 @@ export const createUISlice = (set, get) => ({
 
   saveGeneralConfig: async (settings) => {
     try {
-      const configRef = doc(get().db, "config", "general");
-      await setDoc(configRef, settings, { merge: true });
-      set(settings);
-      return true;
+      const success = await updateGeneralConfig(settings);
+      if (success) {
+        set(settings);
+      }
+      return success;
     } catch (error) {
-      console.error("Error saving general config to Firestore:", error);
+      console.error("Error saving general config:", error);
       return false;
     }
   },
@@ -151,8 +155,8 @@ export const createUISlice = (set, get) => ({
     try {
       set(settings); 
 
-      const userSettingsRef = doc(db, "settings", user.uid);
-      await setDoc(userSettingsRef, settings, { merge: true }); 
+      const success = await updateUserSettings(user.uid, settings);
+      if (!success) throw new Error("Failed to update user settings");
       return true;
     } catch (error) {
       console.error("Error saving personal settings:", error);
@@ -227,10 +231,9 @@ export const createUISlice = (set, get) => ({
     const user = get().user;
     if (user) {
       try {
-        const userSettingsRef = doc(get().db, "settings", user.uid);
-        await setDoc(userSettingsRef, { fontSize: size }, { merge: true });
+        await updateUserSettings(user.uid, { fontSize: size });
       } catch (error) {
-        console.error("Error saving font size to Firestore:", error);
+        console.error("Error saving font size:", error);
       }
     }
   },
@@ -243,10 +246,9 @@ export const createUISlice = (set, get) => ({
     const user = get().user;
     if (user) {
       try {
-        const userSettingsRef = doc(get().db, "settings", user.uid);
-        await setDoc(userSettingsRef, { language: lang }, { merge: true });
+        await updateUserSettings(user.uid, { language: lang });
       } catch (error) {
-        console.error("Error saving language to Firestore:", error);
+        console.error("Error saving language:", error);
       }
     }
     const { currentConversationId, messages } = get();

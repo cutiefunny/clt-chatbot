@@ -1,7 +1,6 @@
 // app/lib/chatbotEngine.js
 
-import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
-import { db } from './firebase';
+import { fetchShortcuts, fetchScenarios, fetchScenario } from './api';
 import { locales } from './locales';
 import { nodeHandlers } from './nodeHandlers'; // nodeHandlers 임포트
 
@@ -23,19 +22,18 @@ export async function getScenarioCategories() {
   }
 
   try {
-    const shortcutRef = doc(db, "shortcut", "main");
-    const docSnap = await getDoc(shortcutRef);
+    const shortcutData = await fetchShortcuts();
 
-    if (docSnap.exists() && docSnap.data().categories) {
-      cachedScenarioCategories = docSnap.data().categories;
+    if (shortcutData && shortcutData.categories) {
+      cachedScenarioCategories = shortcutData.categories;
       lastFetchTime = now;
       return cachedScenarioCategories;
     } else {
-      console.warn("Shortcut document 'main' not found in Firestore. Returning empty array.");
+      console.warn("Shortcut data not found or has no categories. Returning empty array.");
       return [];
     }
   } catch (error) {
-    console.error("Error fetching scenario categories from Firestore:", error);
+    console.error("Error fetching scenario categories:", error);
     return []; // 오류 발생 시 빈 배열 반환
   }
 }
@@ -64,9 +62,8 @@ export async function findActionByTrigger(message) {
 }
 
 export const getScenarioList = async () => {
-  const scenariosCollection = collection(db, 'scenarios');
-  const querySnapshot = await getDocs(scenariosCollection);
-  return querySnapshot.docs.map(doc => doc.id);
+  const scenarios = await fetchScenarios();
+  return scenarios.map(s => s.id || s.scenario_id);
 };
 
 export const getScenario = async (scenarioId) => {
@@ -74,11 +71,9 @@ export const getScenario = async (scenarioId) => {
   if (!scenarioId || typeof scenarioId !== 'string') {
       throw new Error(`Invalid scenario ID provided: ${scenarioId}`);
   }
-  const scenarioRef = doc(db, 'scenarios', scenarioId);
-  const scenarioSnap = await getDoc(scenarioRef);
-
-  if (scenarioSnap.exists()) {
-    const scenarioData = scenarioSnap.data(); // 데이터 가져오기
+  
+  try {
+    const scenarioData = await fetchScenario(scenarioId);
 
     // 스키마 버전 확인
     if (!scenarioData.version || scenarioData.version !== SUPPORTED_SCHEMA_VERSION) {
@@ -86,9 +81,9 @@ export const getScenario = async (scenarioId) => {
     }
 
     return scenarioData; // 시나리오 데이터 반환
-  } else {
+  } catch (error) {
     // 시나리오를 찾지 못했을 때 더 명확한 에러 메시지
-    console.error(`Scenario with ID "${scenarioId}" not found in Firestore.`);
+    console.error(`Scenario with ID "${scenarioId}" not found.`);
     throw new Error(`Scenario with ID "${scenarioId}" not found!`);
   }
 };

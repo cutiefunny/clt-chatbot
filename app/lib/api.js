@@ -202,6 +202,32 @@ export async function fetchScenarios() {
   }
 }
 
+// 개별 시나리오 상세 조회
+export async function fetchScenario(scenarioId) {
+  const url = buildUrl(`/scenarios/${scenarioId}`);
+  try {
+    const res = await fetch(url, { method: "GET", headers: getHeaders() });
+    if (!res.ok) throw new Error(`Scenario not found: ${scenarioId}`);
+    return await res.json();
+  } catch (error) {
+    console.error("[API] fetchScenario failed:", error);
+    throw error;
+  }
+}
+
+// 숏컷(카테고리) 데이터 조회
+export async function fetchShortcuts() {
+  const url = buildUrl(`/shortcut`);
+  try {
+    const res = await fetch(url, { method: "GET", headers: getHeaders() });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (error) {
+    console.error("[API] fetchShortcuts failed:", error);
+    return null;
+  }
+}
+
 export async function fetchScenarioSessions(conversationId) {
   const userId = getUserId();
   const url = buildUrl(`/conversations/${conversationId}/scenario-sessions`, { usr_id: userId });
@@ -251,5 +277,146 @@ export async function updateScenarioSession(sessionId, updates) {
   } catch (error) {
     console.error("[API] updateScenarioSession failed:", error);
     return null;
+  }
+}
+
+/**
+ * ==============================================================================
+ * 설정 (Config/Settings) 관련 API
+ * ==============================================================================
+ */
+
+// 일반 설정 조회
+export async function fetchGeneralConfig() {
+  const url = buildUrl(`/config/general`);
+  try {
+    const res = await fetch(url, { method: "GET", headers: getHeaders() });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (error) {
+    console.error("[API] fetchGeneralConfig failed:", error);
+    return null;
+  }
+}
+
+// 일반 설정 업데이트
+export async function updateGeneralConfig(settings) {
+  const url = buildUrl(`/config/general`);
+  try {
+    const res = await fetch(url, { 
+      method: "PATCH", 
+      headers: getHeaders(), 
+      body: JSON.stringify(settings) 
+    });
+    if (!res.ok) {
+      console.warn(`[API] Failed to update general config: ${res.status}`);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error("[API] updateGeneralConfig failed:", error);
+    return false;
+  }
+}
+
+// 사용자 개인 설정 조회
+export async function fetchUserSettings(userId) {
+  const url = buildUrl(`/settings/${userId}`);
+  try {
+    const res = await fetch(url, { method: "GET", headers: getHeaders() });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (error) {
+    console.error("[API] fetchUserSettings failed:", error);
+    return null;
+  }
+}
+
+// 사용자 개인 설정 업데이트
+export async function updateUserSettings(userId, settings) {
+  const url = buildUrl(`/settings/${userId}`);
+  try {
+    const res = await fetch(url, { 
+      method: "PATCH", 
+      headers: getHeaders(), 
+      body: JSON.stringify(settings) 
+    });
+    if (!res.ok) {
+      console.warn(`[API] Failed to update user settings: ${res.status}`);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error("[API] updateUserSettings failed:", error);
+    return false;
+  }
+}
+
+/**
+ * ==============================================================================
+ * 개발 게시판 (Dev Board) 관련 API
+ * ==============================================================================
+ */
+
+// 개발 메모 목록 조회
+export async function fetchDevMemos() {
+  const url = buildUrl(`/dev-board`);
+  try {
+    const res = await fetch(url, { method: "GET", headers: getHeaders() });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch (error) {
+    console.error("[API] fetchDevMemos failed:", error);
+    return [];
+  }
+}
+
+// 개발 메모 생성
+export async function createDevMemo(memoData) {
+  const url = buildUrl(`/dev-board`);
+  try {
+    const res = await fetch(url, { 
+      method: "POST", 
+      headers: getHeaders(), 
+      body: JSON.stringify(memoData) 
+    });
+    if (!res.ok) throw new Error(`Failed to create dev memo: ${res.status}`);
+    return await res.json();
+  } catch (error) {
+    console.error("[API] createDevMemo failed:", error);
+    return null;
+  }
+}
+
+// 개발 메모 삭제
+export async function deleteDevMemo(memoId) {
+  const url = buildUrl(`/dev-board/${memoId}`);
+  try {
+    const res = await fetch(url, { method: "DELETE", headers: getHeaders() });
+    if (!res.ok) throw new Error(`Failed to delete dev memo: ${res.status}`);
+    return true;
+  } catch (error) {
+    console.error("[API] deleteDevMemo failed:", error);
+    return false;
+  }
+}
+
+/**
+ * ==============================================================================
+ * 검색 (Search) 관련 API
+ * ==============================================================================
+ */
+
+// 대화 내 메시지 검색
+export async function searchMessages(query) {
+  const userId = getUserId();
+  const url = buildUrl(`/search/messages`, { q: query, usr_id: userId });
+  try {
+    const res = await fetch(url, { method: "GET", headers: getHeaders() });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch (error) {
+    console.error("[API] searchMessages failed:", error);
+    return [];
   }
 }

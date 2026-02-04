@@ -19,10 +19,22 @@ export default function DevBoardModal() {
     const closeDevBoardModal = useChatStore((state) => state.closeDevBoardModal);
     const addDevMemo = useChatStore((state) => state.addDevMemo);
     const deleteDevMemo = useChatStore((state) => state.deleteDevMemo);
+    const startDevMemosPolling = useChatStore((state) => state.startDevMemosPolling);
+    const stopDevMemosPolling = useChatStore((state) => state.stopDevMemosPolling);
     
     const [newMemo, setNewMemo] = useState('');
     const memoListRef = useRef(null);
     const { t, language } = useTranslations();
+
+    useEffect(() => {
+        // 컴포넌트 마운트 시 폴링 시작
+        startDevMemosPolling();
+        
+        // 컴포넌트 언마운트 시 폴링 중지
+        return () => {
+            stopDevMemosPolling();
+        };
+    }, [startDevMemosPolling, stopDevMemosPolling]);
 
     useEffect(() => {
         if (memoListRef.current) {
@@ -38,6 +50,14 @@ export default function DevBoardModal() {
         }
     };
 
+    // createdAt 파싱 함수 (ISO 문자열 또는 Firestore Timestamp 처리)
+    const parseCreatedAt = (createdAt) => {
+        if (!createdAt) return new Date();
+        if (typeof createdAt === 'string') return new Date(createdAt);
+        if (createdAt.toDate && typeof createdAt.toDate === 'function') return createdAt.toDate();
+        return new Date();
+    };
+
     return (
         <Modal title={t('devBoardTitle')} onClose={closeDevBoardModal} contentStyle={{ maxWidth: '500px', height: '70vh' }}>
             <div className={styles.modalContainer}>
@@ -47,7 +67,7 @@ export default function DevBoardModal() {
                             <div className={styles.memoHeader}>
                                 <span className={styles.memoAuthor}>{memo.authorName}</span>
                                 <span className={styles.memoTimestamp}>
-                                    {new Date(memo.createdAt?.toDate()).toLocaleString(language)}
+                                    {parseCreatedAt(memo.createdAt).toLocaleString(language)}
                                 </span>
                             </div>
                             <p className={styles.memoText}>{memo.text}</p>

@@ -4,23 +4,7 @@ import {
   db,
   auth,
   onAuthStateChanged,
-  doc,
-  getDoc,
-  collection, // 하위 슬라이스에서 사용될 수 있으므로 유지
-  getDocs, // 하위 슬라이스에서 사용될 수 있으므로 유지
-  writeBatch, // 하위 슬라이스에서 사용될 수 있으므로 유지
-  serverTimestamp, // 하위 슬라이스에서 사용될 수 있으므로 유지
-  addDoc, // 하위 슬라이스에서 사용될 수 있으므로 유지
-  updateDoc, // 추가
-  deleteDoc, // 추가
-  limit,     // 추가
-  startAfter,// 추가
-  query,     // 추가
-  orderBy,   // 추가
-  where,     // 추가
-  onSnapshot,// 추가
-  setDoc,    // 추가
-} from "../lib/firebase"; // 필요한 firebase 함수 임포트 유지
+} from "../lib/firebase";
 import { locales } from "../lib/locales";
 
 // 슬라이스 임포트
@@ -104,11 +88,11 @@ export const useChatStore = create((set, get) => ({
   },
 
   unsubscribeAll: () => {
-    // 모든 슬라이스의 구독 해제 함수 호출
+    // 모든 슬라이스의 구독 해제 및 폴링 중지 함수 호출
     get().unsubscribeConversations?.(); // conversationSlice
     get().unsubscribeMessages?.(); // chatSlice
     get().unsubscribeAllScenarioListeners?.(); // scenarioSlice
-    get().unsubscribeDevMemos?.(); // devBoardSlice
+    get().stopDevMemosPolling?.(); // devBoardSlice (폴링 중지)
     get().unsubscribeNotifications?.(); // notificationSlice
     get().unsubscribeUnreadStatus?.(); // notificationSlice
     get().unsubscribeUnreadScenarioNotifications?.(); // notificationSlice
@@ -118,8 +102,7 @@ export const useChatStore = create((set, get) => ({
     set({
       unsubscribeConversations: null, // conversationSlice
       unsubscribeMessages: null, // chatSlice
-      // unsubscribeScenariosMap는 scenarioSlice에서 관리/초기화
-      unsubscribeDevMemos: null, // devBoardSlice
+      devMemosInterval: null, // devBoardSlice
       unsubscribeNotifications: null, // notificationSlice
       unsubscribeUnreadStatus: null, // notificationSlice
       unsubscribeUnreadScenarioNotifications: null, // notificationSlice
