@@ -5,24 +5,13 @@ import {
 } from "../../lib/streamProcessors";
 import { locales } from "../../lib/locales";
 import { sendChatMessage } from "../../lib/api";
-
-// 자동 팝업을 트리거할 타겟 URL 정의
-const TARGET_AUTO_OPEN_URL = "http://172.20.130.91:9110/oceans/BPM_P1002.do?tenId=2000&stgId=TST&pgmNr=BKD_M3201";
+import { TARGET_AUTO_OPEN_URL, TIMEOUTS } from "../../lib/constants";
+import { checkAndOpenUrl } from "../../lib/utils";
 
 // --- 👇 [수정] URL 상수 분리 및 환경변수 적용 ---
 const REMOTE_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://210.114.17.65:8001";
 const LOCAL_BASE_URL = "http://localhost:8001";
 // --- 👆 [수정] ---
-
-// URL 포함 여부 확인 및 새 창 열기 헬퍼 함수
-const checkAndOpenUrl = (text) => {
-  if (typeof text === 'string' && text.includes(TARGET_AUTO_OPEN_URL)) {
-    if (typeof window !== 'undefined') {
-      console.log(`[AutoOpen] Target URL detected. Opening: ${TARGET_AUTO_OPEN_URL}`);
-      window.open(TARGET_AUTO_OPEN_URL, '_blank', 'noopener,noreferrer');
-    }
-  }
-};
 
 // responseHandlers는 이 스코프 내에서만 사용되므로 여기에 정의
 const responseHandlers = {
@@ -42,7 +31,7 @@ const responseHandlers = {
   },
   llm_response_with_slots: (data, getFn) => {
     getFn().addMessage("bot", { text: data.message });
-    checkAndOpenUrl(data.message);
+    checkAndOpenUrl(data.message, TARGET_AUTO_OPEN_URL);
     if (data.slots && Object.keys(data.slots).length > 0) {
       getFn().setExtractedSlots(data.slots);
     }
@@ -50,7 +39,7 @@ const responseHandlers = {
   text: (data, getFn) => {
     const responseText = data.message || data.text || "(No Content)";
     getFn().addMessage("bot", { text: responseText });
-    checkAndOpenUrl(responseText);
+    checkAndOpenUrl(responseText, TARGET_AUTO_OPEN_URL);
     if (data.slots && Object.keys(data.slots).length > 0) {
       getFn().setExtractedSlots(data.slots);
     }
@@ -132,7 +121,7 @@ export async function handleResponse(get, set, messagePayload) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => {
     controller.abort();
-  }, 5000);
+  }, TIMEOUTS.DEFAULT_REQUEST);
 
   try {
     let response;

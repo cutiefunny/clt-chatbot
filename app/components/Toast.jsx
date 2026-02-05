@@ -3,6 +3,7 @@
 
 import React, { useEffect } from "react";
 import { useChatStore } from "../store";
+import { TOAST_DURATION } from "../lib/constants";
 import styles from "./Toast.module.css";
 import CheckCircle from "./icons/CheckCircle";
 import CloseIcon from "./icons/CloseIcon";
@@ -17,7 +18,7 @@ const Toast = () => {
     if (toast?.visible) {
       const timer = setTimeout(() => {
         hideEphemeralToast();
-      }, 3000);
+      }, TOAST_DURATION);
       return () => clearTimeout(timer);
     }
   }, [toast?.visible, hideEphemeralToast]);

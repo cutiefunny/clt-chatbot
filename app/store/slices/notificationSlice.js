@@ -1,5 +1,6 @@
 // app/store/slices/notificationSlice.js
 import { fetchNotifications, markNotificationAsRead } from "../../lib/api";
+import { handleError } from "../../lib/errorHandler";
 
 export const createNotificationSlice = (set, get) => ({
   notifications: [],
@@ -18,7 +19,7 @@ export const createNotificationSlice = (set, get) => ({
         unreadCount: unread
       });
     } catch (error) {
-      console.error("Error loading notifications:", error);
+      handleError("Error loading notifications", error);
     }
   },
 
@@ -42,7 +43,7 @@ export const createNotificationSlice = (set, get) => ({
         });
       }
     } catch (error) {
-      console.error("Error marking notification as read:", error);
+      handleError("Error marking notification as read", error);
     }
   },
 

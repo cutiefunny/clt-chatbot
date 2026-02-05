@@ -1,15 +1,14 @@
 // app/store/slices/chatSlice.js
 import { locales } from "../../lib/locales";
+import { MESSAGE_LIMIT } from "../../lib/constants";
 import { 
   getConversation, 
   fetchMessages, 
   createMessage, 
   updateMessage 
 } from "@/app/lib/api";
-import { getErrorKey } from "../../lib/errorHandler";
+import { getErrorKey, handleError } from "../../lib/errorHandler";
 import { handleResponse } from "../actions/chatResponseHandler";
-
-const MESSAGE_LIMIT = 15;
 
 const getInitialMessages = (lang = "ko") => {
   const initialText =
@@ -76,11 +75,10 @@ export const createChatSlice = (set, get) => {
         
         console.log(`[chatSlice] Successfully loaded ${messages.length} messages from FastAPI.`);
       } catch (error) {
-        console.error("Error loading initial messages:", error);
-        const { showEphemeralToast } = get();
-        if (showEphemeralToast) {
-          showEphemeralToast("대화 내용을 불러오는데 실패했습니다.", "error");
-        }
+        handleError("Error loading initial messages", error, { 
+          getStore: get,
+          showToast: true 
+        });
         set({ isLoading: false, messages: [] });
       }
     },
@@ -140,8 +138,10 @@ export const createChatSlice = (set, get) => {
       try {
         await updateMessage(currentConversationId, messageId, { selectedOption: optionValue });
       } catch (error) {
-        console.error("Error updating selected option:", error);
-        showEphemeralToast(locales[language]?.["errorSaveFailed"] || "저장에 실패했습니다.", "error");
+        handleError("Error updating selected option", error, {
+          getStore: get,
+          showToast: true
+        });
         set({ selectedOptions: previousSelectedOptions });
       }
     },
@@ -168,8 +168,10 @@ export const createChatSlice = (set, get) => {
       try {
         await updateMessage(currentConversationId, messageId, { feedback: newFeedback });
       } catch (error) {
-        console.error("Error updating feedback:", error);
-        showEphemeralToast(locales[language]?.["errorSaveFailed"] || "피드백 저장 실패", "error");
+        handleError("Error updating feedback", error, {
+          getStore: get,
+          showToast: true
+        });
         
         // 롤백
         const rollbackMessages = [...get().messages];
@@ -264,8 +266,10 @@ export const createChatSlice = (set, get) => {
 
         return savedMessage.id;
       } catch (error) {
-        console.error("saveMessage error:", error);
-        showEphemeralToast(locales[language]?.["errorSaveFailed"] || "메시지 저장 실패", "error");
+        handleError("Error saving message", error, {
+          getStore: get,
+          showToast: true
+        });
         return null;
       }
     },
@@ -318,8 +322,10 @@ export const createChatSlice = (set, get) => {
           });
         }
       } catch (error) {
-        console.error("Error loading more messages:", error);
-        showEphemeralToast(locales[language]?.["errorLoadFailed"] || "추가 메시지 로드 실패", "error");
+        handleError("Error loading more messages", error, {
+          getStore: get,
+          showToast: true
+        });
         set({ hasMoreMessages: false });
       } finally {
         set({ isLoading: false });

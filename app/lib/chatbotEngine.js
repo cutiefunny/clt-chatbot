@@ -1,6 +1,7 @@
 // app/lib/chatbotEngine.js
 
 import { fetchShortcuts, fetchScenarios, fetchScenario } from './api';
+import { CACHE_DURATIONS } from './constants';
 import { locales } from './locales';
 import { nodeHandlers } from './nodeHandlers'; // nodeHandlers 임포트
 
@@ -8,7 +9,6 @@ const SUPPORTED_SCHEMA_VERSION = "1.0";
 
 let cachedScenarioCategories = null;
 let lastFetchTime = 0;
-const CACHE_DURATION = 5 * 60 * 1000; // 5분
 
 /**
  * Firestore의 'shortcut' 컬렉션에서 시나리오 카테고리 데이터를 가져옵니다.
@@ -17,7 +17,7 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5분
  */
 export async function getScenarioCategories() {
   const now = Date.now();
-  if (cachedScenarioCategories && (now - lastFetchTime < CACHE_DURATION)) {
+  if (cachedScenarioCategories && (now - lastFetchTime < CACHE_DURATIONS.SCENARIO_CATEGORIES)) {
     return cachedScenarioCategories;
   }
 

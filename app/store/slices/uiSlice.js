@@ -1,11 +1,13 @@
 // app/store/slices/uiSlice.js
 import { locales } from "../../lib/locales";
+import { TOAST_DURATION } from "../../lib/constants";
 import { 
   fetchGeneralConfig, 
   updateGeneralConfig, 
   fetchUserSettings, 
   updateUserSettings 
 } from "../../lib/api";
+import { handleError } from "../../lib/errorHandler";
 import {
   postToParent,
   PARENT_ORIGIN,
@@ -124,7 +126,7 @@ export const createUISlice = (set, get) => ({
       // --- 👆 [추가] ---
 
     } catch (error) {
-      console.error("Error loading general config from Firestore:", error);
+      handleError("Error loading general config", error);
     }
   },
 
@@ -136,7 +138,7 @@ export const createUISlice = (set, get) => ({
       }
       return success;
     } catch (error) {
-      console.error("Error saving general config:", error);
+      handleError("Error saving general config", error);
       return false;
     }
   },
@@ -159,10 +161,10 @@ export const createUISlice = (set, get) => ({
       if (!success) throw new Error("Failed to update user settings");
       return true;
     } catch (error) {
-      console.error("Error saving personal settings:", error);
-      const errorMsg =
-        locales[language]?.errorUnexpected || "Failed to save settings.";
-      showEphemeralToast(errorMsg, "error");
+      handleError("Error saving personal settings", error, {
+        getStore: get,
+        showToast: true
+      });
 
       console.log("Rolling back settings due to error...", previousSettings);
       set(previousSettings);
@@ -185,7 +187,7 @@ export const createUISlice = (set, get) => ({
       set((state) => ({
         ephemeralToast: { ...state.ephemeralToast, visible: false },
       }));
-    }, 3000);
+    }, TOAST_DURATION);
   },
   hideEphemeralToast: () => {
     set((state) => ({
@@ -233,7 +235,7 @@ export const createUISlice = (set, get) => ({
       try {
         await updateUserSettings(user.uid, { fontSize: size });
       } catch (error) {
-        console.error("Error saving font size:", error);
+        handleError("Error saving font size", error);
       }
     }
   },
@@ -248,7 +250,7 @@ export const createUISlice = (set, get) => ({
       try {
         await updateUserSettings(user.uid, { language: lang });
       } catch (error) {
-        console.error("Error saving language:", error);
+        handleError("Error saving language", error);
       }
     }
     const { currentConversationId, messages } = get();

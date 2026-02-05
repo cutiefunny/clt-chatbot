@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { useChatStore } from "../store";
 import { useTranslations } from "../hooks/useTranslations";
 import { useAutoScroll } from "../hooks/useAutoScroll"; // [추가] 훅 임포트
+import { TARGET_AUTO_OPEN_URL } from "../lib/constants";
 import styles from "./Chat.module.css";
 import FavoritePanel from "./FavoritePanel";
 import ScenarioBubble from "./ScenarioBubble";
@@ -19,7 +20,6 @@ import DislikeIcon from "./icons/DislikeIcon";
 import mainMarkdownStyles from "./MainChatMarkdown.module.css";
 
 // --- 👇 [유지] 대체할 URL과 문구 정의 ---
-const TARGET_AUTO_OPEN_URL = "http://172.20.130.91:9110/oceans/BPM_P1002.do?tenId=2000&stgId=TST&pgmNr=BKD_M3201";
 const REPLACEMENT_TEXT = "e-SOP 링크 호출 완료했습니다.";
 // --- 👆 [유지] ---
 

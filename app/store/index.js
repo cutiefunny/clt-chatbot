@@ -1,7 +1,6 @@
 // app/store/index.js
 import { create } from "zustand";
 import {
-  db,
   auth,
   onAuthStateChanged,
 } from "../lib/firebase";
@@ -18,19 +17,9 @@ import { createFavoritesSlice } from "./slices/favoritesSlice";
 import { createConversationSlice } from "./slices/conversationSlice";
 import { createSearchSlice } from "./slices/searchSlice";
 
-// 초기 메시지 함수 (chatSlice 또는 유틸리티로 이동 고려)
-const getInitialMessages = (lang = "ko") => {
-    const initialText = locales[lang]?.initialBotMessage || locales['en']?.initialBotMessage || "Hello! How can I help you?";
-    // chatSlice에서 초기 메시지를 관리하므로 여기서는 빈 배열 반환 또는 chatSlice 호출
-    // return [{ id: "initial", sender: "bot", text: initialText }];
-    // chatSlice의 초기 상태를 직접 참조하기 어려우므로, chatSlice 내부에서 관리하도록 위임
-    return []; // chatSlice에서 처리하도록 비움
-};
-
 // 메인 스토어 생성
 export const useChatStore = create((set, get) => ({
   // Firebase 인스턴스
-  db,
   auth,
 
   // 각 슬라이스 결합

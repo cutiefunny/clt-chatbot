@@ -1,7 +1,7 @@
 // app/store/slices/searchSlice.js
 import { searchMessages } from "../../lib/api"; // API 함수 사용
 import { locales } from "../../lib/locales"; // 오류 메시지용
-import { getErrorKey } from "../../lib/errorHandler"; // 오류 처리용
+import { getErrorKey, handleError } from "../../lib/errorHandler"; // 오류 처리용
 
 export const createSearchSlice = (set, get) => ({
   // State
@@ -36,10 +36,10 @@ export const createSearchSlice = (set, get) => ({
       set({ searchResults: formattedResults }); // 최종 결과 상태 업데이트
 
     } catch (error) {
-      console.error("Error during conversation search process:", error);
-      const errorKey = getErrorKey(error);
-      const message = locales[language]?.[errorKey] || locales['en']?.errorUnexpected || 'Search failed.';
-      showEphemeralToast(message, 'error');
+      handleError("Error during conversation search process", error, {
+        getStore: get,
+        showToast: true
+      });
       set({ searchResults: [] }); // 오류 시 결과 초기화
     } finally {
       set({ isSearching: false }); // 검색 상태 종료 (성공/실패 무관)

@@ -5,6 +5,7 @@ import {
   updateConversation, 
   deleteConversation 
 } from "../../lib/api";
+import { handleError } from "../../lib/errorHandler";
 
 export const createConversationSlice = (set, get) => ({
   conversations: [],
@@ -25,7 +26,7 @@ export const createConversationSlice = (set, get) => ({
         isConversationsLoading: false 
       });
     } catch (error) {
-      console.error("Error loading conversations:", error);
+      handleError("Error loading conversations", error);
       set({ isConversationsLoading: false });
     }
   },
@@ -46,7 +47,7 @@ export const createConversationSlice = (set, get) => ({
       }
       return newConv.id;
     } catch (error) {
-      console.error("Error creating conversation:", error);
+      handleError("Error creating conversation", error);
       return null;
     }
   },
@@ -88,7 +89,7 @@ export const createConversationSlice = (set, get) => ({
     try {
       await updateConversation(conversationId, { title: newTitle });
     } catch (error) {
-      console.error("Error updating conversation title:", error);
+      handleError("Error updating conversation title", error);
       // 에러 시 롤백
       set({ conversations: previousConversations });
     }
@@ -113,7 +114,7 @@ export const createConversationSlice = (set, get) => ({
     try {
       await updateConversation(conversationId, { isPinned: newPinnedStatus });
     } catch (error) {
-      console.error("Error toggling pin status:", error);
+      handleError("Error toggling pin status", error);
       // 에러 시 로컬 상태 복구 (생략 가능 또는 로직 추가)
     }
   },
@@ -140,7 +141,7 @@ export const createConversationSlice = (set, get) => ({
         resetMessages();
       }
     } catch (error) {
-      console.error("Error deleting conversation:", error);
+      handleError("Error deleting conversation", error);
     }
   },
 

@@ -1,5 +1,6 @@
 // app/components/SplashScreen.jsx
 import { useEffect, useState } from 'react';
+import { SPLASH_DURATION } from '../lib/constants';
 import styles from './SplashScreen.module.css';
 
 export default function SplashScreen({ onAnimationEnd }) {
@@ -10,7 +11,7 @@ export default function SplashScreen({ onAnimationEnd }) {
     // 1. 1초 후에 아웃트로 애니메이션(페이드 아웃)을 시작합니다.
     const fadeOutTimer = setTimeout(() => {
       setIsFadingOut(true);
-    }, 1000); // 1초 (인트로 애니메이션 시간)
+    }, SPLASH_DURATION); // 1초 (인트로 애니메이션 시간)
 
     // 2. 총 2초 후에 onAnimationEnd 콜백을 호출하여 부모에게 종료를 알립니다.
     const endTimer = setTimeout(() => {

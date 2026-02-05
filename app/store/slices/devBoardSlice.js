@@ -1,4 +1,6 @@
 import { fetchDevMemos, createDevMemo, deleteDevMemo } from '../../lib/api';
+import { POLLING_INTERVALS } from '../../lib/constants';
+import { handleError } from '../../lib/errorHandler';
 
 export const createDevBoardSlice = (set, get) => ({
   // State
@@ -11,13 +13,13 @@ export const createDevBoardSlice = (set, get) => ({
       const memos = await fetchDevMemos();
       set({ devMemos: memos });
     } catch (error) {
-      console.error("Error loading dev memos:", error);
+      handleError("Error loading dev memos", error);
       set({ devMemos: [] });
     }
   },
 
   // 주기적으로 메모 로드 (폴링 방식)
-  startDevMemosPolling: (intervalMs = 5000) => {
+  startDevMemosPolling: (intervalMs = POLLING_INTERVALS.DEV_MEMOS) => {
     get().loadDevMemos(); // 즉시 로드
     const interval = setInterval(() => {
       get().loadDevMemos();
@@ -47,7 +49,7 @@ export const createDevBoardSlice = (set, get) => ({
       // 메모 추가 후 목록 다시 로드
       await get().loadDevMemos();
     } catch (error) {
-      console.error("Error adding dev memo:", error);
+      handleError("Error adding dev memo", error);
     }
   },
 
@@ -57,7 +59,7 @@ export const createDevBoardSlice = (set, get) => ({
       // 메모 삭제 후 목록 다시 로드
       await get().loadDevMemos();
     } catch (error) {
-      console.error("Error deleting dev memo:", error);
+      handleError("Error deleting dev memo", error);
     }
   },
 });

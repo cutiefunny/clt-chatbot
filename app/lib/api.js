@@ -1,16 +1,9 @@
 // app/lib/api.js
+import { API_DEFAULTS, MESSAGE_LIMIT } from './constants';
+import { getUserId } from './utils';
 
 const REMOTE_URL = "http://202.20.84.65:8083";
 const API_PREFIX = "/api/v1"; 
-
-// 사용자 ID 가져오기 (따옴표 제거 등 안전 처리)
-function getUserId() {
-  if (typeof window !== "undefined") {
-    const stored = localStorage.getItem("userId");
-    return stored ? stored.replace(/['"]+/g, '').trim() : "";
-  }
-  return "";
-}
 
 // 공통 헤더
 function getHeaders() {
@@ -459,9 +452,9 @@ export async function fetchNotifications() {
   const userId = getUserId();
   const url = buildUrl(`/users/notifications`, { 
     usr_id: userId, 
-    ten_id: 1000, 
-    stg_id: "DEV", 
-    sec_ofc_id: "000025" 
+    ten_id: API_DEFAULTS.TENANT_ID, 
+    stg_id: API_DEFAULTS.STAGE_ID, 
+    sec_ofc_id: API_DEFAULTS.SEC_OFC_ID 
   });
   try {
     const res = await fetch(url, { method: "GET", headers: getHeaders() });

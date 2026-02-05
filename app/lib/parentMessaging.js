@@ -1,8 +1,12 @@
-export const PARENT_ORIGIN =
-  process.env.NEXT_PUBLIC_PARENT_ORIGIN || "http://localhost:3000";
+import { 
+  DEFAULT_PARENT_ORIGIN, 
+  SCENARIO_PANEL_WIDTH, 
+  PARENT_ANIMATION_DELAY_MS 
+} from './constants';
 
-export const SCENARIO_PANEL_WIDTH = 784;
-export const PARENT_ANIMATION_DELAY_MS = 300;
+export const PARENT_ORIGIN =
+  process.env.NEXT_PUBLIC_PARENT_ORIGIN || DEFAULT_PARENT_ORIGIN;
+export { SCENARIO_PANEL_WIDTH, PARENT_ANIMATION_DELAY_MS };
 
 const sleep = (ms) =>
   new Promise((resolve) => {
