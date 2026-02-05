@@ -344,7 +344,7 @@ export default function ApiDocsPage() {
     "id": "session-uuid",
     "scenario_id": "string",
     "title": "string",
-    "status": "in_progress" | "active" | "completed" | "failed",
+    "status": "active" | "generating" | "completed" | "failed" | "canceled",
     "state": {
       "scenarioId": "string",
       "currentNodeId": "string",
@@ -373,7 +373,7 @@ export default function ApiDocsPage() {
             <dd><pre>{`{
   "scenario_id": "string",         // 시작할 시나리오 ID
   "usr_id": "string",              // 사용자 ID
-  "status": "in_progress",         // 초기 상태
+  "status": "active",              // 초기 상태 (active | generating | failed | canceled | completed)
   "current_node": "start",         // 시작 노드
   "variables": {}                  // 초기 변수/슬롯 데이터
 }`}</pre></dd>
@@ -381,7 +381,7 @@ export default function ApiDocsPage() {
             <dd><pre>{`{
   "id": "session-uuid",
   "scenario_id": "string",
-  "status": "in_progress",
+  "status": "active",
   "created_at": "ISO-8601 string"
 }`}</pre></dd>
           </dl>
@@ -396,6 +396,16 @@ export default function ApiDocsPage() {
         <div className={styles.endpointBody}>
           <h2>시나리오 세션 업데이트</h2>
           <p>사용자의 선택이나 입력에 따라 시나리오의 현재 노드, 변수, 상태를 갱신합니다.</p>
+          <div className={styles.infoBox} style={{ marginBottom: '1rem', padding: '0.75rem', background: 'rgba(255,204,0,0.1)', borderLeft: '3px solid #ffcc00' }}>
+            <strong>Status 값 설명:</strong>
+            <ul style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+              <li><code>active</code>: 진행중</li>
+              <li><code>generating</code>: 생성중</li>
+              <li><code>failed</code>: 실패</li>
+              <li><code>canceled</code>: 취소</li>
+              <li><code>completed</code>: 완료</li>
+            </ul>
+          </div>
           <dl>
             <dt>요청 본문 (Request Body):</dt>
             <dd><pre>{`{
@@ -407,7 +417,7 @@ export default function ApiDocsPage() {
   },
   "slots": { ... },                // 선택: 누적된 슬롯/변수 값
   "messages": [ ... ],             // 선택: 시나리오 내 메시지 목록
-  "status": "active" | "completed" | "failed",  // 선택
+  "status": "active" | "generating" | "completed" | "failed" | "canceled",  // 선택
   "updated_at": "ISO-8601 string"  // 선택
 }`}</pre></dd>
             <dt>응답 (200 OK):</dt>

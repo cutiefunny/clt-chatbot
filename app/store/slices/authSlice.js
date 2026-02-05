@@ -85,8 +85,8 @@ export const createAuthSlice = (set, get) => ({
     
     get().resetMessages?.(language);
 
-    // 기타 로드 함수 호출
-    get().loadDevMemos();
+    // dev-board 기능은 제거됨
+    // get().loadDevMemos();
     
     // [나중 구현] 즐겨찾기 및 알림 로드 일시 중단
     // if (get().loadFavorites) get().loadFavorites(); 

@@ -265,7 +265,7 @@ export async function createScenarioSession(conversationId, scenarioId) {
   const body = {
     scenario_id: scenarioId,
     usr_id: userId,
-    status: "in_progress",
+    status: "active",
     current_node: "start",
     variables: {}
   };
@@ -276,7 +276,7 @@ export async function createScenarioSession(conversationId, scenarioId) {
     return await res.json();
   } catch (error) {
     console.error("[API] createScenarioSession failed:", error);
-    return { id: `temp_${Date.now()}`, scenario_id: scenarioId, status: "in_progress" };
+    return { id: `temp_${Date.now()}`, scenario_id: scenarioId, status: "active" };
   }
 }
 
@@ -309,7 +309,13 @@ export async function fetchGeneralConfig() {
   const url = buildUrl(`/config/general`);
   try {
     const res = await fetch(url, { method: "GET", headers: getHeaders() });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      // 404는 백엔드 미구현이므로 에러 로그 출력 안 함
+      if (res.status !== 404) {
+        console.error("[API] fetchGeneralConfig failed:", res.status);
+      }
+      return null;
+    }
     return await res.json();
   } catch (error) {
     console.error("[API] fetchGeneralConfig failed:", error);
@@ -327,7 +333,10 @@ export async function updateGeneralConfig(settings) {
       body: JSON.stringify(settings) 
     });
     if (!res.ok) {
-      console.warn(`[API] Failed to update general config: ${res.status}`);
+      // 404는 백엔드 미구현이므로 에러 로그 출력 안 함
+      if (res.status !== 404) {
+        console.error("[API] updateGeneralConfig failed:", res.status);
+      }
       return false;
     }
     return true;

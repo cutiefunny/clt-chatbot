@@ -28,6 +28,34 @@ export const createScenarioSlice = (set, get) => ({
   },
 
   /**
+   * 이벤트 처리 함수
+   */
+  handleEvents: (events, scenarioSessionId, conversationId) => {
+    if (!events || !Array.isArray(events)) return;
+    
+    const { addMessage } = get();
+    
+    events.forEach(event => {
+      if (event.type === "message" && event.content) {
+        // 메시지 이벤트 처리
+        addMessage("bot", { text: event.content });
+      } else if (event.type === "update_slots" && event.slots) {
+        // 슬롯 업데이트 이벤트 처리
+        set(state => ({
+          scenarioStates: {
+            ...state.scenarioStates,
+            [scenarioSessionId]: {
+              ...state.scenarioStates[scenarioSessionId],
+              slots: { ...state.scenarioStates[scenarioSessionId]?.slots, ...event.slots }
+            }
+          }
+        }));
+      }
+      // 필요한 다른 이벤트 타입 처리 추가 가능
+    });
+  },
+
+  /**
    * 사용 가능한 시나리오 목록 로드
    */
   loadAvailableScenarios: async () => {
