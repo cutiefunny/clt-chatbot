@@ -443,11 +443,7 @@ export default function Chat() {
         ref={scrollRef} // [리팩토링] 훅에서 반환된 ref 연결
         onClick={handleHistoryClick}
       >
-        {!hasMessages ? (
-          enableFavorites ? (
-            <FavoritePanel />
-          ) : null
-        ) : (
+        {!hasMessages ? null : (
           <>
             {isFetchingMore && (
               <div className={styles.messageRow}>
@@ -466,11 +462,11 @@ export default function Chat() {
               </div>
             )}
             {messages.map((msg, index) => {
-              if (msg.id === "initial") return null;
+              if (msg.id === "initial") return <div key={msg.id} style={{ display: 'none' }} />;
 
               if (msg.type === "scenario_bubble") {
                 if (!showScenarioBubbles) {
-                  return null;
+                  return <div key={msg.id || msg.scenarioSessionId} style={{ display: 'none' }} />;
                 }
                 return (
                   <ScenarioBubble

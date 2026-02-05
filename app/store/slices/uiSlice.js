@@ -38,7 +38,7 @@ export const createUISlice = (set, get) => ({
   useLocalFastApiUrl: false, 
   // --- 👆 [추가] ---
   dimUnfocusedPanels: true,
-  enableFavorites: true, 
+  enableFavorites: false, 
   showHistoryOnGreeting: false, 
   mainInputPlaceholder: "", 
   headerTitle: "AI Chatbot", 

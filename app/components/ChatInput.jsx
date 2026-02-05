@@ -242,19 +242,6 @@ export default function ChatInput() {
                           handleItemClick(item)
                         }
                       >
-                        {enableFavorites && (
-                          <button
-                            className={`${styles.favoriteButton} ${
-                              isFavorited ? styles.favorited : ""
-                            }`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleFavorite(item);
-                            }}
-                          >
-                            <StarIcon size={18} filled={isFavorited} />
-                          </button>
-                        )}
                         <div className={styles.itemContent}>
                           <span className={styles.itemTitle}>
                             {item.title}
