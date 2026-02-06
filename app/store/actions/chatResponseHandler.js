@@ -18,12 +18,14 @@ const responseHandlers = {
   scenario_list: (data, getFn) => {
     getFn().addMessage("bot", { text: data.message, scenarios: data.scenarios });
   },
+  scenario_start: (data, getFn) => {
+    // 시나리오 시작 - 메시지 표시 없이 패널만 열기
+    const scenarioId = data.scenarioState?.scenarioId;
+    if (scenarioId) {
+      getFn().openScenarioPanel(scenarioId, data.slots || {});
+    }
+  },
   canvas_trigger: (data, getFn) => {
-    getFn().addMessage("bot", {
-      text:
-        locales[getFn().language]?.scenarioStarted(data.scenarioId) ||
-        `Starting '${data.scenarioId}'.`,
-    });
     getFn().openScenarioPanel(data.scenarioId);
   },
   toast: (data, getFn) => {
@@ -80,7 +82,10 @@ export async function handleResponse(get, set, messagePayload) {
   // 사용자가 메시지를 보내면 무조건 맨 아래로 스크롤 강제 이동
   setForceScrollToBottom(true);
 
-  if (textForUser) {
+  // 시나리오 ID인지 확인 (간단한 체크: 알파벳, 숫자, 언더스코어만 포함)
+  const isScenarioId = textForUser && /^[A-Za-z0-9_-]+$/.test(textForUser.trim());
+
+  if (textForUser && !isScenarioId) {
     await addMessage("user", { text: textForUser });
   }
 
@@ -94,7 +99,7 @@ export async function handleResponse(get, set, messagePayload) {
 
   // 말풍선 표시 여부 결정
   const isCustomAction = messagePayload.text === "GET_SCENARIO_LIST"; 
-  const shouldShowBubble = !isCustomAction;
+  const shouldShowBubble = !isCustomAction && !isScenarioId;
 
   const thinkingText = locales[language]?.["statusRequesting"] || "Requesting...";
   const tempBotMessageId = `temp_pending_${conversationIdForBotResponse}`;

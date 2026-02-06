@@ -123,7 +123,7 @@ export const createConversationSlice = (set, get) => ({
    * 대화 삭제
    */
   deleteConversationById: async (conversationId) => {
-    const { currentConversationId, conversations, resetMessages } = get();
+    const { currentConversationId, conversations, resetMessages, cleanupScenarioStates } = get();
     
     try {
       await deleteConversation(conversationId);
@@ -134,11 +134,15 @@ export const createConversationSlice = (set, get) => ({
 
       // 현재 보고 있는 대화를 삭제한 경우 초기화
       if (currentConversationId === conversationId) {
+        console.log('[deleteConversationById] Deleting current conversation, resetting chat');
         set({
           currentConversationId: null,
           currentConversationTitle: "New Chat",
+          scenarioStates: {}, // 시나리오 상태 초기화
+          activeScenarioSessionId: null, // 활성 시나리오 세션 초기화
         });
         resetMessages();
+        get().setActivePanel?.("main"); // 메인 패널로 전환
       }
     } catch (error) {
       handleError("Error deleting conversation", error);

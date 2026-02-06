@@ -63,23 +63,43 @@ export const createScenarioSlice = (set, get) => ({
    * 헬퍼: 시나리오 세션 상태 업데이트
    */
   _updateScenarioSessionState: async (sessionId, scenarioId, initialSlots, data) => {
-    const updatePayload = { 
-      updated_at: new Date().toISOString(),
-      slots: { ...initialSlots, ...(data.slots || {}) }
-    };
+    // 초기 메시지 배열 생성 - nextNode가 있으면 첫 번째 노드 메시지로 추가
+    const initialMessages = [];
+    if (data.nextNode && data.nextNode.type !== 'setSlot' && data.nextNode.type !== 'set-slot') {
+      initialMessages.push({ 
+        id: data.nextNode.id, 
+        sender: 'bot', 
+        node: data.nextNode 
+      });
+    }
 
+    // state는 항상 필수 - data.nextNode가 있으면 해당 노드 정보 사용, 없으면 시작 노드 사용
+    let stateValue;
     if (data.nextNode) {
       const isInteractive = data.nextNode.type === "slotfilling" || 
                            data.nextNode.type === "form" || 
                            (data.nextNode.type === "branch" && data.nextNode.data?.evaluationType !== "CONDITION");
       
-      updatePayload.state = { 
+      stateValue = { 
         scenarioId, 
         currentNodeId: data.nextNode.id, 
         awaitingInput: isInteractive 
       };
-      updatePayload.status = "active";
+    } else {
+      // nextNode가 없을 때 기본 시작 노드 정보 사용
+      stateValue = {
+        scenarioId,
+        currentNodeId: "start",
+        awaitingInput: false
+      };
     }
+
+    const updatePayload = { 
+      slots: { ...initialSlots, ...(data.slots || {}) },
+      messages: initialMessages,
+      status: "active",
+      state: stateValue
+    };
 
     await updateScenarioSession(sessionId, updatePayload);
     
@@ -289,7 +309,11 @@ export const createScenarioSlice = (set, get) => ({
             newMessages.push({ id: `bot-end-${Date.now()}`, sender: 'bot', text: data.message });
         }
 
-        let updatePayload = { messages: newMessages };
+        let updatePayload = { 
+          messages: newMessages,
+          slots: { ...currentScenario.slots, ...(payload.formData || {}), ...(data.slots || {}) },
+          status: currentScenario.status || "active"
+        };
 
         if (data.type === 'scenario_end') {
             const finalStatus = data.slots?.apiFailed ? 'failed' : 'completed';
@@ -399,7 +423,21 @@ export const createScenarioSlice = (set, get) => ({
 
   endScenario: async (scenarioSessionId, status = 'completed') => {
     try {
-        const updatePayload = { status, state: null };
+        const currentScenario = get().scenarioStates[scenarioSessionId];
+        
+        // state는 항상 필수 - 종료 시에도 기본 구조 유지
+        const stateValue = currentScenario?.state || {
+          scenarioId: currentScenario?.scenarioId || "",
+          currentNodeId: "end",
+          awaitingInput: false
+        };
+        
+        const updatePayload = { 
+          status, 
+          state: stateValue,
+          slots: currentScenario?.slots || {},
+          messages: currentScenario?.messages || []
+        };
         await updateScenarioSession(scenarioSessionId, updatePayload); 
         
         set(state => ({
@@ -411,6 +449,11 @@ export const createScenarioSlice = (set, get) => ({
                 }
             },
         }));
+        
+        // canceled 상태일 때 시나리오 패널 닫기
+        if (status === 'canceled') {
+          get().setActivePanel('main');
+        }
     } catch (error) {
         handleError("Error ending scenario", error);
     }

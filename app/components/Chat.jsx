@@ -246,6 +246,7 @@ export default function Chat() {
     scrollToMessageId,
     setScrollToMessageId,
     activePanel,
+    setActivePanel,
     focusChatInput,
     forceScrollToBottom,
     setForceScrollToBottom,
@@ -270,7 +271,8 @@ export default function Chat() {
 
   const handleHistoryClick = () => {
     if (activePanel === "scenario") {
-      focusChatInput();
+      // 시나리오 패널이 활성화된 상태에서 메인 채팅 영역 클릭 시 시나리오 창 닫기
+      setActivePanel("main");
     }
   };
 
@@ -526,7 +528,7 @@ export default function Chat() {
                     : undefined;
                 return (
                   <div
-                    key={msg.id}
+                    key={msg.id || `msg-${index}`}
                     className={`${styles.messageRow} ${
                       msg.sender === "user" ? styles.userRow : ""
                     }`}

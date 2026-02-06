@@ -39,6 +39,7 @@ export default function ScenarioBubble({ scenarioSessionId }) {
     activePanel,
     activeScenarioSessionId: focusedSessionId,
     dimUnfocusedPanels,
+    availableScenarios,
   } = useChatStore();
   const { t } = useTranslations(); // language 제거
 
@@ -50,6 +51,11 @@ export default function ScenarioBubble({ scenarioSessionId }) {
     activeScenario?.status === "failed" ||
     activeScenario?.status === "canceled";
   const scenarioId = activeScenario?.scenarioId;
+  
+  // 시나리오 이름 찾기
+  const scenarioInfo = availableScenarios.find(s => s.id === scenarioId);
+  const scenarioName = scenarioInfo?.name || scenarioId || "Scenario";
+  
   const isFocused =
     activePanel === "scenario" && focusedSessionId === scenarioSessionId;
 
@@ -117,7 +123,7 @@ export default function ScenarioBubble({ scenarioSessionId }) {
             <span className={styles.scenarioHeaderTitle}>
               {t("scenarioTitle")(
                 interpolateMessage(
-                  scenarioId || "Scenario",
+                  scenarioName,
                   activeScenario?.slots
                 )
               )}

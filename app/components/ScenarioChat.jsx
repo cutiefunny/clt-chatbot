@@ -181,6 +181,10 @@ export default function ScenarioChat() {
   const groupedMessages = [];
   let currentChain = [];
   scenarioMessages.forEach((msg) => {
+    // node가 없는 메시지는 건너뛔 (대화 히스토리에서 로드된 경우)
+    if (!msg.node) {
+      return;
+    }
     if (msg.node?.type === "set-slot" || msg.node?.type === "setSlot") {
       return;
     }

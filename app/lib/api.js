@@ -129,14 +129,24 @@ export async function fetchMessages({ queryKey, pageParam = 0 }) {
   const data = await res.json();
   
   if (data && Array.isArray(data.messages)) {
-    return data.messages.map(msg => ({
-      id: msg.id,
-      sender: msg.role === "user" ? "user" : "bot",
-      text: msg.content,
-      createdAt: msg.created_at,
-      selectedOption: msg.selected_option,
-      feedback: msg.feedback
-    }));
+    return data.messages.map(msg => {
+      const baseMessage = {
+        id: msg.id,
+        sender: msg.role === "user" ? "user" : "bot",
+        text: msg.content,
+        createdAt: msg.created_at,
+        selectedOption: msg.selected_option,
+        feedback: msg.feedback
+      };
+      
+      // 시나리오 세션이 연결된 메시지는 scenario_bubble로 표시
+      if (msg.scenario_session_id) {
+        baseMessage.type = "scenario_bubble";
+        baseMessage.scenarioSessionId = msg.scenario_session_id;
+      }
+      
+      return baseMessage;
+    });
   }
   return [];
 }
@@ -244,10 +254,18 @@ export async function fetchScenarioSessions(conversationId) {
   const url = buildUrl(`/conversations/${conversationId}/scenario-sessions`, { usr_id: userId });
   try {
     const res = await fetch(url, { method: "GET", headers: getHeaders() });
-    if (!res.ok) return [];
+    if (!res.ok) {
+      // 404는 API가 없는 것이므로 조용히 처리
+      if (res.status === 404) {
+        return [];
+      }
+      console.warn(`[API] fetchScenarioSessions returned ${res.status}`);
+      return [];
+    }
     return await res.json();
   } catch (error) {
-    console.error("[API] fetchScenarioSessions failed:", error);
+    // 네트워크 오류는 로그만 찍고 빈 배열 반환
+    console.warn("[API] fetchScenarioSessions network error:", error.message);
     return [];
   }
 }

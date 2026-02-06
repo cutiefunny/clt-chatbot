@@ -7,6 +7,7 @@ import {
   deleteConversation, 
   updateConversation 
 } from '../lib/api'; // ★ 반드시 api.js에서 함수를 가져와야 합니다.
+import { useChatStore } from '../store'; // Zustand store 추가
 
 // [대화 목록] 불러오기
 export const useConversations = () => {
@@ -44,8 +45,13 @@ export const useCreateConversation = () => {
 // [대화 삭제]
 export const useDeleteConversation = () => {
   const queryClient = useQueryClient();
+  const deleteConversationById = useChatStore(state => state.deleteConversationById);
+  
   return useMutation({
-    mutationFn: (conversationId) => deleteConversation(conversationId),
+    mutationFn: async (conversationId) => {
+      // Zustand store의 함수 호출 (메시지 초기화 등 처리)
+      await deleteConversationById(conversationId);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
     },
