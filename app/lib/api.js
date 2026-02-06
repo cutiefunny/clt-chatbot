@@ -151,8 +151,11 @@ export async function fetchMessages({ queryKey, pageParam = 0 }) {
   return [];
 }
 
-// 메시지 전송
+// 메시지 전송 (사용 중지 - /chat API가 메시지 저장을 처리함)
+// 참고: 백엔드 /chat API가 이미 메시지를 저장하므로 이 함수는 사용되지 않음
+// 피드백/옵션 업데이트는 updateMessage 사용
 export async function createMessage(conversationId, messageData) {
+  console.warn('[DEPRECATED] createMessage is deprecated. Backend /chat API handles message saving.');
   const url = buildUrl(`/conversations/${conversationId}/messages`);
   const userId = getUserId();
   const payload = {
@@ -174,7 +177,11 @@ export async function createMessage(conversationId, messageData) {
     if (res.status === 404) {
       // 👈 [방어] 백엔드에 API가 없는 경우 경고만 띄우고 가상의 응답 반환
       console.warn(`[API] POST /messages not found (404). Check backend routing.`);
-      return { id: `temp_${Date.now()}`, ...payload };
+      return { 
+        id: `temp_${Date.now()}`, 
+        ...payload,
+        created_at: new Date().toISOString() 
+      };
     }
 
     if (!res.ok) throw new Error(`Failed to create message: ${res.status}`);
@@ -182,7 +189,11 @@ export async function createMessage(conversationId, messageData) {
   } catch (error) {
     console.error("[API] createMessage failed:", error);
     // 👈 네트워크 에러 등 발생 시에도 흐름 유지
-    return { id: `temp_${Date.now()}`, ...payload };
+    return { 
+      id: `temp_${Date.now()}`, 
+      ...payload,
+      created_at: new Date().toISOString() 
+    };
   }
 }
 

@@ -65,7 +65,6 @@ export async function handleResponse(get, set, messagePayload) {
     language,
     addMessage,
     updateLastMessage,
-    saveMessage,
     setExtractedSlots,
     llmProvider,
     messages,
@@ -246,14 +245,8 @@ export async function handleResponse(get, set, messagePayload) {
           if (conversationIdForBotResponse === get().currentConversationId) {
             await addMessage("bot", { text: responseText });
           } else {
-            const botMessage = {
-              id: `temp_${Date.now()}`,
-              sender: "bot",
-              text: responseText,
-              isStreaming: false,
-              feedback: null,
-            };
-            await saveMessage(botMessage, conversationIdForBotResponse);
+            // 다른 대화방에서 응답 완료 처리
+            // saveMessage 제거: 백엔드 /chat에서 이미 저장
             set((state) => ({
               completedResponses: new Set(state.completedResponses).add(
                 conversationIdForBotResponse
@@ -285,7 +278,6 @@ export async function handleResponse(get, set, messagePayload) {
           "There was a problem with the response. Please try again later.";
     }
 
-    let messageSaved = false;
     const isStillOnSameConversation =
       conversationIdForBotResponse === get().currentConversationId;
 
@@ -305,48 +297,17 @@ export async function handleResponse(get, set, messagePayload) {
             isStreaming: false,
           };
 
-          saveMessage(updatedMessage, conversationIdForBotResponse).then(
-            (savedId) => {
-              finalMessageId = savedId;
-              set((s) => {
-                const newSet = new Set(s.pendingResponses);
-                newSet.delete(conversationIdForBotResponse);
+          // saveMessage 제거: 에러 메시지도 /chat에서 저장됨
+          const newSet = new Set(state.pendingResponses);
+          newSet.delete(conversationIdForBotResponse);
 
-                let newMessages = s.messages;
-                const alreadyExists = savedId
-                  ? s.messages.some((m) => m.id === savedId)
-                  : false;
-
-                if (alreadyExists) {
-                  newMessages = s.messages.filter(
-                    (m) => m.id !== lastBotMessageId
-                  );
-                } else if (savedId) {
-                  newMessages = s.messages.map((m) =>
-                    m.id === lastBotMessageId
-                      ? { ...updatedMessage, id: savedId }
-                      : m
-                  );
-                } else {
-                  newMessages = s.messages.map((m) =>
-                    m.id === lastBotMessageId ? updatedMessage : m
-                  );
-                }
-
-                return {
-                  messages: newMessages,
-                  isLoading: false,
-                  pendingResponses: newSet,
-                };
-              });
-              messageSaved = true;
-            }
-          );
           return {
             messages: [
               ...state.messages.slice(0, lastMessageIndex),
               updatedMessage,
             ],
+            isLoading: false,
+            pendingResponses: newSet,
           };
         }
 
@@ -356,30 +317,8 @@ export async function handleResponse(get, set, messagePayload) {
         return { isLoading: false, pendingResponses: newSet };
       });
     } else {
-      const errorBotMessage = {
-        id: `temp_${Date.now()}`,
-        sender: "bot",
-        text: errorMessage,
-        isStreaming: false,
-        feedback: null,
-      };
-      saveMessage(errorBotMessage, conversationIdForBotResponse).then(() => {
-        messageSaved = true;
-      });
-      set((state) => {
-        const newSet = new Set(state.pendingResponses);
-        newSet.delete(conversationIdForBotResponse);
-        const newCompletedSet = new Set(state.completedResponses);
-        newCompletedSet.add(conversationIdForBotResponse);
-        return {
-          isLoading: false,
-          pendingResponses: newSet,
-          completedResponses: newCompletedSet,
-        };
-      });
-    }
-
-    if (!messageSaved && !isStream) {
+      // 다른 대화방에서 에러 발생
+      // saveMessage 제거: 백엔드가 이미 저장
       set((state) => {
         const newSet = new Set(state.pendingResponses);
         newSet.delete(conversationIdForBotResponse);
@@ -427,25 +366,17 @@ export async function handleResponse(get, set, messagePayload) {
               feedback: null,
             };
 
-             saveMessage(finalMessage, conversationIdForBotResponse).then(
-              (savedId) => {
-                 finalMessageId = savedId;
-                set((s) => {
-                  const newSet = new Set(s.pendingResponses);
-                  newSet.delete(conversationIdForBotResponse);
-                  return {
-                    messages: s.messages.map((m) => m.id === lastMessage.id ? {...finalMessage, id: savedId} : m), 
-                    isLoading: false,
-                    pendingResponses: newSet,
-                  };
-                });
-              }
-            );
-             return {
+            // saveMessage 제거: 백엔드 /chat에서 이미 저장
+            const newSet = new Set(state.pendingResponses);
+            newSet.delete(conversationIdForBotResponse);
+            
+            return {
               messages: [
                 ...state.messages.slice(0, lastMessageIndex),
                 finalMessage,
               ],
+              isLoading: false,
+              pendingResponses: newSet,
             };
           }
            const newSet = new Set(state.pendingResponses);

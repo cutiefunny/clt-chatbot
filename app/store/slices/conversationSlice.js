@@ -56,7 +56,13 @@ export const createConversationSlice = (set, get) => ({
    * 대화 선택 및 관련 데이터 로드
    */
   selectConversation: (conversationId) => {
-    const { conversations, loadInitialMessages, unsubscribeAllMessagesAndScenarios } = get();
+    const { conversations, loadInitialMessages, unsubscribeAllMessagesAndScenarios, currentConversationId } = get();
+    
+    // 이미 선택된 대화방이면 중복 호출 방지
+    if (currentConversationId === conversationId) {
+      console.log(`[selectConversation] Already selected conversation ${conversationId}. Skipping.`);
+      return;
+    }
     
     // 기존 리스너 및 시나리오 정리
     unsubscribeAllMessagesAndScenarios();

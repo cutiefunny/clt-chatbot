@@ -53,7 +53,8 @@ export const createScenarioSlice = (set, get) => ({
       scenario_session_id: sessionId,
       content: scenarioId,
       slots: initialSlots,
-      language: language
+      language: language,
+      type: "scenario_bubble"  // 시나리오 호출 타입 표시
     });
 
     return data;
@@ -267,7 +268,7 @@ export const createScenarioSlice = (set, get) => ({
     const currentScenario = get().scenarioStates[scenarioSessionId];
     if (!currentScenario) return;
 
-    const userId = get().getStoredUserId();
+    const userId = getUserId();
 
     set(state => ({
         scenarioStates: { 
@@ -299,6 +300,7 @@ export const createScenarioSlice = (set, get) => ({
           scenario_state: currentScenario.state,
           slots: { ...currentScenario.slots, ...(payload.formData || {}) },
           language: language,
+          type: "scenario_bubble"  // 시나리오 응답 타입 표시
         });
         handleEvents(data.events, scenarioSessionId, currentConversationId);
 
@@ -426,7 +428,11 @@ export const createScenarioSlice = (set, get) => ({
         const currentScenario = get().scenarioStates[scenarioSessionId];
         
         // state는 항상 필수 - 종료 시에도 기본 구조 유지
-        const stateValue = currentScenario?.state || {
+        const stateValue = currentScenario?.state ? {
+          ...currentScenario.state,
+          currentNodeId: "end",
+          awaitingInput: false
+        } : {
           scenarioId: currentScenario?.scenarioId || "",
           currentNodeId: "end",
           awaitingInput: false

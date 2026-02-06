@@ -47,6 +47,13 @@ export const createChatSlice = (set, get) => {
      */
     loadInitialMessages: async (conversationId) => {
       if (!conversationId) return;
+      
+      // 이미 같은 대화방의 메시지를 로딩 중이면 중복 호출 방지
+      const currentState = get();
+      if (currentState.isLoading && currentState.currentConversationId === conversationId) {
+        console.log(`[loadInitialMessages] Already loading messages for ${conversationId}. Skipping.`);
+        return;
+      }
 
       set({ isLoading: true });
       try {
@@ -65,15 +72,25 @@ export const createChatSlice = (set, get) => {
           if (msg.selectedOption) newSelectedOptions[msg.id] = msg.selectedOption;
         });
 
+        // 4. 중복 제거: 동일한 ID가 있는 경우 첫 번째 것만 유지
+        const uniqueMessages = [];
+        const seenIds = new Set();
+        for (const msg of messages) {
+          if (!seenIds.has(msg.id)) {
+            seenIds.add(msg.id);
+            uniqueMessages.push(msg);
+          }
+        }
+
         set({
-          messages: messages,
+          messages: uniqueMessages,
           selectedOptions: newSelectedOptions,
           currentConversationTitle: conversationData.title || "New Chat",
           isLoading: false,
           hasMoreMessages: messages.length >= 15, // 초기 리미트 기준
         });
         
-        console.log(`[chatSlice] Successfully loaded ${messages.length} messages from FastAPI.`);
+        console.log(`[chatSlice] Successfully loaded ${uniqueMessages.length} unique messages from FastAPI.`);
       } catch (error) {
         handleError("Error loading initial messages", error, { 
           getStore: get,
@@ -231,47 +248,39 @@ export const createChatSlice = (set, get) => {
     },
 
     /**
-     * 메시지 저장 (FastAPI POST 연동)
+     * 메시지 ID 업데이트 (백엔드 응답에서 받은 실제 ID로 교체)
+     * 참고: /chat API가 메시지를 저장하므로 별도 저장 불필요
      */
-    saveMessage: async (message, conversationId = null) => {
-      const { currentConversationId, createNewConversation, showEphemeralToast, language } = get();
-      
-      let activeConversationId = conversationId || currentConversationId;
+    updateMessageId: (tempId, realId) => {
+      if (!tempId || !realId || tempId === realId) return;
 
-      try {
-        if (!activeConversationId) {
-          activeConversationId = await createNewConversation(true);
-        }
-
-        // FastAPI createMessage 호출
-        const savedMessage = await createMessage(activeConversationId, message);
+      set((state) => {
+        // 이미 해당 ID가 존재하는지 확인 (중복 방지)
+        const alreadyExists = state.messages.some(msg => msg.id === realId);
         
-        // 임시 ID(temp_)를 실제 DB ID로 교체
-        if (String(message.id).startsWith("temp_")) {
-          set((state) => ({
-            messages: state.messages.map((msg) =>
-              msg.id === message.id ? { ...msg, id: savedMessage.id, isStreaming: false } : msg
-            ),
-            // 선택 옵션 맵의 키도 변경
-            selectedOptions: (() => {
-              const newOpts = { ...state.selectedOptions };
-              if (newOpts[message.id]) {
-                newOpts[savedMessage.id] = newOpts[message.id];
-                delete newOpts[message.id];
-              }
-              return newOpts;
-            })()
-          }));
+        if (alreadyExists) {
+          // 이미 존재하면 임시 메시지만 제거
+          return {
+            messages: state.messages.filter(msg => msg.id !== tempId)
+          };
         }
-
-        return savedMessage.id;
-      } catch (error) {
-        handleError("Error saving message", error, {
-          getStore: get,
-          showToast: true
-        });
-        return null;
-      }
+        
+        // 존재하지 않으면 ID 교체
+        return {
+          messages: state.messages.map((msg) =>
+            msg.id === tempId ? { ...msg, id: realId, isStreaming: false } : msg
+          ),
+          // 선택 옵션 맵의 키도 변경
+          selectedOptions: (() => {
+            const newOpts = { ...state.selectedOptions };
+            if (newOpts[tempId]) {
+              newOpts[realId] = newOpts[tempId];
+              delete newOpts[tempId];
+            }
+            return newOpts;
+          })()
+        };
+      });
     },
 
     addMessage: async (sender, messageData) => {
@@ -289,11 +298,19 @@ export const createChatSlice = (set, get) => {
         chartData: messageData.chartData || null,
       };
 
+      // 중복 메시지 추가 방지
+      const exists = get().messages.some(msg => msg.id === newMessage.id);
+      if (exists) {
+        console.warn(`[addMessage] Message with id ${newMessage.id} already exists. Skipping.`);
+        return;
+      }
+
       set((state) => ({ messages: [...state.messages, newMessage] }));
 
-      if (!newMessage.isStreaming) {
-        await get().saveMessage(newMessage);
-      }
+      // saveMessage 제거: 백엔드 /chat API에서 이미 메시지를 저장함
+      // if (!newMessage.isStreaming) {
+      //   await get().saveMessage(newMessage);
+      // }
     },
 
     /**
@@ -316,8 +333,12 @@ export const createChatSlice = (set, get) => {
         if (newMessages.length === 0) {
           set({ hasMoreMessages: false });
         } else {
+          // 중복 제거: 이미 있는 메시지는 제외
+          const existingIds = new Set(messages.map(m => m.id));
+          const uniqueNewMessages = newMessages.filter(m => !existingIds.has(m.id));
+          
           set({
-            messages: [...newMessages, ...messages],
+            messages: [...uniqueNewMessages, ...messages],
             hasMoreMessages: newMessages.length === MESSAGE_LIMIT,
           });
         }
