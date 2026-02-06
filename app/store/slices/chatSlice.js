@@ -5,8 +5,7 @@ import {
   getConversation, 
   fetchMessages, 
   createMessage, 
-  updateMessage,
-  fetchScenarioSessions
+  updateMessage 
 } from "@/app/lib/api";
 import { getErrorKey, handleError } from "../../lib/errorHandler";
 import { handleResponse } from "../actions/chatResponseHandler";
@@ -37,12 +36,9 @@ export const createChatSlice = (set, get) => {
 
     // 메시지 초기화
     resetMessages: (language) => {
-      console.log('[resetMessages] Resetting all messages and state');
       set({
         messages: [],
         completedResponses: new Set(),
-        selectedOptions: {},
-        hasMoreMessages: true,
       });
     },
 
@@ -63,64 +59,21 @@ export const createChatSlice = (set, get) => {
           pageParam: 0,
         });
 
-        // 3. 시나리오 세션 로드 (메시지가 있을 때만, 실패해도 계속 진행)
-        let scenarioSessions = [];
-        if (messages.length > 0) {
-          try {
-            scenarioSessions = await fetchScenarioSessions(conversationId);
-          } catch (error) {
-            console.warn('[loadInitialMessages] Failed to load scenario sessions:', error);
-          }
-        }
-        const scenarioStates = {};
-        const scenarioSessionIds = new Set();
-        scenarioSessions.forEach(session => {
-          scenarioSessionIds.add(session.id);
-          scenarioStates[session.id] = {
-            ...session,
-            scenarioId: session.scenario_id,
-            slots: session.slots || {},
-            messages: session.messages || [],
-            state: session.state || { scenarioId: session.scenario_id, currentNodeId: 'start', awaitingInput: false },
-            isLoading: false
-          };
-        });
-
-        // 4. 선택된 옵션 데이터 추출 및 시나리오 메시지 변환
+        // 3. 선택된 옵션 데이터 추출
         const newSelectedOptions = {};
-        const processedMessages = messages.map(msg => {
+        messages.forEach(msg => {
           if (msg.selectedOption) newSelectedOptions[msg.id] = msg.selectedOption;
-          
-          // 시나리오 세션 ID가 있는 메시지를 scenario_bubble로 변환
-          if (msg.scenarioSessionId && scenarioSessionIds.has(msg.scenarioSessionId)) {
-            return { ...msg, type: 'scenario_bubble' };
-          }
-          
-          // scenario_session_id가 없지만 시나리오 ID 형식인 경우 체크
-          // (백엔드가 scenario_session_id를 반환하지 않는 경우 대비)
-          if (msg.sender === 'user' && msg.text && /^[A-Za-z0-9_-]+$/.test(msg.text.trim())) {
-            // 이 메시지 직후에 시나리오 세션이 생성되었는지 확인
-            const matchingSession = scenarioSessions.find(session => 
-              session.scenario_id === msg.text.trim()
-            );
-            if (matchingSession) {
-              return { ...msg, type: 'scenario_bubble', scenarioSessionId: matchingSession.id };
-            }
-          }
-          
-          return msg;
         });
 
         set({
-          messages: processedMessages,
+          messages: messages,
           selectedOptions: newSelectedOptions,
           currentConversationTitle: conversationData.title || "New Chat",
           isLoading: false,
           hasMoreMessages: messages.length >= 15, // 초기 리미트 기준
-          scenarioStates: { ...get().scenarioStates, ...scenarioStates }
         });
         
-        console.log(`[chatSlice] Successfully loaded ${messages.length} messages and ${scenarioSessions.length} scenario sessions from FastAPI.`);
+        console.log(`[chatSlice] Successfully loaded ${messages.length} messages from FastAPI.`);
       } catch (error) {
         handleError("Error loading initial messages", error, { 
           getStore: get,
