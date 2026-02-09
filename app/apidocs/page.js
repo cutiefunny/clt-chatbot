@@ -65,18 +65,120 @@ export default function ApiDocsPage() {
   "slots": { "key": "value" },     // 선택: 현재 시나리오 슬롯 상태
   "source_handle": "string"        // 선택: 시나리오 노드 핸들 ID
 }`}</pre></dd>
-            <dt>응답 (Response):</dt>
+            <dt>응답 (Response) - ❌ AS-IS (현재 - 문제 있음):</dt>
             <dd>
+              <div style={{ background: 'rgba(255,99,71,0.1)', padding: '1rem', borderRadius: '0.5rem', marginBottom: '1rem', borderLeft: '3px solid #ff6347' }}>
                 <pre>{`{
   "type": "text" | "scenario" | "scenario_start" | "scenario_end",
   "content": "string",           // AI 답변 내용
-  "events": [ ... ],             // 시나리오 제어 이벤트 목록
-  "scenario_state": { ... },     // 현재 시나리오 진행 상태
-  "slots": { ... },              // 업데이트된 슬롯 정보
-  "nextNode": { ... }            // 다음 노드 정보
+  "events": [],                  // 시나리오 제어 이벤트 목록
+  "scenario_state": {},          // 현재 시나리오 진행 상태
+  "slots": {},                   // 업데이트된 슬롯 정보
+  "nextNode": {}                 // ❌ 빈 객체 - 필드 누락!
 }`}</pre>
+                <p style={{ color: '#ff6347', margin: '0.5rem 0 0 0' }}>
+                  <strong>⚠️ 문제:</strong> nextNode가 빈 객체로 반환되어 클라이언트에서 다음 노드 정보를 파악할 수 없음
+                </p>
+              </div>
+            </dd>
+
+            <dt>응답 (Response) - ✅ TO-BE (수정 후 - 올바른 형식):</dt>
+            <dd>
+              <div style={{ background: 'rgba(34,197,94,0.1)', padding: '1rem', borderRadius: '0.5rem', borderLeft: '3px solid #22c55e' }}>
+                <pre>{`{
+  "type": "text" | "scenario" | "scenario_start" | "scenario_end",
+  "content": "string",                    // AI 답변 내용
+  "events": [],                          // 시나리오 제어 이벤트 목록
+  "scenario_state": {},                  // 현재 시나리오 진행 상태
+  "slots": {},                           // 업데이트된 슬롯 정보
+  "nextNode": {
+    "id": "string",                      // ✅ 다음 노드의 ID
+    "type": "string",                    // ✅ 노드 타입
+    "data": {
+      "label": "string",
+      "evaluationType": "string",
+      "description": "string"
+    },
+    "message": "string"
+  }
+}`}</pre>
+                <p style={{ color: '#22c55e', margin: '0.5rem 0 0 0' }}>
+                  <strong>✅ 개선:</strong> nextNode에 id, type, data, message 필드 포함
+                </p>
+              </div>
             </dd>
           </dl>
+
+          <CollapsibleSection title="📋 NextNode 필드 상세 설명">
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '0.5rem' }}>
+              <thead>
+                <tr style={{ background: '#f0f0f0', borderBottom: '2px solid #ccc' }}>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderRight: '1px solid #ddd' }}>필드명</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderRight: '1px solid #ddd' }}>타입</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderRight: '1px solid #ddd' }}>필수</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>설명</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style={{ borderBottom: '1px solid #eee' }}>
+                  <td style={{ padding: '0.75rem', borderRight: '1px solid #ddd' }}><code>id</code></td>
+                  <td style={{ padding: '0.75rem', borderRight: '1px solid #ddd' }}>string</td>
+                  <td style={{ padding: '0.75rem', borderRight: '1px solid #ddd' }}>✅</td>
+                  <td style={{ padding: '0.75rem' }}>다음 노드의 고유 식별자. "start", "end", 또는 노드 UUID</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid #eee' }}>
+                  <td style={{ padding: '0.75rem', borderRight: '1px solid #ddd' }}><code>type</code></td>
+                  <td style={{ padding: '0.75rem', borderRight: '1px solid #ddd' }}>string</td>
+                  <td style={{ padding: '0.75rem', borderRight: '1px solid #ddd' }}>✅</td>
+                  <td style={{ padding: '0.75rem' }}>노드 타입: "start" | "text" | "slotfilling" | "form" | "branch" | "api" | "message" | "end"</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid #eee' }}>
+                  <td style={{ padding: '0.75rem', borderRight: '1px solid #ddd' }}><code>data</code></td>
+                  <td style={{ padding: '0.75rem', borderRight: '1px solid #ddd' }}>object</td>
+                  <td style={{ padding: '0.75rem', borderRight: '1px solid #ddd' }}>✅</td>
+                  <td style={{ padding: '0.75rem' }}>노드 메타데이터 (label, evaluationType 등)</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid #eee' }}>
+                  <td style={{ padding: '0.75rem', borderRight: '1px solid #ddd' }}><code>message</code></td>
+                  <td style={{ padding: '0.75rem', borderRight: '1px solid #ddd' }}>string</td>
+                  <td style={{ padding: '0.75rem', borderRight: '1px solid #ddd' }}>선택</td>
+                  <td style={{ padding: '0.75rem' }}>노드에 표시할 메시지 텍스트</td>
+                </tr>
+              </tbody>
+            </table>
+          </CollapsibleSection>
+
+          <CollapsibleSection title="💡 예제: 시나리오 타입 응답 (TO-BE)">
+            <pre style={{ background: '#f5f5f5', padding: '1rem', borderRadius: '0.5rem', overflow: 'auto' }}>{`// 요청
+{
+  "usr_id": "musclecat",
+  "scenario_session_id": "36827242-bbfa-4fff-9955-eec5c856013b",
+  "content": "DEV_1000_000025_1"
+}
+
+// 응답 (TO-BE)
+{
+  "type": "scenario",
+  "content": "고객 정보 수집을 시작합니다.",
+  "events": [],
+  "scenario_state": {},
+  "slots": {
+    "customer_name": null,
+    "customer_phone": null
+  },
+  "nextNode": {
+    "id": "node_slot_filling_01",
+    "type": "slotfilling",
+    "data": {
+      "label": "고객 이름 수집",
+      "evaluationType": "SLOT_FILLING",
+      "requiredSlots": ["customer_name"],
+      "description": "고객의 이름을 수집합니다"
+    },
+    "message": "고객님의 이름을 입력해 주세요."
+  }
+}`}</pre>
+          </CollapsibleSection>
         </div>
       </section>
 
@@ -643,7 +745,7 @@ export default function ApiDocsPage() {
       {/* Footer */}
       <footer className={styles.footer}>
         <p>
-          <strong>Last Updated:</strong> 2026-02-04<br/>
+          <strong>Last Updated:</strong> 2026-02-09<br/>
           모든 API는 JSON 형식으로 데이터를 주고받습니다.<br/>
           인증이 필요한 경우 헤더에 토큰을 포함해야 할 수 있습니다.
         </p>

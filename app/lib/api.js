@@ -35,13 +35,21 @@ function buildUrl(endpoint, params = {}) {
 // 채팅 메시지 전송 및 AI 응답 생성
 export async function sendChatMessage(payload) {
   const url = buildUrl(`/chat`);
+  console.log('[sendChatMessage] Request payload:', payload);
+  
   const res = await fetch(url, {
     method: "POST",
     headers: getHeaders(),
     body: JSON.stringify(payload)
   });
+  
   if (!res.ok) throw new Error(`Failed to send chat message: ${res.status}`);
-  return res.json();
+  
+  const data = await res.json();
+  console.log('[sendChatMessage] Response from server:', JSON.stringify(data, null, 2));
+  console.log('[sendChatMessage] nextNode in response:', data.nextNode);
+  
+  return data;
 }
 
 /**
@@ -308,9 +316,17 @@ export async function updateScenarioSession(sessionId, updates) {
   const payload = { usr_id: userId, ...updates };
 
   try {
+    console.log(`[API] Updating session ${sessionId} with payload:`, payload);
     const res = await fetch(url, { method: "PATCH", headers: getHeaders(), body: JSON.stringify(payload) });
     if (!res.ok) {
-      console.warn(`[API] Failed to update session ${sessionId}: ${res.status}`);
+      const errorText = await res.text();
+      console.error(`[API] Failed to update session ${sessionId}: ${res.status}`, errorText);
+      try {
+        const errorJson = JSON.parse(errorText);
+        console.error('[API] Error details:', errorJson);
+      } catch (e) {
+        console.error('[API] Error response (raw):', errorText);
+      }
       return null;
     }
     return await res.json();
