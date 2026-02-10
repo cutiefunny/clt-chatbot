@@ -43,7 +43,7 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 * **`app/components`**: UI를 구성하는 재사용 가능한 React 컴포넌트들입니다.
 * **`app/lib`**: Firebase 연동, LLM API 호출(`llm.js`), 시나리오 엔진(`chatbotEngine.js`, `nodeHandlers.js`) 등 핵심 비즈니스 로직을 포함합니다.
 * **`app/store`**: Zustand를 사용한 전역 상태 관리 로직입니다. 기능별(slice)로 상태를 분리하여 관리합니다.
-* **`app/admin`**: 숏컷 목록 편집기(`scenario-editor`), 일반 설정(`general`) 등 관리자 전용 페이지들이 위치합니다.
+* **`app/admin`**: 시나리오 메뉴 편집기(`scenario-editor`), 일반 설정(`general`) 등 관리자 전용 페이지들이 위치합니다.
 * **`public`**: 이미지, 아이콘 등 정적 파일들이 위치합니다.
 
 ## 🤖 Scenario Engine Guide
@@ -80,7 +80,7 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 1.  **시나리오 에디터 사용**: (가이드) 시나리오를 시각적으로 설계할 수 있는 외부 툴(예: React Flow 기반의 자체 에디터)을 사용하여 노드와 엣지를 구성합니다.
 2.  **Firestore에 데이터 저장**: 설계된 시나리오의 JSON 데이터(`nodes`, `edges`, `version` 등 포함)를 Firestore의 `scenarios` 컬렉션에 새로운 문서로 추가합니다. 문서 ID가 `scenarioId`가 됩니다.
-3.  **숏컷 목록에 등록 (선택 사항)**: 사용자가 입력창 좌측 메뉴를 통해 시나리오를 직접 시작하게 하려면, `/admin/scenario-editor` 페이지에서 메뉴 구조를 편집하여 해당 시나리오를 추가합니다. 여기서 `action` 타입을 `scenario`로, `value`를 `scenarioId`로 설정합니다.
+3.  **시나리오 메뉴에 등록 (선택 사항)**: 사용자가 입력창 좌측 메뉴를 통해 시나리오를 직접 시작하게 하려면, `/admin/scenario-editor` 페이지에서 메뉴 구조를 편집하여 해당 시나리오를 추가합니다. 여기서 `action` 타입을 `scenario`로, `value`를 `scenarioId`로 설정합니다.
 4.  **트리거 문구 등록 (선택 사항)**: 사용자의 특정 입력 문구로 시나리오를 시작하게 하려면, `/admin/scenario-editor` 페이지에서 메뉴 아이템을 추가하고 `title`에 트리거 문구를 입력합니다. `action`은 위와 동일하게 설정합니다.
 5.  **API 라우트 핸들러 추가 (필요시)**: 만약 특정 조건에서 프로그래매틱하게 시나리오를 시작해야 한다면 `app/api/chat/route.js`의 `actionHandlers`에 새로운 핸들러를 추가할 수 있습니다.
 

@@ -5,56 +5,107 @@ import { useTranslations } from "../hooks/useTranslations";
 import styles from "./HistoryPanel.module.css";
 import KebabMenuIcon from "./icons/KebabMenuIcon";
 import PinIcon from "./icons/PinIcon";
+import ArrowDropDownIcon from "./icons/ArrowDropDownIcon";
+import PinOutlinedIcon from "./icons/PinOutlinedIcon";
 import CloseIcon from "./icons/CloseIcon";
 import { useChatStore } from "../store";
+// --- 👇 [추가] ScenarioStatusBadge 임포트 ---
 import ScenarioStatusBadge from "./ScenarioStatusBadge";
+// --- 👆 [추가] ---
 
+// --- 👇 [추가] 완료 뱃지 아이콘 (기존 정의 유지) ---
 const DoneBadgeIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M8 1.5C4.41015 1.5 1.5 4.41015 1.5 8C1.5 11.5899 4.41015 14.5 8 14.5C11.5899 14.5 14.5 11.5899 14.5 8C14.5 4.41015 11.5899 1.5 8 1.5ZM6.8 11L4 8.2L4.9 7.3L6.8 9.2L11.1 4.9L12 5.8L6.8 11Z" fill="currentColor" />
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M8 1.5C4.41015 1.5 1.5 4.41015 1.5 8C1.5 11.5899 4.41015 14.5 8 14.5C11.5899 14.5 14.5 11.5899 14.5 8C14.5 4.41015 11.5899 1.5 8 1.5ZM6.8 11L4 8.2L4.9 7.3L6.8 9.2L11.1 4.9L12 5.8L6.8 11Z"
+      fill="currentColor"
+    />
   </svg>
 );
+// --- 👆 [추가] ---
 
 const CheckIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M20 6L9 17L4 12"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
   </svg>
 );
 
+const PencilIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="20"
+    height="20"
+    viewBox="0 0 20 20"
+    fill="none"
+  >
+    <path
+      d="M11.7167 7.51667L12.4833 8.28333L4.93333 15.8333H4.16667V15.0667L11.7167 7.51667ZM14.7167 2.5C14.5083 2.5 14.2917 2.58333 14.1333 2.74167L12.6083 4.26667L15.7333 7.39167L17.2583 5.86667C17.5833 5.54167 17.5833 5.01667 17.2583 4.69167L15.3083 2.74167C15.1417 2.575 14.9333 2.5 14.7167 2.5ZM11.7167 5.15833L2.5 14.375V17.5H5.625L14.8417 8.28333L11.7167 5.15833Z"
+      fill="currentColor"
+    />
+  </svg>
+);
+
+const TrashIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="20"
+    height="20"
+    viewBox="0 0 20 20"
+    fill="none"
+  >
+    <path
+      d="M13.3346 7.5V15.8333H6.66797V7.5H13.3346ZM12.0846 2.5H7.91797L7.08464 3.33333H4.16797V5H15.8346V3.33333H12.918L12.0846 2.5ZM15.0013 5.83333H5.0013V15.8333C5.0013 16.75 5.7513 17.5 6.66797 17.5H13.3346C14.2513 17.5 15.0013 16.75 15.0013 15.8333V5.83333Z"
+      fill="currentColor"
+    />
+  </svg>
+);
+
+// --- 👇 [제거] ScenarioStatusBadge (ScenarioStatusBadge.jsx로 이동) ---
+// const ScenarioStatusBadge = ({ ... }) => { ... };
+// --- 👆 [제거] ---
+
 export default function ConversationItem({
-  convo = {}, // 기본값 빈 객체 설정
-  isActive = false,
-  onClick = () => {}, 
-  onDelete = () => {},
-  onUpdateTitle = () => {},
-  onPin = () => {},
-  isExpanded = false,
-  scenarios = [],
-  onToggleExpand = () => {},
-  onScenarioClick = () => {},
-  unreadScenarioSessions = new Set(),
-  hasUnreadScenarios = false,
-  isPending = false,
-  hasCompletedResponse = false,
+  convo,
+  isActive,
+  onClick,
+  onDelete,
+  onUpdateTitle,
+  onPin,
+  isExpanded,
+  scenarios,
+  onToggleExpand,
+  onScenarioClick,
+  unreadScenarioSessions,
+  hasUnreadScenarios,
+  isPending,
+  hasCompletedResponse,
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  // convo가 유효하지 않을 때를 대비해 초기 상태 보호
-  const [title, setTitle] = useState(convo?.title || ""); 
+  const [title, setTitle] = useState(convo.title);
   const inputRef = useRef(null);
   const menuRef = useRef(null);
   const { t } = useTranslations();
-  const { hideCompletedScenarios, hideDelayInHours, activeScenarioSessionId } = useChatStore();
-
-  // 👈 데이터가 존재하지 않으면 렌더링하지 않음 (TypeError 방지 핵심)
-  if (!convo || !convo.id) return null;
-
-  // 데이터 로드 지연 시 제목 동기화
-  useEffect(() => {
-    if (convo?.title !== undefined) {
-      setTitle(convo.title);
-    }
-  }, [convo?.title]);
+  const { hideCompletedScenarios, hideDelayInHours, activeScenarioSessionId } =
+    useChatStore();
 
   useEffect(() => {
     if (isEditing) {
@@ -70,86 +121,100 @@ export default function ConversationItem({
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
 
   const handleUpdate = () => {
-    const trimmedTitle = title.trim();
-    if (trimmedTitle && trimmedTitle !== convo.title) {
-      onUpdateTitle?.(convo.id, trimmedTitle);
+    if (title.trim() && title.trim() !== convo.title) {
+      onUpdateTitle(convo.id, title.trim());
     }
     setIsEditing(false);
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === "Enter") handleUpdate();
-    else if (e.key === "Escape") {
-      setTitle(convo.title || "");
+    if (e.key === "Enter") {
+      handleUpdate();
+    } else if (e.key === "Escape") {
+      setTitle(convo.title);
       setIsEditing(false);
     }
   };
 
   const handleRename = (e) => {
     e.stopPropagation();
-    setTitle(convo.title || "");
+    setTitle(convo.title);
     setIsEditing(true);
     setIsMenuOpen(false);
   };
 
   const handleDelete = (e) => {
     e.stopPropagation();
-    onDelete?.(e, convo.id);
+    onDelete(e, convo.id);
     setIsMenuOpen(false);
   };
 
   const handlePin = (e) => {
     e.stopPropagation();
-    // 👈 is_pinned(FastAPI)와 pinned(Legacy) 모두 지원
-    onPin?.(convo.id, !(convo.is_pinned || convo.pinned));
+    onPin(convo.id, !convo.pinned);
     setIsMenuOpen(false);
   };
 
-  // 시나리오 필터링 로직 방어 강화
   const filteredScenarios = scenarios
     ? scenarios.filter((s) => {
         if (hideCompletedScenarios && s.status === "completed") {
-          // Firestore Timestamp 대응 혹은 일반 Date 객체 생성
-          const completedTime = s.updatedAt?.toDate ? s.updatedAt.toDate() : new Date(s.updatedAt);
-          if (isNaN(completedTime.getTime())) return true;
+          const completedTime = s.updatedAt?.toDate();
+          if (!completedTime) return false;
 
           const now = new Date();
           const hoursPassed = (now - completedTime) / (1000 * 60 * 60);
+
           return hoursPassed < hideDelayInHours;
         }
         return true;
       })
-    : [];
+    : null;
 
   return (
     <div className={styles.conversationItemWrapper}>
       <div
-        className={`${styles.conversationItem} ${isExpanded ? styles.active : ""} ${isActive ? styles.selected : ""}`}
+        className={`${styles.conversationItem} ${
+          isExpanded ? styles.active : ""
+        }`}
         onClick={() => {
           if (isEditing) return;
-          if (typeof onClick === "function") onClick(convo.id);
+          onClick(convo.id);
           onToggleExpand?.(convo.id);
         }}
       >
         <div className={styles.convoMain}>
           {isPending && !isEditing && (
             <span className={styles.loadingIndicator}>
-              <img src="/images/Loading.gif" alt="Loading..." width="16" height="16" style={{ display: "block" }} />
+              <img
+                src="/images/Loading.gif"
+                alt="Loading..."
+                width="16"
+                height="16"
+                style={{ display: "block" }}
+              />
             </span>
           )}
 
           {!isPending && hasCompletedResponse && !isEditing && (
-            <span className={styles.doneIndicator}><DoneBadgeIcon /></span>
+            <span className={styles.doneIndicator}>
+              <DoneBadgeIcon />
+            </span>
           )}
 
-          {hasUnreadScenarios && !isEditing && <div className={styles.unreadDot}></div>}
+          {hasUnreadScenarios && !isEditing && (
+            <div className={styles.unreadDot}></div>
+          )}
           
-          {(convo.is_pinned || convo.pinned) && !isEditing && (
-            <span className={styles.pinIndicator}><PinIcon /></span>
+          {convo.pinned && !isEditing && (
+            <span className={styles.pinIndicator}>
+              <PinIcon />
+            </span>
           )}
 
           {isEditing ? (
@@ -165,24 +230,51 @@ export default function ConversationItem({
             />
           ) : (
             <span className={styles.convoTitle}>
-              {convo.title || t("newChat") || "New Chat"}
+              {convo.title || t("newChat")}
             </span>
           )}
         </div>
 
         {isEditing ? (
           <div className={styles.editConfirmButton}>
-            <button className={styles.actionButton} onClick={(e) => { e.stopPropagation(); setIsEditing(false); }}><CloseIcon /></button>
-            <button className={`${styles.actionButton} ${styles.confirm}`} onClick={(e) => { e.stopPropagation(); handleUpdate(); }}><CheckIcon /></button>
+            <button
+              className={styles.actionButton}
+              style={{ opacity: 1 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsEditing(false);
+              }}
+            >
+              <CloseIcon />
+            </button>
+            <button
+              className={styles.actionButton + " " + styles.confirm}
+              style={{ opacity: 1 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleUpdate();
+              }}
+            >
+              <CheckIcon />
+            </button>
           </div>
         ) : (
           <div className={styles.menuContainer} ref={menuRef}>
-            <button className={styles.menuButton} onClick={(e) => { e.stopPropagation(); setIsMenuOpen(!isMenuOpen); }} data-open={isMenuOpen}>
+            <button
+              className={styles.menuButton}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsMenuOpen(!isMenuOpen);
+              }}
+              data-open={isMenuOpen}
+            >
               <KebabMenuIcon />
             </button>
             {isMenuOpen && (
               <div className={styles.dropdownMenu}>
-                <button onClick={handlePin}>{(convo.is_pinned || convo.pinned) ? t("unpin") : t("pin")}</button>
+                <button onClick={handlePin}>
+                  {convo.pinned ? t("unpin") : t("pin")}
+                </button>
                 <button onClick={handleRename}>{t("rename")}</button>
                 <button onClick={handleDelete}>{t("delete")}</button>
               </div>
@@ -190,21 +282,43 @@ export default function ConversationItem({
           </div>
         )}
       </div>
-      {isExpanded && filteredScenarios && (
+      {isExpanded && (
         <div className={styles.scenarioSubList}>
-          {filteredScenarios.length > 0 ? (
-            filteredScenarios.map((scenario) => {
-              const isSelected = scenario.sessionId === activeScenarioSessionId;
-              return (
-                <div key={scenario.sessionId} className={`${styles.scenarioItem} ${isSelected ? styles.selected : ""}`} onClick={() => onScenarioClick?.(convo.id, scenario)}>
-                  {unreadScenarioSessions?.has?.(scenario.sessionId) && <div className={styles.unreadDot}></div>}
-                  <span className={styles.scenarioTitle}>{scenario.scenarioId}</span>
-                  <ScenarioStatusBadge status={scenario.status} t={t} isSelected={isSelected} />
-                </div>
-              );
-            })
+          {filteredScenarios ? (
+            filteredScenarios.length > 0 ? (
+              filteredScenarios.map((scenario) => {
+                const hasUnread = unreadScenarioSessions?.has(
+                  scenario.sessionId
+                );
+                const isSelected =
+                  scenario.sessionId === activeScenarioSessionId;
+                return (
+                  <div
+                    key={scenario.sessionId}
+                    className={`${styles.scenarioItem} ${
+                      isSelected ? styles.selected : ""
+                    }`}
+                    onClick={() => onScenarioClick(convo.id, scenario)}
+                  >
+                    {hasUnread && <div className={styles.unreadDot}></div>}
+                    <span className={styles.scenarioTitle}>
+                      {scenario.scenarioId}
+                    </span>
+                    {/* --- 👇 [수정] 컴포넌트 사용 --- */}
+                    <ScenarioStatusBadge
+                      status={scenario.status}
+                      t={t}
+                      isSelected={isSelected} // isSelected prop 전달
+                    />
+                    {/* --- 👆 [수정] --- */}
+                  </div>
+                );
+              })
+            ) : (
+              <div className={styles.noScenarios}>{t("noScenariosFound")}</div>
+            )
           ) : (
-            <div className={styles.noScenarios}>{t("noScenariosFound")}</div>
+            <div className={styles.noScenarios}>{t("loadingScenarios")}</div>
           )}
         </div>
       )}

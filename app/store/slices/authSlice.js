@@ -1,108 +1,175 @@
 // app/store/slices/authSlice.js
+import {
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut,
+  doc,
+  getDoc,
+  collection,
+  getDocs,
+  writeBatch,
+} from "../../lib/firebase";
+import { locales } from "../../lib/locales";
 
 export const createAuthSlice = (set, get) => ({
   user: null,
-  isInitializing: true, // 초기 로딩 상태
 
-  // 초기화: 로컬 스토리지 확인
-  initializeAuth: () => {
-    if (typeof window !== "undefined") {
-      const storedUserId = localStorage.getItem("userId");
-      if (storedUserId) {
-        // 저장된 ID가 있으면 자동 로그인 처리
-        get().login(storedUserId, false); // false = don't reload page
-      } else {
-        set({ isInitializing: false });
-      }
-    } else {
-      set({ isInitializing: false });
+  loginWithGoogle: async () => {
+    try {
+      await signInWithPopup(get().auth, new GoogleAuthProvider());
+    } catch (error) {
+      console.error("Login with Google failed:", error);
     }
   },
 
-  // 로그인 (ID 직접 입력)
-  login: async (userId) => {
+  loginWithTestId: (userId) => {
     if (!userId || !userId.trim()) {
-      console.error("User ID cannot be empty.");
+      console.error("Test User ID cannot be empty.");
       return;
     }
-
-    const trimmedId = userId.trim();
-    
-    // 로컬 스토리지에 저장 (API 호출 시 사용)
-    if (typeof window !== "undefined") {
-      localStorage.setItem("userId", trimmedId);
-    }
-
     const mockUser = {
-      uid: trimmedId,
-      displayName: `User (${trimmedId.substring(0, 6)}...)`,
-      email: `${trimmedId}@local.dev`,
+      uid: userId.trim(),
+      displayName: `Test User (${userId.trim()})`,
+      email: `${userId.trim()}@test.com`,
       photoURL: "/images/avatar.png",
       isTestUser: true,
     };
-
-    // 사용자 데이터 로드 로직 호출
-    await get().setUserAndLoadData(mockUser);
+    get().setUserAndLoadData(mockUser);
   },
 
-  // 로그아웃
-  logout: () => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("userId");
+  logout: async () => {
+    try {
+      if (get().user?.isTestUser) {
+        get().clearUserAndData();
+      } else {
+        await signOut(get().auth);
+      }
+    } catch (error) {
+      console.error("Logout failed:", error);
     }
-    get().clearUserAndData();
   },
 
-  // 사용자 데이터 설정 및 초기 데이터 로드
   setUserAndLoadData: async (user) => {
     set({ user, isInitializing: true });
 
-    // Firebase 마이그레이션 로직 제거됨
-
-    // 개인 설정 로드 (로컬 스토리지 기반으로 단순화)
-    let fontSize = "default",
-      language = "ko",
-      useFastApi = true;
-
-    if (typeof window !== "undefined") {
-        fontSize = localStorage.getItem("fontSize") || "default";
-        language = localStorage.getItem("language") || "ko";
+    // 1. 데이터 마이그레이션 (Await)
+    try {
+      console.log("Checking for conversation migration...");
+      const conversationsRef = collection(
+        get().db,
+        "chats",
+        user.uid,
+        "conversations"
+      );
+      const snapshot = await getDocs(conversationsRef);
+      const batch = writeBatch(get().db);
+      let updatesNeeded = 0;
+      snapshot.forEach((doc) => {
+        if (doc.data().pinned === undefined) {
+          batch.update(doc.ref, { pinned: false });
+          updatesNeeded++;
+        }
+      });
+      if (updatesNeeded > 0) {
+        await batch.commit();
+        console.log(`Migration complete: ${updatesNeeded} conversations updated.`);
+      } else {
+        console.log("No conversation migration needed.");
+      }
+    } catch (error) {
+      console.error("Conversation migration failed:", error);
     }
 
-    // 설정 적용
-    set({
+    // 2. 개인 설정 로드 (Await)
+    let fontSize = "default",
+      language = "ko",
+      contentTruncateLimit = 10,
+      hideCompletedScenarios = false,
+      hideDelayInHours = 0,
+      fontSizeDefault = "16px",
+      isDevMode = false,
+      sendTextShortcutImmediately = false,
+      useFastApi = false; // [추가] 기본값 설정
+
+    try {
+      const userSettingsRef = doc(get().db, "settings", user.uid);
+      const docSnap = await getDoc(userSettingsRef);
+      const settings = docSnap.exists() ? docSnap.data() : {};
+
+      fontSize = settings.fontSize || localStorage.getItem("fontSize") || fontSize;
+      language = settings.language || localStorage.getItem("language") || language;
+      contentTruncateLimit =
+        typeof settings.contentTruncateLimit === "number"
+          ? settings.contentTruncateLimit
+          : contentTruncateLimit;
+      hideCompletedScenarios =
+        typeof settings.hideCompletedScenarios === "boolean"
+          ? settings.hideCompletedScenarios
+          : hideCompletedScenarios;
+      hideDelayInHours =
+        typeof settings.hideDelayInHours === "number"
+          ? settings.hideDelayInHours
+          : hideDelayInHours;
+      fontSizeDefault = settings.fontSizeDefault || fontSizeDefault;
+      isDevMode =
+        typeof settings.isDevMode === "boolean" ? settings.isDevMode : isDevMode;
+      
+      sendTextShortcutImmediately =
+        typeof settings.sendTextShortcutImmediately === "boolean"
+          ? settings.sendTextShortcutImmediately
+          : sendTextShortcutImmediately;
+      
+      // --- 👇 [추가] useFastApi 로드 ---
+      useFastApi =
+        typeof settings.useFastApi === "boolean"
+          ? settings.useFastApi
+          : useFastApi;
+      // --- 👆 [추가] ---
+
+    } catch (error) {
+      console.error("Error loading settings from Firestore:", error);
+      fontSize = localStorage.getItem("fontSize") || fontSize;
+      language = localStorage.getItem("language") || language;
+    } finally {
+      set({
         theme: "light",
         fontSize,
         language,
-        contentTruncateLimit: 10,
-        hideCompletedScenarios: false,
-        hideDelayInHours: 0,
-        fontSizeDefault: "16px",
-        isDevMode: false,
-        sendTextShortcutImmediately: false,
-        useFastApi: true, // 항상 FastAPI 사용
-    });
-    
-    get().resetMessages?.(language);
+        contentTruncateLimit,
+        hideCompletedScenarios,
+        hideDelayInHours,
+        fontSizeDefault,
+        isDevMode,
+        sendTextShortcutImmediately,
+        // --- 👇 [추가] 상태 적용 ---
+        useFastApi,
+        // --- 👆 [추가] ---
+      });
+      get().resetMessages?.(language);
+    }
 
-    // dev-board 기능은 제거됨
-    // get().loadDevMemos();
-    
-    // [나중 구현] 즐겨찾기 및 알림 로드 일시 중단
-    // if (get().loadFavorites) get().loadFavorites(); 
-    // if (get().loadNotifications) get().loadNotifications();
+    // 3. 리스너 구독 시작 (No Await)
+    get().unsubscribeAll();
+    get().loadConversations(user.uid);
+    get().loadDevMemos();
+    get().subscribeToUnreadStatus(user.uid);
+    get().subscribeToUnreadScenarioNotifications(user.uid);
+    get().loadFavorites(user.uid);
 
-    // 스플래시 스크린용 짧은 지연
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // 2초 타이머 (Await)
+    console.log("Starting 2-second splash screen timer...");
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    console.log("Timer finished. Hiding splash screen.");
 
+    // 4. 초기화 완료
     set({ isInitializing: false });
   },
 
-  // 데이터 초기화
   clearUserAndData: () => {
+    get().unsubscribeAll();
+
     let fontSize = "default",
       language = "ko";
-      
     if (typeof window !== "undefined") {
       fontSize = localStorage.getItem("fontSize") || "default";
       language = localStorage.getItem("language") || "ko";
@@ -113,15 +180,29 @@ export const createAuthSlice = (set, get) => ({
       theme: "light",
       fontSize,
       language,
+      contentTruncateLimit: 10,
+      hideCompletedScenarios: false,
+      hideDelayInHours: 0,
+      fontSizeDefault: "16px",
+      isDevMode: false,
+      sendTextShortcutImmediately: false,
+      // --- 👇 [추가] 초기화 ---
+      useFastApi: false, 
+      // --- 👆 [추가] ---
+      conversations: [],
       currentConversationId: null,
       expandedConversationId: null,
       scenariosForConversation: {},
       favorites: [],
       devMemos: [],
+      toastHistory: [],
       hasUnreadNotifications: false,
       unreadScenarioSessions: new Set(),
       unreadConversations: new Set(),
       scenarioStates: {},
+      activeScenarioSessionId: null,
+      activeScenarioSessions: [],
+      lastFocusedScenarioSessionId: null,
       isSearching: false,
       searchResults: [],
       isLoading: false,
@@ -131,10 +212,24 @@ export const createAuthSlice = (set, get) => ({
       selectedOptions: {},
       lastVisibleMessage: null,
       hasMoreMessages: true,
+      isProfileModalOpen: false,
+      isSearchModalOpen: false,
+      isScenarioModalOpen: false,
+      isDevBoardModalOpen: false,
+      isNotificationModalOpen: false,
+      isManualModalOpen: false,
+      confirmModal: {
+        isOpen: false,
+        title: "",
+        message: "",
+        confirmText: "Confirm",
+        cancelText: "Cancel",
+        onConfirm: () => {},
+        confirmVariant: "default",
+      },
+      isInitializing: false, 
       activePanel: "main",
-      isInitializing: false,
     });
-    
     get().resetMessages?.(language);
   },
 });

@@ -17,7 +17,7 @@ export const locales = {
     errorLLMFail: "응답에 문제가 발생했습니다. 잠시 후 다시 시도해주세요.",
     errorUnexpected: "예상치 못한 오류가 발생했습니다. 다시 시도해주세요.",
     errorScenarioNotFound:
-      "연결된 시나리오를 찾을 수 없습니다. 숏컷 목록 편집 페이지에서 해당 숏컷을 확인해주세요.",
+      "연결된 시나리오를 찾을 수 없습니다. 시나리오 메뉴 편집 페이지에서 해당 숏컷을 확인해주세요.",
 
     // Validation Messages
     validationEmail: "유효한 이메일 주소를 입력해주세요.",

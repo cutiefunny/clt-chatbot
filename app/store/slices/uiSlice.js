@@ -1,13 +1,6 @@
 // app/store/slices/uiSlice.js
+import { doc, setDoc, getDoc } from "firebase/firestore";
 import { locales } from "../../lib/locales";
-import { TOAST_DURATION } from "../../lib/constants";
-import { 
-  fetchGeneralConfig, 
-  updateGeneralConfig, 
-  fetchUserSettings, 
-  updateUserSettings 
-} from "../../lib/api";
-import { handleError } from "../../lib/errorHandler";
 import {
   postToParent,
   PARENT_ORIGIN,
@@ -24,27 +17,26 @@ const getInitialMessages = (lang = "ko") => {
 export const createUISlice = (set, get) => ({
   // State
   theme: "light",
-  fontSize: "default", 
+  fontSize: "default", // 'default' or 'small'
   language: "ko",
   maxFavorites: 10,
   hideCompletedScenarios: false,
   hideDelayInHours: 0,
-  contentTruncateLimit: 10, 
-  fontSizeDefault: "16px",
+  contentTruncateLimit: 10, // 봇 답변 줄임 줄 수 (기본값 10)
+  fontSizeDefault: "16px", // 기본값
   isDevMode: false,
   sendTextShortcutImmediately: false,
-  useFastApi: false,
-  // --- 👇 [추가] 로컬 API 사용 여부 상태 (기본값 false) ---
-  useLocalFastApiUrl: false, 
+  // --- 👇 [추가] FastAPI 사용 여부 상태 ---
+  useFastApi: false, 
   // --- 👆 [추가] ---
   dimUnfocusedPanels: true,
-  enableFavorites: false, 
-  showHistoryOnGreeting: false, 
-  mainInputPlaceholder: "", 
-  headerTitle: "AI Chatbot", 
-  enableMainChatMarkdown: true, 
-  mainInputValue: "", 
-  showScenarioBubbles: true, 
+  enableFavorites: true, // 즐겨찾기 기능 활성화 여부 (기본값 true)
+  showHistoryOnGreeting: false, // 초기 화면 히스토리 표시 여부
+  mainInputPlaceholder: "", // 메인 입력창 플레이스홀더
+  headerTitle: "AI Chatbot", // 기본값
+  enableMainChatMarkdown: true, // 메인 챗 마크다운 활성화 여부
+  mainInputValue: "", // 메인 입력창의 제어되는 값
+  showScenarioBubbles: true, // 시나리오 버블 표시 여부 (기본값 true)
   llmProvider: "gemini",
   flowiseApiUrl: "",
   isProfileModalOpen: false,
@@ -82,12 +74,12 @@ export const createUISlice = (set, get) => ({
   setIsInitializing: (value) => set({ isInitializing: value }),
   setMainInputValue: (value) => set({ mainInputValue: value }),
 
-  // ... (loadGeneralConfig, saveGeneralConfig 등 기존 코드 유지) ...
-
   loadGeneralConfig: async () => {
     try {
-      const config = await fetchGeneralConfig();
-      if (config) {
+      const configRef = doc(get().db, "config", "general");
+      const docSnap = await getDoc(configRef);
+      if (docSnap.exists()) {
+        const config = docSnap.data();
         set({
           maxFavorites:
             typeof config.maxFavorites === "number" ? config.maxFavorites : 10,
@@ -117,28 +109,19 @@ export const createUISlice = (set, get) => ({
           flowiseApiUrl: config.flowiseApiUrl || "",
         });
       }
-      
-      // --- 👇 [추가] 초기화 시 LocalStorage에서 로컬 API 설정 읽어오기 ---
-      if (typeof window !== 'undefined') {
-        const storedLocalApi = localStorage.getItem('useLocalFastApiUrl') === 'true';
-        set({ useLocalFastApiUrl: storedLocalApi });
-      }
-      // --- 👆 [추가] ---
-
     } catch (error) {
-      handleError("Error loading general config", error);
+      console.error("Error loading general config from Firestore:", error);
     }
   },
 
   saveGeneralConfig: async (settings) => {
     try {
-      const success = await updateGeneralConfig(settings);
-      if (success) {
-        set(settings);
-      }
-      return success;
+      const configRef = doc(get().db, "config", "general");
+      await setDoc(configRef, settings, { merge: true });
+      set(settings);
+      return true;
     } catch (error) {
-      handleError("Error saving general config", error);
+      console.error("Error saving general config to Firestore:", error);
       return false;
     }
   },
@@ -147,6 +130,7 @@ export const createUISlice = (set, get) => ({
     const { user, db, showEphemeralToast, language } = get();
     if (!user) return false;
 
+    // 롤백을 위한 이전 설정 백업
     const previousSettings = {};
     Object.keys(settings).forEach((key) => {
       if (get()[key] !== undefined) {
@@ -155,17 +139,18 @@ export const createUISlice = (set, get) => ({
     });
 
     try {
-      set(settings); 
+      set(settings); // 1. 낙관적 업데이트 (UI 즉시 반영)
 
-      const success = await updateUserSettings(user.uid, settings);
-      if (!success) throw new Error("Failed to update user settings");
+      const userSettingsRef = doc(db, "settings", user.uid);
+      await setDoc(userSettingsRef, settings, { merge: true }); // 2. Firestore 저장
       return true;
     } catch (error) {
-      handleError("Error saving personal settings", error, {
-        getStore: get,
-        showToast: true
-      });
+      console.error("Error saving personal settings:", error);
+      const errorMsg =
+        locales[language]?.errorUnexpected || "Failed to save settings.";
+      showEphemeralToast(errorMsg, "error");
 
+      // 저장 실패 시 롤백
       console.log("Rolling back settings due to error...", previousSettings);
       set(previousSettings);
       
@@ -187,7 +172,7 @@ export const createUISlice = (set, get) => ({
       set((state) => ({
         ephemeralToast: { ...state.ephemeralToast, visible: false },
       }));
-    }, TOAST_DURATION);
+    }, 3000);
   },
   hideEphemeralToast: () => {
     set((state) => ({
@@ -206,25 +191,6 @@ export const createUISlice = (set, get) => ({
     console.log("Theme toggling is disabled.");
   },
 
-  // --- 👇 [추가] 로컬 API URL 토글 액션 ---
-  toggleLocalFastApiUrl: () => {
-    set((state) => {
-      const newValue = !state.useLocalFastApiUrl;
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('useLocalFastApiUrl', newValue);
-      }
-      return { useLocalFastApiUrl: newValue };
-    });
-  },
-  // --- 👆 [추가] ---
-
-  setLocalFastApiUrl: (value) => {
-    set({ useLocalFastApiUrl: value });
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('useLocalFastApiUrl', value);
-    }
-  },
-
   setFontSize: async (size) => {
     set({ fontSize: size });
     if (typeof window !== "undefined") {
@@ -233,9 +199,10 @@ export const createUISlice = (set, get) => ({
     const user = get().user;
     if (user) {
       try {
-        await updateUserSettings(user.uid, { fontSize: size });
+        const userSettingsRef = doc(get().db, "settings", user.uid);
+        await setDoc(userSettingsRef, { fontSize: size }, { merge: true });
       } catch (error) {
-        handleError("Error saving font size", error);
+        console.error("Error saving font size to Firestore:", error);
       }
     }
   },
@@ -248,9 +215,10 @@ export const createUISlice = (set, get) => ({
     const user = get().user;
     if (user) {
       try {
-        await updateUserSettings(user.uid, { language: lang });
+        const userSettingsRef = doc(get().db, "settings", user.uid);
+        await setDoc(userSettingsRef, { language: lang }, { merge: true });
       } catch (error) {
-        handleError("Error saving language", error);
+        console.error("Error saving language to Firestore:", error);
       }
     }
     const { currentConversationId, messages } = get();
@@ -259,10 +227,10 @@ export const createUISlice = (set, get) => ({
     }
   },
 
-  // ... (나머지 모달 관련 액션들은 기존 코드 유지) ...
   openProfileModal: () => set({ isProfileModalOpen: true }),
   closeProfileModal: () => set({ isProfileModalOpen: false }),
-  openSearchModal: () => set({ isSearchModalOpen: true, searchResults: [], isSearching: false }),
+  openSearchModal: () =>
+    set({ isSearchModalOpen: true, searchResults: [], isSearching: false }),
   closeSearchModal: () => set({ isSearchModalOpen: false }),
   openScenarioModal: () => set({ isScenarioModalOpen: true }),
   closeScenarioModal: () => set({ isScenarioModalOpen: false }),
@@ -286,6 +254,11 @@ export const createUISlice = (set, get) => ({
     const isCurrentlyOpen = get().isHistoryPanelOpen;
     const willBeOpen = !isCurrentlyOpen;
     const width = willBeOpen ? 264 : -264;
+    console.log(
+      `[Call Window Method] callChatbotResize(width: ${width}) to ${PARENT_ORIGIN} with ${
+        willBeOpen ? "Open" : "Close"
+      } History Panel`
+    );
     postToParent("callChatbotResize", { width });
     await delayParentAnimationIfNeeded();
     set({ isHistoryPanelOpen: willBeOpen });
@@ -294,6 +267,9 @@ export const createUISlice = (set, get) => ({
   openHistoryPanel: async () => {
     if (get().isHistoryPanelOpen) return;
     const width = 264;
+    console.log(
+      `[Call Window Method] callChatbotResize(width: ${width}) to ${PARENT_ORIGIN} with Open History Panel`
+    );
     postToParent("callChatbotResize", { width });
     await delayParentAnimationIfNeeded();
     set({ isHistoryPanelOpen: true });
@@ -302,6 +278,9 @@ export const createUISlice = (set, get) => ({
   closeHistoryPanel: async () => {
     if (!get().isHistoryPanelOpen) return;
     const width = -264;
+    console.log(
+      `[Call Window Method] callChatbotResize(width: ${width}) to ${PARENT_ORIGIN} with Close History Panel`
+    );
     postToParent("callChatbotResize", { width });
     await delayParentAnimationIfNeeded();
     set({ isHistoryPanelOpen: false });
@@ -312,6 +291,9 @@ export const createUISlice = (set, get) => ({
     const wasExpanded = get().isScenarioPanelExpanded;
     const willBeExpanded = !wasExpanded;
     const widthDelta = willBeExpanded ? 280 : -280;
+    console.log(
+      `[Call Window Method] callChatbotResize(width: ${widthDelta}) to ${PARENT_ORIGIN} with Toggle Scenario Panel Expanded`
+    );
     postToParent("callChatbotResize", { width: widthDelta });
     await delayParentAnimationIfNeeded();
     set({ isScenarioPanelExpanded: willBeExpanded });
@@ -325,6 +307,9 @@ export const createUISlice = (set, get) => ({
     const wasExpanded = get().isScenarioPanelExpanded;
     if (panel === "scenario") {
       if (!wasScenarioPanelActive) {
+        console.log(
+          `[Call Window Method] callChatbotResize(width: ${SCENARIO_PANEL_WIDTH}) to ${PARENT_ORIGIN} with Activate Scenario Panel`
+        );
         postToParent("callChatbotResize", { width: SCENARIO_PANEL_WIDTH });
         await delayParentAnimationIfNeeded();
       }
@@ -346,4 +331,62 @@ export const createUISlice = (set, get) => ({
 
   focusChatInput: () =>
     set((state) => ({ focusRequest: state.focusRequest + 1 })),
+  
+  clearUserAndData: () => {
+    set({
+      theme: "light",
+      fontSize: "default",
+      language: "ko",
+      maxFavorites: 10,
+      hideCompletedScenarios: false,
+      hideDelayInHours: 0,
+      contentTruncateLimit: 10,
+      fontSizeDefault: "16px",
+      isDevMode: false,
+      sendTextShortcutImmediately: false,
+      // --- 👇 [추가] 초기화 시 false ---
+      useFastApi: false, 
+      // --- 👆 [추가] ---
+      dimUnfocusedPanels: true,
+      enableFavorites: true,
+      showHistoryOnGreeting: false,
+      mainInputPlaceholder: "",
+      headerTitle: "AI Chatbot", 
+      enableMainChatMarkdown: true,
+      showScenarioBubbles: true,
+      mainInputValue: "",
+      llmProvider: "gemini",
+      flowiseApiUrl: "",
+      isProfileModalOpen: false,
+      isSearchModalOpen: false,
+      isScenarioModalOpen: false,
+      isDevBoardModalOpen: false,
+      isNotificationModalOpen: false,
+      isManualModalOpen: false,
+      isHistoryPanelOpen: false,
+      isScenarioPanelExpanded: false,
+      confirmModal: {
+        isOpen: false,
+        title: "",
+        message: "",
+        confirmText: "Confirm",
+        cancelText: "Cancel",
+        onConfirm: () => {},
+        confirmVariant: "default",
+      },
+      activePanel: "main",
+      lastFocusedScenarioSessionId: null,
+      focusRequest: 0,
+      shortcutMenuOpen: null,
+      ephemeralToast: {
+        visible: false,
+        message: "",
+        type: "info",
+      },
+      scrollToMessageId: null,
+      forceScrollToBottom: false,
+      scrollAmount: 0,
+      isInitializing: false,
+    });
+  },
 });

@@ -1,5 +1,4 @@
-// app/admin/scenario-editor/page.js 전체 코드
-
+// app/admin/scenario-editor/page.js
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -22,19 +21,16 @@ export default function ScenarioEditorPage() {
     const scenarioCategories = useChatStore((state) => state.scenarioCategories);
     const saveScenarioCategories = useChatStore((state) => state.saveScenarioCategories);
     const showEphemeralToast = useChatStore((state) => state.showEphemeralToast);
-    const availableScenarios = useChatStore((state) => state.availableScenarios); // [{id, title}, ...]
+    const availableScenarios = useChatStore((state) => state.availableScenarios);
     const loadAvailableScenarios = useChatStore((state) => state.loadAvailableScenarios);
-    const loadScenarioCategories = useChatStore((state) => state.loadScenarioCategories);
     
     const [categories, setCategories] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [collapsedPaths, setCollapsedPaths] = useState(new Set());
 
     useEffect(() => {
-        // 사용 가능한 시나리오 목록과 현재 숏컷 설정을 모두 로드
         loadAvailableScenarios();
-        loadScenarioCategories();
-    }, [loadAvailableScenarios, loadScenarioCategories]);
+    }, [loadAvailableScenarios]);
 
     useEffect(() => {
         if (!scenarioCategories) {
@@ -45,24 +41,33 @@ export default function ScenarioEditorPage() {
         const categoriesCopy = JSON.parse(JSON.stringify(scenarioCategories));
 
         categoriesCopy.forEach(cat => {
-            if (!Array.isArray(cat.subCategories)) cat.subCategories = [];
+            if (!Array.isArray(cat.subCategories)) {
+                cat.subCategories = [];
+            }
             cat.subCategories.forEach(subCat => {
-                if (!Array.isArray(subCat.items)) subCat.items = [];
+                if (!Array.isArray(subCat.items)) {
+                    subCat.items = [];
+                }
                 subCat.items.forEach(item => {
                     if (!item.action) {
-                        item.action = { type: 'scenario', value: '' };
+                        item.action = { type: 'scenario', value: item.scenarioId || '' };
+                        delete item.scenarioId;
                     }
                 });
             });
         });
         setCategories(categoriesCopy);
+
     }, [scenarioCategories]);
     
     const toggleCollapse = (pathString) => {
         setCollapsedPaths(prev => {
             const newSet = new Set(prev);
-            if (newSet.has(pathString)) newSet.delete(pathString);
-            else newSet.add(pathString);
+            if (newSet.has(pathString)) {
+                newSet.delete(pathString);
+            } else {
+                newSet.add(pathString);
+            }
             return newSet;
         });
     };
@@ -73,7 +78,7 @@ export default function ScenarioEditorPage() {
         if (success) {
             showEphemeralToast('성공적으로 저장되었습니다.', 'success');
         } else {
-            showEphemeralToast('저장에 실패했습니다.', 'error');
+            showEphemeralToast('저장에 실패했습니다. 콘솔을 확인해주세요.', 'error');
         }
         setIsLoading(false);
     };
@@ -81,11 +86,18 @@ export default function ScenarioEditorPage() {
     const handleInputChange = (path, field, value) => {
         setCategories(prev => {
             const newCategories = JSON.parse(JSON.stringify(prev));
-            let target = newCategories;
-            for (let i = 0; i < path.length; i++) {
-                target = target[path[i]];
+            let parent = newCategories;
+            for (let i = 0; i < path.length - 1; i++) {
+                parent = parent[path[i]];
             }
+            let target = parent[path[path.length - 1]];
+            
             target[field] = value;
+
+            if (field === 'type' && path.slice(-1)[0] === 'action') {
+                target.value = '';
+            }
+
             return newCategories;
         });
     };
@@ -121,8 +133,8 @@ export default function ScenarioEditorPage() {
     return (
         <div className={styles.container}>
             <header className={styles.header}>
-                <h1>Shortscut List Editor</h1>
-                <p>챗봇 입력창 상단의 숏컷 목록을 편집합니다.</p>
+                <h1>Scenario Categories Editor</h1>
+                <p>챗봇 입력창 좌측의 시나리오 메뉴를 편집합니다.</p>
                 <Link href="/" className={styles.backLink}>← 챗봇으로 돌아가기</Link>
             </header>
 
@@ -178,9 +190,12 @@ export default function ScenarioEditorPage() {
                                                                             >
                                                                                 <option value="scenario">Scenario</option>
                                                                                 <option value="custom">Custom Action</option>
+                                                                                {/* --- ▼ 수정 ▼ --- */}
                                                                                 <option value="text">Text</option>
+                                                                                {/* --- ▲ 수정 ▲ --- */}
                                                                             </select>
 
+                                                                            {/* --- ▼ 수정 ▼ --- */}
                                                                             {item.action.type === 'scenario' ? (
                                                                                 <select 
                                                                                     value={item.action.value} 
@@ -188,21 +203,28 @@ export default function ScenarioEditorPage() {
                                                                                     className={styles.selectField}
                                                                                 >
                                                                                     <option value="">-- 시나리오 선택 --</option>
-                                                                                    {availableScenarios.map(scen => (
-                                                                                        <option key={scen.id} value={scen.id}>
-                                                                                            {scen.title} ({scen.id})
-                                                                                        </option>
+                                                                                    {availableScenarios.map(id => (
+                                                                                        <option key={id} value={id}>{id}</option>
                                                                                     ))}
                                                                                 </select>
-                                                                            ) : (
+                                                                            ) : item.action.type === 'custom' ? (
                                                                                 <input 
                                                                                     type="text" 
                                                                                     value={item.action.value} 
                                                                                     onChange={e => handleInputChange([catIndex, 'subCategories', subCatIndex, 'items', itemIndex, 'action'], 'value', e.target.value)} 
-                                                                                    placeholder={item.action.type === 'custom' ? "Custom Action Name" : "전송할 텍스트"} 
+                                                                                    placeholder="Custom Action Name (e.g., GET_SCENARIO_LIST)" 
+                                                                                    className={styles.inputField}
+                                                                                />
+                                                                            ) : ( // 'text' 타입일 경우
+                                                                                <input 
+                                                                                    type="text" 
+                                                                                    value={item.action.value} 
+                                                                                    onChange={e => handleInputChange([catIndex, 'subCategories', subCatIndex, 'items', itemIndex, 'action'], 'value', e.target.value)} 
+                                                                                    placeholder="전송할 텍스트를 입력하세요" 
                                                                                     className={styles.inputField}
                                                                                 />
                                                                             )}
+                                                                            {/* --- ▲ 수정 ▲ --- */}
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -223,7 +245,7 @@ export default function ScenarioEditorPage() {
                 </div>
 
                 <button className={styles.saveButton} onClick={handleSave} disabled={isLoading}>
-                    {isLoading ? '저장 중...' : '서버에 저장하기'}
+                    {isLoading ? '저장 중...' : 'Firestore에 저장하기'}
                 </button>
             </main>
         </div>

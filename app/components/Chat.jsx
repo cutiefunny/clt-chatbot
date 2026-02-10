@@ -6,7 +6,6 @@ import dynamic from "next/dynamic";
 import { useChatStore } from "../store";
 import { useTranslations } from "../hooks/useTranslations";
 import { useAutoScroll } from "../hooks/useAutoScroll"; // [추가] 훅 임포트
-import { TARGET_AUTO_OPEN_URL } from "../lib/constants";
 import styles from "./Chat.module.css";
 import FavoritePanel from "./FavoritePanel";
 import ScenarioBubble from "./ScenarioBubble";
@@ -20,6 +19,7 @@ import DislikeIcon from "./icons/DislikeIcon";
 import mainMarkdownStyles from "./MainChatMarkdown.module.css";
 
 // --- 👇 [유지] 대체할 URL과 문구 정의 ---
+const TARGET_AUTO_OPEN_URL = "http://172.20.130.91:9110/oceans/BPM_P1002.do?tenId=2000&stgId=TST&pgmNr=BKD_M3201";
 const REPLACEMENT_TEXT = "e-SOP 링크 호출 완료했습니다.";
 // --- 👆 [유지] ---
 
@@ -246,7 +246,6 @@ export default function Chat() {
     scrollToMessageId,
     setScrollToMessageId,
     activePanel,
-    setActivePanel,
     focusChatInput,
     forceScrollToBottom,
     setForceScrollToBottom,
@@ -271,8 +270,7 @@ export default function Chat() {
 
   const handleHistoryClick = () => {
     if (activePanel === "scenario") {
-      // 시나리오 패널이 활성화된 상태에서 메인 채팅 영역 클릭 시 시나리오 창 닫기
-      setActivePanel("main");
+      focusChatInput();
     }
   };
 
@@ -445,7 +443,11 @@ export default function Chat() {
         ref={scrollRef} // [리팩토링] 훅에서 반환된 ref 연결
         onClick={handleHistoryClick}
       >
-        {!hasMessages ? null : (
+        {!hasMessages ? (
+          enableFavorites ? (
+            <FavoritePanel />
+          ) : null
+        ) : (
           <>
             {isFetchingMore && (
               <div className={styles.messageRow}>
@@ -464,11 +466,11 @@ export default function Chat() {
               </div>
             )}
             {messages.map((msg, index) => {
-              if (msg.id === "initial") return <div key={msg.id} style={{ display: 'none' }} />;
+              if (msg.id === "initial") return null;
 
               if (msg.type === "scenario_bubble") {
                 if (!showScenarioBubbles) {
-                  return <div key={msg.id || msg.scenarioSessionId} style={{ display: 'none' }} />;
+                  return null;
                 }
                 return (
                   <ScenarioBubble
@@ -528,7 +530,7 @@ export default function Chat() {
                     : undefined;
                 return (
                   <div
-                    key={msg.id || `msg-${index}`}
+                    key={msg.id}
                     className={`${styles.messageRow} ${
                       msg.sender === "user" ? styles.userRow : ""
                     }`}

@@ -1,7 +1,6 @@
 // app/lib/llm.js
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { locales } from './locales'; // 오류 메시지를 위해 추가
-import { TIMEOUTS } from './constants';
 // --- 👇 [수정] getErrorKey 임포트 제거 (직접 키 사용) ---
 // import { getErrorKey } from './errorHandler';
 
@@ -63,7 +62,7 @@ async function getFlowiseStreamingResponse(prompt, apiUrl, language = 'ko') {
     }
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), TIMEOUTS.LLM_REQUEST); // 30초 타임아웃 설정
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30초 타임아웃 설정
 
     try {
         const requestBody = { question: prompt, streaming: true };

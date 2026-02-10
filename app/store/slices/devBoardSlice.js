@@ -1,65 +1,33 @@
-import { fetchDevMemos, createDevMemo, deleteDevMemo } from '../../lib/api';
-import { POLLING_INTERVALS } from '../../lib/constants';
-import { handleError } from '../../lib/errorHandler';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, deleteDoc, doc } from 'firebase/firestore';
 
 export const createDevBoardSlice = (set, get) => ({
   // State
   devMemos: [],
-  devMemosInterval: null,
+  unsubscribeDevMemos: null,
 
   // Actions
-  loadDevMemos: async () => {
-    try {
-      const memos = await fetchDevMemos();
+  loadDevMemos: () => {
+    const q = query(collection(get().db, "dev-board"), orderBy("createdAt", "asc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const memos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       set({ devMemos: memos });
-    } catch (error) {
-      handleError("Error loading dev memos", error);
-      set({ devMemos: [] });
-    }
-  },
-
-  // 주기적으로 메모 로드 (폴링 방식)
-  startDevMemosPolling: (intervalMs = POLLING_INTERVALS.DEV_MEMOS) => {
-    get().loadDevMemos(); // 즉시 로드
-    const interval = setInterval(() => {
-      get().loadDevMemos();
-    }, intervalMs);
-    set({ devMemosInterval: interval });
-  },
-
-  stopDevMemosPolling: () => {
-    const interval = get().devMemosInterval;
-    if (interval) {
-      clearInterval(interval);
-      set({ devMemosInterval: null });
-    }
+    });
+    set({ unsubscribeDevMemos: unsubscribe });
   },
 
   addDevMemo: async (text) => {
     const user = get().user;
     if (!user) return;
-    
-    try {
-      await createDevMemo({
-        text,
-        authorName: user.displayName,
-        authorUid: user.uid,
-        createdAt: new Date().toISOString(),
-      });
-      // 메모 추가 후 목록 다시 로드
-      await get().loadDevMemos();
-    } catch (error) {
-      handleError("Error adding dev memo", error);
-    }
+    await addDoc(collection(get().db, "dev-board"), {
+      text,
+      authorName: user.displayName,
+      authorUid: user.uid,
+      createdAt: serverTimestamp(),
+    });
   },
 
   deleteDevMemo: async (memoId) => {
-    try {
-      await deleteDevMemo(memoId);
-      // 메모 삭제 후 목록 다시 로드
-      await get().loadDevMemos();
-    } catch (error) {
-      handleError("Error deleting dev memo", error);
-    }
+    const memoRef = doc(get().db, "dev-board", memoId);
+    await deleteDoc(memoRef);
   },
 });

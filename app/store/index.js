@@ -1,9 +1,26 @@
 // app/store/index.js
 import { create } from "zustand";
 import {
+  db,
   auth,
   onAuthStateChanged,
-} from "../lib/firebase";
+  doc,
+  getDoc,
+  collection, // 하위 슬라이스에서 사용될 수 있으므로 유지
+  getDocs, // 하위 슬라이스에서 사용될 수 있으므로 유지
+  writeBatch, // 하위 슬라이스에서 사용될 수 있으므로 유지
+  serverTimestamp, // 하위 슬라이스에서 사용될 수 있으므로 유지
+  addDoc, // 하위 슬라이스에서 사용될 수 있으므로 유지
+  updateDoc, // 추가
+  deleteDoc, // 추가
+  limit,     // 추가
+  startAfter,// 추가
+  query,     // 추가
+  orderBy,   // 추가
+  where,     // 추가
+  onSnapshot,// 추가
+  setDoc,    // 추가
+} from "../lib/firebase"; // 필요한 firebase 함수 임포트 유지
 import { locales } from "../lib/locales";
 
 // 슬라이스 임포트
@@ -17,9 +34,19 @@ import { createFavoritesSlice } from "./slices/favoritesSlice";
 import { createConversationSlice } from "./slices/conversationSlice";
 import { createSearchSlice } from "./slices/searchSlice";
 
+// 초기 메시지 함수 (chatSlice 또는 유틸리티로 이동 고려)
+const getInitialMessages = (lang = "ko") => {
+    const initialText = locales[lang]?.initialBotMessage || locales['en']?.initialBotMessage || "Hello! How can I help you?";
+    // chatSlice에서 초기 메시지를 관리하므로 여기서는 빈 배열 반환 또는 chatSlice 호출
+    // return [{ id: "initial", sender: "bot", text: initialText }];
+    // chatSlice의 초기 상태를 직접 참조하기 어려우므로, chatSlice 내부에서 관리하도록 위임
+    return []; // chatSlice에서 처리하도록 비움
+};
+
 // 메인 스토어 생성
 export const useChatStore = create((set, get) => ({
   // Firebase 인스턴스
+  db,
   auth,
 
   // 각 슬라이스 결합
@@ -77,11 +104,11 @@ export const useChatStore = create((set, get) => ({
   },
 
   unsubscribeAll: () => {
-    // 모든 슬라이스의 구독 해제 및 폴링 중지 함수 호출
+    // 모든 슬라이스의 구독 해제 함수 호출
     get().unsubscribeConversations?.(); // conversationSlice
     get().unsubscribeMessages?.(); // chatSlice
     get().unsubscribeAllScenarioListeners?.(); // scenarioSlice
-    get().stopDevMemosPolling?.(); // devBoardSlice (폴링 중지)
+    get().unsubscribeDevMemos?.(); // devBoardSlice
     get().unsubscribeNotifications?.(); // notificationSlice
     get().unsubscribeUnreadStatus?.(); // notificationSlice
     get().unsubscribeUnreadScenarioNotifications?.(); // notificationSlice
@@ -91,7 +118,8 @@ export const useChatStore = create((set, get) => ({
     set({
       unsubscribeConversations: null, // conversationSlice
       unsubscribeMessages: null, // chatSlice
-      devMemosInterval: null, // devBoardSlice
+      // unsubscribeScenariosMap는 scenarioSlice에서 관리/초기화
+      unsubscribeDevMemos: null, // devBoardSlice
       unsubscribeNotifications: null, // notificationSlice
       unsubscribeUnreadStatus: null, // notificationSlice
       unsubscribeUnreadScenarioNotifications: null, // notificationSlice

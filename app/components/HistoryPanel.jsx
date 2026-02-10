@@ -1,14 +1,6 @@
 // app/components/HistoryPanel.jsx
 "use client";
-
 import dynamic from "next/dynamic";
-import {
-  useConversations,
-  useCreateConversation,
-  useDeleteConversation,
-  useUpdateTitle,
-  usePinConversation,
-} from "../hooks/useQueries";
 import { useChatStore } from "../store";
 import { useTranslations } from "../hooks/useTranslations";
 import styles from "./HistoryPanel.module.css";
@@ -31,9 +23,13 @@ const ManualModal = dynamic(() => import("./ManualModal"));
 export default function HistoryPanel() {
   const {
     user,
-    loadInitialMessages, // chatSlice의 메시지 로드 함수
-    selectConversation,   // conversationSlice의 선택 함수
+    conversations,
+    loadConversation,
+    createNewConversation,
     currentConversationId,
+    deleteConversation,
+    updateConversationTitle,
+    pinConversation,
     isHistoryPanelOpen,
     toggleHistoryPanel,
     isSearchModalOpen,
@@ -46,40 +42,21 @@ export default function HistoryPanel() {
     hasUnreadNotifications,
     isManualModalOpen,
     openManualModal,
-    scenariosForConversation = {},
+    scenariosForConversation,
     expandedConversationId,
     toggleConversationExpansion,
     handleScenarioItemClick,
     openConfirmModal,
-    unreadScenarioSessions = new Set(),
-    unreadConversations = new Set(),
-    pendingResponses = new Set(),
-    completedResponses = new Set(),
+    unreadScenarioSessions,
+    unreadConversations,
+    pendingResponses,
+    // --- 👇 [추가] completedResponses 상태 가져오기 ---
+    completedResponses,
+    // --- 👆 [추가] ---
   } = useChatStore();
-  
   const { t } = useTranslations();
 
-  // 대화 목록 가져오기
-  const { data: conversations = [], isLoading, isError } = useConversations();
-  const createMutation = useCreateConversation();
-  const deleteMutation = useDeleteConversation();
-  const updateTitleMutation = useUpdateTitle();
-  const pinMutation = usePinConversation();
-
-  const handleCreate = () => {
-    createMutation.mutate("New Chat", {
-      onSuccess: (newConvo) => {
-        if (newConvo && newConvo.id) {
-          // selectConversation이 있으면 사용, 없으면 직접 set 로직 수행
-          if (selectConversation) {
-            selectConversation(newConvo.id);
-          } else {
-            loadInitialMessages?.(newConvo.id);
-          }
-        }
-      },
-    });
-  };
+  if (!user) return null;
 
   const handleDeleteRequest = (e, convoId) => {
     e.stopPropagation();
@@ -88,44 +65,54 @@ export default function HistoryPanel() {
       message: t("deleteConvoConfirm"),
       confirmText: "Delete",
       cancelText: "Cancel",
-      onConfirm: () => {
-        deleteMutation.mutate(convoId);
-      },
+      onConfirm: () => deleteConversation(convoId),
       confirmVariant: "danger",
     });
   };
 
-  const handleUpdateTitle = (id, newTitle) => {
-    updateTitleMutation.mutate({ id, title: newTitle });
-  };
-
-  const handlePin = (id, isPinned) => {
-    pinMutation.mutate({ id, isPinned });
-  };
-
-  if (isLoading) return <div className={styles.loadingState}>로딩 중...</div>;
-  if (isError) return <div className={styles.errorState}>목록을 불러올 수 없습니다.</div>;
-  if (!user) return null;
-
   return (
     <>
-      <svg width="0" height="0" style={{ position: "absolute" }}>
+      {/* Global SVG gradient defs for hover fills */}
+      <svg
+        width="0"
+        height="0"
+        style={{ position: "absolute", width: 0, height: 0 }}
+        aria-hidden="true"
+        focusable="false"
+      >
         <defs>
-          <linearGradient id="spbIconGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <linearGradient
+            id="spbIconGradient"
+            x1="0%"
+            y1="0%"
+            x2="100%"
+            y2="100%"
+          >
             <stop offset="0%" stopColor="#3051ea" />
             <stop offset="100%" stopColor="#7f30c5" />
           </linearGradient>
         </defs>
       </svg>
-      <div className={`${styles.historyPanel} ${isHistoryPanelOpen ? styles.open : styles.closed}`}>
+      <div
+        className={`${styles.historyPanel} ${
+          isHistoryPanelOpen ? styles.open : styles.closed
+        }`}
+      >
         <button
-          className={`${styles.toggleButton} ${!isHistoryPanelOpen ? styles.floatingToggleButton : ""}`}
+          className={`${styles.toggleButton} ${
+            !isHistoryPanelOpen ? styles.floatingToggleButton : ""
+          }`}
           onClick={toggleHistoryPanel}
         >
           <MenuIcon />
         </button>
-
-        <button className={styles.newChatButton} onClick={handleCreate}>
+        {/* --- 👇 [수정된 부분 시작] --- */}
+        {/* currentConversationId가 null이 아닐 때만 (즉, 대화가 로드되었을 때만) 버튼 표시 */}
+        {/* --- 👆 [수정된 부분 끝] --- */}
+        <button
+          className={styles.newChatButton}
+          onClick={createNewConversation}
+        >
           <NewChatIcon />
         </button>
         <button className={styles.historyButton} onClick={toggleHistoryPanel}>
@@ -137,7 +124,9 @@ export default function HistoryPanel() {
             <div className={styles.headerTopRow}>
               <div className={styles.headerIconGroup}>
                 <button
-                  className={`${styles.iconButton} ${hasUnreadNotifications ? styles.unread : ""}`}
+                  className={`${styles.iconButton} ${
+                    hasUnreadNotifications ? styles.unread : ""
+                  }`}
                   onClick={openNotificationModal}
                 >
                   <BellIcon />
@@ -150,33 +139,34 @@ export default function HistoryPanel() {
           </div>
 
           <div className={styles.panelContent}>
-            <button className={styles.sidePanelButton} onClick={handleCreate}>
+            {/* currentConversationId가 null이 아닐 때만 (즉, 대화가 로드되었을 때만) 버튼 표시 */}
+            <button
+              className={styles.sidePanelButton}
+              onClick={createNewConversation}
+            >
               <EditIcon />
               <span className={styles.newChatText}>{t("newChat")}</span>
             </button>
             <span className={styles.commonText}>{t("History")}</span>
-            
             <div className={styles.conversationList}>
-              {Array.isArray(conversations) && conversations.length > 0 ? (
+              {conversations.length > 0 &&
                 conversations.map((convo) => {
-                  // 👈 [에러 방지 핵심] convo 항목 자체가 유효한지 검사
-                  if (!convo || typeof convo !== 'object' || !convo.id) return null;
-
                   const scenarios = scenariosForConversation[convo.id] || [];
-                  const hasUnread = unreadConversations?.has?.(convo.id) || false;
-                  const isPending = pendingResponses?.has?.(convo.id) || false;
-                  const hasCompleted = completedResponses?.has?.(convo.id) || false;
+                  const hasUnread = unreadConversations.has(convo.id);
+                  const isPending = pendingResponses.has(convo.id);
+                  // --- 👇 [추가] hasCompleted 계산 ---
+                  const hasCompleted = completedResponses.has(convo.id);
+                  // --- 👆 [추가] ---
 
                   return (
                     <ConversationItem
                       key={convo.id}
                       convo={convo}
                       isActive={convo.id === currentConversationId}
-                      // selectConversation이 있으면 그것을, 없으면 loadInitialMessages를 바인딩
-                      onClick={selectConversation || loadInitialMessages}
+                      onClick={loadConversation}
                       onDelete={handleDeleteRequest}
-                      onUpdateTitle={handleUpdateTitle}
-                      onPin={handlePin}
+                      onUpdateTitle={updateConversationTitle}
+                      onPin={pinConversation}
                       isExpanded={convo.id === expandedConversationId}
                       scenarios={scenarios}
                       onToggleExpand={toggleConversationExpansion}
@@ -184,22 +174,30 @@ export default function HistoryPanel() {
                       unreadScenarioSessions={unreadScenarioSessions}
                       hasUnreadScenarios={hasUnread}
                       isPending={isPending}
+                      // --- 👇 [추가] hasCompletedResponse 프롭 전달 ---
                       hasCompletedResponse={hasCompleted}
+                      // --- 👆 [추가] ---
                     />
                   );
-                })
-              ) : (
+                })}
+              {conversations.length === 0 && (
                 <div className={styles.historyTileWrapper}>
                   <div className={styles.noHistoryBox}>
                     <NoHistoryIcon />
-                    <span className={styles.noHistoryText}>{t("noHistory")}</span>
+                    <span className={styles.noHistoryText}>
+                      {t("noHistory")}
+                    </span>
                   </div>
                 </div>
               )}
             </div>
             <div className={styles.footer}>
               <div className={styles.avatarWrapper} onClick={openProfileModal}>
-                <img src={user.photoURL || "/images/avatar.png"} alt="User Avatar" className={styles.userAvatar} />
+                <img
+                  src={user.photoURL}
+                  alt="User Avatar"
+                  className={styles.userAvatar}
+                />
               </div>
               <button className={styles.iconButton} onClick={openManualModal}>
                 <ManualIcon />

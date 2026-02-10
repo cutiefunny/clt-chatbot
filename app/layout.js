@@ -1,7 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import ThemeApplier from './components/ThemeApplier';
 import Toast from "./components/Toast"; // Toast 컴포넌트 import
-import QueryProvider from "./QueryProvider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -54,12 +53,10 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <QueryProvider>
         <ThemeApplier>
           <Toast />
           {children}
         </ThemeApplier>
-        </QueryProvider>
       </body>
     </html>
   );

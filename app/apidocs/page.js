@@ -20,32 +20,19 @@ const CollapsibleSection = ({ title, children }) => {
   );
 };
 
+
 export default function ApiDocsPage() {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
         <h1>CLT Chatbot API Documentation</h1>
         <p>
-          이 문서는 <strong>FastAPI</strong>로 마이그레이션된 백엔드 서버 API 명세입니다.<br/>
-          <strong>Base URL:</strong> <code>http://202.20.84.65:8083/api/v1</code><br/>
-          <strong>Note:</strong> 모든 요청에는 시스템 식별을 위한 공통 파라미터가 포함되어야 합니다.
+          이 문서는 <strong>FastAPI</strong>로 마이그레이션된 백엔드 서버 API를 설명합니다.<br/>
+          <strong>Note:</strong> 현재 개발 버전은 <u>인증(Authentication)이 비활성화</u>되어 있어 토큰 없이 호출 가능합니다.
         </p>
       </header>
 
-      {/* --- 공통 파라미터 안내 --- */}
-      <section className={styles.commonParams}>
-        <div className={`GlassEffect ${styles.infoBox}`}>
-          <h3>🔑 공통 쿼리 파라미터 (Common Query Parameters)</h3>
-          <ul>
-            <li><code>usr_id</code>: 사용자 식별자 (예: musclecat)</li>
-            <li><code>ten_id</code>: 테넌트 ID (기본값: 1000)</li>
-            <li><code>stg_id</code>: 스테이지 ID (기본값: DEV)</li>
-            <li><code>sec_ofc_id</code>: 보안 오피스 ID (기본값: 000025)</li>
-          </ul>
-        </div>
-      </section>
-
-      {/* ========== Chat ========== */}
+      {/* --- Chat --- */}
       <section className={styles.endpoint}>
         <div className={styles.endpointHeader}>
           <span className={`${styles.method} ${styles.post}`}>POST</span>
@@ -53,136 +40,39 @@ export default function ApiDocsPage() {
         </div>
         <div className={styles.endpointBody}>
           <h2>메시지 전송 및 응답 생성</h2>
-          <p>사용자의 메시지를 처리하고 AI 응답 또는 시나리오 이벤트를 생성합니다.</p>
+          <p>
+            사용자의 메시지를 처리하고 AI 응답을 생성합니다.<br/>
+            LLM 응답의 경우 <strong>Streaming Response</strong>가 반환될 수 있습니다.
+          </p>
           <dl>
+            <dt>Content-Type:</dt>
+            <dd><code>application/json</code></dd>
             <dt>요청 본문 (Request Body):</dt>
             <dd><pre>{`{
-  "usr_id": "string",              // 필수: 사용자 ID
-  "conversation_id": "string",     // 선택: 기존 대화방 ID
-  "scenario_session_id": "string", // 선택: 진행 중인 시나리오 세션 ID
-  "content": "string",             // 사용자 입력 텍스트
-  "language": "ko",                // 선택: ko | en
-  "slots": { "key": "value" },     // 선택: 현재 시나리오 슬롯 상태
-  "source_handle": "string"        // 선택: 시나리오 노드 핸들 ID
-}`}</pre></dd>
-            <dt>응답 (Response) - ❌ AS-IS (현재 - 문제 있음):</dt>
-            <dd>
-              <div style={{ background: 'rgba(255,99,71,0.1)', padding: '1rem', borderRadius: '0.5rem', marginBottom: '1rem', borderLeft: '3px solid #ff6347' }}>
-                <pre>{`{
-  "type": "text" | "scenario" | "scenario_start" | "scenario_end",
-  "content": "string",           // AI 답변 내용
-  "events": [],                  // 시나리오 제어 이벤트 목록
-  "scenario_state": {},          // 현재 시나리오 진행 상태
-  "slots": {},                   // 업데이트된 슬롯 정보
-  "nextNode": {}                 // ❌ 빈 객체 - 필드 누락!
-}`}</pre>
-                <p style={{ color: '#ff6347', margin: '0.5rem 0 0 0' }}>
-                  <strong>⚠️ 문제:</strong> nextNode가 빈 객체로 반환되어 클라이언트에서 다음 노드 정보를 파악할 수 없음
-                </p>
-              </div>
-            </dd>
-
-            <dt>응답 (Response) - ✅ TO-BE (수정 후 - 올바른 형식):</dt>
-            <dd>
-              <div style={{ background: 'rgba(34,197,94,0.1)', padding: '1rem', borderRadius: '0.5rem', borderLeft: '3px solid #22c55e' }}>
-                <pre>{`{
-  "type": "text" | "scenario" | "scenario_start" | "scenario_end",
-  "content": "string",                    // AI 답변 내용
-  "events": [],                          // 시나리오 제어 이벤트 목록
-  "scenario_state": {},                  // 현재 시나리오 진행 상태
-  "slots": {},                           // 업데이트된 슬롯 정보
-  "nextNode": {
-    "id": "string",                      // ✅ 다음 노드의 ID
-    "type": "string",                    // ✅ 노드 타입
-    "data": {
-      "label": "string",
-      "evaluationType": "string",
-      "description": "string"
-    },
-    "message": "string"
+  "conversation_id": "string (Optional)", // 기존 대화에 이어서 말할 경우
+  "content": "string",                    // 사용자 입력 메시지
+  "language": "ko" | "en",                // (Optional) 기본값 'ko'
+  "slots": {                              // (Optional) 현재 시나리오 슬롯 상태
+    "key": "value"
   }
+}`}</pre></dd>
+            <dt>응답 (Response):</dt>
+            <dd>
+                <p><strong>Case 1: 일반/시나리오 응답 (JSON)</strong></p>
+                <pre>{`{
+  "type": "text" | "scenario",
+  "message": "string",
+  "slots": { ... },
+  "next_node": { ... } // 시나리오 진행 시
 }`}</pre>
-                <p style={{ color: '#22c55e', margin: '0.5rem 0 0 0' }}>
-                  <strong>✅ 개선:</strong> nextNode에 id, type, data, message 필드 포함
-                </p>
-              </div>
+                <p><strong>Case 2: LLM 스트리밍 (Server-Sent Events)</strong></p>
+                <pre>{`data: {"type": "token", "content": "안녕"}\n\n...`}</pre>
             </dd>
           </dl>
-
-          <CollapsibleSection title="📋 NextNode 필드 상세 설명">
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '0.5rem' }}>
-              <thead>
-                <tr style={{ background: '#f0f0f0', borderBottom: '2px solid #ccc' }}>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderRight: '1px solid #ddd' }}>필드명</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderRight: '1px solid #ddd' }}>타입</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderRight: '1px solid #ddd' }}>필수</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>설명</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '0.75rem', borderRight: '1px solid #ddd' }}><code>id</code></td>
-                  <td style={{ padding: '0.75rem', borderRight: '1px solid #ddd' }}>string</td>
-                  <td style={{ padding: '0.75rem', borderRight: '1px solid #ddd' }}>✅</td>
-                  <td style={{ padding: '0.75rem' }}>다음 노드의 고유 식별자. "start", "end", 또는 노드 UUID</td>
-                </tr>
-                <tr style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '0.75rem', borderRight: '1px solid #ddd' }}><code>type</code></td>
-                  <td style={{ padding: '0.75rem', borderRight: '1px solid #ddd' }}>string</td>
-                  <td style={{ padding: '0.75rem', borderRight: '1px solid #ddd' }}>✅</td>
-                  <td style={{ padding: '0.75rem' }}>노드 타입: "start" | "text" | "slotfilling" | "form" | "branch" | "api" | "message" | "end"</td>
-                </tr>
-                <tr style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '0.75rem', borderRight: '1px solid #ddd' }}><code>data</code></td>
-                  <td style={{ padding: '0.75rem', borderRight: '1px solid #ddd' }}>object</td>
-                  <td style={{ padding: '0.75rem', borderRight: '1px solid #ddd' }}>✅</td>
-                  <td style={{ padding: '0.75rem' }}>노드 메타데이터 (label, evaluationType 등)</td>
-                </tr>
-                <tr style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '0.75rem', borderRight: '1px solid #ddd' }}><code>message</code></td>
-                  <td style={{ padding: '0.75rem', borderRight: '1px solid #ddd' }}>string</td>
-                  <td style={{ padding: '0.75rem', borderRight: '1px solid #ddd' }}>선택</td>
-                  <td style={{ padding: '0.75rem' }}>노드에 표시할 메시지 텍스트</td>
-                </tr>
-              </tbody>
-            </table>
-          </CollapsibleSection>
-
-          <CollapsibleSection title="💡 예제: 시나리오 타입 응답 (TO-BE)">
-            <pre style={{ background: '#f5f5f5', padding: '1rem', borderRadius: '0.5rem', overflow: 'auto' }}>{`// 요청
-{
-  "usr_id": "musclecat",
-  "scenario_session_id": "36827242-bbfa-4fff-9955-eec5c856013b",
-  "content": "DEV_1000_000025_1"
-}
-
-// 응답 (TO-BE)
-{
-  "type": "scenario",
-  "content": "고객 정보 수집을 시작합니다.",
-  "events": [],
-  "scenario_state": {},
-  "slots": {
-    "customer_name": null,
-    "customer_phone": null
-  },
-  "nextNode": {
-    "id": "node_slot_filling_01",
-    "type": "slotfilling",
-    "data": {
-      "label": "고객 이름 수집",
-      "evaluationType": "SLOT_FILLING",
-      "requiredSlots": ["customer_name"],
-      "description": "고객의 이름을 수집합니다"
-    },
-    "message": "고객님의 이름을 입력해 주세요."
-  }
-}`}</pre>
-          </CollapsibleSection>
         </div>
       </section>
 
-      {/* ========== Conversations ========== */}
+      {/* --- Conversations --- */}
       <section className={styles.endpoint}>
         <div className={styles.endpointHeader}>
           <span className={`${styles.method} ${styles.get}`}>GET</span>
@@ -190,23 +80,18 @@ export default function ApiDocsPage() {
         </div>
         <div className={styles.endpointBody}>
           <h2>대화 목록 조회</h2>
-          <p>사용자의 모든 대화방 목록을 최신순으로 조회합니다.</p>
+          <p>저장된 모든 대화방 목록을 최신순으로 반환합니다.</p>
           <dl>
-            <dt>쿼리 파라미터 (Query Parameters):</dt>
-            <dd>
-              <code>usr_id</code>: 사용자 ID (필수)<br/>
-              <code>offset</code>: 페이지네이션 오프셋 (기본값: 0)<br/>
-              <code>limit</code>: 조회할 개수 (기본값: 50)
-            </dd>
             <dt>응답 (200 OK):</dt>
             <dd><pre>{`[
   {
     "id": "uuid-string",
     "title": "string",
     "is_pinned": boolean,
-    "created_at": "ISO-8601 string",
-    "updated_at": "ISO-8601 string"
-  }
+    "created_at": "2024-05-20T10:00:00Z",
+    "updated_at": "2024-05-20T10:30:00Z"
+  },
+  ...
 ]`}</pre></dd>
           </dl>
         </div>
@@ -218,21 +103,19 @@ export default function ApiDocsPage() {
           <span className={styles.path}>/conversations</span>
         </div>
         <div className={styles.endpointBody}>
-          <h2>대화 생성</h2>
-          <p>새로운 대화방을 생성합니다.</p>
+          <h2>새 대화방 생성</h2>
+          <p>새로운 대화 세션을 생성합니다.</p>
           <dl>
-            <dt>요청 본문 (Request Body):</dt>
+            <dt>요청 본문:</dt>
             <dd><pre>{`{
-  "title": "New Chat",      // 대화방 제목
-  "usr_id": "string"        // 사용자 ID
+  "title": "string (Optional)" // 생략 시 'New Chat' 등 기본값 적용
 }`}</pre></dd>
-            <dt>응답 (200 OK):</dt>
+            <dt>응답 (201 Created):</dt>
             <dd><pre>{`{
-  "id": "uuid-string",
-  "title": "string",
-  "is_pinned": false,
-  "created_at": "ISO-8601 string",
-  "updated_at": "ISO-8601 string"
+  "id": "new-uuid-string",
+  "title": "New Chat",
+  "created_at": "...",
+  "updated_at": "..."
 }`}</pre></dd>
           </dl>
         </div>
@@ -245,33 +128,26 @@ export default function ApiDocsPage() {
         </div>
         <div className={styles.endpointBody}>
           <h2>대화 상세 조회</h2>
-          <p>특정 대화방의 정보와 메시지 내역을 조회합니다.</p>
+          <p>특정 대화방의 메시지 기록을 조회합니다.</p>
           <dl>
-            <dt>쿼리 파라미터:</dt>
+            <dt>Path Parameter:</dt>
+            <dd><code>conversation_id</code>: 조회할 대화방 ID</dd>
+            <dt>Query Parameters:</dt>
             <dd>
-              <code>usr_id</code>: 사용자 ID (필수)<br/>
-              <code>skip</code>: 메시지 페이지네이션 오프셋 (기본값: 0)<br/>
-              <code>limit</code>: 조회할 메시지 개수 (기본값: 15)
+                <code>limit</code>: 조회할 메시지 개수 (Default: 50)<br/>
+                <code>offset</code>: 페이징 처리를 위한 오프셋
             </dd>
             <dt>응답 (200 OK):</dt>
             <dd><pre>{`{
   "id": "uuid-string",
-  "title": "string",
-  "is_pinned": boolean,
-  "created_at": "ISO-8601 string",
-  "updated_at": "ISO-8601 string",
   "messages": [
     {
       "id": "msg-uuid",
       "role": "user" | "assistant",
       "content": "string",
-      "type": "text" | "scenario_bubble",
-      "scenario_session_id": "string",
-      "selected_option": "string",
-      "feedback": "positive" | "negative",
-      "created_at": "ISO-8601 string",
-      "meta": { ... }
-    }
+      "created_at": "..."
+    },
+    ...
   ]
 }`}</pre></dd>
           </dl>
@@ -284,17 +160,16 @@ export default function ApiDocsPage() {
           <span className={styles.path}>/conversations/{'{conversation_id}'}</span>
         </div>
         <div className={styles.endpointBody}>
-          <h2>대화 수정</h2>
-          <p>대화방의 제목 변경 또는 고정(Pin) 상태를 변경합니다.</p>
+          <h2>대화 정보 수정</h2>
+          <p>대화방의 제목을 변경하거나 고정(Pin) 상태를 변경합니다.</p>
           <dl>
-            <dt>요청 본문 (Request Body):</dt>
+            <dt>요청 본문:</dt>
             <dd><pre>{`{
-  "usr_id": "string",        // 필수
-  "title": "새로운 제목",    // 선택
-  "is_pinned": true          // 선택
+  "title": "변경된 제목",    // (Optional)
+  "is_pinned": true       // (Optional)
 }`}</pre></dd>
             <dt>응답 (200 OK):</dt>
-            <dd>수정된 대화 객체</dd>
+            <dd>수정된 대화방 객체 반환</dd>
           </dl>
         </div>
       </section>
@@ -305,64 +180,16 @@ export default function ApiDocsPage() {
           <span className={styles.path}>/conversations/{'{conversation_id}'}</span>
         </div>
         <div className={styles.endpointBody}>
-          <h2>대화 삭제</h2>
-          <p>특정 대화방을 삭제합니다.</p>
+          <h2>대화방 삭제</h2>
+          <p>특정 대화방과 관련된 모든 메시지 및 시나리오 기록을 영구 삭제합니다.</p>
           <dl>
-            <dt>쿼리 파라미터:</dt>
-            <dd><code>usr_id</code>: 사용자 ID (필수)</dd>
-            <dt>응답 (200 OK):</dt>
-            <dd><code>true</code></dd>
+            <dt>응답 (204 No Content):</dt>
+            <dd>본문 없음</dd>
           </dl>
         </div>
       </section>
 
-      {/* ========== Messages ========== */}
-      <section className={styles.endpoint}>
-        <div className={styles.endpointHeader}>
-          <span className={`${styles.method} ${styles.post}`}>POST</span>
-          <span className={styles.path}>/conversations/{'{conversation_id}'}/messages</span>
-        </div>
-        <div className={styles.endpointBody}>
-          <h2>메시지 생성</h2>
-          <p>대화방에 새 메시지를 저장합니다.</p>
-          <dl>
-            <dt>요청 본문 (Request Body):</dt>
-            <dd><pre>{`{
-  "role": "user" | "assistant",    // 메시지 발신자 역할
-  "content": "string",             // 메시지 내용
-  "type": "text" | "scenario_bubble",
-  "scenario_session_id": "string", // 선택
-  "meta": { ... },                 // 선택: 추가 메타데이터
-  "usr_id": "string"               // 필수
-}`}</pre></dd>
-            <dt>응답 (200 OK):</dt>
-            <dd>생성된 메시지 객체</dd>
-          </dl>
-        </div>
-      </section>
-
-      <section className={styles.endpoint}>
-        <div className={styles.endpointHeader}>
-          <span className={`${styles.method} ${styles.patch}`}>PATCH</span>
-          <span className={styles.path}>/conversations/{'{conversation_id}'}/messages/{'{message_id}'}</span>
-        </div>
-        <div className={styles.endpointBody}>
-          <h2>메시지 업데이트</h2>
-          <p>메시지의 피드백이나 선택된 옵션 정보를 업데이트합니다.</p>
-          <dl>
-            <dt>요청 본문 (Request Body):</dt>
-            <dd><pre>{`{
-  "usr_id": "string",                        // 필수
-  "feedback": "positive" | "negative",       // 선택
-  "selected_option": "string"                // 선택
-}`}</pre></dd>
-            <dt>응답 (200 OK):</dt>
-            <dd>업데이트된 메시지 객체</dd>
-          </dl>
-        </div>
-      </section>
-
-      {/* ========== Scenarios ========== */}
+      {/* --- Scenarios --- */}
       <section className={styles.endpoint}>
         <div className={styles.endpointHeader}>
           <span className={`${styles.method} ${styles.get}`}>GET</span>
@@ -370,386 +197,22 @@ export default function ApiDocsPage() {
         </div>
         <div className={styles.endpointBody}>
           <h2>시나리오 목록 조회</h2>
-          <p>에디터 및 시스템에서 선택 가능한 전체 시나리오 정의를 반환합니다.</p>
+          <p>사용 가능한 시나리오 목록 및 카테고리 정보를 반환합니다.</p>
           <dl>
             <dt>응답 (200 OK):</dt>
             <dd><pre>{`[
   {
-    "id": "string",
-    "scenario_id": "string",
-    "title": "string",
-    "description": "string",
-    "version": "1.0",
-    "nodes": [ ... ],
-    "edges": [ ... ],
-    "startNodeId": "string"
-  }
-]`}</pre></dd>
-          </dl>
-        </div>
-      </section>
-
-      <section className={styles.endpoint}>
-        <div className={styles.endpointHeader}>
-          <span className={`${styles.method} ${styles.get}`}>GET</span>
-          <span className={styles.path}>/scenarios/{'{scenario_id}'}</span>
-        </div>
-        <div className={styles.endpointBody}>
-          <h2>시나리오 상세 조회</h2>
-          <p>특정 시나리오의 전체 정의(노드, 엣지 등)를 반환합니다.</p>
-          <dl>
-            <dt>Path Parameter:</dt>
-            <dd><code>scenario_id</code>: 시나리오 ID</dd>
-            <dt>응답 (200 OK):</dt>
-            <dd><pre>{`{
-  "id": "string",
-  "title": "string",
-  "description": "string",
-  "version": "1.0",
-  "nodes": [
-    {
-      "id": "string",
-      "type": "start" | "text" | "slotfilling" | "form" | "branch" | "api" | "end",
-      "data": { ... }
-    }
-  ],
-  "edges": [
-    {
-      "id": "string",
-      "source": "string",
-      "target": "string",
-      "sourceHandle": "string",
-      "targetHandle": "string"
-    }
-  ],
-  "startNodeId": "string"
-}`}</pre></dd>
-          </dl>
-        </div>
-      </section>
-
-      {/* ========== Scenario Sessions ========== */}
-      <section className={styles.endpoint}>
-        <div className={styles.endpointHeader}>
-          <span className={`${styles.method} ${styles.get}`}>GET</span>
-          <span className={styles.path}>/conversations/{'{conversation_id}'}/scenario-sessions</span>
-        </div>
-        <div className={styles.endpointBody}>
-          <h2>시나리오 세션 목록 조회</h2>
-          <p>특정 대화방 안에서 실행된 모든 시나리오 세션 이력을 조회합니다.</p>
-          <dl>
-            <dt>쿼리 파라미터:</dt>
-            <dd><code>usr_id</code>: 사용자 ID (필수)</dd>
-            <dt>응답 (200 OK):</dt>
-            <dd><pre>{`[
-  {
-    "id": "session-uuid",
-    "scenario_id": "string",
-    "title": "string",
-    "status": "active" | "generating" | "completed" | "failed" | "canceled",
-    "state": {
-      "scenarioId": "string",
-      "currentNodeId": "string",
-      "awaitingInput": boolean
-    },
-    "slots": { ... },
-    "messages": [ ... ],
-    "created_at": "ISO-8601 string",
-    "updated_at": "ISO-8601 string"
-  }
-]`}</pre></dd>
-          </dl>
-        </div>
-      </section>
-
-      <section className={styles.endpoint}>
-        <div className={styles.endpointHeader}>
-          <span className={`${styles.method} ${styles.post}`}>POST</span>
-          <span className={styles.path}>/conversations/{'{conversation_id}'}/scenario-sessions</span>
-        </div>
-        <div className={styles.endpointBody}>
-          <h2>시나리오 세션 생성</h2>
-          <p>특정 대화 내에서 새로운 시나리오를 시작할 때 세션을 생성합니다.</p>
-          <dl>
-            <dt>요청 본문 (Request Body):</dt>
-            <dd><pre>{`{
-  "scenario_id": "string",         // 시작할 시나리오 ID
-  "usr_id": "string",              // 사용자 ID
-  "status": "active",              // 초기 상태 (active | generating | failed | canceled | completed)
-  "current_node": "start",         // 시작 노드
-  "variables": {}                  // 초기 변수/슬롯 데이터
-}`}</pre></dd>
-            <dt>응답 (200 OK):</dt>
-            <dd><pre>{`{
-  "id": "session-uuid",
-  "scenario_id": "string",
-  "status": "active",
-  "created_at": "ISO-8601 string"
-}`}</pre></dd>
-          </dl>
-        </div>
-      </section>
-
-      <section className={styles.endpoint}>
-        <div className={styles.endpointHeader}>
-          <span className={`${styles.method} ${styles.patch}`}>PATCH</span>
-          <span className={styles.path}>/scenario-sessions/{'{session_id}'}</span>
-        </div>
-        <div className={styles.endpointBody}>
-          <h2>시나리오 세션 업데이트</h2>
-          <p>사용자의 선택이나 입력에 따라 시나리오의 현재 노드, 변수, 상태를 갱신합니다.</p>
-          <div className={styles.infoBox} style={{ marginBottom: '1rem', padding: '0.75rem', background: 'rgba(255,204,0,0.1)', borderLeft: '3px solid #ffcc00' }}>
-            <strong>Status 값 설명:</strong>
-            <ul style={{ marginTop: '0.5rem', marginBottom: 0 }}>
-              <li><code>active</code>: 진행중</li>
-              <li><code>generating</code>: 생성중</li>
-              <li><code>failed</code>: 실패</li>
-              <li><code>canceled</code>: 취소</li>
-              <li><code>completed</code>: 완료</li>
-            </ul>
-          </div>
-          <dl>
-            <dt>요청 본문 (Request Body):</dt>
-            <dd><pre>{`{
-  "usr_id": "string",              // 필수
-  "state": {                       // 선택: 시나리오 진행 상태
-    "scenarioId": "string",
-    "currentNodeId": "string",
-    "awaitingInput": boolean
+    "category": "인사",
+    "items": [
+      { "id": "greeting", "title": "기본 인사", "description": "..." },
+      ...
+    ]
   },
-  "slots": { ... },                // 선택: 누적된 슬롯/변수 값
-  "messages": [ ... ],             // 선택: 시나리오 내 메시지 목록
-  "status": "active" | "generating" | "completed" | "failed" | "canceled",  // 선택
-  "updated_at": "ISO-8601 string"  // 선택
-}`}</pre></dd>
-            <dt>응답 (200 OK):</dt>
-            <dd>업데이트된 세션 객체 또는 <code>null</code></dd>
-          </dl>
-        </div>
-      </section>
-
-      {/* ========== Shortcut (Categories) ========== */}
-      <section className={styles.endpoint}>
-        <div className={styles.endpointHeader}>
-          <span className={`${styles.method} ${styles.get}`}>GET</span>
-          <span className={styles.path}>/shortcut</span>
-        </div>
-        <div className={styles.endpointBody}>
-          <h2>숏컷(카테고리) 조회</h2>
-          <p>메인 입력창 상단의 숏컷 메뉴 구조를 조회합니다.</p>
-          <dl>
-            <dt>응답 (200 OK):</dt>
-            <dd><pre>{`{
-  "categories": [
-    {
-      "name": "카테고리명",
-      "subCategories": [
-        {
-          "title": "서브카테고리명",
-          "items": [
-            {
-              "title": "항목명",
-              "description": "설명",
-              "action": {
-                "type": "scenario" | "text",
-                "value": "시나리오ID 또는 텍스트"
-              }
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}`}</pre></dd>
-          </dl>
-        </div>
-      </section>
-
-      {/* ========== Config ========== */}
-      <section className={styles.endpoint}>
-        <div className={styles.endpointHeader}>
-          <span className={`${styles.method} ${styles.get}`}>GET</span>
-          <span className={styles.path}>/config/general</span>
-        </div>
-        <div className={styles.endpointBody}>
-          <h2>일반 설정 조회</h2>
-          <p>전체 시스템에 적용되는 일반 설정을 조회합니다.</p>
-          <dl>
-            <dt>응답 (200 OK):</dt>
-            <dd><pre>{`{
-  "maxFavorites": 10,
-  "dimUnfocusedPanels": true,
-  "enableFavorites": true,
-  "showHistoryOnGreeting": false,
-  "mainInputPlaceholder": "string",
-  "headerTitle": "AI Chatbot",
-  "enableMainChatMarkdown": true,
-  "showScenarioBubbles": true,
-  "llmProvider": "gemini",
-  "flowiseApiUrl": "string"
-}`}</pre></dd>
-          </dl>
-        </div>
-      </section>
-
-      <section className={styles.endpoint}>
-        <div className={styles.endpointHeader}>
-          <span className={`${styles.method} ${styles.patch}`}>PATCH</span>
-          <span className={styles.path}>/config/general</span>
-        </div>
-        <div className={styles.endpointBody}>
-          <h2>일반 설정 업데이트</h2>
-          <p>전체 시스템에 적용되는 일반 설정을 업데이트합니다.</p>
-          <dl>
-            <dt>요청 본문 (Request Body):</dt>
-            <dd><pre>{`{
-  "maxFavorites": 10,
-  "dimUnfocusedPanels": true,
-  "enableFavorites": true,
-  // ... 업데이트할 필드들
-}`}</pre></dd>
-            <dt>응답 (200 OK):</dt>
-            <dd><code>true</code> 또는 <code>false</code></dd>
-          </dl>
-        </div>
-      </section>
-
-      {/* ========== User Settings ========== */}
-      <section className={styles.endpoint}>
-        <div className={styles.endpointHeader}>
-          <span className={`${styles.method} ${styles.get}`}>GET</span>
-          <span className={styles.path}>/settings/{'{user_id}'}</span>
-        </div>
-        <div className={styles.endpointBody}>
-          <h2>사용자 개인 설정 조회</h2>
-          <p>특정 사용자의 개인 설정을 조회합니다.</p>
-          <dl>
-            <dt>Path Parameter:</dt>
-            <dd><code>user_id</code>: 사용자 ID</dd>
-            <dt>응답 (200 OK):</dt>
-            <dd><pre>{`{
-  "fontSize": "default" | "small" | "large",
-  "language": "ko" | "en",
-  "theme": "light" | "dark",
-  // ... 기타 개인 설정
-}`}</pre></dd>
-          </dl>
-        </div>
-      </section>
-
-      <section className={styles.endpoint}>
-        <div className={styles.endpointHeader}>
-          <span className={`${styles.method} ${styles.patch}`}>PATCH</span>
-          <span className={styles.path}>/settings/{'{user_id}'}</span>
-        </div>
-        <div className={styles.endpointBody}>
-          <h2>사용자 개인 설정 업데이트</h2>
-          <p>특정 사용자의 개인 설정을 업데이트합니다.</p>
-          <dl>
-            <dt>요청 본문 (Request Body):</dt>
-            <dd><pre>{`{
-  "fontSize": "large",
-  "language": "en",
-  // ... 업데이트할 설정들
-}`}</pre></dd>
-            <dt>응답 (200 OK):</dt>
-            <dd><code>true</code> 또는 <code>false</code></dd>
-          </dl>
-        </div>
-      </section>
-
-      {/* ========== Search ========== */}
-      <section className={styles.endpoint}>
-        <div className={styles.endpointHeader}>
-          <span className={`${styles.method} ${styles.get}`}>GET</span>
-          <span className={styles.path}>/search/messages</span>
-        </div>
-        <div className={styles.endpointBody}>
-          <h2>메시지 검색</h2>
-          <p>사용자의 모든 대화에서 특정 키워드를 포함한 메시지를 검색합니다.</p>
-          <dl>
-            <dt>쿼리 파라미터:</dt>
-            <dd>
-              <code>q</code>: 검색 키워드 (필수)<br/>
-              <code>usr_id</code>: 사용자 ID (필수)
-            </dd>
-            <dt>응답 (200 OK):</dt>
-            <dd><pre>{`[
-  {
-    "id": "conversation-uuid",
-    "conversation_id": "uuid",
-    "conversation_title": "string",
-    "title": "string",
-    "snippets": [
-      "...매칭된 텍스트 조각...",
-      "...또 다른 매칭 조각..."
-    ],
-    "matches": [ ... ]
-  }
+  ...
 ]`}</pre></dd>
           </dl>
         </div>
       </section>
-
-      {/* ========== Users & Notifications ========== */}
-      <section className={styles.endpoint}>
-        <div className={styles.endpointHeader}>
-          <span className={`${styles.method} ${styles.get}`}>GET</span>
-          <span className={styles.path}>/users/notifications</span>
-        </div>
-        <div className={styles.endpointBody}>
-          <h2>알림 목록 조회</h2>
-          <p>사용자의 모든 알림을 조회합니다.</p>
-          <dl>
-            <dt>쿼리 파라미터:</dt>
-            <dd>
-              <code>usr_id</code>: 사용자 ID (필수)<br/>
-              <code>ten_id</code>: 테넌트 ID<br/>
-              <code>stg_id</code>: 스테이지 ID<br/>
-              <code>sec_ofc_id</code>: 보안 오피스 ID
-            </dd>
-            <dt>응답 (200 OK):</dt>
-            <dd><pre>{`[
-  {
-    "id": "notification-uuid",
-    "title": "string",
-    "message": "string",
-    "is_read": boolean,
-    "type": "info" | "warning" | "error",
-    "created_at": "ISO-8601 string"
-  }
-]`}</pre></dd>
-          </dl>
-        </div>
-      </section>
-
-      <section className={styles.endpoint}>
-        <div className={styles.endpointHeader}>
-          <span className={`${styles.method} ${styles.patch}`}>PATCH</span>
-          <span className={styles.path}>/users/notifications/{'{notification_id}'}</span>
-        </div>
-        <div className={styles.endpointBody}>
-          <h2>알림 읽음 처리</h2>
-          <p>특정 알림을 읽음으로 표시합니다.</p>
-          <dl>
-            <dt>요청 본문 (Request Body):</dt>
-            <dd><pre>{`{
-  "is_read": true
-}`}</pre></dd>
-            <dt>응답 (200 OK):</dt>
-            <dd>업데이트된 알림 객체</dd>
-          </dl>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className={styles.footer}>
-        <p>
-          <strong>Last Updated:</strong> 2026-02-09<br/>
-          모든 API는 JSON 형식으로 데이터를 주고받습니다.<br/>
-          인증이 필요한 경우 헤더에 토큰을 포함해야 할 수 있습니다.
-        </p>
-      </footer>
 
     </div>
   );
