@@ -1,0 +1,120 @@
+# =============================================================================
+# .aiexclude - CLT Chatbot 프로젝트용 Gemini CLI 무시 패턴
+# =============================================================================
+# 이 파일은 Gemini CLI가 분석할 때 무시할 파일/폴더를 정의합니다.
+# 토큰 사용량 절감 및 성능 최적화를 목표로 합니다.
+# =============================================================================
+
+# --- 1. 빌드 및 의존성 (항상 무시) ---
+node_modules/
+.next/
+.swc/
+.vercel/
+build/
+dist/
+out/
+*.egg-info/
+__pycache__/
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# --- 2. 패키지 매니저 락 파일 (대용량) ---
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# --- 3. 환경 변수 및 설정 파일 ---
+.env
+.env.local
+.env.*.local
+.env.production.local
+
+# --- 4. IDE 및 에디터 설정 ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.project
+.classpath
+.c9/
+*.sublime-project
+*.sublime-workspace
+
+# --- 5. 로그 및 임시 파일 ---
+*.log
+logs/
+.tmp/
+.cache/
+*.pid
+.turbo/
+
+# --- 6. 테스트 커버리지 ---
+coverage/
+.nyc_output/
+*.lcov
+
+# --- 7. OS 파일 ---
+Thumbs.db
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# --- 8. 이미지, 비디오, 대용량 미디어 파일 ---
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.svg
+*.ico
+*.mp4
+*.webm
+*.mov
+*.mp3
+*.wav
+
+# --- 9. 대용량 데이터 파일 ---
+*.csv
+*.xlsx
+*.xls
+*.parquet
+*.json.gz
+*.tar.gz
+/data/
+/datasets/
+/downloads/
+
+# --- 10. 프로젝트별 임시 디렉토리 ---
+/public/uploads/
+/public/temp/
+/temp/
+/tmp/
+
+# --- 11. 테스트 결과 (jest 등) ---
+test-results/
+*.xml
+junit.xml
+
+# --- 12. VS Code 확장 ---
+.vscode-test/
+*.vsix
+
+# --- 13. Git 관련 파일 ---
+.git/
+.gitignore
+.gitattributes
+.gitmodules
+
+# --- 14. 타사 라이브러리 ---
+/node_modules/**/*.md
+/node_modules/**/*.txt
+
+# --- 15. Backup 파일 ---
+*.bak
+*.backup
+*.swp
+.*.swp
