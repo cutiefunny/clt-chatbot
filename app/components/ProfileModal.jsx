@@ -17,7 +17,6 @@ export default function ProfileModal() {
   const user = useChatStore((state) => state.user);
   const logout = useChatStore((state) => state.logout);
   const closeProfileModal = useChatStore((state) => state.closeProfileModal);
-  // const openDevBoardModal = useChatStore((state) => state.openDevBoardModal); // 제거됨
   const language = useChatStore((state) => state.language);
   const setLanguage = useChatStore((state) => state.setLanguage);
   const openConfirmModal = useChatStore((state) => state.openConfirmModal);

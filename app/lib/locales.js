@@ -197,7 +197,6 @@ export const locales = {
     languageSetting: "언어 설정",
     korean: "한국어",
     english: "English",
-    devBoard: "개발 보드",
 
     // Scenario Panel
     scenarioTitle: (scenarioId) => `시나리오: ${scenarioId}`,
@@ -212,11 +211,6 @@ export const locales = {
     searchConversations: "대화 내용 검색...",
     searching: "검색 중...",
     noResults: "검색 결과가 없습니다.",
-
-    // Dev Board
-    devBoardTitle: "개발 보드",
-    enterMemo: "메모를 입력하세요...",
-    post: "작성",
 
     // Notifications
     notificationHistory: "알림 내역",
@@ -427,7 +421,6 @@ export const locales = {
     languageSetting: "Language",
     korean: "한국어",
     english: "English",
-    devBoard: "Dev Board",
 
     // Scenario Panel
     scenarioTitle: (scenarioId) => `Scenario: ${scenarioId}`,
@@ -443,11 +436,6 @@ export const locales = {
     searchConversations: "Search conversations...",
     searching: "Searching...",
     noResults: "No results found.",
-
-    // Dev Board
-    devBoardTitle: "Dev Board",
-    enterMemo: "Enter a memo...",
-    post: "Post",
 
     // Notifications
     notificationHistory: "Notifications",

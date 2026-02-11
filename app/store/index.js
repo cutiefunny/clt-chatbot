@@ -28,7 +28,6 @@ import { createAuthSlice } from "./slices/authSlice";
 import { createUISlice } from "./slices/uiSlice";
 import { createChatSlice } from "./slices/chatSlice";
 import { createScenarioSlice } from "./slices/scenarioSlice";
-import { createDevBoardSlice } from "./slices/devBoardSlice";
 import { createNotificationSlice } from "./slices/notificationSlice";
 import { createConversationSlice } from "./slices/conversationSlice";
 import { createSearchSlice } from "./slices/searchSlice";
@@ -53,7 +52,6 @@ export const useChatStore = create((set, get) => ({
   ...createUISlice(set, get),
   ...createChatSlice(set, get),
   ...createScenarioSlice(set, get),
-  ...createDevBoardSlice(set, get),
   ...createNotificationSlice(set, get),
   ...createConversationSlice(set, get),
   ...createSearchSlice(set, get),
@@ -115,7 +113,6 @@ export const useChatStore = create((set, get) => ({
     get().unsubscribeConversations?.(); // conversationSlice
     get().unsubscribeMessages?.(); // chatSlice
     get().unsubscribeAllScenarioListeners?.(); // scenarioSlice
-    get().unsubscribeDevMemos?.(); // devBoardSlice
     get().unsubscribeNotifications?.(); // notificationSlice
     get().unsubscribeUnreadStatus?.(); // notificationSlice
     get().unsubscribeUnreadScenarioNotifications?.(); // notificationSlice
@@ -125,7 +122,6 @@ export const useChatStore = create((set, get) => ({
       unsubscribeConversations: null, // conversationSlice
       unsubscribeMessages: null, // chatSlice
       // unsubscribeScenariosMap는 scenarioSlice에서 관리/초기화
-      unsubscribeDevMemos: null, // devBoardSlice
       unsubscribeNotifications: null, // notificationSlice
       unsubscribeUnreadStatus: null, // notificationSlice
       unsubscribeUnreadScenarioNotifications: null, // notificationSlice

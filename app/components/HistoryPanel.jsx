@@ -16,7 +16,6 @@ import NewChatIcon from "./icons/NewChatIcon";
 
 const ProfileModal = dynamic(() => import("./ProfileModal"));
 const SearchModal = dynamic(() => import("./SearchModal"));
-const DevBoardModal = dynamic(() => import("./DevBoardModal"));
 const NotificationModal = dynamic(() => import("./NotificationModal"));
 const ManualModal = dynamic(() => import("./ManualModal"));
 
@@ -36,7 +35,6 @@ export default function HistoryPanel() {
     openSearchModal,
     isProfileModalOpen,
     openProfileModal,
-    isDevBoardModalOpen,
     isNotificationModalOpen,
     openNotificationModal,
     hasUnreadNotifications,
@@ -209,7 +207,6 @@ export default function HistoryPanel() {
 
       {isProfileModalOpen && <ProfileModal />}
       {isSearchModalOpen && <SearchModal />}
-      {isDevBoardModalOpen && <DevBoardModal />}
       {isNotificationModalOpen && <NotificationModal />}
       {isManualModalOpen && <ManualModal />}
     </>

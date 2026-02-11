@@ -419,55 +419,6 @@ export async function updateUserSettings(userId, settings) {
 
 /**
  * ==============================================================================
- * 개발 게시판 (Dev Board) 관련 API
- * ==============================================================================
- */
-
-// 개발 메모 목록 조회
-export async function fetchDevMemos() {
-  const url = buildUrl(`/dev-board`);
-  try {
-    const res = await fetch(url, { method: "GET", headers: getHeaders() });
-    if (!res.ok) return [];
-    return await res.json();
-  } catch (error) {
-    console.error("[API] fetchDevMemos failed:", error);
-    return [];
-  }
-}
-
-// 개발 메모 생성
-export async function createDevMemo(memoData) {
-  const url = buildUrl(`/dev-board`);
-  try {
-    const res = await fetch(url, { 
-      method: "POST", 
-      headers: getHeaders(), 
-      body: JSON.stringify(memoData) 
-    });
-    if (!res.ok) throw new Error(`Failed to create dev memo: ${res.status}`);
-    return await res.json();
-  } catch (error) {
-    console.error("[API] createDevMemo failed:", error);
-    return null;
-  }
-}
-
-// 개발 메모 삭제
-export async function deleteDevMemo(memoId) {
-  const url = buildUrl(`/dev-board/${memoId}`);
-  try {
-    const res = await fetch(url, { method: "DELETE", headers: getHeaders() });
-    if (!res.ok) throw new Error(`Failed to delete dev memo: ${res.status}`);
-    return true;
-  } catch (error) {
-    console.error("[API] deleteDevMemo failed:", error);
-    return false;
-  }
-}
-
-/**
- * ==============================================================================
  * 검색 (Search) 관련 API
  * ==============================================================================
  */

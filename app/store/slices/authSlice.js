@@ -155,7 +155,6 @@ export const createAuthSlice = (set, get) => ({
     // 3. 리스너 구독 시작 (No Await)
     get().unsubscribeAll();
     get().loadConversations(user.uid);
-    get().loadDevMemos();
     get().subscribeToUnreadStatus(user.uid);
     get().subscribeToUnreadScenarioNotifications(user.uid);
 
@@ -196,7 +195,6 @@ export const createAuthSlice = (set, get) => ({
       currentConversationId: null,
       expandedConversationId: null,
       scenariosForConversation: {},
-      devMemos: [],
       toastHistory: [],
       hasUnreadNotifications: false,
       unreadScenarioSessions: new Set(),
@@ -217,7 +215,6 @@ export const createAuthSlice = (set, get) => ({
       isProfileModalOpen: false,
       isSearchModalOpen: false,
       isScenarioModalOpen: false,
-      isDevBoardModalOpen: false,
       isNotificationModalOpen: false,
       isManualModalOpen: false,
       confirmModal: {
