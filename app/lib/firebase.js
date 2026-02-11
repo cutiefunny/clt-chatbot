@@ -3,8 +3,6 @@ import { initializeApp, getApps } from "firebase/app";
 import { getFirestore, serverTimestamp, deleteDoc, doc, getDoc, setDoc, updateDoc, limit, startAfter, collection, addDoc, getDocs, writeBatch } from "firebase/firestore";
 import {
     getAuth,
-    GoogleAuthProvider,
-    signInWithPopup,
     signOut,
     onAuthStateChanged
 } from "firebase/auth";
@@ -30,4 +28,4 @@ if (!getApps().length) {
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 // --- 👇 [수정] 추가된 함수들을 export ---
-export { GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, serverTimestamp, deleteDoc, doc, getDoc, setDoc, updateDoc, limit, startAfter, collection, addDoc, getDocs, writeBatch };
+export { signOut, onAuthStateChanged, serverTimestamp, deleteDoc, doc, getDoc, setDoc, updateDoc, limit, startAfter, collection, addDoc, getDocs, writeBatch };

@@ -110,18 +110,6 @@ export const useChatStore = create((set, get) => ({
         }, 0);
       }
     }
-
-    // Firebase Auth 상태 변경 리스너
-    onAuthStateChanged(get().auth, async (user) => {
-      if (get().user?.isTestUser) return; // 테스트 유저면 무시 (authSlice 상태 참조)
-      if (user) {
-        // --- 👇 [수정] authSlice의 액션 호출 ---
-        get().setUserAndLoadData(user); // 실제 사용자 로그인 시 데이터 로드
-      } else {
-        get().clearUserAndData(); // 로그아웃 시 데이터 클리어
-        // --- 👆 [수정] ---
-      }
-    });
   },
 
   unsubscribeAll: () => {

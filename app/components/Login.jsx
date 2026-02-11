@@ -6,7 +6,6 @@ import { useTranslations } from '../hooks/useTranslations';
 import styles from './Login.module.css';
 
 export default function Login() {
-  const loginWithGoogle = useChatStore((state) => state.loginWithGoogle);
   const loginWithTestId = useChatStore((state) => state.loginWithTestId);
   const { t } = useTranslations();
   const [testId, setTestId] = useState('');
@@ -22,14 +21,6 @@ export default function Login() {
       <p className={styles.prompt}>{t('loginPrompt')}</p>
       
       <div className={styles.loginOptions}>
-        <button onClick={loginWithGoogle} className={styles.googleButton}>
-          {t('signInWithGoogle')}
-        </button>
-        
-        <div className={styles.divider}>
-            <span>{t('loginMethodToggle')}</span>
-        </div>
-        
         <form onSubmit={handleTestLogin} className={styles.testIdForm}>
           <input
             type="text"

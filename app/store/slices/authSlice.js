@@ -1,7 +1,5 @@
 // app/store/slices/authSlice.js
 import {
-  GoogleAuthProvider,
-  signInWithPopup,
   signOut,
   doc,
   getDoc,
@@ -13,14 +11,6 @@ import { locales } from "../../lib/locales";
 
 export const createAuthSlice = (set, get) => ({
   user: null,
-
-  loginWithGoogle: async () => {
-    try {
-      await signInWithPopup(get().auth, new GoogleAuthProvider());
-    } catch (error) {
-      console.error("Login with Google failed:", error);
-    }
-  },
 
   loginWithTestId: (userId) => {
     if (!userId || !userId.trim()) {
