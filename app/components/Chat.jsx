@@ -5,9 +5,8 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import dynamic from "next/dynamic";
 import { useChatStore } from "../store";
 import { useTranslations } from "../hooks/useTranslations";
-import { useAutoScroll } from "../hooks/useAutoScroll"; // [추가] 훅 임포트
+import { useAutoScroll } from "../hooks/useAutoScroll";
 import styles from "./Chat.module.css";
-import FavoritePanel from "./FavoritePanel";
 import ScenarioBubble from "./ScenarioBubble";
 import CheckCircle from "./icons/CheckCircle";
 import MoonIcon from "./icons/MoonIcon";
@@ -255,7 +254,6 @@ export default function Chat() {
     setSelectedOption,
     dimUnfocusedPanels,
     setMessageFeedback,
-    enableFavorites,
     showScenarioBubbles,
   } = useChatStore();
   
@@ -443,11 +441,7 @@ export default function Chat() {
         ref={scrollRef} // [리팩토링] 훅에서 반환된 ref 연결
         onClick={handleHistoryClick}
       >
-        {!hasMessages ? (
-          enableFavorites ? (
-            <FavoritePanel />
-          ) : null
-        ) : (
+        {!hasMessages ? null : (
           <>
             {isFetchingMore && (
               <div className={styles.messageRow}>

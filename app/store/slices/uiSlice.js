@@ -19,7 +19,6 @@ export const createUISlice = (set, get) => ({
   theme: "light",
   fontSize: "default", // 'default' or 'small'
   language: "ko",
-  maxFavorites: 10,
   hideCompletedScenarios: false,
   hideDelayInHours: 0,
   contentTruncateLimit: 10, // 봇 답변 줄임 줄 수 (기본값 10)
@@ -30,7 +29,6 @@ export const createUISlice = (set, get) => ({
   useFastApi: false, 
   // --- 👆 [추가] ---
   dimUnfocusedPanels: true,
-  enableFavorites: true, // 즐겨찾기 기능 활성화 여부 (기본값 true)
   showHistoryOnGreeting: false, // 초기 화면 히스토리 표시 여부
   mainInputPlaceholder: "", // 메인 입력창 플레이스홀더
   headerTitle: "AI Chatbot", // 기본값
@@ -81,15 +79,9 @@ export const createUISlice = (set, get) => ({
       if (docSnap.exists()) {
         const config = docSnap.data();
         set({
-          maxFavorites:
-            typeof config.maxFavorites === "number" ? config.maxFavorites : 10,
           dimUnfocusedPanels:
             typeof config.dimUnfocusedPanels === "boolean"
               ? config.dimUnfocusedPanels
-              : true,
-          enableFavorites:
-            typeof config.enableFavorites === "boolean"
-              ? config.enableFavorites
               : true,
           showHistoryOnGreeting:
             typeof config.showHistoryOnGreeting === "boolean"
@@ -337,7 +329,6 @@ export const createUISlice = (set, get) => ({
       theme: "light",
       fontSize: "default",
       language: "ko",
-      maxFavorites: 10,
       hideCompletedScenarios: false,
       hideDelayInHours: 0,
       contentTruncateLimit: 10,
@@ -348,7 +339,6 @@ export const createUISlice = (set, get) => ({
       useFastApi: false, 
       // --- 👆 [추가] ---
       dimUnfocusedPanels: true,
-      enableFavorites: true,
       showHistoryOnGreeting: false,
       mainInputPlaceholder: "",
       headerTitle: "AI Chatbot", 

@@ -27,7 +27,6 @@ describe('AuthSlice', () => {
       loadDevMemos: jest.fn(),
       subscribeToUnreadStatus: jest.fn(),
       subscribeToUnreadScenarioNotifications: jest.fn(),
-      loadFavorites: jest.fn(),
       resetMessages: jest.fn(),
     };
 

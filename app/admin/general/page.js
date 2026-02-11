@@ -8,9 +8,7 @@ import Link from "next/link";
 
 export default function GeneralSettingsPage() {
   const {
-    maxFavorites,
     dimUnfocusedPanels,
-    enableFavorites,
     showHistoryOnGreeting,
     mainInputPlaceholder,
     enableMainChatMarkdown,
@@ -23,9 +21,7 @@ export default function GeneralSettingsPage() {
     showEphemeralToast,
   } = useChatStore();
 
-  const [limit, setLimit] = useState("");
   const [dimPanels, setDimPanels] = useState(true);
-  const [favoritesEnabled, setFavoritesEnabled] = useState(true);
   const [showHistory, setShowHistory] = useState(false);
   const [provider, setProvider] = useState("gemini");
   const [apiUrl, setApiUrl] = useState("");
@@ -41,9 +37,7 @@ export default function GeneralSettingsPage() {
   }, [loadGeneralConfig]);
 
   useEffect(() => {
-    if (maxFavorites !== null) setLimit(String(maxFavorites));
     setDimPanels(dimUnfocusedPanels);
-    setFavoritesEnabled(enableFavorites);
     setShowHistory(showHistoryOnGreeting);
     setProvider(llmProvider);
     setApiUrl(flowiseApiUrl);
@@ -52,9 +46,7 @@ export default function GeneralSettingsPage() {
     setCustomHeaderTitle(headerTitle || "");
     setBubblesVisible(showScenarioBubbles);
   }, [
-    maxFavorites,
     dimUnfocusedPanels,
-    enableFavorites,
     showHistoryOnGreeting,
     mainInputPlaceholder,
     enableMainChatMarkdown,
@@ -89,9 +81,7 @@ export default function GeneralSettingsPage() {
     }
 
     const settings = {
-      maxFavorites: newLimit,
       dimUnfocusedPanels: dimPanels,
-      enableFavorites: favoritesEnabled,
       showHistoryOnGreeting: showHistory,
       mainInputPlaceholder: placeholder,
       enableMainChatMarkdown: markdownEnabled,
@@ -274,82 +264,7 @@ export default function GeneralSettingsPage() {
           </label>
         </div>
 
-        {/* 즐겨찾기 기능 설정 */}
-        {/* <div className={styles.settingItem}>
-          <label className={styles.settingLabel}>
-            <h3>즐겨찾기 기능</h3>
-            <p>
-              활성화 시, 숏컷 메뉴의 즐겨찾기(별) 아이콘과 메인 화면의 즐겨찾기
-              패널을 활성화합니다.
-            </p>
-          </label>
-          <label className={styles.switch}>
-            <input
-              type="checkbox"
-              checked={favoritesEnabled}
-              onChange={(e) => setFavoritesEnabled(e.target.checked)}
-            />
-            <span className={styles.slider}></span>
-          </label>
-        </div> */}
-
-        {/* 포커스 흐림 설정 */}
-        {/* <div className={styles.settingItem}>
-          <label className={styles.settingLabel}>
-            <h3>포커스 잃은 창 흐리게</h3>
-            <p>
-              활성화 시, 메인 채팅과 시나리오 채팅 간 포커스 이동 시 비활성 창을
-              흐리게(dimmed) 처리합니다.
-            </p>
-          </label>
-          <label className={styles.switch}>
-            <input
-              type="checkbox"
-              checked={dimPanels}
-              onChange={(e) => setDimPanels(e.target.checked)}
-            />
-            <span className={styles.slider}></span>
-          </label>
-        </div> */}
-
-        {/* 초기 화면 히스토리 패널 표시 */}
-        {/* <div className={styles.settingItem}>
-          <label className={styles.settingLabel}>
-            <h3>초기 화면 히스토리 표시</h3>
-            <p>
-              활성화 시, 채팅 시작 전 초기 화면(Greeting)에서도 히스토리
-              패널(사이드바)을 표시합니다.
-            </p>
-          </label>
-          <label className={styles.switch}>
-            <input
-              type="checkbox"
-              checked={showHistory}
-              onChange={(e) => setShowHistory(e.target.checked)}
-            />
-            <span className={styles.slider}></span>
-          </label>
-        </div> */}
-
-        {/* 즐겨찾기 개수 설정 (기존 코드 유지) */}
-        {/* <div className={styles.settingItem}>
-          <label htmlFor="max-favorites" className={styles.settingLabel}>
-            <h3>최대 즐겨찾기 개수</h3>
-            <p>
-              사용자가 등록할 수 있는 즐겨찾기 버튼의 최대 개수를 설정합니다.
-            </p>
-          </label>
-          <input
-            id="max-favorites"
-            type="number"
-            value={limit}
-            onChange={(e) => setLimit(e.target.value)}
-            className={styles.settingInput}
-            min="0"
-          />
-        </div> */}
-
-        {/* 저장 버튼 (기존 코드 유지) */}
+        {/* 저장 버튼 */}
         <button
           className={styles.saveButton}
           onClick={handleSave}

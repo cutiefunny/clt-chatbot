@@ -30,7 +30,6 @@ import { createChatSlice } from "./slices/chatSlice";
 import { createScenarioSlice } from "./slices/scenarioSlice";
 import { createDevBoardSlice } from "./slices/devBoardSlice";
 import { createNotificationSlice } from "./slices/notificationSlice";
-import { createFavoritesSlice } from "./slices/favoritesSlice";
 import { createConversationSlice } from "./slices/conversationSlice";
 import { createSearchSlice } from "./slices/searchSlice";
 
@@ -56,7 +55,6 @@ export const useChatStore = create((set, get) => ({
   ...createScenarioSlice(set, get),
   ...createDevBoardSlice(set, get),
   ...createNotificationSlice(set, get),
-  ...createFavoritesSlice(set, get),
   ...createConversationSlice(set, get),
   ...createSearchSlice(set, get),
 
@@ -121,7 +119,6 @@ export const useChatStore = create((set, get) => ({
     get().unsubscribeNotifications?.(); // notificationSlice
     get().unsubscribeUnreadStatus?.(); // notificationSlice
     get().unsubscribeUnreadScenarioNotifications?.(); // notificationSlice
-    get().unsubscribeFavorites?.(); // favoritesSlice
 
     // 각 슬라이스의 해제 함수 상태 초기화
     set({
@@ -132,7 +129,6 @@ export const useChatStore = create((set, get) => ({
       unsubscribeNotifications: null, // notificationSlice
       unsubscribeUnreadStatus: null, // notificationSlice
       unsubscribeUnreadScenarioNotifications: null, // notificationSlice
-      unsubscribeFavorites: null, // favoritesSlice
     });
   },
 }));

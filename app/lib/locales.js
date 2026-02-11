@@ -43,7 +43,6 @@ export const locales = {
             <ul>
                 <li><strong>하이브리드 대화 모드:</strong> 일상적인 대화는 AI가 자연스럽게 응답하며, 특정 업무는 시나리오 모드로 전환되어 정확한 절차를 안내합니다.</li>
                 <li><strong>시나리오 숏컷 (메뉴):</strong> 입력창 좌측의 메뉴 버튼을 통해 자주 사용하는 기능을 즉시 실행할 수 있습니다.</li>
-                <li><strong>즐겨찾기 패널:</strong> 자주 쓰는 숏컷을 즐겨찾기에 등록하여 메인 화면에서 빠르게 접근할 수 있습니다.</li>
                 <li><strong>대화 히스토리 관리:</strong> 과거 대화 내용을 검색하거나, 중요 대화를 상단에 고정(Pin)하고, 제목을 변경하여 관리할 수 있습니다.</li>
                 <li><strong>멀티태스킹 UI:</strong> 메인 채팅과 시나리오 패널이 분리되어 있어, 대화를 나누면서 동시에 업무 양식을 작성하거나 데이터를 조회할 수 있습니다.</li>
             </ul>
@@ -59,8 +58,7 @@ export const locales = {
             <p>입력창 왼쪽의 <strong>[+] 메뉴 아이콘</strong>을 클릭하면 카테고리별로 정리된 기능 목록이 나타납니다.</p>
             <ul>
                 <li>원하는 기능을 클릭하면 해당 시나리오가 실행되거나 텍스트가 입력됩니다.</li>
-                <li>각 항목 옆의 <strong>[별 모양 아이콘]</strong>을 클릭하면 즐겨찾기에 추가/제거할 수 있습니다.</li>
-            </ul>
+                </ul>
 
             <h4>시나리오 진행</h4>
             <p>시나리오가 시작되면 우측(또는 하단)에 전용 패널이 열립니다.</p>
@@ -98,7 +96,6 @@ export const locales = {
             <ul>
                 <li><strong>Hybrid Chat Mode:</strong> AI handles casual conversations naturally, while specific tasks switch to scenario mode for precise guidance.</li>
                 <li><strong>Scenario Shortcuts:</strong> Access frequently used functions instantly via the menu button on the left of the input bar.</li>
-                <li><strong>Favorites Panel:</strong> Pin your most-used shortcuts to the main screen for quick access.</li>
                 <li><strong>History Management:</strong> Search past conversations, pin important chats to the top, and rename them for better organization.</li>
                 <li><strong>Multitasking UI:</strong> The main chat and scenario panel are separated, allowing you to chat while simultaneously filling out forms or viewing data.</li>
             </ul>
@@ -114,8 +111,7 @@ export const locales = {
             <p>Click the <strong>[+] Menu Icon</strong> next to the input bar to see a categorized list of functions.</p>
             <ul>
                 <li>Click an item to execute the scenario or input text.</li>
-                <li>Click the <strong>[Star Icon]</strong> next to an item to add or remove it from your favorites.</li>
-            </ul>
+                </ul>
 
             <h4>Running Scenarios</h4>
             <p>When a scenario starts, a dedicated panel opens on the right (or bottom).</p>
@@ -277,7 +273,6 @@ export const locales = {
             <ul>
                 <li><strong>하이브리드 대화 모드:</strong> 일상적인 대화는 AI가 자연스럽게 응답하며, 특정 업무는 시나리오 모드로 전환되어 정확한 절차를 안내합니다.</li>
                 <li><strong>시나리오 숏컷 (메뉴):</strong> 입력창 좌측의 메뉴 버튼을 통해 자주 사용하는 기능을 즉시 실행할 수 있습니다.</li>
-                <li><strong>즐겨찾기 패널:</strong> 자주 쓰는 숏컷을 즐겨찾기에 등록하여 메인 화면에서 빠르게 접근할 수 있습니다.</li>
                 <li><strong>대화 히스토리 관리:</strong> 과거 대화 내용을 검색하거나, 중요 대화를 상단에 고정(Pin)하고, 제목을 변경하여 관리할 수 있습니다.</li>
                 <li><strong>멀티태스킹 UI:</strong> 메인 채팅과 시나리오 패널이 분리되어 있어, 대화를 나누면서 동시에 업무 양식을 작성하거나 데이터를 조회할 수 있습니다.</li>
             </ul>
@@ -293,8 +288,7 @@ export const locales = {
             <p>입력창 왼쪽의 <strong>[+] 메뉴 아이콘</strong>을 클릭하면 카테고리별로 정리된 기능 목록이 나타납니다.</p>
             <ul>
                 <li>원하는 기능을 클릭하면 해당 시나리오가 실행되거나 텍스트가 입력됩니다.</li>
-                <li>각 항목 옆의 <strong>[별 모양 아이콘]</strong>을 클릭하면 즐겨찾기에 추가/제거할 수 있습니다.</li>
-            </ul>
+                </ul>
 
             <h4>시나리오 진행</h4>
             <p>시나리오가 시작되면 우측(또는 하단)에 전용 패널이 열립니다.</p>
@@ -332,7 +326,6 @@ export const locales = {
             <ul>
                 <li><strong>Hybrid Chat Mode:</strong> AI handles casual conversations naturally, while specific tasks switch to scenario mode for precise guidance.</li>
                 <li><strong>Scenario Shortcuts:</strong> Access frequently used functions instantly via the menu button on the left of the input bar.</li>
-                <li><strong>Favorites Panel:</strong> Pin your most-used shortcuts to the main screen for quick access.</li>
                 <li><strong>History Management:</strong> Search past conversations, pin important chats to the top, and rename them for better organization.</li>
                 <li><strong>Multitasking UI:</strong> The main chat and scenario panel are separated, allowing you to chat while simultaneously filling out forms or viewing data.</li>
             </ul>
@@ -348,8 +341,7 @@ export const locales = {
             <p>Click the <strong>[+] Menu Icon</strong> next to the input bar to see a categorized list of functions.</p>
             <ul>
                 <li>Click an item to execute the scenario or input text.</li>
-                <li>Click the <strong>[Star Icon]</strong> next to an item to add or remove it from your favorites.</li>
-            </ul>
+                </ul>
 
             <h4>Running Scenarios</h4>
             <p>When a scenario starts, a dedicated panel opens on the right (or bottom).</p>

@@ -152,14 +152,12 @@ export const createAuthSlice = (set, get) => ({
       });
       get().resetMessages?.(language);
     }
-
     // 3. 리스너 구독 시작 (No Await)
     get().unsubscribeAll();
     get().loadConversations(user.uid);
     get().loadDevMemos();
     get().subscribeToUnreadStatus(user.uid);
     get().subscribeToUnreadScenarioNotifications(user.uid);
-    get().loadFavorites(user.uid);
 
     // 2초 타이머 (Await)
     console.log("Starting 2-second splash screen timer...");
@@ -198,7 +196,6 @@ export const createAuthSlice = (set, get) => ({
       currentConversationId: null,
       expandedConversationId: null,
       scenariosForConversation: {},
-      favorites: [],
       devMemos: [],
       toastHistory: [],
       hasUnreadNotifications: false,

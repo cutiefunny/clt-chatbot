@@ -64,8 +64,6 @@ export default function ChatInput() {
   );
   const focusRequest = useChatStore((state) => state.focusRequest);
   const scenarioCategories = useChatStore((state) => state.scenarioCategories);
-  const favorites = useChatStore((state) => state.favorites);
-  const toggleFavorite = useChatStore((state) => state.toggleFavorite);
   const handleShortcutClick = useChatStore(
     (state) => state.handleShortcutClick
   );
@@ -80,7 +78,6 @@ export default function ChatInput() {
   const mainInputPlaceholder = useChatStore(
     (state) => state.mainInputPlaceholder
   );
-  const enableFavorites = useChatStore((state) => state.enableFavorites);
   const mainInputValue = useChatStore((state) => state.mainInputValue);
   const setMainInputValue = useChatStore((state) => state.setMainInputValue);
   
@@ -203,11 +200,6 @@ export default function ChatInput() {
                   {subCategory.title}
                 </h4>
                 {subCategory.items.map((item) => {
-                  const isFavorited = favorites.some(
-                    (fav) =>
-                      fav.action.type === item.action.type &&
-                      fav.action.value === item.action.value
-                  );
                   return (
                     <div key={item.title} className={styles.dropdownItem}>
                       <div
@@ -220,19 +212,6 @@ export default function ChatInput() {
                           handleItemClick(item)
                         }
                       >
-                        {enableFavorites && (
-                          <button
-                            className={`${styles.favoriteButton} ${
-                              isFavorited ? styles.favorited : ""
-                            }`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleFavorite(item);
-                            }}
-                          >
-                            <StarIcon size={18} filled={isFavorited} />
-                          </button>
-                        )}
                         <div className={styles.itemContent}>
                           <span className={styles.itemTitle}>
                             {item.title}

@@ -171,34 +171,6 @@
   text-overflow: ellipsis;
 }
 
-.favoriteButton {
-  flex-shrink: 0;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 2px;
-  border-radius: 50%;
-  /* margin-right: 4px; */
-  color: var(--panel-border-color);
-  transition: color 0.2s, background-color 0.2s;
-  position: relative;
-  z-index: 2;
-}
-
-.favoriteButton:hover {
-  color: #806bf5;
-  background-color: var(--button-hover-bg);
-}
-
-/* --- 👇 [추가] hover 시 SVG 내부를 채우는 스타일 --- */
-.favoriteButton:hover svg {
-  fill: currentColor;
-}
-
-.favoriteButton.favorited {
-  color: #806bf5;
-}
-
 .buttonRow {
   display: flex;
   width: 100%;

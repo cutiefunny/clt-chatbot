@@ -41,7 +41,6 @@ describe('ChatInput Component', () => {
       activePanel: 'main',
       scenarioStates: {},
       scenarioCategories: [],
-      favorites: [],
       mainInputValue: '',
       setMainInputValue: jest.fn(),
       setShortcutMenuOpen: jest.fn(),
@@ -64,7 +63,6 @@ describe('ChatInput Component', () => {
       setMainInputValue: jest.fn(),
       scenarioStates: {},
       scenarioCategories: [],
-      favorites: [],
     }));
 
     // Mutation 성공 시뮬레이션
@@ -93,7 +91,6 @@ describe('ChatInput Component', () => {
       setMainInputValue: jest.fn(),
       scenarioStates: {},
       scenarioCategories: [],
-      favorites: [],
     }));
 
     render(<ChatInput />);
