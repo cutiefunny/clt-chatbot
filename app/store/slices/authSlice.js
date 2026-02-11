@@ -1,7 +1,5 @@
 // app/store/slices/authSlice.js
 import {
-  doc,
-  getDoc,
   collection,
   getDocs,
   writeBatch,
@@ -93,42 +91,41 @@ export const createAuthSlice = (set, get) => ({
       useFastApi = false; // [추가] 기본값 설정
 
     try {
-      const userSettingsRef = doc(get().db, "settings", user.uid);
-      const docSnap = await getDoc(userSettingsRef);
-      const settings = docSnap.exists() ? docSnap.data() : {};
+      // localStorage에서 사용자 설정 로드
+      const userSettings = JSON.parse(localStorage.getItem("userSettings") || "{}");
 
-      fontSize = settings.fontSize || localStorage.getItem("fontSize") || fontSize;
-      language = settings.language || localStorage.getItem("language") || language;
+      fontSize = userSettings.fontSize || localStorage.getItem("fontSize") || fontSize;
+      language = userSettings.language || localStorage.getItem("language") || language;
       contentTruncateLimit =
-        typeof settings.contentTruncateLimit === "number"
-          ? settings.contentTruncateLimit
+        typeof userSettings.contentTruncateLimit === "number"
+          ? userSettings.contentTruncateLimit
           : contentTruncateLimit;
       hideCompletedScenarios =
-        typeof settings.hideCompletedScenarios === "boolean"
-          ? settings.hideCompletedScenarios
+        typeof userSettings.hideCompletedScenarios === "boolean"
+          ? userSettings.hideCompletedScenarios
           : hideCompletedScenarios;
       hideDelayInHours =
-        typeof settings.hideDelayInHours === "number"
-          ? settings.hideDelayInHours
+        typeof userSettings.hideDelayInHours === "number"
+          ? userSettings.hideDelayInHours
           : hideDelayInHours;
-      fontSizeDefault = settings.fontSizeDefault || fontSizeDefault;
+      fontSizeDefault = userSettings.fontSizeDefault || fontSizeDefault;
       isDevMode =
-        typeof settings.isDevMode === "boolean" ? settings.isDevMode : isDevMode;
+        typeof userSettings.isDevMode === "boolean" ? userSettings.isDevMode : isDevMode;
       
       sendTextShortcutImmediately =
-        typeof settings.sendTextShortcutImmediately === "boolean"
-          ? settings.sendTextShortcutImmediately
+        typeof userSettings.sendTextShortcutImmediately === "boolean"
+          ? userSettings.sendTextShortcutImmediately
           : sendTextShortcutImmediately;
       
       // --- 👇 [추가] useFastApi 로드 ---
       useFastApi =
-        typeof settings.useFastApi === "boolean"
-          ? settings.useFastApi
+        typeof userSettings.useFastApi === "boolean"
+          ? userSettings.useFastApi
           : useFastApi;
       // --- 👆 [추가] ---
 
     } catch (error) {
-      console.error("Error loading settings from Firestore:", error);
+      console.error("Error loading settings from localStorage:", error);
       fontSize = localStorage.getItem("fontSize") || fontSize;
       language = localStorage.getItem("language") || language;
     } finally {

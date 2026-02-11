@@ -7,8 +7,6 @@ import {
   onSnapshot,
   getDocs,
   serverTimestamp,
-  doc,
-  updateDoc,
   limit,
   startAfter,
   writeBatch,
@@ -312,19 +310,26 @@ export const createChatSlice = (set, get) => {
       set({ messages: updatedMessages });
 
       try {
-        const messageRef = doc(
-          get().db,
-          "chats",
-          user.uid,
-          "conversations",
-          currentConversationId,
-          "messages",
-          messageId
-        );
-        await updateDoc(messageRef, { feedback: newFeedback });
+        // FastAPI를 통해 메시지 피드백 업데이트
+        const response = await fetch(`${FASTAPI_BASE_URL}/conversations/${currentConversationId}/messages/${messageId}/feedback`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            feedback: newFeedback,
+            usr_id: user.uid,
+            ten_id: "1000",
+            stg_id: "DEV",
+            sec_ofc_id: "000025"
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to update feedback: ${response.statusText}`);
+        }
+
         console.log(`Feedback set to '${newFeedback}' for message ${messageId}`);
       } catch (error) {
-        console.error("Error updating message feedback in Firestore:", error);
+        console.error("Error updating message feedback via API:", error);
         const errorKey = getErrorKey(error);
         const errorMessage =
           locales[language]?.[errorKey] ||

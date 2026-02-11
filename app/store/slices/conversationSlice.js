@@ -266,76 +266,32 @@ export const createConversationSlice = (set, get) => ({
       return;
     }
 
-    // --- 👇 [수정] FastAPI 사용 시 ---
-    if (useFastApi) {
-      try {
-        const params = new URLSearchParams({
-          usr_id: user.uid,
-          ten_id: "1000",
-          stg_id: "DEV",
-          sec_ofc_id: "000025"
-        });
-        const response = await fetch(`${FASTAPI_BASE_URL}/conversations/${conversationId}?${params}`, {
-          method: "DELETE",
-        });
-        if (!response.ok) throw new Error("Failed to delete conversation");
-
-        await get().loadConversations(user.uid); // 목록 갱신
-        
-        if (get().currentConversationId === conversationId) {
-           get().unsubscribeAllMessagesAndScenarios?.();
-           get().resetMessages?.(get().language);
-           set({ 
-             currentConversationId: null, 
-             expandedConversationId: null 
-           });
-        }
-        showEphemeralToast("Conversation deleted (API).", "success");
-      } catch (error) {
-        console.error("FastAPI deleteConversation error:", error);
-        showEphemeralToast("Failed to delete conversation.", "error");
-      }
-      return;
-    }
-    // --- 👆 [수정] ---
-
-    const conversationRef = doc(
-      get().db,
-      "chats",
-      user.uid,
-      "conversations",
-      conversationId
-    );
-    const batch = writeBatch(get().db);
-
+    // FastAPI를 통해 대화방 삭제
     try {
-      const scenariosRef = collection(conversationRef, "scenario_sessions");
-      const scenariosSnapshot = await getDocs(scenariosRef);
-      scenariosSnapshot.forEach((doc) => {
-        batch.delete(doc.ref);
+      const params = new URLSearchParams({
+        usr_id: user.uid,
+        ten_id: "1000",
+        stg_id: "DEV",
+        sec_ofc_id: "000025"
       });
-
-      const messagesRef = collection(conversationRef, "messages");
-      const messagesSnapshot = await getDocs(messagesRef);
-      messagesSnapshot.forEach((doc) => {
-        batch.delete(doc.ref);
+      const response = await fetch(`${FASTAPI_BASE_URL}/conversations/${conversationId}?${params}`, {
+        method: "DELETE",
       });
+      if (!response.ok) throw new Error("Failed to delete conversation");
 
-      batch.delete(conversationRef);
-      await batch.commit();
-
-      console.log(`Conversation ${conversationId} deleted successfully.`);
-
+      await get().loadConversations(user.uid); // 목록 갱신
+      
       if (get().currentConversationId === conversationId) {
-        get().unsubscribeAllMessagesAndScenarios?.();
-        get().resetMessages?.(get().language);
-        set({ 
-          currentConversationId: null, 
-          expandedConversationId: null 
-        });
+         get().unsubscribeAllMessagesAndScenarios?.();
+         get().resetMessages?.(get().language);
+         set({ 
+           currentConversationId: null, 
+           expandedConversationId: null 
+         });
       }
+      showEphemeralToast("Conversation deleted.", "success");
     } catch (error) {
-      console.error(`Error deleting conversation ${conversationId}:`, error);
+      console.error("deleteConversation error:", error);
       const errorKey = getErrorKey(error);
       const message =
         locales[language]?.[errorKey] ||
