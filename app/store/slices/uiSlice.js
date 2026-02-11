@@ -1,5 +1,4 @@
 // app/store/slices/uiSlice.js
-import { doc, setDoc, getDoc } from "firebase/firestore";
 import { locales } from "../../lib/locales";
 import { logger } from "../../lib/logger";
 import {
@@ -73,52 +72,54 @@ export const createUISlice = (set, get) => ({
 
   loadGeneralConfig: async () => {
     try {
-      const configRef = doc(get().db, "config", "general");
-      const docSnap = await getDoc(configRef);
-      if (docSnap.exists()) {
-        const config = docSnap.data();
-        set({
-          dimUnfocusedPanels:
-            typeof config.dimUnfocusedPanels === "boolean"
-              ? config.dimUnfocusedPanels
-              : true,
-          showHistoryOnGreeting:
-            typeof config.showHistoryOnGreeting === "boolean"
-              ? config.showHistoryOnGreeting
-              : false,
-          mainInputPlaceholder: config.mainInputPlaceholder || "",
-          headerTitle: config.headerTitle || "AI Chatbot",
-          enableMainChatMarkdown:
-            typeof config.enableMainChatMarkdown === "boolean"
-              ? config.enableMainChatMarkdown
-              : true,
-          showScenarioBubbles:
-            typeof config.showScenarioBubbles === "boolean"
-              ? config.showScenarioBubbles
-              : true,
-          llmProvider: config.llmProvider || "gemini",
-          flowiseApiUrl: config.flowiseApiUrl || "",
-        });
+      if (typeof window !== "undefined") {
+        const savedConfig = localStorage.getItem("uiConfig");
+        if (savedConfig) {
+          const config = JSON.parse(savedConfig);
+          set({
+            dimUnfocusedPanels:
+              typeof config.dimUnfocusedPanels === "boolean"
+                ? config.dimUnfocusedPanels
+                : true,
+            showHistoryOnGreeting:
+              typeof config.showHistoryOnGreeting === "boolean"
+                ? config.showHistoryOnGreeting
+                : false,
+            mainInputPlaceholder: config.mainInputPlaceholder || "",
+            headerTitle: config.headerTitle || "AI Chatbot",
+            enableMainChatMarkdown:
+              typeof config.enableMainChatMarkdown === "boolean"
+                ? config.enableMainChatMarkdown
+                : true,
+            showScenarioBubbles:
+              typeof config.showScenarioBubbles === "boolean"
+                ? config.showScenarioBubbles
+                : true,
+            llmProvider: config.llmProvider || "gemini",
+            flowiseApiUrl: config.flowiseApiUrl || "",
+          });
+        }
       }
     } catch (error) {
-      console.error("Error loading general config from Firestore:", error);
+      logger.error("Error loading general config from localStorage:", error);
     }
   },
 
   saveGeneralConfig: async (settings) => {
     try {
-      const configRef = doc(get().db, "config", "general");
-      await setDoc(configRef, settings, { merge: true });
+      if (typeof window !== "undefined") {
+        localStorage.setItem("uiConfig", JSON.stringify(settings));
+      }
       set(settings);
       return true;
     } catch (error) {
-      console.error("Error saving general config to Firestore:", error);
+      logger.error("Error saving general config to localStorage:", error);
       return false;
     }
   },
 
   savePersonalSettings: async (settings) => {
-    const { user, db, showEphemeralToast, language } = get();
+    const { user, showEphemeralToast, language } = get();
     if (!user) return false;
 
     // 롤백을 위한 이전 설정 백업
@@ -132,17 +133,21 @@ export const createUISlice = (set, get) => ({
     try {
       set(settings); // 1. 낙관적 업데이트 (UI 즉시 반영)
 
-      const userSettingsRef = doc(db, "settings", user.uid);
-      await setDoc(userSettingsRef, settings, { merge: true }); // 2. Firestore 저장
+      // 2. localStorage에 저장
+      if (typeof window !== "undefined") {
+        const userSettings = JSON.parse(localStorage.getItem("userSettings") || "{}");
+        const updatedSettings = { ...userSettings, ...settings };
+        localStorage.setItem("userSettings", JSON.stringify(updatedSettings));
+      }
       return true;
     } catch (error) {
-      console.error("Error saving personal settings:", error);
+      logger.error("Error saving personal settings:", error);
       const errorMsg =
         locales[language]?.errorUnexpected || "Failed to save settings.";
       showEphemeralToast(errorMsg, "error");
 
       // 저장 실패 시 롤백
-      console.log("Rolling back settings due to error...", previousSettings);
+      logger.log("Rolling back settings due to error...", previousSettings);
       set(previousSettings);
       
       return false;
@@ -186,15 +191,10 @@ export const createUISlice = (set, get) => ({
     set({ fontSize: size });
     if (typeof window !== "undefined") {
       localStorage.setItem("fontSize", size);
-    }
-    const user = get().user;
-    if (user) {
-      try {
-        const userSettingsRef = doc(get().db, "settings", user.uid);
-        await setDoc(userSettingsRef, { fontSize: size }, { merge: true });
-      } catch (error) {
-        console.error("Error saving font size to Firestore:", error);
-      }
+      // Also save to personal settings
+      const userSettings = JSON.parse(localStorage.getItem("userSettings") || "{}");
+      userSettings.fontSize = size;
+      localStorage.setItem("userSettings", JSON.stringify(userSettings));
     }
   },
 
@@ -202,15 +202,10 @@ export const createUISlice = (set, get) => ({
     set({ language: lang });
     if (typeof window !== "undefined") {
       localStorage.setItem("language", lang);
-    }
-    const user = get().user;
-    if (user) {
-      try {
-        const userSettingsRef = doc(get().db, "settings", user.uid);
-        await setDoc(userSettingsRef, { language: lang }, { merge: true });
-      } catch (error) {
-        console.error("Error saving language to Firestore:", error);
-      }
+      // Also save to personal settings
+      const userSettings = JSON.parse(localStorage.getItem("userSettings") || "{}");
+      userSettings.language = lang;
+      localStorage.setItem("userSettings", JSON.stringify(userSettings));
     }
     const { currentConversationId, messages } = get();
     if (!currentConversationId || messages.length <= 1) {
