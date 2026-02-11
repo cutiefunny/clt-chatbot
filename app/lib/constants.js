@@ -7,6 +7,9 @@
  * ==============================================================================
  */
 
+// FastAPI 베이스 URL
+export const FASTAPI_BASE_URL = "http://202.20.84.65:8083/api/v1";
+
 // 기본 API 파라미터
 export const API_DEFAULTS = {
   TENANT_ID: 1000,
@@ -56,6 +59,9 @@ export const SPLASH_DURATION = 1000;  // 1초
 export const TARGET_AUTO_OPEN_URL = 
   "http://172.20.130.91:9110/oceans/BPM_P1002.do?tenId=2000&stgId=TST&pgmNr=BKD_M3201";
 
+// 자동 팝업 완료 메시지
+export const AUTO_OPEN_COMPLETE_MESSAGE = "e-SOP 링크 호출 완료했습니다.";
+
 // 기본 부모 Origin
 export const DEFAULT_PARENT_ORIGIN = "http://localhost:3000";
 
@@ -78,3 +84,14 @@ export const PARENT_ANIMATION_DELAY_MS = 300;
  */
 
 export const TEMP_ID_PREFIX = "temp_";
+
+/**
+ * ==============================================================================
+ * 정규식 패턴 상수
+ * ==============================================================================
+ */
+
+// 정규식 특수문자 이스케이프 함수
+export const escapeRegExp = (string) => {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); 
+};

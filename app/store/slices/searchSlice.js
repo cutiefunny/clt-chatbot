@@ -1,6 +1,7 @@
 // app/store/slices/searchSlice.js
 import { collection, getDocs } from "firebase/firestore"; // Firestore 접근 필요
 import { locales } from "../../lib/locales"; // 오류 메시지용
+import { logger } from "../../lib/logger";
 import { getErrorKey } from "../../lib/errorHandler"; // 오류 처리용
 
 export const createSearchSlice = (set, get) => ({

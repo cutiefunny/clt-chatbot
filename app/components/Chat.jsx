@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { useChatStore } from "../store";
 import { useTranslations } from "../hooks/useTranslations";
 import { useAutoScroll } from "../hooks/useAutoScroll";
+import { TARGET_AUTO_OPEN_URL, AUTO_OPEN_COMPLETE_MESSAGE, escapeRegExp } from "../lib/constants";
 import styles from "./Chat.module.css";
 import ScenarioBubble from "./ScenarioBubble";
 import CheckCircle from "./icons/CheckCircle";
@@ -16,17 +17,6 @@ import MarkdownRenderer from "./MarkdownRenderer";
 import LikeIcon from "./icons/LikeIcon";
 import DislikeIcon from "./icons/DislikeIcon";
 import mainMarkdownStyles from "./MainChatMarkdown.module.css";
-
-// --- 👇 [유지] 대체할 URL과 문구 정의 ---
-const TARGET_AUTO_OPEN_URL = "http://172.20.130.91:9110/oceans/BPM_P1002.do?tenId=2000&stgId=TST&pgmNr=BKD_M3201";
-const REPLACEMENT_TEXT = "e-SOP 링크 호출 완료했습니다.";
-// --- 👆 [유지] ---
-
-// --- 👇 [추가] 정규식 특수문자 이스케이프 함수 ---
-const escapeRegExp = (string) => {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); 
-};
-// --- 👆 [추가] ---
 
 const ChartRenderer = dynamic(() => import("./ChartRenderer"), {
   loading: () => <p>Loading chart...</p>,
@@ -124,7 +114,7 @@ const MessageWithButtons = ({ msg }) => {
   if (sender === 'bot' && typeof processedText === "string" && 
      (processedText.includes('172.20.130.91') || processedText.includes('BPM_P1002'))) {
     
-    const replacement = REPLACEMENT_TEXT;
+    const replacement = AUTO_OPEN_COMPLETE_MESSAGE;
 
     // 1. URL 자체를 문구로 치환 (HTML 엔티티 &amp; 대응)
     const escapedUrl = escapeRegExp(TARGET_AUTO_OPEN_URL);

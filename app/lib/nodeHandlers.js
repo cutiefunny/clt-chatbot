@@ -1,6 +1,7 @@
 // app/lib/nodeHandlers.js
 import { getGeminiResponseWithSlots } from './gemini'; 
 import { getNextNode, interpolateMessage, getDeepValue } from './chatbotEngine';
+import { logger } from './logger';
 
 // [수정] JSON 내부 문자열 재귀 보간 함수 (순환 참조 방지 추가)
 function interpolateObjectStrings(obj, slots, visited = new WeakSet()) {

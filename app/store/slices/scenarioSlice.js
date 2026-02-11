@@ -16,8 +16,8 @@ import {
 } from "firebase/firestore";
 import { locales } from "../../lib/locales";
 import { getErrorKey } from "../../lib/errorHandler";
-
-const FASTAPI_BASE_URL = "http://202.20.84.65:8083/api/v1"; // FastAPI 주소
+import { logger } from "../../lib/logger";
+import { FASTAPI_BASE_URL } from "../../lib/constants";
 
 export const createScenarioSlice = (set, get) => ({
   scenarioStates: {},
@@ -30,7 +30,7 @@ export const createScenarioSlice = (set, get) => ({
   setScenarioSlots: (sessionId, newSlots) => {
     set(state => {
       if (!sessionId || !state.scenarioStates[sessionId]) {
-        console.warn(`[setScenarioSlots] Invalid or non-existent scenario session ID: ${sessionId}`);
+        logger.warn(`[setScenarioSlots] Invalid or non-existent scenario session ID: ${sessionId}`);
         return state;
       }
       
@@ -66,7 +66,7 @@ export const createScenarioSlice = (set, get) => ({
                 set({ availableScenarios: ids, scenarioCategories: scenarios });
                 return;
             }
-        } catch (e) { console.error(e); }
+        } catch (e) { logger.error('Error in setScenarioSlots', e); }
     }
     // --- 👆 [수정] ---
 
@@ -77,7 +77,7 @@ export const createScenarioSlice = (set, get) => ({
       const scenarioIds = querySnapshot.docs.map((doc) => doc.id);
       set({ availableScenarios: scenarioIds });
     } catch (error) {
-      console.error("Error loading available scenarios:", error);
+      logger.error("Error loading available scenarios:", error);
       const { language, showEphemeralToast } = get();
       const errorKey = getErrorKey(error);
       const message =
@@ -159,7 +159,7 @@ export const createScenarioSlice = (set, get) => ({
         await updateDoc(scenarioRef, {
           lastUsedAt: serverTimestamp(),
         });
-        console.log(`Updated lastUsedAt for scenario: ${scenarioId}`);
+        logger.log(`Updated lastUsedAt for scenario: ${scenarioId}`);
       } catch (error) {
         console.warn(
           `[openScenarioPanel] Failed to update lastUsedAt for scenario ${scenarioId}:`,

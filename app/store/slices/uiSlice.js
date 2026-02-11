@@ -1,6 +1,7 @@
 // app/store/slices/uiSlice.js
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { locales } from "../../lib/locales";
+import { logger } from "../../lib/logger";
 import {
   postToParent,
   PARENT_ORIGIN,

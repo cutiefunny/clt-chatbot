@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { useChatStore } from "../../store";
+import { logger } from "../../lib/logger";
 import styles from "../general/page.module.css"; // general의 CSS 재사용
 import Link from "next/link";
 import { useTranslations } from "../../hooks/useTranslations";
