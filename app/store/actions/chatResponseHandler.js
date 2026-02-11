@@ -8,7 +8,7 @@ import { locales } from "../../lib/locales";
 // 자동 팝업을 트리거할 타겟 URL 정의
 const TARGET_AUTO_OPEN_URL = "http://172.20.130.91:9110/oceans/BPM_P1002.do?tenId=2000&stgId=TST&pgmNr=BKD_M3201";
 // FastAPI 서버 주소
-const FASTAPI_URL = "https://musclecat-api.vercel.app/chat";
+const FASTAPI_URL = "http://202.20.84.65:8083/api/v1/chat";
 
 // URL 포함 여부 확인 및 새 창 열기 헬퍼 함수
 const checkAndOpenUrl = (text) => {

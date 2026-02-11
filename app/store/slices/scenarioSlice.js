@@ -17,7 +17,7 @@ import {
 import { locales } from "../../lib/locales";
 import { getErrorKey } from "../../lib/errorHandler";
 
-const FASTAPI_BASE_URL = "https://musclecat-api.vercel.app"; // FastAPI 주소
+const FASTAPI_BASE_URL = "http://202.20.84.65:8083/api/v1"; // FastAPI 주소
 
 export const createScenarioSlice = (set, get) => ({
   scenarioStates: {},

@@ -15,7 +15,7 @@ import {
 import { locales } from "../../lib/locales";
 import { getErrorKey } from "../../lib/errorHandler";
 
-const FASTAPI_BASE_URL = "https://musclecat-api.vercel.app"; // FastAPI 주소
+const FASTAPI_BASE_URL = "http://202.20.84.65:8083/api/v1"; // FastAPI 주소
 
 export const createConversationSlice = (set, get) => ({
   // State
@@ -33,7 +33,7 @@ export const createConversationSlice = (set, get) => ({
       set({ unsubscribeConversations: null });
 
       try {
-        const response = await fetch(`${FASTAPI_BASE_URL}/conversations`);
+        const response = await fetch(`${FASTAPI_BASE_URL}/conversations?usr_id=${userId}`);
         if (!response.ok) throw new Error("Failed to fetch conversations");
         const conversations = await response.json();
         set({ conversations });

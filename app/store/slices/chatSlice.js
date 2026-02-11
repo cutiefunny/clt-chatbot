@@ -18,7 +18,7 @@ import { getErrorKey } from "../../lib/errorHandler";
 import { handleResponse } from "../actions/chatResponseHandler";
 
 const MESSAGE_LIMIT = 15;
-const FASTAPI_BASE_URL = "https://musclecat-api.vercel.app"; // FastAPI 주소
+const FASTAPI_BASE_URL = "http://202.20.84.65:8083/api/v1"; // FastAPI 주소
 
 // 초기 메시지 함수 (chatSlice가 관리)
 const getInitialMessages = (lang = "ko") => {
