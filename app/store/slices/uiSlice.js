@@ -39,7 +39,6 @@ export const createUISlice = (set, get) => ({
   llmProvider: "gemini",
   flowiseApiUrl: "",
   isProfileModalOpen: false,
-  isSearchModalOpen: false,
   isScenarioModalOpen: false,
   isNotificationModalOpen: false,
   isManualModalOpen: false,
@@ -221,9 +220,6 @@ export const createUISlice = (set, get) => ({
 
   openProfileModal: () => set({ isProfileModalOpen: true }),
   closeProfileModal: () => set({ isProfileModalOpen: false }),
-  openSearchModal: () =>
-    set({ isSearchModalOpen: true, searchResults: [], isSearching: false }),
-  closeSearchModal: () => set({ isSearchModalOpen: false }),
   openScenarioModal: () => set({ isScenarioModalOpen: true }),
   closeScenarioModal: () => set({ isScenarioModalOpen: false }),
   openNotificationModal: () => set({ isNotificationModalOpen: true }),
@@ -346,7 +342,6 @@ export const createUISlice = (set, get) => ({
       llmProvider: "gemini",
       flowiseApiUrl: "",
       isProfileModalOpen: false,
-      isSearchModalOpen: false,
       isScenarioModalOpen: false,
       isNotificationModalOpen: false,
       isManualModalOpen: false,

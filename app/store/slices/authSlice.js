@@ -1,6 +1,5 @@
 // app/store/slices/authSlice.js
 import {
-  signOut,
   doc,
   getDoc,
   collection,
@@ -44,11 +43,8 @@ export const createAuthSlice = (set, get) => ({
       }
       // --- 👆 [추가] ---
       
-      if (get().user?.isTestUser) {
-        get().clearUserAndData();
-      } else {
-        await signOut(get().auth);
-      }
+      // 테스트 유저만 사용 - 항상 clearUserAndData 실행
+      get().clearUserAndData();
     } catch (error) {
       console.error("Logout failed:", error);
     }
@@ -213,7 +209,6 @@ export const createAuthSlice = (set, get) => ({
       lastVisibleMessage: null,
       hasMoreMessages: true,
       isProfileModalOpen: false,
-      isSearchModalOpen: false,
       isScenarioModalOpen: false,
       isNotificationModalOpen: false,
       isManualModalOpen: false,

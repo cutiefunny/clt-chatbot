@@ -1,11 +1,6 @@
 import { initializeApp, getApps } from "firebase/app";
 // --- 👇 [수정] collection, getDocs, writeBatch 추가 ---
 import { getFirestore, serverTimestamp, deleteDoc, doc, getDoc, setDoc, updateDoc, limit, startAfter, collection, addDoc, getDocs, writeBatch } from "firebase/firestore";
-import {
-    getAuth,
-    signOut,
-    onAuthStateChanged
-} from "firebase/auth";
 
 
 const firebaseConfig = {
@@ -26,6 +21,5 @@ if (!getApps().length) {
 }
 
 export const db = getFirestore(app);
-export const auth = getAuth(app);
 // --- 👇 [수정] 추가된 함수들을 export ---
-export { signOut, onAuthStateChanged, serverTimestamp, deleteDoc, doc, getDoc, setDoc, updateDoc, limit, startAfter, collection, addDoc, getDocs, writeBatch };
+export { serverTimestamp, deleteDoc, doc, getDoc, setDoc, updateDoc, limit, startAfter, collection, addDoc, getDocs, writeBatch };

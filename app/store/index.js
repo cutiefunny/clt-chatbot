@@ -2,8 +2,6 @@
 import { create } from "zustand";
 import {
   db,
-  auth,
-  onAuthStateChanged,
   doc,
   getDoc,
   collection, // 하위 슬라이스에서 사용될 수 있으므로 유지
@@ -30,7 +28,6 @@ import { createChatSlice } from "./slices/chatSlice";
 import { createScenarioSlice } from "./slices/scenarioSlice";
 import { createNotificationSlice } from "./slices/notificationSlice";
 import { createConversationSlice } from "./slices/conversationSlice";
-import { createSearchSlice } from "./slices/searchSlice";
 
 // 초기 메시지 함수 (chatSlice 또는 유틸리티로 이동 고려)
 const getInitialMessages = (lang = "ko") => {
@@ -45,7 +42,6 @@ const getInitialMessages = (lang = "ko") => {
 export const useChatStore = create((set, get) => ({
   // Firebase 인스턴스
   db,
-  auth,
 
   // 각 슬라이스 결합
   ...createAuthSlice(set, get),
@@ -54,7 +50,6 @@ export const useChatStore = create((set, get) => ({
   ...createScenarioSlice(set, get),
   ...createNotificationSlice(set, get),
   ...createConversationSlice(set, get),
-  ...createSearchSlice(set, get),
 
   // --- 👇 [제거] 복합 액션들을 각 슬라이스로 이동 ---
   // handleNotificationNavigation: (notificationSlice.js로 이동)

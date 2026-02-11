@@ -15,7 +15,6 @@ import HistoryIcon from "./icons/HistoryIcon";
 import NewChatIcon from "./icons/NewChatIcon";
 
 const ProfileModal = dynamic(() => import("./ProfileModal"));
-const SearchModal = dynamic(() => import("./SearchModal"));
 const NotificationModal = dynamic(() => import("./NotificationModal"));
 const ManualModal = dynamic(() => import("./ManualModal"));
 
@@ -31,8 +30,6 @@ export default function HistoryPanel() {
     pinConversation,
     isHistoryPanelOpen,
     toggleHistoryPanel,
-    isSearchModalOpen,
-    openSearchModal,
     isProfileModalOpen,
     openProfileModal,
     isNotificationModalOpen,
@@ -129,7 +126,8 @@ export default function HistoryPanel() {
                 >
                   <BellIcon />
                 </button>
-                <button className={styles.iconButton} onClick={openSearchModal}>
+                {/* TODO: 검색 기능 재구현 필요 (현재 Firestore 의존성 제거 중) */}
+                <button className={styles.iconButton} disabled title="검색 기능 준비 중">
                   <SearchIcon />
                 </button>
               </div>
@@ -206,7 +204,6 @@ export default function HistoryPanel() {
       </div>
 
       {isProfileModalOpen && <ProfileModal />}
-      {isSearchModalOpen && <SearchModal />}
       {isNotificationModalOpen && <NotificationModal />}
       {isManualModalOpen && <ManualModal />}
     </>
