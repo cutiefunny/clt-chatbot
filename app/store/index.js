@@ -76,6 +76,27 @@ export const useChatStore = create((set, get) => ({
     get().loadAvailableScenarios?.(); 
     // --- 👆 [수정] ---
 
+    // --- 👇 [추가] localStorage에 저장된 test user 자동 로그인 ---
+    if (typeof window !== "undefined") {
+      const savedTestUser = localStorage.getItem("testUser");
+      if (savedTestUser) {
+        try {
+          const testUser = JSON.parse(savedTestUser);
+          console.log(`[InitAuth] Auto-logging in with saved test user: ${testUser.uid}`);
+          setTimeout(() => {
+            if (!get().user) {
+              get().setUserAndLoadData(testUser);
+            }
+          }, 0);
+          return; // Firebase Auth 리스너 이후 로직 스킵
+        } catch (error) {
+          console.error("[InitAuth] Failed to parse saved test user:", error);
+          localStorage.removeItem("testUser");
+        }
+      }
+    }
+    // --- 👆 [추가] ---
+
     // URL 파라미터 테스트 로그인
     if (typeof window !== "undefined") {
       const urlParams = new URLSearchParams(window.location.search);

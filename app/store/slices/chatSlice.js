@@ -77,7 +77,13 @@ export const createChatSlice = (set, get) => {
       // --- 👇 [수정] FastAPI 사용 시 메시지 로드 및 데이터 매핑 ---
       if (useFastApi) {
         try {
-          const response = await fetch(`${FASTAPI_BASE_URL}/conversations/${conversationId}`);
+          const params = new URLSearchParams({
+            usr_id: user.uid,
+            ten_id: "1000",
+            stg_id: "DEV",
+            sec_ofc_id: "000025"
+          });
+          const response = await fetch(`${FASTAPI_BASE_URL}/conversations/${conversationId}?${params}`);
           if (!response.ok) throw new Error("Failed to load messages");
           
           const data = await response.json();

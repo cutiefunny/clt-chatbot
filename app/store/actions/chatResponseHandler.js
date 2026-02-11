@@ -45,7 +45,7 @@ const responseHandlers = {
   },
   // --- 👇 [추가] text 타입 (FastAPI용) 핸들러 ---
   text: (data, getFn) => {
-    const responseText = data.message || data.text || "(No Content)";
+    const responseText = data.message || data.text || data.content || "(No Content)";
     getFn().addMessage("bot", { text: responseText });
     checkAndOpenUrl(responseText);
     // 슬롯이 있다면 업데이트 (FastAPI 응답에 slots가 포함된다면)
@@ -83,13 +83,28 @@ export async function handleResponse(get, set, messagePayload) {
     llmProvider,
     messages,
     currentConversationId,
+    createNewConversation,
     conversations,
     updateConversationTitle,
-    setForceScrollToBottom, 
+    setForceScrollToBottom,
     // --- 👇 [추가] 설정값 가져오기 ---
-    useFastApi, 
+    useFastApi,
     // --- 👆 [추가] ---
   } = get();
+  
+  // --- 👇 [추가] 대화가 없으면 자동 생성 ---
+  let conversationId = currentConversationId;
+  if (!conversationId) {
+    console.log("[handleResponse] No conversation found. Creating new conversation...");
+    conversationId = await createNewConversation(true); // returnId=true로 새 대화 생성 후 ID 반환
+    if (!conversationId) {
+      console.error("[handleResponse] Failed to create new conversation");
+      showEphemeralToast("Failed to create conversation.", "error");
+      set({ isLoading: false });
+      return;
+    }
+  }
+  // --- 👆 [추가] ---
 
   const textForUser = messagePayload.displayText || messagePayload.text;
 
@@ -111,7 +126,7 @@ export async function handleResponse(get, set, messagePayload) {
     await addMessage("user", { text: textForUser });
   }
 
-  const conversationIdForBotResponse = get().currentConversationId;
+  const conversationIdForBotResponse = conversationId;
 
   if (!conversationIdForBotResponse) {
     console.error("[handleResponse] Failed to determine conversationId for bot response.");
@@ -167,10 +182,16 @@ export async function handleResponse(get, set, messagePayload) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          usr_id: get().user.uid,
           conversation_id: conversationIdForBotResponse,
           content: messagePayload.text,
-          language: language,
-          slots: get().slots, // 기존 슬롯 전달
+          language: language || "ko",
+          type: "text",
+          slots: get().slots,
+          role: messagePayload.type || "user",
+          scenario_session_id: get().activeScenarioSessionId || null,
+          source_handle: messagePayload.sourceHandle || null,
+          current_node_id: messagePayload.currentNodeId || null,
         }),
         signal: controller.signal,
       });

@@ -33,7 +33,13 @@ export const createConversationSlice = (set, get) => ({
       set({ unsubscribeConversations: null });
 
       try {
-        const response = await fetch(`${FASTAPI_BASE_URL}/conversations?usr_id=${userId}`);
+        const params = new URLSearchParams({
+          usr_id: userId,
+          ten_id: "1000",
+          stg_id: "DEV",
+          sec_ofc_id: "000025"
+        });
+        const response = await fetch(`${FASTAPI_BASE_URL}/conversations?${params}`);
         if (!response.ok) throw new Error("Failed to fetch conversations");
         const conversations = await response.json();
         set({ conversations });
@@ -171,7 +177,13 @@ export const createConversationSlice = (set, get) => ({
         const response = await fetch(`${FASTAPI_BASE_URL}/conversations`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title }),
+          body: JSON.stringify({
+            usr_id: user.uid,
+            title,
+            ten_id: "1000",
+            stg_id: "DEV",
+            sec_ofc_id: "000025"
+          }),
         });
         if (!response.ok) throw new Error("Failed to create conversation");
         
@@ -257,7 +269,13 @@ export const createConversationSlice = (set, get) => ({
     // --- 👇 [수정] FastAPI 사용 시 ---
     if (useFastApi) {
       try {
-        const response = await fetch(`${FASTAPI_BASE_URL}/conversations/${conversationId}`, {
+        const params = new URLSearchParams({
+          usr_id: user.uid,
+          ten_id: "1000",
+          stg_id: "DEV",
+          sec_ofc_id: "000025"
+        });
+        const response = await fetch(`${FASTAPI_BASE_URL}/conversations/${conversationId}?${params}`, {
           method: "DELETE",
         });
         if (!response.ok) throw new Error("Failed to delete conversation");
@@ -348,7 +366,13 @@ export const createConversationSlice = (set, get) => ({
         await fetch(`${FASTAPI_BASE_URL}/conversations/${conversationId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: trimmedTitle }),
+          body: JSON.stringify({
+            usr_id: user.uid,
+            title: trimmedTitle,
+            ten_id: "1000",
+            stg_id: "DEV",
+            sec_ofc_id: "000025"
+          }),
         });
         await get().loadConversations(user.uid);
       } catch (error) {
@@ -398,7 +422,13 @@ export const createConversationSlice = (set, get) => ({
         await fetch(`${FASTAPI_BASE_URL}/conversations/${conversationId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ is_pinned: pinned }),
+          body: JSON.stringify({
+            usr_id: user.uid,
+            is_pinned: pinned,
+            ten_id: "1000",
+            stg_id: "DEV",
+            sec_ofc_id: "000025"
+          }),
         });
         await get().loadConversations(user.uid);
       } catch (error) {

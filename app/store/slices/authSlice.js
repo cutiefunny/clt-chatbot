@@ -34,11 +34,26 @@ export const createAuthSlice = (set, get) => ({
       photoURL: "/images/avatar.png",
       isTestUser: true,
     };
+    
+    // --- 👇 [추가] localStorage에 저장 ---
+    if (typeof window !== "undefined") {
+      localStorage.setItem("testUser", JSON.stringify(mockUser));
+      console.log(`[AuthSlice] Test user saved to localStorage: ${userId}`);
+    }
+    // --- 👆 [추가] ---
+    
     get().setUserAndLoadData(mockUser);
   },
 
   logout: async () => {
     try {
+      // --- 👇 [추가] localStorage에서 제거 ---
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("testUser");
+        console.log("[AuthSlice] Test user removed from localStorage");
+      }
+      // --- 👆 [추가] ---
+      
       if (get().user?.isTestUser) {
         get().clearUserAndData();
       } else {
