@@ -1,7 +1,6 @@
 // app/lib/chatbotEngine.js
 
-import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
-import { db } from './firebase';
+import { fetchScenario, fetchScenarios } from './api';
 import { locales } from './locales';
 import { nodeHandlers } from './nodeHandlers'; // nodeHandlers 임포트
 import { FASTAPI_BASE_URL, API_DEFAULTS } from './constants';
@@ -80,9 +79,13 @@ export async function findActionByTrigger(message) {
 }
 
 export const getScenarioList = async () => {
-  const scenariosCollection = collection(db, 'scenarios');
-  const querySnapshot = await getDocs(scenariosCollection);
-  return querySnapshot.docs.map(doc => doc.id);
+    const scenarios = await fetchScenarios();
+    if (!Array.isArray(scenarios)) return [];
+
+    // 백엔드가 [{id, title, ...}] 또는 [id, id, ...] 형태로 줄 수 있어 방어적으로 처리
+    return scenarios
+        .map((s) => (typeof s === 'string' ? s : s?.id))
+        .filter(Boolean);
 };
 
 export const getScenario = async (scenarioId) => {
@@ -90,23 +93,16 @@ export const getScenario = async (scenarioId) => {
   if (!scenarioId || typeof scenarioId !== 'string') {
       throw new Error(`Invalid scenario ID provided: ${scenarioId}`);
   }
-  const scenarioRef = doc(db, 'scenarios', scenarioId);
-  const scenarioSnap = await getDoc(scenarioRef);
-
-  if (scenarioSnap.exists()) {
-    const scenarioData = scenarioSnap.data(); // 데이터 가져오기
+    const scenarioData = await fetchScenario(scenarioId);
 
     // 스키마 버전 확인
-    if (!scenarioData.version || scenarioData.version !== SUPPORTED_SCHEMA_VERSION) {
-        console.warn(`Scenario "${scenarioId}" has unsupported schema version "${scenarioData.version}". Expected "${SUPPORTED_SCHEMA_VERSION}". Proceeding with caution.`);
+    if (!scenarioData?.version || scenarioData.version !== SUPPORTED_SCHEMA_VERSION) {
+        console.warn(
+            `Scenario "${scenarioId}" has unsupported schema version "${scenarioData?.version}". Expected "${SUPPORTED_SCHEMA_VERSION}". Proceeding with caution.`
+        );
     }
 
-    return scenarioData; // 시나리오 데이터 반환
-  } else {
-    // 시나리오를 찾지 못했을 때 더 명확한 에러 메시지
-    console.error(`Scenario with ID "${scenarioId}" not found in Firestore.`);
-    throw new Error(`Scenario with ID "${scenarioId}" not found!`);
-  }
+    return scenarioData;
 };
 
 const evaluateCondition = (slotValue, operator, conditionValue) => {

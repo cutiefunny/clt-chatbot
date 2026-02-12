@@ -45,7 +45,7 @@ export const createChatSlice = (set, get) => {
     },
 
     loadInitialMessages: async (conversationId) => {
-      const { user, language, showEphemeralToast, useFastApi } = get();
+      const { user, language, showEphemeralToast } = get();
       if (!user || !conversationId) return;
 
       const initialMessage = getInitialMessages(language)[0];
@@ -138,7 +138,7 @@ export const createChatSlice = (set, get) => {
       const isTemporaryId = String(messageId).startsWith("temp_");
       if (isTemporaryId) {
         console.warn(
-          "setSelectedOption called with temporary ID, skipping Firestore update for now:",
+          "setSelectedOption called with temporary ID, skipping server update for now:",
           messageId
         );
         set((state) => ({
@@ -338,15 +338,7 @@ export const createChatSlice = (set, get) => {
         showEphemeralToast,
         currentConversationId: globalConversationId,
         createNewConversation,
-        useFastApi, // --- 👇 [추가] ---
       } = get();
-
-      // --- 👇 [수정] FastAPI 모드일 경우 Firestore 저장 로직 건너뛰기 ---
-      if (useFastApi) {
-        // console.log("FastAPI mode enabled. Skipping Firestore save in saveMessage.");
-        return null;
-      }
-      // --- 👆 [수정] ---
 
       if (!user || !message || typeof message !== "object") {
         if (!message || typeof message !== "object")

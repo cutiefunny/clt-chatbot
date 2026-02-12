@@ -1,9 +1,4 @@
 // app/store/slices/authSlice.js
-import {
-  collection,
-  getDocs,
-  writeBatch,
-} from "../../lib/firebase";
 import { locales } from "../../lib/locales";
 
 export const createAuthSlice = (set, get) => ({
@@ -51,35 +46,7 @@ export const createAuthSlice = (set, get) => ({
   setUserAndLoadData: async (user) => {
     set({ user, isInitializing: true });
 
-    // 1. 데이터 마이그레이션 (Await)
-    try {
-      console.log("Checking for conversation migration...");
-      const conversationsRef = collection(
-        get().db,
-        "chats",
-        user.uid,
-        "conversations"
-      );
-      const snapshot = await getDocs(conversationsRef);
-      const batch = writeBatch(get().db);
-      let updatesNeeded = 0;
-      snapshot.forEach((doc) => {
-        if (doc.data().pinned === undefined) {
-          batch.update(doc.ref, { pinned: false });
-          updatesNeeded++;
-        }
-      });
-      if (updatesNeeded > 0) {
-        await batch.commit();
-        console.log(`Migration complete: ${updatesNeeded} conversations updated.`);
-      } else {
-        console.log("No conversation migration needed.");
-      }
-    } catch (error) {
-      console.error("Conversation migration failed:", error);
-    }
-
-    // 2. 개인 설정 로드 (Await)
+    // 1. 개인 설정 로드 (Await)
     let fontSize = "default",
       language = "ko",
       contentTruncateLimit = 10,
@@ -145,7 +112,7 @@ export const createAuthSlice = (set, get) => ({
       });
       get().resetMessages?.(language);
     }
-    // 3. 리스너 구독 시작 (No Await)
+    // 2. 리스너 구독 시작 (No Await)
     get().unsubscribeAll();
     get().loadConversations(user.uid);
     get().subscribeToUnreadStatus(user.uid);
@@ -156,7 +123,7 @@ export const createAuthSlice = (set, get) => ({
     await new Promise(resolve => setTimeout(resolve, 3000));
     console.log("Timer finished. Hiding splash screen.");
 
-    // 4. 초기화 완료
+    // 3. 초기화 완료
     set({ isInitializing: false });
   },
 

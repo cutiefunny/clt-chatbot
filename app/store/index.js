@@ -1,24 +1,5 @@
 // app/store/index.js
 import { create } from "zustand";
-import {
-  db,
-  doc,
-  getDoc,
-  collection, // 하위 슬라이스에서 사용될 수 있으므로 유지
-  getDocs, // 하위 슬라이스에서 사용될 수 있으므로 유지
-  writeBatch, // 하위 슬라이스에서 사용될 수 있으므로 유지
-  serverTimestamp, // 하위 슬라이스에서 사용될 수 있으므로 유지
-  addDoc, // 하위 슬라이스에서 사용될 수 있으므로 유지
-  updateDoc, // 추가
-  deleteDoc, // 추가
-  limit,     // 추가
-  startAfter,// 추가
-  query,     // 추가
-  orderBy,   // 추가
-  where,     // 추가
-  onSnapshot,// 추가
-  setDoc,    // 추가
-} from "../lib/firebase"; // 필요한 firebase 함수 임포트 유지
 import { locales } from "../lib/locales";
 
 // 슬라이스 임포트
@@ -40,9 +21,6 @@ const getInitialMessages = (lang = "ko") => {
 
 // 메인 스토어 생성
 export const useChatStore = create((set, get) => ({
-  // Firebase 인스턴스
-  db,
-
   // 각 슬라이스 결합
   ...createAuthSlice(set, get),
   ...createUISlice(set, get),

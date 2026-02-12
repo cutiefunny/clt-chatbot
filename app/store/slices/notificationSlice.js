@@ -1,8 +1,41 @@
 // app/store/slices/notificationSlice.js
 
 'use client';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, deleteDoc, updateDoc, where, limit } from 'firebase/firestore';
 import { openLinkThroughParent } from '../../lib/parentMessaging';
+
+const STORAGE_KEY_PREFIX = "notifications_v1";
+
+function getStorageKey(userId) {
+  return `${STORAGE_KEY_PREFIX}:${userId}`;
+}
+
+function safeReadNotifications(userId) {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(getStorageKey(userId));
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function safeWriteNotifications(userId, notifications) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(getStorageKey(userId), JSON.stringify(notifications));
+  } catch {
+    // ignore
+  }
+}
+
+function sortByCreatedAtDesc(items) {
+  return [...items].sort((a, b) => {
+    const aT = new Date(a.createdAt || a.created_at || 0).getTime();
+    const bT = new Date(b.createdAt || b.created_at || 0).getTime();
+    return bT - aT;
+  });
+}
 
 export const createNotificationSlice = (set, get) => ({
   // State
@@ -32,11 +65,15 @@ export const createNotificationSlice = (set, get) => ({
     }
 
     try {
-        const notificationRef = doc(get().db, "users", user.uid, "notifications", notificationId);
-        await deleteDoc(notificationRef);
+      const existing = safeReadNotifications(user.uid);
+      const next = existing.filter((n) => String(n.id) !== String(notificationId));
+      safeWriteNotifications(user.uid, next);
+
+      // UI 동기화
+      set({ toastHistory: sortByCreatedAtDesc(next) });
     } catch (error) {
-        console.error("Error deleting notification from Firestore:", error);
-        get().showToast("Failed to delete notification.", "error");
+      console.error("Error deleting notification from localStorage:", error);
+      get().showToast("Failed to delete notification.", "error");
     }
   },
 
@@ -44,12 +81,13 @@ export const createNotificationSlice = (set, get) => ({
     set({ toast: { id: Date.now(), message, type, visible: true } });
 
     const dataToSave = {
-        message,
-        type,
-        createdAt: serverTimestamp(),
-        read: false,
-        scenarioSessionId,
-        conversationId,
+      id: `notif_${Date.now()}`,
+      message,
+      type,
+      createdAt: new Date().toISOString(),
+      read: false,
+      scenarioSessionId,
+      conversationId,
     };
     get().saveNotification(dataToSave);
 
@@ -60,75 +98,89 @@ export const createNotificationSlice = (set, get) => ({
     const user = get().user;
     if (!user) return;
     try {
-      const notificationsCollection = collection(get().db, "users", user.uid, "notifications");
-      await addDoc(notificationsCollection, toastData);
+      const existing = safeReadNotifications(user.uid);
+      const next = sortByCreatedAtDesc([toastData, ...existing]);
+      safeWriteNotifications(user.uid, next);
+
+      // 즉시 UI 반영
+      set({ toastHistory: next });
     } catch (error) {
-      console.error("Error saving notification to Firestore:", error);
+      console.error("Error saving notification to localStorage:", error);
     }
   },
 
   loadNotificationHistory: (userId) => {
     if (get().unsubscribeNotifications) return;
-    const q = query(collection(get().db, "users", userId, "notifications"), orderBy("createdAt", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const notifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      set({ toastHistory: notifications });
-    }, (error) => {
-        console.error("Error listening to notification changes:", error);
+
+    // 최초 로드
+    const initial = sortByCreatedAtDesc(safeReadNotifications(userId));
+    set({ toastHistory: initial });
+
+    // localStorage 기반 폴링 (Firestore onSnapshot 대체)
+    const intervalId = window.setInterval(() => {
+      const items = sortByCreatedAtDesc(safeReadNotifications(userId));
+      set({ toastHistory: items });
+    }, 2000);
+
+    set({
+      unsubscribeNotifications: () => {
+        window.clearInterval(intervalId);
+      },
     });
-    set({ unsubscribeNotifications: unsubscribe });
   },
 
   subscribeToUnreadStatus: (userId) => {
-    const q = query(
-      collection(get().db, "users", userId, "notifications"),
-      where("read", "==", false),
-      limit(1)
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      set({ hasUnreadNotifications: !snapshot.empty });
-    }, (error) => {
-      console.error("Error listening to unread status:", error);
+    if (get().unsubscribeUnreadStatus) return;
+
+    const intervalId = window.setInterval(() => {
+      const items = safeReadNotifications(userId);
+      set({ hasUnreadNotifications: items.some((n) => n && n.read === false) });
+    }, 2000);
+
+    set({
+      unsubscribeUnreadStatus: () => {
+        window.clearInterval(intervalId);
+      },
     });
-    set({ unsubscribeUnreadStatus: unsubscribe });
   },
 
   subscribeToUnreadScenarioNotifications: (userId) => {
-    const q = query(
-      collection(get().db, "users", userId, "notifications"),
-      where("read", "==", false)
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    if (get().unsubscribeUnreadScenarioNotifications) return;
+
+    const intervalId = window.setInterval(() => {
+      const items = safeReadNotifications(userId).filter((n) => n && n.read === false);
       const unreadSessions = new Set();
       const unreadConvos = new Set();
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        if (data.scenarioSessionId) {
-          unreadSessions.add(data.scenarioSessionId);
-          if (data.conversationId) {
-            unreadConvos.add(data.conversationId);
-          }
+      items.forEach((n) => {
+        if (n.scenarioSessionId) {
+          unreadSessions.add(n.scenarioSessionId);
+          if (n.conversationId) unreadConvos.add(n.conversationId);
         }
       });
-      set({
-        unreadScenarioSessions: unreadSessions,
-        unreadConversations: unreadConvos
-      });
-    }, (error) => {
-      console.error("Error listening to unread scenario notifications:", error);
+      set({ unreadScenarioSessions: unreadSessions, unreadConversations: unreadConvos });
+    }, 2000);
+
+    set({
+      unsubscribeUnreadScenarioNotifications: () => {
+        window.clearInterval(intervalId);
+      },
     });
-    set({ unsubscribeUnreadScenarioNotifications: unsubscribe });
   },
 
   markNotificationAsRead: async (notificationId) => {
     const user = get().user;
     if (!user) return;
-
-    const notificationRef = doc(get().db, "users", user.uid, "notifications", notificationId);
     try {
-      await updateDoc(notificationRef, { read: true });
+      const existing = safeReadNotifications(user.uid);
+      const next = existing.map((n) =>
+        String(n.id) === String(notificationId) ? { ...n, read: true } : n
+      );
+      safeWriteNotifications(user.uid, next);
+
+      // 즉시 UI 반영
+      set({ toastHistory: sortByCreatedAtDesc(next) });
     } catch (error) {
-      console.error("Error marking notification as read:", error);
+      console.error("Error marking notification as read (localStorage):", error);
     }
   },
 
