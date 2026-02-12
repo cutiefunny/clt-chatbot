@@ -160,4 +160,7 @@ Check out the Next.js deployment documentation for more details.
 * **Prerequisites**: Flowise 관련 요구사항 추가.
 * **Environment Variables**: `NEXT_PUBLIC_FLOWISE_API_URL` 추가 및 설명. `NEXT_PUBLIC_PARENT_ORIGIN` 추가.
 * **Configure LLM Provider**: Flowise 사용 시 관리자 페이지 설정 안내 추가.
-* **Firebase Migration**: 숏컷 메뉴 시스템을 FastAPI 기반으로 마이그레이션 완료. `getScenarioCategories()` 함수가 FastAPI `/shortcut` 엔드포인트 호출로 변경되었습니다.
+* **Firebase Migration**: 숏컷 메뉴 시스템을 FastAPI 기반으로 마이그레이션 완료. 
+  - 카테고리 관리: FastAPI `GET/PUT /scenarios/categories` 엔드포인트 사용
+  - 숏컷 조회/저장: FastAPI `GET/PUT /shortcut` 엔드포인트 사용
+  - `getScenarioCategories()` 함수는 `/shortcut` 엔드포인트에서 캐시된 데이터 반환

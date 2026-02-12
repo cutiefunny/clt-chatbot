@@ -35,12 +35,13 @@ export async function getScenarioCategories() {
     
     if (response.ok) {
       const data = await response.json();
-      // API 응답 구조: { name: string, subCategories: [...] }
-      // 이를 배열 형태로 변환하여 저장 (기존 호환성 유지)
-      const categoryData = [{
-        name: data.name || "시나리오",
-        subCategories: data.subCategories || []
-      }];
+      // --- [수정] 백엔드 명세에 따라 응답 처리 ---
+      // API 응답 구조: Array of ShortcutResponse 또는 단일 ShortcutResponse
+      // ShortcutResponse: { id, name, order, subCategories }
+      let categoryData = data;
+      if (!Array.isArray(data)) {
+        categoryData = [data];
+      }
       
       cachedScenarioCategories = categoryData;
       lastFetchTime = now;
@@ -51,28 +52,7 @@ export async function getScenarioCategories() {
     }
   } catch (error) {
     console.warn("Error fetching scenario categories from FastAPI:", error);
-    
-    // --- 👇 [임시] Firestore Fallback (백엔드 준비 전까지 사용) ---
-    // 백엔드가 준비되면 이 블록 전체 제거 가능
-    try {
-      console.log('[getScenarioCategories] Firestore fallback으로 시도...');
-      const shortcutRef = doc(db, "shortcut", "main");
-      const docSnap = await getDoc(shortcutRef);
-
-      if (docSnap.exists() && docSnap.data().categories) {
-        cachedScenarioCategories = docSnap.data().categories;
-        lastFetchTime = now;
-        console.log('[getScenarioCategories] Firestore에서 로드 성공 (temporary fallback):', cachedScenarioCategories);
-        return cachedScenarioCategories;
-      } else {
-        console.warn("Shortcut document 'main' not found in Firestore. Returning empty array.");
-        return [];
-      }
-    } catch (fallbackError) {
-      console.error("Firestore fallback also failed:", fallbackError);
-      return [];
-    }
-    // --- 👆 [임시] ---
+    return [];
   }
 }
 

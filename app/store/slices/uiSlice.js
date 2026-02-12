@@ -25,9 +25,9 @@ export const createUISlice = (set, get) => ({
   fontSizeDefault: "16px", // 기본값
   isDevMode: false,
   sendTextShortcutImmediately: false,
-  // --- 👇 [추가] FastAPI 사용 여부 상태 ---
-  useFastApi: false, 
-  // --- 👆 [추가] ---
+  // --- 👇 [수정] FastAPI를 기본값으로 설정 (Firestore 제거) ---
+  useFastApi: true, 
+  // --- 👆 [수정] ---
   dimUnfocusedPanels: true,
   showHistoryOnGreeting: false, // 초기 화면 히스토리 표시 여부
   mainInputPlaceholder: "", // 메인 입력창 플레이스홀더
@@ -324,9 +324,9 @@ export const createUISlice = (set, get) => ({
       fontSizeDefault: "16px",
       isDevMode: false,
       sendTextShortcutImmediately: false,
-      // --- 👇 [추가] 초기화 시 false ---
-      useFastApi: false, 
-      // --- 👆 [추가] ---
+      // --- 👇 [수정] 초기화 시 true로 설정 (Firestore 제거) ---
+      useFastApi: true, 
+      // --- 👆 [수정] ---
       dimUnfocusedPanels: true,
       showHistoryOnGreeting: false,
       mainInputPlaceholder: "",

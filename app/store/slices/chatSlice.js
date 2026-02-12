@@ -10,6 +10,8 @@ import {
   limit,
   startAfter,
   writeBatch,
+  updateDoc,
+  doc,
 } from "firebase/firestore";
 import { locales } from "../../lib/locales";
 import { getErrorKey } from "../../lib/errorHandler";
@@ -412,7 +414,7 @@ export const createChatSlice = (set, get) => {
       } else if (item.action.type === "scenario") {
         const scenarioId = item.action.value;
 
-        if (!availableScenarios.includes(scenarioId)) {
+        if (!Object.keys(availableScenarios).includes(scenarioId)) {
           console.warn(
             `[handleShortcutClick] Scenario not found: ${scenarioId}. Shortcut title: "${item.title}"`
           );

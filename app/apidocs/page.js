@@ -224,113 +224,6 @@ export default function ApiDocsPage() {
           백엔드에서 구현이 필요한 시나리오 세션 관리 엔드포인트입니다.
         </p>
 
-        {/* GET /shortcut */}
-        <section className={styles.endpoint}>
-          <div className={styles.endpointHeader}>
-            <span className={`${styles.method} ${styles.get}`}>GET</span>
-            <span className={styles.path}>/shortcut</span>
-          </div>
-          <div className={styles.endpointBody}>
-            <h2>숏컷(카테고리) 메뉴 조회</h2>
-            <p>
-              채팅 입력창 좌측에 표시되는 숏컷 메뉴 구조를 조회합니다.<br/>
-              테넌트별, 스테이지별로 다른 메뉴 구조를 반환할 수 있습니다.
-            </p>
-            <dl>
-              <dt>Query Parameters:</dt>
-              <dd>
-                <code>ten_id</code> (string): 테넌트 ID (예: "1000")<br/>
-                <code>stg_id</code> (string): 스테이지 ID (예: "DEV", "PROD")<br/>
-                <code>sec_ofc_id</code> (string): 부서/오피스 ID (예: "000025")
-              </dd>
-              <dt>응답 (200 OK):</dt>
-              <dd><pre>{`{
-  "name": "시나리오",
-  "subCategories": [
-    {
-      "title": "기본 인사",
-      "items": [
-        {
-          "title": "인사하기",
-          "description": "기본 인사 시나리오를 시작합니다",
-          "action": {
-            "type": "scenario" | "custom" | "text",
-            "value": "greeting" // 시나리오 ID, 커스텀 액션명, 또는 텍스트
-          }
-        },
-        ...
-      ]
-    },
-    ...
-  ]
-}`}</pre></dd>
-              <dt>에러 응답 (404 Not Found):</dt>
-              <dd><pre>{`{
-  "error": "shortcut_not_found",
-  "message": "해당 테넌트/스테이지의 숏컷 메뉴가 없습니다"
-}`}</pre></dd>
-            </dl>
-          </div>
-        </section>
-
-        {/* PUT /shortcut */}
-        <section className={styles.endpoint}>
-          <div className={styles.endpointHeader}>
-            <span className={`${styles.method} ${styles.put}`}>PUT</span>
-            <span className={styles.path}>/shortcut</span>
-          </div>
-          <div className={styles.endpointBody}>
-            <h2>숏컷(카테고리) 메뉴 저장</h2>
-            <p>
-              채팅 입력창 좌측의 숏컷 메뉴 구조를 업데이트합니다.<br/>
-              기존 데이터는 완전히 대체됩니다. (Upsert)
-            </p>
-            <dl>
-              <dt>Content-Type:</dt>
-              <dd><code>application/json</code></dd>
-              <dt>요청 본문 (Request Body):</dt>
-              <dd><pre>{`{
-  "ten_id": "1000",
-  "stg_id": "DEV",
-  "sec_ofc_id": "000025",
-  "name": "시나리오",
-  "subCategories": [
-    {
-      "title": "기본 인사",
-      "items": [
-        {
-          "title": "인사하기",
-          "description": "기본 인사 시나리오를 시작합니다",
-          "action": {
-            "type": "scenario" | "custom" | "text",
-            "value": "greeting"
-          }
-        },
-        ...
-      ]
-    },
-    ...
-  ]
-}`}</pre></dd>
-              <dt>응답 (200 OK):</dt>
-              <dd><pre>{`{
-  "success": true,
-  "message": "숏컷 메뉴가 저장되었습니다",
-  "saved_at": "2024-05-20T10:30:00Z"
-}`}</pre></dd>
-              <dt>에러 응답 (400 Bad Request):</dt>
-              <dd><pre>{`{
-  "error": "validation_error",
-  "message": "요청 데이터가 유효하지 않습니다",
-  "details": {
-    "field": "subCategories",
-    "reason": "배열이어야 합니다"
-  }
-}`}</pre></dd>
-            </dl>
-          </div>
-        </section>
-
         {/* GET /scenarios/categories */}
         <section className={styles.endpoint}>
           <div className={styles.endpointHeader}>
@@ -338,19 +231,54 @@ export default function ApiDocsPage() {
             <span className={styles.path}>/scenarios/categories</span>
           </div>
           <div className={styles.endpointBody}>
-            <h2>시나리오 카테고리 조회</h2>
-            <p>저장된 시나리오 카테고리 및 구성 정보를 반환합니다.</p>
+            <h2>숏컷 카테고리 목록 조회</h2>
+            <p>
+              채팅 입력창 좌측에 표시되는 숏컷 카테고리 메뉴 구조를 조회합니다.<br/>
+              테넌트별, 스테이지별로 다른 메뉴 구조를 반환할 수 있습니다.
+            </p>
             <dl>
-              <dt>응답 (200 OK):</dt>
+              <dt>Query Parameters:</dt>
+              <dd>
+                <code>ten_id</code> (string, optional): 테넌트 ID (기본값: "1000")<br/>
+                <code>stg_id</code> (string, optional): 스테이지 ID (기본값: "DEV")<br/>
+                <code>sec_ofc_id</code> (string, optional): 부서/오피스 ID (기본값: "000025")
+              </dd>
+              <dt>응답 (200 OK) - Dictionary&lt;string, Array of CategoryResponse&gt;:</dt>
               <dd><pre>{`{
-  "categories": [
+  "key1": [
     {
-      "id": "category-1",
-      "name": "인사",
+      "id": "category-001",
+      "name": "자주 찾는 서비스",
       "order": 1,
-      "items": ["greeting", "small-talk", ...]
+      "subCategories": [
+        {
+          "title": "기본 문의",
+          "items": [
+            {
+              "title": "요금 조회",
+              "description": "현재 요금을 조회합니다",
+              "action": {
+                "type": "scenario",
+                "value": "charge_inquiry"
+              }
+            },
+            ...
+          ]
+        },
+        ...
+      ]
     },
     ...
+  ]
+}`}</pre></dd>
+              <dt>에러 응답 (422 Validation Error):</dt>
+              <dd><pre>{`{
+  "detail": [
+    {
+      "loc": ["query", "ten_id"],
+      "msg": "value is not a valid string",
+      "type": "type_error.string"
+    }
   ]
 }`}</pre></dd>
             </dl>
@@ -364,17 +292,38 @@ export default function ApiDocsPage() {
             <span className={styles.path}>/scenarios/categories</span>
           </div>
           <div className={styles.endpointBody}>
-            <h2>시나리오 카테고리 저장</h2>
-            <p>시나리오 카테고리 구성을 저장하거나 업데이트합니다. (Firestore shortcut/main 대체)</p>
+            <h2>숏컷 카테고리 저장</h2>
+            <p>
+              채팅 입력창 좌측의 숏컷 카테고리 메뉴 구조를 업데이트합니다.<br/>
+              기존 데이터는 완전히 대체됩니다. (Upsert)
+            </p>
             <dl>
-              <dt>요청 본문:</dt>
+              <dt>Content-Type:</dt>
+              <dd><code>application/json</code></dd>
+              <dt>요청 본문 (Request Body) - ShortCutInsertRequest:</dt>
               <dd><pre>{`{
   "categories": [
     {
-      "id": "category-1",
-      "name": "인사",
+      "id": "category-001",
+      "name": "자주 찾는 서비스",
       "order": 1,
-      "items": ["greeting", "small-talk"]
+      "subCategories": [
+        {
+          "title": "기본 문의",
+          "items": [
+            {
+              "title": "요금 조회",
+              "description": "현재 요금을 조회합니다",
+              "action": {
+                "type": "scenario",
+                "value": "charge_inquiry"
+              }
+            },
+            ...
+          ]
+        },
+        ...
+      ]
     },
     ...
   ]
@@ -382,8 +331,265 @@ export default function ApiDocsPage() {
               <dt>응답 (200 OK):</dt>
               <dd><pre>{`{
   "success": true,
-  "message": "Categories saved successfully",
-  "updated_at": "2024-05-20T10:30:00Z"
+  "message": "숏컷 카테고리가 저장되었습니다",
+  "saved_at": "2024-05-20T10:30:00Z"
+}`}</pre></dd>
+              <dt>에러 응답 (422 Validation Error):</dt>
+              <dd><pre>{`{
+  "detail": [
+    {
+      "loc": ["body", "categories"],
+      "msg": "field required",
+      "type": "value_error.missing"
+    }
+  ]
+}`}</pre></dd>
+            </dl>
+          </div>
+        </section>
+
+        {/* GET /scenarios/categories */}
+        <section className={styles.endpoint}>
+          <div className={styles.endpointHeader}>
+            <span className={`${styles.method} ${styles.get}`}>GET</span>
+            <span className={styles.path}>/scenarios/categories</span>
+          </div>
+          <div className={styles.endpointBody}>
+            <h2>숏컷 카테고리 목록 조회</h2>
+            <p>
+              채팅 입력창 좌측에 표시되는 숏컷 카테고리 메뉴 구조를 조회합니다.<br/>
+              테넌트별, 스테이지별로 다른 메뉴 구조를 반환할 수 있습니다.
+            </p>
+            <dl>
+              <dt>Query Parameters:</dt>
+              <dd>
+                <code>ten_id</code> (string, optional): 테넌트 ID (기본값: "1000")<br/>
+                <code>stg_id</code> (string, optional): 스테이지 ID (기본값: "DEV")<br/>
+                <code>sec_ofc_id</code> (string, optional): 부서/오피스 ID (기본값: "000025")
+              </dd>
+              <dt>응답 (200 OK) - Dictionary&lt;string, Array of CategoryResponse&gt;:</dt>
+              <dd><pre>{`{
+  "key1": [
+    {
+      "id": "category-001",
+      "name": "자주 찾는 서비스",
+      "order": 1,
+      "subCategories": [
+        {
+          "title": "기본 문의",
+          "items": [
+            {
+              "title": "요금 조회",
+              "description": "현재 요금을 조회합니다",
+              "action": {
+                "type": "scenario",
+                "value": "charge_inquiry"
+              }
+            },
+            ...
+          ]
+        },
+        ...
+      ]
+    },
+    ...
+  ]
+}`}</pre></dd>
+              <dt>에러 응답 (422 Validation Error):</dt>
+              <dd><pre>{`{
+  "detail": [
+    {
+      "loc": ["query", "ten_id"],
+      "msg": "value is not a valid string",
+      "type": "type_error.string"
+    }
+  ]
+}`}</pre></dd>
+            </dl>
+          </div>
+        </section>
+
+        {/* PUT /scenarios/categories */}
+        <section className={styles.endpoint}>
+          <div className={styles.endpointHeader}>
+            <span className={`${styles.method} ${styles.put}`}>PUT</span>
+            <span className={styles.path}>/scenarios/categories</span>
+          </div>
+          <div className={styles.endpointBody}>
+            <h2>숏컷 카테고리 저장</h2>
+            <p>
+              채팅 입력창 좌측의 숏컷 카테고리 메뉴 구조를 업데이트합니다.<br/>
+              기존 데이터는 완전히 대체됩니다. (Upsert)
+            </p>
+            <dl>
+              <dt>Content-Type:</dt>
+              <dd><code>application/json</code></dd>
+              <dt>요청 본문 (Request Body) - ShortCutInsertRequest:</dt>
+              <dd><pre>{`{
+  "categories": [
+    {
+      "id": "category-001",
+      "name": "자주 찾는 서비스",
+      "order": 1,
+      "subCategories": [
+        {
+          "title": "기본 문의",
+          "items": [
+            {
+              "title": "요금 조회",
+              "description": "현재 요금을 조회합니다",
+              "action": {
+                "type": "scenario",
+                "value": "charge_inquiry"
+              }
+            },
+            ...
+          ]
+        },
+        ...
+      ]
+    },
+    ...
+  ]
+}`}</pre></dd>
+              <dt>응답 (200 OK):</dt>
+              <dd><pre>{`{
+  "success": true,
+  "message": "숏컷 카테고리가 저장되었습니다",
+  "saved_at": "2024-05-20T10:30:00Z"
+}`}</pre></dd>
+              <dt>에러 응답 (422 Validation Error):</dt>
+              <dd><pre>{`{
+  "detail": [
+    {
+      "loc": ["body", "categories"],
+      "msg": "field required",
+      "type": "value_error.missing"
+    }
+  ]
+}`}</pre></dd>
+            </dl>
+          </div>
+        </section>
+
+        {/* GET /shortcut */}
+        <section className={styles.endpoint}>
+          <div className={styles.endpointHeader}>
+            <span className={`${styles.method} ${styles.get}`}>GET</span>
+            <span className={styles.path}>/shortcut</span>
+          </div>
+          <div className={styles.endpointBody}>
+            <h2>저장된 숏컷 목록 조회</h2>
+            <p>
+              숏컷(바로가기) 목록을 조회합니다.<br/>
+              테넌트별, 스테이지별로 다른 숏컷 목록을 반환할 수 있습니다.
+            </p>
+            <dl>
+              <dt>Query Parameters:</dt>
+              <dd>
+                <code>ten_id</code> (string, optional): 테넌트 ID (기본값: "1000")<br/>
+                <code>stg_id</code> (string, optional): 스테이지 ID (기본값: "DEV")<br/>
+                <code>sec_ofc_id</code> (string, optional): 부서/오피스 ID (기본값: "000025")
+              </dd>
+              <dt>응답 (200 OK) - Array of ShortcutResponse:</dt>
+              <dd><pre>{`[
+  {
+    "id": "shortcut-001",
+    "name": "자주 찾는 서비스",
+    "order": 1,
+    "subCategories": [
+      {
+        "title": "기본 문의",
+        "items": [
+          {
+            "title": "요금 조회",
+            "description": "현재 요금을 조회합니다",
+            "action": {
+              "type": "scenario",
+              "value": "charge_inquiry"
+            }
+          },
+          ...
+        ]
+      },
+      ...
+    ]
+  },
+  ...
+]`}</pre></dd>
+              <dt>에러 응답 (422 Validation Error):</dt>
+              <dd><pre>{`{
+  "detail": [
+    {
+      "loc": ["query", "ten_id"],
+      "msg": "value is not a valid string",
+      "type": "type_error.string"
+    }
+  ]
+}`}</pre></dd>
+            </dl>
+          </div>
+        </section>
+
+        {/* PUT /shortcut */}
+        <section className={styles.endpoint}>
+          <div className={styles.endpointHeader}>
+            <span className={`${styles.method} {{styles.put}}`}>PUT</span>
+            <span className={styles.path}>/shortcut</span>
+          </div>
+          <div className={styles.endpointBody}>
+            <h2>저장된 숏컷 목록 저장</h2>
+            <p>
+              숏컷(바로가기) 목록을 업데이트합니다.<br/>
+              기존 데이터는 완전히 대체됩니다. (Upsert)
+            </p>
+            <dl>
+              <dt>Content-Type:</dt>
+              <dd><code>application/json</code></dd>
+              <dt>요청 본문 (Request Body) - ShortcutPutRequest:</dt>
+              <dd><pre>{`{
+  "ten_id": "1000",
+  "stg_id": "DEV",
+  "sec_ofc_id": "000025",
+  "categories": [
+    {
+      "name": "자주 찾는 서비스",
+      "subCategories": [
+        {
+          "title": "기본 문의",
+          "items": [
+            {
+              "title": "요금 조회",
+              "description": "현재 요금을 조회합니다",
+              "action": {
+                "type": "scenario",
+                "value": "charge_inquiry"
+              }
+            },
+            ...
+          ]
+        },
+        ...
+      ]
+    },
+    ...
+  ]
+}`}</pre></dd>
+              <dt>응답 (200 OK):</dt>
+              <dd><pre>{`{
+  "success": true,
+  "message": "숏컷이 저장되었습니다",
+  "saved_at": "2024-05-20T10:30:00Z"
+}`}</pre></dd>
+              <dt>에러 응답 (422 Validation Error):</dt>
+              <dd><pre>{`{
+  "detail": [
+    {
+      "loc": ["body", "categories"],
+      "msg": "field required",
+      "type": "value_error.missing"
+    }
+  ]
 }`}</pre></dd>
             </dl>
           </div>

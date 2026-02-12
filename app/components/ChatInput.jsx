@@ -164,7 +164,7 @@ export default function ChatInput() {
       <div className={styles.quickActionsContainer} ref={menuRef}>
         {/* 1. 카테고리 버튼들 렌더링 */}
         {scenarioCategories.map((category) => (
-          <div key={category.name} className={styles.categoryWrapper}>
+          <div key={category.id || category.name} className={styles.categoryWrapper}>
             <button
               className={`GlassEffect ${styles.categoryButton} ${
                 shortcutMenuOpen === category.name ? styles.active : ""

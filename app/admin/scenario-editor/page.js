@@ -23,14 +23,22 @@ export default function ScenarioEditorPage() {
     const showEphemeralToast = useChatStore((state) => state.showEphemeralToast);
     const availableScenarios = useChatStore((state) => state.availableScenarios);
     const loadAvailableScenarios = useChatStore((state) => state.loadAvailableScenarios);
+    const loadScenarioCategories = useChatStore((state) => state.loadScenarioCategories);
     
     const [categories, setCategories] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [collapsedPaths, setCollapsedPaths] = useState(new Set());
 
     useEffect(() => {
+        // FastAPI에서 숏컷(시나리오 카테고리) 목록과 사용 가능한 시나리오 목록 로드
+        loadScenarioCategories();
         loadAvailableScenarios();
-    }, [loadAvailableScenarios]);
+        console.log('[ScenarioEditorPage] 데이터 로드 시작');
+    }, [loadScenarioCategories, loadAvailableScenarios]);
+
+    useEffect(() => {
+        console.log('[ScenarioEditorPage] availableScenarios 업데이트:', availableScenarios);
+    }, [availableScenarios]);
 
     useEffect(() => {
         if (!scenarioCategories) {
@@ -154,7 +162,7 @@ export default function ScenarioEditorPage() {
                                 </div>
                                 <div className={`${styles.collapsibleContent} ${isCatCollapsed ? styles.collapsed : ''}`}>
                                     <div className={styles.nodeContent}>
-                                        <input type="text" value={cat.name} onChange={e => handleInputChange([catIndex], 'name', e.target.value)} placeholder="Category Name" className={styles.inputField}/>
+                                        <input type="text" value={cat.name || ''} onChange={e => handleInputChange([catIndex], 'name', e.target.value)} placeholder="Category Name" className={styles.inputField}/>
                                         
                                         {cat.subCategories.map((subCat, subCatIndex) => {
                                             const subCatPath = `${catPath}.subCategories.${subCatIndex}`;
@@ -170,7 +178,7 @@ export default function ScenarioEditorPage() {
                                                     </div>
                                                     <div className={`${styles.collapsibleContent} ${isSubCatCollapsed ? styles.collapsed : ''}`}>
                                                         <div className={styles.nodeContent}>
-                                                            <input type="text" value={subCat.title} onChange={e => handleInputChange([catIndex, 'subCategories', subCatIndex], 'title', e.target.value)} placeholder="Sub-Category Title" className={styles.inputField}/>
+                                                            <input type="text" value={subCat.title || ''} onChange={e => handleInputChange([catIndex, 'subCategories', subCatIndex], 'title', e.target.value)} placeholder="Sub-Category Title" className={styles.inputField}/>
                                                             
                                                             {subCat.items.map((item, itemIndex) => (
                                                                 <div key={`item-${itemIndex}`} className={styles.itemNode}>
@@ -179,12 +187,12 @@ export default function ScenarioEditorPage() {
                                                                         <button onClick={() => deleteItem([catIndex, 'subCategories', subCatIndex, 'items', itemIndex])} className={styles.deleteButton}><TrashIcon /></button>
                                                                     </div>
                                                                     <div className={styles.nodeContent}>
-                                                                        <input type="text" value={item.title} onChange={e => handleInputChange([catIndex, 'subCategories', subCatIndex, 'items', itemIndex], 'title', e.target.value)} placeholder="Item Title" className={styles.inputField}/>
-                                                                        <input type="text" value={item.description} onChange={e => handleInputChange([catIndex, 'subCategories', subCatIndex, 'items', itemIndex], 'description', e.target.value)} placeholder="Description" className={styles.inputField}/>
+                                                                        <input type="text" value={item.title || ''} onChange={e => handleInputChange([catIndex, 'subCategories', subCatIndex, 'items', itemIndex], 'title', e.target.value)} placeholder="Item Title" className={styles.inputField}/>
+                                                                        <input type="text" value={item.description || ''} onChange={e => handleInputChange([catIndex, 'subCategories', subCatIndex, 'items', itemIndex], 'description', e.target.value)} placeholder="Description" className={styles.inputField}/>
                                                                         
                                                                         <div className={styles.actionContainer}>
                                                                             <select 
-                                                                                value={item.action.type} 
+                                                                                value={item.action?.type || 'scenario'} 
                                                                                 onChange={e => handleInputChange([catIndex, 'subCategories', subCatIndex, 'items', itemIndex, 'action'], 'type', e.target.value)}
                                                                                 className={styles.selectField}
                                                                             >
@@ -196,21 +204,21 @@ export default function ScenarioEditorPage() {
                                                                             </select>
 
                                                                             {/* --- ▼ 수정 ▼ --- */}
-                                                                            {item.action.type === 'scenario' ? (
+                                                                            {(item.action?.type || 'scenario') === 'scenario' ? (
                                                                                 <select 
-                                                                                    value={item.action.value} 
+                                                                                    value={item.action?.value || ''} 
                                                                                     onChange={e => handleInputChange([catIndex, 'subCategories', subCatIndex, 'items', itemIndex, 'action'], 'value', e.target.value)}
                                                                                     className={styles.selectField}
                                                                                 >
                                                                                     <option value="">-- 시나리오 선택 --</option>
-                                                                                    {availableScenarios.map(id => (
-                                                                                        <option key={id} value={id}>{id}</option>
+                                                                                    {Object.entries(availableScenarios).map(([id, name]) => (
+                                                                                        <option key={id} value={id}>{name}</option>
                                                                                     ))}
                                                                                 </select>
-                                                                            ) : item.action.type === 'custom' ? (
+                                                                            ) : (item.action?.type || 'scenario') === 'custom' ? (
                                                                                 <input 
                                                                                     type="text" 
-                                                                                    value={item.action.value} 
+                                                                                    value={item.action?.value || ''} 
                                                                                     onChange={e => handleInputChange([catIndex, 'subCategories', subCatIndex, 'items', itemIndex, 'action'], 'value', e.target.value)} 
                                                                                     placeholder="Custom Action Name (e.g., GET_SCENARIO_LIST)" 
                                                                                     className={styles.inputField}
@@ -218,7 +226,7 @@ export default function ScenarioEditorPage() {
                                                                             ) : ( // 'text' 타입일 경우
                                                                                 <input 
                                                                                     type="text" 
-                                                                                    value={item.action.value} 
+                                                                                    value={item.action?.value || ''} 
                                                                                     onChange={e => handleInputChange([catIndex, 'subCategories', subCatIndex, 'items', itemIndex, 'action'], 'value', e.target.value)} 
                                                                                     placeholder="전송할 텍스트를 입력하세요" 
                                                                                     className={styles.inputField}
@@ -245,7 +253,7 @@ export default function ScenarioEditorPage() {
                 </div>
 
                 <button className={styles.saveButton} onClick={handleSave} disabled={isLoading}>
-                    {isLoading ? '저장 중...' : 'Firestore에 저장하기'}
+                    {isLoading ? '저장 중...' : '저장하기'}
                 </button>
             </main>
         </div>
