@@ -70,7 +70,7 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ### 시나리오 실행 흐름
 
-1.  **시나리오 트리거**: `findActionByTrigger` 함수는 사용자 입력(텍스트 또는 버튼 클릭)이 Firestore의 `shortcut` 컬렉션에 정의된 항목과 일치하는지 확인하여 연결된 시나리오 또는 커스텀 액션을 찾습니다 (`app/lib/chatbotEngine.js`).
+1.  **시나리오 트리거**: `findActionByTrigger` 함수는 사용자 입력(텍스트 또는 버튼 클릭)이 FastAPI의 `/shortcut` 엔드포인트에서 제공하는 숏컷 메뉴 항목과 일치하는지 확인하여 연결된 시나리오 또는 커스텀 액션을 찾습니다 (`app/lib/chatbotEngine.js`). 숏컷 데이터는 5분 동안 캐시됩니다.
 2.  **시나리오 로드**: `getScenario` 함수는 Firestore의 `scenarios` 컬렉션에서 해당 시나리오의 노드와 엣지(연결선) 데이터를 가져옵니다.
 3.  **노드 순회**: `runScenario` 함수가 현재 노드부터 시작하여 로직을 실행합니다. 각 노드 타입에 맞는 핸들러(`app/lib/nodeHandlers.js`)가 호출됩니다.
 4.  **다음 노드 결정**: `getNextNode` 함수는 현재 노드의 실행 결과(사용자 입력, API 응답, 슬롯 값 조건 등)와 엣지 정보를 바탕으로 다음에 실행할 노드를 결정합니다.
@@ -155,8 +155,9 @@ Check out the Next.js deployment documentation for more details.
 * **Tech Stack**: Generative AI 섹션에 Flowise 추가 및 선택 가능 명시.
 * **Project Structure**: `app/admin` 디렉토리 설명 추가. `app/lib` 설명에 `llm.js` 언급 추가.
 * **Scenario Node Types**: `llm`, `branch`, `setSlot`, `delay` 노드 설명 업데이트. `link` 타입 추가.
-* **Scenario Execution Flow**: 트리거 방식 설명 업데이트 (`findActionByTrigger`, `shortcut` 컬렉션). `nodeHandlers.js` 언급 추가. 상태 저장 위치 명확화 (`scenario_sessions`).
-* **New Scenario Addition**: 트리거 등록 방식을 관리자 페이지(`/admin/scenario-editor`) 사용으로 변경. `scenarioTriggers` 객체 대신 Firestore `shortcut` 컬렉션 사용 명시.
+* **Scenario Execution Flow**: 트리거 방식 설명 업데이트 (`findActionByTrigger`, FastAPI `/shortcut` 엔드포인트). `nodeHandlers.js` 언급 추가. 상태 저장 위치 명확화 (`scenario_sessions`).
+* **New Scenario Addition**: 트리거 등록 방식을 관리자 페이지(`/admin/scenario-editor`) 사용으로 변경. Firestore `shortcut` 컬렉션 대신 FastAPI `/shortcut` 엔드포인트 사용 명시.
 * **Prerequisites**: Flowise 관련 요구사항 추가.
 * **Environment Variables**: `NEXT_PUBLIC_FLOWISE_API_URL` 추가 및 설명. `NEXT_PUBLIC_PARENT_ORIGIN` 추가.
 * **Configure LLM Provider**: Flowise 사용 시 관리자 페이지 설정 안내 추가.
+* **Firebase Migration**: 숏컷 메뉴 시스템을 FastAPI 기반으로 마이그레이션 완료. `getScenarioCategories()` 함수가 FastAPI `/shortcut` 엔드포인트 호출로 변경되었습니다.

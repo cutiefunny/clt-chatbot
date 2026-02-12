@@ -6,9 +6,6 @@ import {
   updateDoc,
   onSnapshot,
   serverTimestamp,
-  getDoc,
-  setDoc,
-  getDocs,
   query,
   orderBy,
   where,
@@ -49,67 +46,70 @@ export const createScenarioSlice = (set, get) => ({
   },
 
   loadAvailableScenarios: async () => {
-    // --- 👇 [수정] FastAPI 사용 시 ---
-    if (get().useFastApi) {
-        try {
-            const response = await fetch(`${FASTAPI_BASE_URL}/scenarios`);
-            if (response.ok) {
-                const scenarios = await response.json();
-                // API가 카테고리 구조로 준다면 평탄화하거나 그대로 사용
-                // 여기서는 시나리오 ID 목록만 추출한다고 가정
-                const ids = [];
-                if(Array.isArray(scenarios)) {
-                    scenarios.forEach(cat => {
-                        if(cat.items) cat.items.forEach(item => ids.push(item.id));
-                    });
-                }
-                set({ availableScenarios: ids, scenarioCategories: scenarios });
-                return;
+    // --- 👇 [수정] FastAPI only (Firestore 제거) ---
+    try {
+        const response = await fetch(`${FASTAPI_BASE_URL}/scenarios`);
+        if (response.ok) {
+            const scenarios = await response.json();
+            // API가 카테고리 구조로 준다면 평탄화하거나 그대로 사용
+            // 여기서는 시나리오 ID 목록만 추출한다고 가정
+            const ids = [];
+            if(Array.isArray(scenarios)) {
+                scenarios.forEach(cat => {
+                    if(cat.items) cat.items.forEach(item => ids.push(item.id));
+                });
             }
-        } catch (e) { logger.error('Error in setScenarioSlots', e); }
+            set({ availableScenarios: ids, scenarioCategories: scenarios });
+            return;
+        } else {
+            throw new Error(`Failed with status ${response.status}`);
+        }
+    } catch (error) { 
+        logger.error('Error loading available scenarios from FastAPI:', error);
+        const { language, showEphemeralToast } = get();
+        const errorKey = getErrorKey(error);
+        const message =
+          locales[language]?.[errorKey] || "Failed to load scenario list.";
+        showEphemeralToast(message, "error");
+        set({ availableScenarios: [] });
     }
     // --- 👆 [수정] ---
-
-    // 기존 Firebase 로직
-    try {
-      const scenariosCollection = collection(get().db, "scenarios");
-      const querySnapshot = await getDocs(scenariosCollection);
-      const scenarioIds = querySnapshot.docs.map((doc) => doc.id);
-      set({ availableScenarios: scenarioIds });
-    } catch (error) {
-      logger.error("Error loading available scenarios:", error);
-      const { language, showEphemeralToast } = get();
-      const errorKey = getErrorKey(error);
-      const message =
-        locales[language]?.[errorKey] || "Failed to load scenario list.";
-      showEphemeralToast(message, "error");
-      set({ availableScenarios: [] });
-    }
   },
 
   loadScenarioCategories: async () => {
-    // FastAPI 모드에서는 loadAvailableScenarios에서 카테고리도 함께 로드하므로 중복 로드 방지
-    if (get().useFastApi) return; 
-
+    // --- 👇 [수정] FastAPI only (Firestore 제거) ---
     try {
-      const shortcutRef = doc(get().db, "shortcut", "main");
-      const docSnap = await getDoc(shortcutRef);
+      // API_DEFAULTS에서 기본값 가져오기
+      const { TENANT_ID, STAGE_ID, SEC_OFC_ID } = require("../../lib/constants").API_DEFAULTS;
+      
+      // 쿼리 파라미터 구성
+      const params = new URLSearchParams({
+        ten_id: TENANT_ID,
+        stg_id: STAGE_ID,
+        sec_ofc_id: SEC_OFC_ID,
+      });
 
-      if (docSnap.exists() && docSnap.data().categories) {
-        set({ scenarioCategories: docSnap.data().categories });
+      const response = await fetch(`${FASTAPI_BASE_URL}/shortcut?${params.toString()}`);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('[loadScenarioCategories] FastAPI 응답:', data);
+        
+        // API 응답을 그대로 scenarioCategories에 저장
+        // 응답 구조: { name: string, subCategories: [...] }
+        // 이를 배열 형태로 변환하여 저장
+        const categoryData = [{
+          name: data.name || "시나리오",
+          subCategories: data.subCategories || []
+        }];
+        
+        set({ scenarioCategories: categoryData });
+        logger.log("Loaded scenario categories from FastAPI /shortcut");
+        return;
       } else {
-        console.log(
-          "No shortcut document found, initializing with default data."
-        );
-        const initialData = [];
-        set({ scenarioCategories: initialData });
-        await setDoc(shortcutRef, { categories: initialData });
+        throw new Error(`Failed with status ${response.status}`);
       }
     } catch (error) {
-      console.error(
-        "Error loading/initializing scenario categories from Firestore.",
-        error
-      );
+      logger.error("Error loading scenario categories from FastAPI:", error);
       const { language, showEphemeralToast } = get();
       const errorKey = getErrorKey(error);
       const message =
@@ -117,16 +117,43 @@ export const createScenarioSlice = (set, get) => ({
       showEphemeralToast(message, "error");
       set({ scenarioCategories: [] });
     }
+    // --- 👆 [수정] ---
   },
 
   saveScenarioCategories: async (newCategories) => {
-    const shortcutRef = doc(get().db, "shortcut", "main");
+    // --- 👇 [수정] FastAPI only (Firestore 제거) ---
     try {
-      await setDoc(shortcutRef, { categories: newCategories });
-      set({ scenarioCategories: newCategories });
-      return true;
+      const { TENANT_ID, STAGE_ID, SEC_OFC_ID } = require("../../lib/constants").API_DEFAULTS;
+      
+      // 요청 본문 구성
+      const payload = {
+        ten_id: TENANT_ID,
+        stg_id: STAGE_ID,
+        sec_ofc_id: SEC_OFC_ID,
+        name: newCategories[0]?.name || "시나리오",
+        subCategories: newCategories[0]?.subCategories || []
+      };
+
+      console.log('[saveScenarioCategories] FastAPI PUT 요청:', payload);
+
+      const response = await fetch(`${FASTAPI_BASE_URL}/shortcut`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        console.log('[saveScenarioCategories] FastAPI 저장 성공');
+        set({ scenarioCategories: newCategories });
+        logger.log("Saved scenario categories to FastAPI /shortcut");
+        return true;
+      } else {
+        throw new Error(`Failed with status ${response.status}`);
+      }
     } catch (error) {
-      console.error("Error saving scenario categories to Firestore:", error);
+      logger.error("Error saving scenario categories to FastAPI:", error);
       const { language, showEphemeralToast } = get();
       const errorKey = getErrorKey(error);
       const message =
@@ -134,6 +161,7 @@ export const createScenarioSlice = (set, get) => ({
       showEphemeralToast(message, "error");
       return false;
     }
+    // --- 👆 [수정] ---
   },
 
   openScenarioPanel: async (scenarioId, initialSlots = {}) => {

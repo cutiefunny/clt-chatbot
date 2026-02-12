@@ -4,6 +4,7 @@ import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { locales } from './locales';
 import { nodeHandlers } from './nodeHandlers'; // nodeHandlers 임포트
+import { FASTAPI_BASE_URL, API_DEFAULTS } from './constants';
 
 const SUPPORTED_SCHEMA_VERSION = "1.0";
 
@@ -12,9 +13,9 @@ let lastFetchTime = 0;
 const CACHE_DURATION = 5 * 60 * 1000; // 5분
 
 /**
- * Firestore의 'shortcut' 컬렉션에서 시나리오 카테고리 데이터를 가져옵니다.
+ * FastAPI의 /shortcut 엔드포인트에서 시나리오 카테고리 데이터를 가져옵니다.
  * 성능을 위해 5분 동안 캐시된 데이터를 사용합니다.
- * @returns {Promise<Array>} 시나리오 카테고리 배열
+ * @returns {Promise<Array>} 시나리오 카테고리 배열 (subCategories 포함)
  */
 export async function getScenarioCategories() {
   const now = Date.now();
@@ -23,19 +24,36 @@ export async function getScenarioCategories() {
   }
 
   try {
-    const shortcutRef = doc(db, "shortcut", "main");
-    const docSnap = await getDoc(shortcutRef);
+    // --- 👇 [수정] FastAPI 호출로 변경 ---
+    const { TENANT_ID, STAGE_ID, SEC_OFC_ID } = API_DEFAULTS;
+    const params = new URLSearchParams({
+      ten_id: TENANT_ID,
+      stg_id: STAGE_ID,
+      sec_ofc_id: SEC_OFC_ID,
+    });
 
-    if (docSnap.exists() && docSnap.data().categories) {
-      cachedScenarioCategories = docSnap.data().categories;
+    const response = await fetch(`${FASTAPI_BASE_URL}/shortcut?${params.toString()}`);
+    
+    if (response.ok) {
+      const data = await response.json();
+      // API 응답 구조: { name: string, subCategories: [...] }
+      // 이를 배열 형태로 변환하여 저장 (기존 호환성 유지)
+      const categoryData = [{
+        name: data.name || "시나리오",
+        subCategories: data.subCategories || []
+      }];
+      
+      cachedScenarioCategories = categoryData;
       lastFetchTime = now;
+      console.log('[getScenarioCategories] FastAPI에서 로드 성공:', categoryData);
       return cachedScenarioCategories;
     } else {
-      console.warn("Shortcut document 'main' not found in Firestore. Returning empty array.");
+      console.warn(`Failed to fetch scenario categories from FastAPI (Status: ${response.status}). Returning empty array.`);
       return [];
     }
+    // --- 👆 [수정] ---
   } catch (error) {
-    console.error("Error fetching scenario categories from Firestore:", error);
+    console.error("Error fetching scenario categories from FastAPI:", error);
     return []; // 오류 발생 시 빈 배열 반환
   }
 }
