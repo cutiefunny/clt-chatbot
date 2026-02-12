@@ -6,6 +6,8 @@ import {
   updateDoc,
   onSnapshot,
   serverTimestamp,
+  getDoc,
+  setDoc,
   query,
   orderBy,
   where,
@@ -77,7 +79,6 @@ export const createScenarioSlice = (set, get) => ({
   },
 
   loadScenarioCategories: async () => {
-    // --- 👇 [수정] FastAPI only (Firestore 제거) ---
     try {
       // API_DEFAULTS에서 기본값 가져오기
       const { TENANT_ID, STAGE_ID, SEC_OFC_ID } = require("../../lib/constants").API_DEFAULTS;
@@ -109,19 +110,40 @@ export const createScenarioSlice = (set, get) => ({
         throw new Error(`Failed with status ${response.status}`);
       }
     } catch (error) {
-      logger.error("Error loading scenario categories from FastAPI:", error);
-      const { language, showEphemeralToast } = get();
-      const errorKey = getErrorKey(error);
-      const message =
-        locales[language]?.[errorKey] || "Failed to load scenario categories.";
-      showEphemeralToast(message, "error");
-      set({ scenarioCategories: [] });
+      logger.warn("Error loading scenario categories from FastAPI:", error);
+      
+      // --- 👇 [임시] Firestore Fallback (백엔드 준비 전까지 사용) ---
+      // 백엔드가 준비되면 이 블록 전체 제거 가능
+      try {
+        console.log('[loadScenarioCategories] Firestore fallback으로 시도...');
+        const shortcutRef = doc(get().db, "shortcut", "main");
+        const docSnap = await getDoc(shortcutRef);
+
+        if (docSnap.exists() && docSnap.data().categories) {
+          set({ scenarioCategories: docSnap.data().categories });
+          logger.log("Loaded scenario categories from Firestore (temporary fallback)");
+          return;
+        } else {
+          console.log("No shortcut document found in Firestore. Initializing with default data.");
+          const initialData = [];
+          set({ scenarioCategories: initialData });
+          await setDoc(shortcutRef, { categories: initialData });
+          return;
+        }
+      } catch (fallbackError) {
+        logger.error("Firestore fallback also failed:", fallbackError);
+        const { language, showEphemeralToast } = get();
+        const errorKey = getErrorKey(fallbackError);
+        const message =
+          locales[language]?.[errorKey] || "Failed to load scenario categories.";
+        showEphemeralToast(message, "error");
+        set({ scenarioCategories: [] });
+      }
+      // --- 👆 [임시] ---
     }
-    // --- 👆 [수정] ---
   },
 
   saveScenarioCategories: async (newCategories) => {
-    // --- 👇 [수정] FastAPI only (Firestore 제거) ---
     try {
       const { TENANT_ID, STAGE_ID, SEC_OFC_ID } = require("../../lib/constants").API_DEFAULTS;
       
@@ -153,15 +175,28 @@ export const createScenarioSlice = (set, get) => ({
         throw new Error(`Failed with status ${response.status}`);
       }
     } catch (error) {
-      logger.error("Error saving scenario categories to FastAPI:", error);
-      const { language, showEphemeralToast } = get();
-      const errorKey = getErrorKey(error);
-      const message =
-        locales[language]?.[errorKey] || "Failed to save scenario categories.";
-      showEphemeralToast(message, "error");
-      return false;
+      logger.warn("Error saving scenario categories to FastAPI:", error);
+      
+      // --- 👇 [임시] Firestore Fallback (백엔드 준비 전까지 사용) ---
+      // 백엔드가 준비되면 이 블록 전체 제거 가능
+      try {
+        console.log('[saveScenarioCategories] Firestore fallback으로 저장 시도...');
+        const shortcutRef = doc(get().db, "shortcut", "main");
+        await setDoc(shortcutRef, { categories: newCategories });
+        set({ scenarioCategories: newCategories });
+        logger.log("Saved scenario categories to Firestore (temporary fallback)");
+        return true;
+      } catch (fallbackError) {
+        logger.error("Firestore fallback also failed:", fallbackError);
+        const { language, showEphemeralToast } = get();
+        const errorKey = getErrorKey(fallbackError);
+        const message =
+          locales[language]?.[errorKey] || "Failed to save scenario categories.";
+        showEphemeralToast(message, "error");
+        return false;
+      }
+      // --- 👆 [임시] ---
     }
-    // --- 👆 [수정] ---
   },
 
   openScenarioPanel: async (scenarioId, initialSlots = {}) => {

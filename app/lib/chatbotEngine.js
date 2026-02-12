@@ -24,7 +24,6 @@ export async function getScenarioCategories() {
   }
 
   try {
-    // --- 👇 [수정] FastAPI 호출로 변경 ---
     const { TENANT_ID, STAGE_ID, SEC_OFC_ID } = API_DEFAULTS;
     const params = new URLSearchParams({
       ten_id: TENANT_ID,
@@ -48,13 +47,32 @@ export async function getScenarioCategories() {
       console.log('[getScenarioCategories] FastAPI에서 로드 성공:', categoryData);
       return cachedScenarioCategories;
     } else {
-      console.warn(`Failed to fetch scenario categories from FastAPI (Status: ${response.status}). Returning empty array.`);
+      throw new Error(`Failed with status ${response.status}`);
+    }
+  } catch (error) {
+    console.warn("Error fetching scenario categories from FastAPI:", error);
+    
+    // --- 👇 [임시] Firestore Fallback (백엔드 준비 전까지 사용) ---
+    // 백엔드가 준비되면 이 블록 전체 제거 가능
+    try {
+      console.log('[getScenarioCategories] Firestore fallback으로 시도...');
+      const shortcutRef = doc(db, "shortcut", "main");
+      const docSnap = await getDoc(shortcutRef);
+
+      if (docSnap.exists() && docSnap.data().categories) {
+        cachedScenarioCategories = docSnap.data().categories;
+        lastFetchTime = now;
+        console.log('[getScenarioCategories] Firestore에서 로드 성공 (temporary fallback):', cachedScenarioCategories);
+        return cachedScenarioCategories;
+      } else {
+        console.warn("Shortcut document 'main' not found in Firestore. Returning empty array.");
+        return [];
+      }
+    } catch (fallbackError) {
+      console.error("Firestore fallback also failed:", fallbackError);
       return [];
     }
-    // --- 👆 [수정] ---
-  } catch (error) {
-    console.error("Error fetching scenario categories from FastAPI:", error);
-    return []; // 오류 발생 시 빈 배열 반환
+    // --- 👆 [임시] ---
   }
 }
 
