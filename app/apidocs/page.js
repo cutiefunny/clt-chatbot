@@ -224,6 +224,113 @@ export default function ApiDocsPage() {
           백엔드에서 구현이 필요한 시나리오 세션 관리 엔드포인트입니다.
         </p>
 
+        {/* GET /shortcut */}
+        <section className={styles.endpoint}>
+          <div className={styles.endpointHeader}>
+            <span className={`${styles.method} ${styles.get}`}>GET</span>
+            <span className={styles.path}>/shortcut</span>
+          </div>
+          <div className={styles.endpointBody}>
+            <h2>숏컷(카테고리) 메뉴 조회</h2>
+            <p>
+              채팅 입력창 좌측에 표시되는 숏컷 메뉴 구조를 조회합니다.<br/>
+              테넌트별, 스테이지별로 다른 메뉴 구조를 반환할 수 있습니다.
+            </p>
+            <dl>
+              <dt>Query Parameters:</dt>
+              <dd>
+                <code>ten_id</code> (string): 테넌트 ID (예: "1000")<br/>
+                <code>stg_id</code> (string): 스테이지 ID (예: "DEV", "PROD")<br/>
+                <code>sec_ofc_id</code> (string): 부서/오피스 ID (예: "000025")
+              </dd>
+              <dt>응답 (200 OK):</dt>
+              <dd><pre>{`{
+  "name": "시나리오",
+  "subCategories": [
+    {
+      "title": "기본 인사",
+      "items": [
+        {
+          "title": "인사하기",
+          "description": "기본 인사 시나리오를 시작합니다",
+          "action": {
+            "type": "scenario" | "custom" | "text",
+            "value": "greeting" // 시나리오 ID, 커스텀 액션명, 또는 텍스트
+          }
+        },
+        ...
+      ]
+    },
+    ...
+  ]
+}`}</pre></dd>
+              <dt>에러 응답 (404 Not Found):</dt>
+              <dd><pre>{`{
+  "error": "shortcut_not_found",
+  "message": "해당 테넌트/스테이지의 숏컷 메뉴가 없습니다"
+}`}</pre></dd>
+            </dl>
+          </div>
+        </section>
+
+        {/* PUT /shortcut */}
+        <section className={styles.endpoint}>
+          <div className={styles.endpointHeader}>
+            <span className={`${styles.method} ${styles.put}`}>PUT</span>
+            <span className={styles.path}>/shortcut</span>
+          </div>
+          <div className={styles.endpointBody}>
+            <h2>숏컷(카테고리) 메뉴 저장</h2>
+            <p>
+              채팅 입력창 좌측의 숏컷 메뉴 구조를 업데이트합니다.<br/>
+              기존 데이터는 완전히 대체됩니다. (Upsert)
+            </p>
+            <dl>
+              <dt>Content-Type:</dt>
+              <dd><code>application/json</code></dd>
+              <dt>요청 본문 (Request Body):</dt>
+              <dd><pre>{`{
+  "ten_id": "1000",
+  "stg_id": "DEV",
+  "sec_ofc_id": "000025",
+  "name": "시나리오",
+  "subCategories": [
+    {
+      "title": "기본 인사",
+      "items": [
+        {
+          "title": "인사하기",
+          "description": "기본 인사 시나리오를 시작합니다",
+          "action": {
+            "type": "scenario" | "custom" | "text",
+            "value": "greeting"
+          }
+        },
+        ...
+      ]
+    },
+    ...
+  ]
+}`}</pre></dd>
+              <dt>응답 (200 OK):</dt>
+              <dd><pre>{`{
+  "success": true,
+  "message": "숏컷 메뉴가 저장되었습니다",
+  "saved_at": "2024-05-20T10:30:00Z"
+}`}</pre></dd>
+              <dt>에러 응답 (400 Bad Request):</dt>
+              <dd><pre>{`{
+  "error": "validation_error",
+  "message": "요청 데이터가 유효하지 않습니다",
+  "details": {
+    "field": "subCategories",
+    "reason": "배열이어야 합니다"
+  }
+}`}</pre></dd>
+            </dl>
+          </div>
+        </section>
+
         {/* GET /scenarios/categories */}
         <section className={styles.endpoint}>
           <div className={styles.endpointHeader}>
