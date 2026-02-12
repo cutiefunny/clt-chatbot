@@ -1,18 +1,4 @@
 // app/store/slices/chatSlice.js
-import {
-  collection,
-  addDoc,
-  query,
-  orderBy,
-  onSnapshot,
-  getDocs,
-  serverTimestamp,
-  limit,
-  startAfter,
-  writeBatch,
-  updateDoc,
-  doc,
-} from "firebase/firestore";
 import { locales } from "../../lib/locales";
 import { getErrorKey } from "../../lib/errorHandler";
 import { handleResponse } from "../actions/chatResponseHandler";
@@ -72,133 +58,39 @@ export const createChatSlice = (set, get) => {
         mainInputValue: "", // 대화 로드 시 입력창 초기화
       });
 
-      // --- 👇 [수정] FastAPI 사용 시 메시지 로드 및 데이터 매핑 ---
-      if (useFastApi) {
-        try {
-          const params = new URLSearchParams({
-            usr_id: user.uid,
-            ten_id: "1000",
-            stg_id: "DEV",
-            sec_ofc_id: "000025"
-          });
-          const response = await fetch(`${FASTAPI_BASE_URL}/conversations/${conversationId}?${params}`);
-          if (!response.ok) throw new Error("Failed to load messages");
-          
-          const data = await response.json();
-          // API 응답 구조: { id: "...", messages: [{ role: "...", content: "...", ... }] }
-          const apiMessagesRaw = data.messages || [];
-          
-          // 백엔드 데이터(role, content)를 프론트엔드 데이터(sender, text)로 매핑
-          const mappedMessages = apiMessagesRaw.map((msg) => ({
-            id: msg.id,
-            sender: msg.role === 'user' ? 'user' : 'bot', // role -> sender 변환
-            text: msg.content, // content -> text 변환
-            createdAt: msg.created_at,
-            // 필요한 경우 추가 필드 매핑
-          }));
-          
-          // 초기 메시지와 합치기
-          set({
-            messages: [initialMessage, ...mappedMessages],
-            isLoading: false,
-            hasMoreMessages: false, // API 페이징 미구현 시 false 처리
-          });
-        } catch (error) {
-          console.error("FastAPI loadInitialMessages error:", error);
-          showEphemeralToast("Failed to load messages (API).", "error");
-          set({ isLoading: false });
-        }
-        return;
-      }
-      // --- 👆 [수정] ---
-
       try {
-        const messagesRef = collection(
-          get().db,
-          "chats",
-          user.uid,
-          "conversations",
-          conversationId,
-          "messages"
-        );
-        const q = query(
-          messagesRef,
-          orderBy("createdAt", "desc"),
-          limit(MESSAGE_LIMIT)
-        );
-
-        get().unsubscribeMessages?.();
-
-        const unsubscribe = onSnapshot(
-          q,
-          (messagesSnapshot) => {
-            const newMessages = messagesSnapshot.docs
-              .map((doc) => ({ id: doc.id, ...doc.data() }))
-              .reverse();
-            const lastVisible =
-              messagesSnapshot.docs[messagesSnapshot.docs.length - 1];
-            const newSelectedOptions = {};
-            newMessages.forEach((msg) => {
-              if (msg.selectedOption)
-                newSelectedOptions[msg.id] = msg.selectedOption;
-            });
-
-            let finalMessages = [initialMessage, ...newMessages];
-
-            if (get().pendingResponses.has(conversationId)) {
-              const thinkingText =
-                locales[language]?.["statusGenerating"] || "Generating...";
-              const tempBotMessage = {
-                id: `temp_pending_${conversationId}`,
-                sender: "bot",
-                text: thinkingText,
-                isStreaming: true,
-                feedback: null,
-              };
-              finalMessages.push(tempBotMessage);
-            }
-
-            set({
-              messages: finalMessages,
-              lastVisibleMessage: lastVisible,
-              hasMoreMessages: messagesSnapshot.docs.length === MESSAGE_LIMIT,
-              isLoading: false,
-              selectedOptions: newSelectedOptions,
-            });
-          },
-          (error) => {
-            console.error(
-              `Error listening to initial messages for ${conversationId}:`,
-              error
-            );
-            const errorKey = getErrorKey(error);
-            const message =
-              locales[language]?.[errorKey] ||
-              locales["en"]?.errorUnexpected ||
-              "Failed to load messages.";
-            showEphemeralToast(message, "error");
-            set({ isLoading: false, hasMoreMessages: false });
-            unsubscribe();
-            set({ unsubscribeMessages: null });
-          }
-        );
-        set({ unsubscribeMessages: unsubscribe });
-      } catch (error) {
-        console.error(
-          `Error setting up initial message listener for ${conversationId}:`,
-          error
-        );
-        const errorKey = getErrorKey(error);
-        const message =
-          locales[language]?.[errorKey] ||
-          locales["en"]?.errorUnexpected ||
-          "Failed to load messages.";
-        showEphemeralToast(message, "error");
-        set({
-          isLoading: false,
-          hasMoreMessages: false,
-          messages: [initialMessage],
+        const params = new URLSearchParams({
+          usr_id: user.uid,
+          ten_id: "1000",
+          stg_id: "DEV",
+          sec_ofc_id: "000025"
         });
+        const response = await fetch(`${FASTAPI_BASE_URL}/conversations/${conversationId}?${params}`);
+        if (!response.ok) throw new Error("Failed to load messages");
+        
+        const data = await response.json();
+        // API 응답 구조: { id: "...", messages: [{ role: "...", content: "...", ... }] }
+        const apiMessagesRaw = data.messages || [];
+        
+        // 백엔드 데이터(role, content)를 프론트엔드 데이터(sender, text)로 매핑
+        const mappedMessages = apiMessagesRaw.map((msg) => ({
+          id: msg.id,
+          sender: msg.role === 'user' ? 'user' : 'bot', // role -> sender 변환
+          text: msg.content, // content -> text 변환
+          createdAt: msg.created_at,
+          // 필요한 경우 추가 필드 매핑
+        }));
+        
+        // 초기 메시지와 합치기
+        set({
+          messages: [initialMessage, ...mappedMessages],
+          isLoading: false,
+          hasMoreMessages: false, // API 페이징 미구현 시 false 처리
+        });
+      } catch (error) {
+        console.error("FastAPI loadInitialMessages error:", error);
+        showEphemeralToast("Failed to load messages (API).", "error");
+        set({ isLoading: false, messages: [initialMessage] });
       }
     },
 
@@ -265,18 +157,25 @@ export const createChatSlice = (set, get) => {
       if (!user || !currentConversationId || !messageId) return;
 
       try {
-        const messageRef = doc(
-          get().db,
-          "chats",
-          user.uid,
-          "conversations",
-          currentConversationId,
-          "messages",
-          String(messageId)
+        // --- [수정] FastAPI로 메시지 업데이트 ---
+        const response = await fetch(
+          `${FASTAPI_BASE_URL}/conversations/${currentConversationId}/messages/${messageId}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              usr_id: user.uid,
+              selected_option: optionValue,
+            }),
+          }
         );
-        await updateDoc(messageRef, { selectedOption: optionValue });
+
+        if (!response.ok) {
+          throw new Error(`Failed to update message: ${response.status}`);
+        }
+        // --- [수정] ---
       } catch (error) {
-        console.error("Error updating selected option in Firestore:", error);
+        console.error("Error updating selected option via FastAPI:", error);
         const errorKey = getErrorKey(error);
         const message =
           locales[language]?.[errorKey] ||
@@ -488,30 +387,34 @@ export const createChatSlice = (set, get) => {
         if (tempId) delete messageToSave.id;
 
         console.log(`Saving message to conversation: ${activeConversationId}`);
-        const messagesCollection = collection(
-          get().db,
-          "chats",
-          user.uid,
-          "conversations",
-          activeConversationId,
-          "messages"
+        
+        // --- [수정] FastAPI로 메시지 저장 ---
+        const saveMessageResponse = await fetch(
+          `${FASTAPI_BASE_URL}/conversations/${activeConversationId}/messages`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              usr_id: user.uid,
+              role: messageToSave.sender || "user",
+              content: messageToSave.text || "",
+              type: messageToSave.type || "text",
+              ...(messageToSave.scenarioSessionId && {
+                scenario_session_id: messageToSave.scenarioSessionId,
+              }),
+            }),
+          }
         );
-        const messageRef = await addDoc(messagesCollection, {
-          ...messageToSave,
-          createdAt: serverTimestamp(),
-        });
 
-        await updateDoc(
-          doc(
-            get().db,
-            "chats",
-            user.uid,
-            "conversations",
-            activeConversationId
-          ),
-          { updatedAt: serverTimestamp() }
-        );
+        if (!saveMessageResponse.ok) {
+          throw new Error(`Failed to save message: ${saveMessageResponse.status}`);
+        }
+
+        const savedMessage = await saveMessageResponse.json();
+        const messageRef = { id: savedMessage.id || savedMessage.message_id };
+
         console.log(`Message saved with ID: ${messageRef.id}`);
+        // --- [수정] ---
 
         if (tempId) {
           let selectedOptionValue = null;
@@ -638,47 +541,53 @@ export const createChatSlice = (set, get) => {
       set({ isLoading: true });
 
       try {
-        const messagesRef = collection(
-          get().db,
-          "chats",
-          user.uid,
-          "conversations",
-          currentConversationId,
-          "messages"
-        );
-        const q = query(
-          messagesRef,
-          orderBy("createdAt", "desc"),
-          startAfter(lastVisibleMessage),
-          limit(MESSAGE_LIMIT)
-        );
-        const snapshot = await getDocs(q);
+        // --- [수정] FastAPI로 메시지 페이지네이션 조회 ---
+        // 간단한 구현: offset 기반 페이지네이션
+        // 실제 구현에서는 타임스탬프 기반 커서 페이지네이션 권장
+        const params = new URLSearchParams({
+          usr_id: user.uid,
+          offset: (messages.length - 1).toString(), // 초기 메시지 제외
+          limit: MESSAGE_LIMIT.toString(),
+        });
 
-        if (snapshot.empty) {
+        const response = await fetch(
+          `${FASTAPI_BASE_URL}/conversations/${currentConversationId}/messages?${params}`,
+          {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`Failed to load messages: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const newMessages = Array.isArray(data.messages)
+          ? data.messages
+          : data.messages?.reverse?.() || [];
+
+        if (newMessages.length === 0) {
           set({ hasMoreMessages: false });
           return;
         }
 
-        const newMessages = snapshot.docs
-          .map((doc) => ({ id: doc.id, ...doc.data() }))
-          .reverse();
-        const newLastVisible =
-          snapshot.docs[snapshot.docs.length - 1];
         const initialMessage = messages[0];
         const existingMessages = messages.slice(1);
 
         const newSelectedOptions = { ...get().selectedOptions };
         newMessages.forEach((msg) => {
-          if (msg.selectedOption)
-            newSelectedOptions[msg.id] = msg.selectedOption;
+          if (msg.selected_option)
+            newSelectedOptions[msg.id] = msg.selected_option;
         });
 
         set({
           messages: [initialMessage, ...newMessages, ...existingMessages],
-          lastVisibleMessage: newLastVisible,
-          hasMoreMessages: snapshot.docs.length === MESSAGE_LIMIT,
+          lastVisibleMessage: newMessages[newMessages.length - 1],
+          hasMoreMessages: newMessages.length === MESSAGE_LIMIT,
           selectedOptions: newSelectedOptions,
         });
+        // --- [수정] ---
       } catch (error) {
         console.error("Error loading more messages:", error);
         const errorKey = getErrorKey(error);

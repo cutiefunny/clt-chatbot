@@ -74,7 +74,7 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 2.  **시나리오 로드**: `getScenario` 함수는 Firestore의 `scenarios` 컬렉션에서 해당 시나리오의 노드와 엣지(연결선) 데이터를 가져옵니다.
 3.  **노드 순회**: `runScenario` 함수가 현재 노드부터 시작하여 로직을 실행합니다. 각 노드 타입에 맞는 핸들러(`app/lib/nodeHandlers.js`)가 호출됩니다.
 4.  **다음 노드 결정**: `getNextNode` 함수는 현재 노드의 실행 결과(사용자 입력, API 응답, 슬롯 값 조건 등)와 엣지 정보를 바탕으로 다음에 실행할 노드를 결정합니다.
-5.  **상태 저장**: 시나리오 진행 상태(현재 노드 ID, 슬롯에 저장된 값 등)는 Firestore의 해당 대화 내 `scenario_sessions` 컬렉션에 실시간으로 기록됩니다.
+5.  **상태 저장**: 시나리오 진행 상태(현재 노드 ID, 슬롯에 저장된 값 등)는 FastAPI의 `/scenario-sessions` 엔드포인트를 통해 저장됩니다. (✅ 마이그레이션 완료)
 
 ### 새로운 시나리오 추가하기
 
@@ -160,7 +160,14 @@ Check out the Next.js deployment documentation for more details.
 * **Prerequisites**: Flowise 관련 요구사항 추가.
 * **Environment Variables**: `NEXT_PUBLIC_FLOWISE_API_URL` 추가 및 설명. `NEXT_PUBLIC_PARENT_ORIGIN` 추가.
 * **Configure LLM Provider**: Flowise 사용 시 관리자 페이지 설정 안내 추가.
-* **Firebase Migration**: 숏컷 메뉴 시스템을 FastAPI 기반으로 마이그레이션 완료. 
-  - 카테고리 관리: FastAPI `GET/PUT /scenarios/categories` 엔드포인트 사용
-  - 숏컷 조회/저장: FastAPI `GET/PUT /shortcut` 엔드포인트 사용
-  - `getScenarioCategories()` 함수는 `/shortcut` 엔드포인트에서 캐시된 데이터 반환
+* **Firebase Migration**: 
+  - ✅ **숏컷 메뉴 시스템**: FastAPI 기반으로 마이그레이션 완료
+    - 카테고리 관리: FastAPI `GET/PUT /scenarios/categories` 엔드포인트 사용
+    - 숏컷 조회/저장: FastAPI `GET/PUT /shortcut` 엔드포인트 사용
+  - ✅ **시나리오 세션 관리**: FastAPI 기반으로 마이그레이션 완료
+    - 세션 생성: FastAPI `POST /conversations/{id}/scenario-sessions`
+    - 세션 조회: FastAPI `GET /conversations/{id}/scenario-sessions/{session_id}` (폴링 기반)
+    - 세션 업데이트: FastAPI `PATCH /scenario-sessions/{session_id}`
+    - 세션 삭제: FastAPI `DELETE /conversations/{id}/scenario-sessions/{session_id}`
+    - Firestore `onSnapshot` 대신 폴링(5초 간격) 사용
+```

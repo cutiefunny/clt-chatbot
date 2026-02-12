@@ -1,16 +1,4 @@
 // app/store/slices/scenarioSlice.js
-import {
-  collection,
-  addDoc,
-  doc,
-  updateDoc,
-  onSnapshot,
-  serverTimestamp,
-  query,
-  orderBy,
-  where,
-  deleteDoc,
-} from "firebase/firestore";
 import { locales } from "../../lib/locales";
 import { getErrorKey } from "../../lib/errorHandler";
 import { logger } from "../../lib/logger";
@@ -275,24 +263,30 @@ export const createScenarioSlice = (set, get) => ({
         conversationId = newConversationId;
       }
 
-      const scenarioSessionsRef = collection(
-        get().db,
-        "chats",
-        user.uid,
-        "conversations",
-        conversationId,
-        "scenario_sessions"
+      // --- [수정] FastAPI로 시나리오 세션 생성 ---
+      const createSessionResponse = await fetch(
+        `${FASTAPI_BASE_URL}/conversations/${conversationId}/scenario-sessions`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            usr_id: user.uid,
+            scenario_id: scenarioId,
+            slots: initialSlots,
+            initial_context: {},
+          }),
+        }
       );
-      const newSessionDoc = await addDoc(scenarioSessionsRef, {
-        scenarioId: scenarioId,
-        status: "starting",
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        messages: [],
-        state: null,
-        slots: initialSlots,
-      });
-      newScenarioSessionId = newSessionDoc.id;
+
+      if (!createSessionResponse.ok) {
+        throw new Error(`Failed to create scenario session: ${createSessionResponse.status}`);
+      }
+
+      // 응답에서 session ID 추출
+      const sessionData = await createSessionResponse.json();
+      newScenarioSessionId = sessionData.id || sessionData.session_id;
+      console.log('[openScenarioPanel] FastAPI에서 시나리오 세션 생성:', newScenarioSessionId);
+      // --- [수정] ---
 
       setActivePanel("main");
       setForceScrollToBottom(true);
@@ -332,16 +326,8 @@ export const createScenarioSlice = (set, get) => ({
 
       handleEvents(data.events, newScenarioSessionId, conversationId);
 
-      const sessionRef = doc(
-        get().db,
-        "chats",
-        user.uid,
-        "conversations",
-        conversationId,
-        "scenario_sessions",
-        newScenarioSessionId
-      );
-      let updatePayload = { updatedAt: serverTimestamp() };
+      // --- [수정] FastAPI로 시나리오 세션 업데이트 ---
+      let updatePayload = {};
 
       if (data.type === "scenario_start" || data.type === "scenario") {
         updatePayload.slots = { ...initialSlots, ...(data.slots || {}) };
@@ -362,9 +348,9 @@ export const createScenarioSlice = (set, get) => ({
             (data.nextNode.type === "branch" &&
               data.nextNode.data?.evaluationType !== "CONDITION");
           updatePayload.state = {
-            scenarioId: scenarioId,
-            currentNodeId: data.nextNode.id,
-            awaitingInput: isFirstNodeSlotFillingOrForm,
+            scenario_id: scenarioId,
+            current_node_id: data.nextNode.id,
+            awaiting_input: isFirstNodeSlotFillingOrForm,
           };
         } else if (data.message) {
           updatePayload.messages.push({
@@ -376,7 +362,22 @@ export const createScenarioSlice = (set, get) => ({
         }
         updatePayload.status = data.status || "active";
 
-        await updateDoc(sessionRef, updatePayload);
+        // FastAPI로 세션 업데이트
+        await fetch(
+          `${FASTAPI_BASE_URL}/scenario-sessions/${newScenarioSessionId}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              usr_id: user.uid,
+              ...updatePayload,
+            }),
+          }
+        ).then(r => {
+          if (!r.ok) throw new Error(`Failed to update session: ${r.status}`);
+          return r.json();
+        });
+      // --- [수정] ---
 
         if (
           data.nextNode &&
@@ -406,16 +407,20 @@ export const createScenarioSlice = (set, get) => ({
 
       if (user && conversationId && newScenarioSessionId) {
         try {
-          const sessionRef = doc(
-            get().db,
-            "chats",
-            user.uid,
-            "conversations",
-            conversationId,
-            "scenario_sessions",
-            newScenarioSessionId
-          );
-          await deleteDoc(sessionRef);
+          // --- [수정] FastAPI로 시나리오 세션 삭제 ---
+          await fetch(
+            `${FASTAPI_BASE_URL}/conversations/${conversationId}/scenario-sessions/${newScenarioSessionId}`,
+            {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ usr_id: user.uid }),
+            }
+          ).then(r => {
+            if (!r.ok) throw new Error(`Failed to delete session: ${r.status}`);
+            return r.json();
+          });
+          // --- [수정] ---
+          
           console.log(
             `Cleaned up failed scenario session: ${newScenarioSessionId}`
           );
@@ -471,10 +476,22 @@ export const createScenarioSlice = (set, get) => ({
     }));
 
     try {
-        const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", scenarioSessionId);
-        await updateDoc(sessionRef, {
-            messages: updatedMessages
+        // --- [수정] FastAPI로 업데이트 ---
+        await fetch(
+            `${FASTAPI_BASE_URL}/scenario-sessions/${scenarioSessionId}`,
+            {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    usr_id: user.uid,
+                    messages: updatedMessages
+                }),
+            }
+        ).then(r => {
+            if (!r.ok) throw new Error(`Failed to update session: ${r.status}`);
+            return r.json();
         });
+        // --- [수정] ---
     } catch (error) {
         console.error("Error updating scenario selected option in Firestore:", error);
         const errorKey = getErrorKey(error);
@@ -496,10 +513,33 @@ export const createScenarioSlice = (set, get) => ({
     const { user, currentConversationId, unsubscribeScenariosMap, language, showEphemeralToast } = get();
     if (!user || !currentConversationId || unsubscribeScenariosMap[sessionId]) return;
 
-    const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", sessionId);
-    const unsubscribe = onSnapshot(sessionRef, (doc) => {
-      if (doc.exists()) {
-        const scenarioData = doc.data();
+    // --- [임시] Firestore에서 FastAPI로 마이그레이션 필요 ---
+    // 실시간 동기화가 필요한 경우 폴링 또는 WebSocket 구현 필요
+    console.log(`[TODO] subscribeToScenarioSession needs FastAPI implementation for session ${sessionId}`);
+    
+    // 임시로 polling 구현 (향후 개선 필요)
+    let pollInterval = null;
+    const poll = async () => {
+      try {
+        const response = await fetch(
+          `${FASTAPI_BASE_URL}/conversations/${currentConversationId}/scenario-sessions/${sessionId}`,
+          {
+            method: "GET",
+            headers: { "Content-Type": "application/json" }
+          }
+        );
+        
+        if (!response.ok) {
+          if (response.status === 404) {
+            console.log(`Scenario session ${sessionId} not found or deleted.`);
+            get().unsubscribeFromScenarioSession(sessionId);
+          }
+          return;
+        }
+        
+        const data = await response.json();
+        const scenarioData = data.data || data;
+        
         set(state => {
             const currentLocalState = state.scenarioStates[sessionId];
             const newScenarioStates = {
@@ -516,18 +556,24 @@ export const createScenarioSlice = (set, get) => ({
                 activeScenarioSessions: newActiveSessions,
             };
         });
-      } else {
-        console.log(`Scenario session ${sessionId} not found or deleted.`);
-        get().unsubscribeFromScenarioSession(sessionId);
-      }
-    }, (error) => {
-        console.error(`Error listening to scenario session ${sessionId}:`, error);
+      } catch (error) {
+        console.error(`Error polling scenario session ${sessionId}:`, error);
         const errorKey = getErrorKey(error);
         const message = locales[language]?.[errorKey] || 'Error syncing scenario state.';
         showEphemeralToast(message, 'error');
         get().unsubscribeFromScenarioSession(sessionId);
-    });
-
+      }
+    };
+    
+    // 초기 조회 및 폴링 시작 (5초마다)
+    poll();
+    pollInterval = setInterval(poll, 5000);
+    
+    // cleanup 함수 저장
+    const unsubscribe = () => {
+      if (pollInterval) clearInterval(pollInterval);
+    };
+    
     set(state => ({
         unsubscribeScenariosMap: {
             ...state.unsubscribeScenariosMap,
@@ -573,11 +619,25 @@ export const createScenarioSlice = (set, get) => ({
   endScenario: async (scenarioSessionId, status = 'completed') => {
     const { user, currentConversationId, language, showEphemeralToast } = get(); 
     if (!user || !currentConversationId || !scenarioSessionId) return;
-
-    const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", scenarioSessionId);
     
     try {
-        await updateDoc(sessionRef, { status, state: null, updatedAt: serverTimestamp() }); 
+        // --- [수정] FastAPI로 업데이트 ---
+        await fetch(
+            `${FASTAPI_BASE_URL}/scenario-sessions/${scenarioSessionId}`,
+            {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    usr_id: user.uid,
+                    status: status,
+                    state: null
+                }),
+            }
+        ).then(r => {
+            if (!r.ok) throw new Error(`Failed to update session: ${r.status}`);
+            return r.json();
+        });
+        // --- [수정] ---
         
         set(state => {
             const updatedState = state.scenarioStates[scenarioSessionId]
@@ -619,17 +679,30 @@ export const createScenarioSlice = (set, get) => ({
         scenarioStates: { ...state.scenarioStates, [scenarioSessionId]: { ...currentScenario, isLoading: true } }
     }));
 
-    const sessionRef = doc(get().db, "chats", user.uid, "conversations", currentConversationId, "scenario_sessions", scenarioSessionId);
-
     try {
         let newMessages = [...existingMessages];
 
         if (payload.userInput) {
             newMessages.push({ id: `user-${Date.now()}`, sender: 'user', text: payload.userInput });
             try {
-                await updateDoc(sessionRef, { messages: newMessages, updatedAt: serverTimestamp() });
+                // --- [수정] FastAPI로 업데이트 ---
+                await fetch(
+                    `${FASTAPI_BASE_URL}/scenario-sessions/${scenarioSessionId}`,
+                    {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            usr_id: user.uid,
+                            messages: newMessages
+                        }),
+                    }
+                ).then(r => {
+                    if (!r.ok) throw new Error(`Failed to update session: ${r.status}`);
+                    return r.json();
+                });
+                // --- [수정] ---
             } catch (error) {
-                console.error("Error updating user message in Firestore:", error);
+                console.error("Error updating user message in FastAPI:", error);
                 const errorKey = getErrorKey(error);
                 const message = locales[language]?.[errorKey] || 'Failed to send message.';
                 showEphemeralToast(message, 'error');
@@ -681,7 +754,23 @@ export const createScenarioSlice = (set, get) => ({
             updatePayload.status = finalStatus;
             updatePayload.state = null;
             updatePayload.slots = data.slots || currentScenario.slots;
-            await updateDoc(sessionRef, updatePayload);
+            
+            // --- [수정] FastAPI로 업데이트 ---
+            await fetch(
+                `${FASTAPI_BASE_URL}/scenario-sessions/${scenarioSessionId}`,
+                {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        usr_id: user.uid,
+                        ...updatePayload
+                    }),
+                }
+            ).then(r => {
+                if (!r.ok) throw new Error(`Failed to update session: ${r.status}`);
+                return r.json();
+            });
+            // --- [수정] ---
             
             endScenario(scenarioSessionId, finalStatus); 
             
@@ -696,7 +785,22 @@ export const createScenarioSlice = (set, get) => ({
             throw new Error(`Unexpected response type from API: ${data.type}`);
         }
 
-        await updateDoc(sessionRef, updatePayload);
+        // --- [수정] FastAPI로 업데이트 ---
+        await fetch(
+            `${FASTAPI_BASE_URL}/scenario-sessions/${scenarioSessionId}`,
+            {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    usr_id: user.uid,
+                    ...updatePayload
+                }),
+            }
+        ).then(r => {
+            if (!r.ok) throw new Error(`Failed to update session: ${r.status}`);
+            return r.json();
+        });
+        // --- [수정] ---
 
         if (data.type === 'scenario' && data.nextNode) {
             const isInteractive = data.nextNode.type === 'slotfilling' ||
@@ -715,7 +819,25 @@ export const createScenarioSlice = (set, get) => ({
 
         const errorMessages = [...existingMessages, { id: `bot-error-${Date.now()}`, sender: 'bot', text: errorMessage }];
         try {
-            await updateDoc(sessionRef, { messages: errorMessages, status: 'failed', state: null, updatedAt: serverTimestamp() });
+            // --- [수정] FastAPI로 업데이트 ---
+            await fetch(
+                `${FASTAPI_BASE_URL}/scenario-sessions/${scenarioSessionId}`,
+                {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        usr_id: user.uid,
+                        messages: errorMessages,
+                        status: 'failed',
+                        state: null
+                    }),
+                }
+            ).then(r => {
+                if (!r.ok) throw new Error(`Failed to update session: ${r.status}`);
+                return r.json();
+            });
+            // --- [수정] ---
+            
             endScenario(scenarioSessionId, 'failed');
         } catch (updateError) {
              console.error(`Failed to update scenario status to failed for ${scenarioSessionId}:`, updateError);
