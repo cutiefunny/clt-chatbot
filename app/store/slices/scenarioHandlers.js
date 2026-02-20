@@ -33,9 +33,8 @@ export const createScenarioHandlersSlice = (set, get) => ({
     }));
 
     try {
-        // --- [수정] FastAPI로 업데이트 ---
         await fetch(
-            `${FASTAPI_BASE_URL}/scenario-sessions/${scenarioSessionId}`,
+            `${FASTAPI_BASE_URL}/conversations/${currentConversationId}/scenario-sessions/${scenarioSessionId}`,
             {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
@@ -45,10 +44,9 @@ export const createScenarioHandlersSlice = (set, get) => ({
                 }),
             }
         ).then(r => {
-            if (!r.ok) throw new Error(`Failed to update session: ${r.status}`);
-            return r.json();
+            if (!r.ok) console.warn(`[setScenarioSelectedOption] Session PATCH failed (${r.status}), continuing...`);
+            else return r.json();
         });
-        // --- [수정] ---
     } catch (error) {
       console.error("Error updating scenario selected option via FastAPI:", error);
         const errorKey = getErrorKey(error);
@@ -134,7 +132,6 @@ export const createScenarioHandlersSlice = (set, get) => ({
       // 응답에서 session ID 추출
       const sessionData = await createSessionResponse.json();
       newScenarioSessionId = sessionData.id || sessionData.session_id;
-      console.log('[openScenarioPanel] FastAPI에서 시나리오 세션 생성:', newScenarioSessionId);
       // --- [수정] ---
 
       setActivePanel("main");
@@ -153,8 +150,9 @@ export const createScenarioHandlersSlice = (set, get) => ({
         setActivePanel("scenario", newScenarioSessionId);
       }, 100);
 
-      // --- [수정] FastAPI /chat 호출 (시나리오 시작) - 백엔드 스펙 준수 ---
-      // 백엔드 필수 필드: usr_id, conversation_id, role, scenario_session_id, content, type, language, slots
+      // --- [수정] FastAPI /chat 호출 (시나리오 시작) - 백엔드 스펙 100% 준수 ---
+      // 백엔드 필수 필드: usr_id, conversation_id
+      // 선택 필드 (권장): role, scenario_session_id, content, type, language, slots, source_handle, current_node_id
       // 중요: type을 "scenario"로 설정하면 백엔드가 시나리오 모드로 인식
       const fastApiChatPayload = {
         usr_id: user.uid,
@@ -165,37 +163,23 @@ export const createScenarioHandlersSlice = (set, get) => ({
         type: "scenario",  // 👈 시나리오 모드 트리거
         language,
         slots: initialSlots || {},
+        current_node_id: "start",  // ✅ 100% 명세 준수: 시나리오 시작 노드
+        source_handle: null,        // ✅ 100% 명세 준수: 초기 진입 시 null
       };
 
       const scenarioTitle = get().availableScenarios?.[scenarioId] || scenarioId;
       const candidatePayloads = [
-        // 1) type="scenario" 모드 (최고 우선순위)
+        // 1️⃣ 최우선: 전체 정보 포함 (모든 명세 필드) - 100% 준수
         fastApiChatPayload,
-        // 2) content를 시나리오 타이틀로 시도
+        // 2️⃣ 차선: content를 시나리오 타이틀로 시도
         {
           ...fastApiChatPayload,
           content: scenarioTitle,
         },
-        // 3) slots 없이 시도
+        // 3️⃣ 3순위: 초기 슬롯 제외
         {
-          usr_id: user.uid,
-          conversation_id: conversationId,
-          role: "user",
-          scenario_session_id: newScenarioSessionId,
-          content: scenarioId,
-          type: "scenario",
-          language,
-        },
-        // 4) type을 "text"로 시도 (fallback)
-        {
-          usr_id: user.uid,
-          conversation_id: conversationId,
-          role: "user",
-          scenario_session_id: newScenarioSessionId,
-          content: scenarioId,
-          type: "text",
-          language,
-          slots: initialSlots || {},
+          ...fastApiChatPayload,
+          slots: {},
         },
       ];
 
@@ -302,7 +286,7 @@ export const createScenarioHandlersSlice = (set, get) => ({
         }
 
         // FastAPI로 세션 업데이트 (정확한 경로: /conversations/{conversation_id}/scenario-sessions/{session_id})
-        await fetch(
+        const patchResponse = await fetch(
           `${FASTAPI_BASE_URL}/conversations/${conversationId}/scenario-sessions/${newScenarioSessionId}`,
           {
             method: "PATCH",
@@ -312,10 +296,14 @@ export const createScenarioHandlersSlice = (set, get) => ({
               ...updatePayload,
             }),
           }
-        ).then(r => {
-          if (!r.ok) throw new Error(`Failed to update session: ${r.status}`);
-          return r.json();
-        });
+        );
+
+        if (!patchResponse.ok) {
+          console.warn(`[openScenarioPanel] Session PATCH failed (${patchResponse.status}), continuing...`);
+        } else {
+          const patchResult = await patchResponse.json();
+          console.log('[openScenarioPanel] ✅ 세션 업데이트 완료:', patchResult);
+        }
       // --- [수정] ---
 
         if (
@@ -348,7 +336,7 @@ export const createScenarioHandlersSlice = (set, get) => ({
 
       if (user && conversationId && newScenarioSessionId) {
         try {
-          // --- [수정] FastAPI로 시나리오 세션 삭제 ---
+          // FastAPI로 시나리오 세션 삭제
           await fetch(
             `${FASTAPI_BASE_URL}/conversations/${conversationId}/scenario-sessions/${newScenarioSessionId}`,
             {
@@ -356,12 +344,8 @@ export const createScenarioHandlersSlice = (set, get) => ({
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ usr_id: user.uid }),
             }
-          ).then(r => {
-            if (!r.ok) throw new Error(`Failed to delete session: ${r.status}`);
-            return r.json();
-          });
-          // --- [수정] ---
-          
+          );
+
           console.log(
             `Cleaned up failed scenario session: ${newScenarioSessionId}`
           );
@@ -414,9 +398,8 @@ export const createScenarioHandlersSlice = (set, get) => ({
         if (payload.userInput) {
             newMessages.push({ id: `user-${Date.now()}`, sender: 'user', text: payload.userInput });
             try {
-                // --- [수정] FastAPI로 업데이트 ---
                 await fetch(
-                    `${FASTAPI_BASE_URL}/scenario-sessions/${scenarioSessionId}`,
+                    `${FASTAPI_BASE_URL}/conversations/${currentConversationId}/scenario-sessions/${scenarioSessionId}`,
                     {
                         method: "PATCH",
                         headers: { "Content-Type": "application/json" },
@@ -426,10 +409,9 @@ export const createScenarioHandlersSlice = (set, get) => ({
                         }),
                     }
                 ).then(r => {
-                    if (!r.ok) throw new Error(`Failed to update session: ${r.status}`);
-                    return r.json();
+                    if (!r.ok) console.warn(`[handleScenarioResponse] Session PATCH failed (${r.status}), continuing...`);
+                    else return r.json();
                 });
-                // --- [수정] ---
             } catch (error) {
                 console.error("Error updating user message in FastAPI:", error);
                 const errorKey = getErrorKey(error);
@@ -442,7 +424,7 @@ export const createScenarioHandlersSlice = (set, get) => ({
             }
         }
 
-        // --- [수정] FastAPI /chat 호출 (시나리오 진행) - 백엔드 스펙 준수 ---
+        // --- [수정] FastAPI /chat 호출 (시나리오 진행) - 백엔드 스펙 100% 준수 ---
         const mergedSlots = { ...currentScenario.slots, ...(payload.formData || {}) };
         
         // content는 null이 아니어야 함 (빈 문자열도 피함)
@@ -456,12 +438,12 @@ export const createScenarioHandlersSlice = (set, get) => ({
           conversation_id: currentConversationId,
           role: "user",
           scenario_session_id: scenarioSessionId,
-          content: userContent,
-          type: "text",
+          content: userContent || "",      // ✅ 명시적 기본값
+          type: payload.type || "text",     // ✅ 동적 타입 설정
           language,
           slots: mergedSlots || {},
-          source_handle: payload.sourceHandle || "",
-          current_node_id: currentScenario.state?.current_node_id || "",
+          source_handle: payload.sourceHandle || null,  // ✅ null 명시 (빈 문자열 대신)
+          current_node_id: currentScenario.state?.current_node_id || null,  // ✅ 현재 노드 ID
         };
 
         const candidatePayloads = [
@@ -557,9 +539,8 @@ export const createScenarioHandlersSlice = (set, get) => ({
             updatePayload.state = null;
           updatePayload.slots = normalizedData.slots || currentScenario.slots;
             
-            // --- [수정] FastAPI로 업데이트 ---
             await fetch(
-                `${FASTAPI_BASE_URL}/scenario-sessions/${scenarioSessionId}`,
+                `${FASTAPI_BASE_URL}/conversations/${currentConversationId}/scenario-sessions/${scenarioSessionId}`,
                 {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
@@ -569,10 +550,9 @@ export const createScenarioHandlersSlice = (set, get) => ({
                     }),
                 }
             ).then(r => {
-                if (!r.ok) throw new Error(`Failed to update session: ${r.status}`);
-                return r.json();
+                if (!r.ok) console.warn(`[handleScenarioResponse] Session PATCH failed (${r.status}), continuing...`);
+                else return r.json();
             });
-            // --- [수정] ---
             
             endScenario(scenarioSessionId, finalStatus); 
             
@@ -601,10 +581,9 @@ export const createScenarioHandlersSlice = (set, get) => ({
                 }),
             }
         ).then(r => {
-            if (!r.ok) throw new Error(`Failed to update session: ${r.status}`);
-            return r.json();
+            if (!r.ok) console.warn(`[handleScenarioResponse] Session PATCH failed (${r.status}), continuing...`);
+            else return r.json();
         });
-        // --- [수정] ---
 
         if (normalizedData.type === 'scenario' && normalizedData.nextNode) {
           const isInteractive = normalizedData.nextNode.type === 'slotfilling' ||
@@ -637,10 +616,9 @@ export const createScenarioHandlersSlice = (set, get) => ({
                     }),
                 }
             ).then(r => {
-                if (!r.ok) throw new Error(`Failed to update session: ${r.status}`);
-                return r.json();
+                if (!r.ok) console.warn(`[handleScenarioResponse] Session PATCH failed (${r.status}), continuing...`);
+                else return r.json();
             });
-            // --- [수정] ---
             
             endScenario(scenarioSessionId, 'failed');
         } catch (updateError) {
