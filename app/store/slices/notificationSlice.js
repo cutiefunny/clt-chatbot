@@ -189,8 +189,11 @@ export const createNotificationSlice = (set, get) => ({
       events.forEach(event => {
         if (event.type === 'toast') {
           get().showToast(event.message, event.toastType, scenarioSessionId, conversationId);
-        } else if (event.type === 'open_link' && event.url) {
-          if (typeof window === 'undefined') {
+        } else if (event.type === 'open_link' && event.url) { // 'open_link' 이벤트 처리 추가
+          if (typeof window !== 'undefined') {
+            window.open(event.url, '_blank', 'noopener,noreferrer');
+            console.log(`[handleEvents] Opened link: ${event.url}`);
+          } else {
              console.warn("[handleEvents] Cannot open link: window object not available.");
              return;
           }
