@@ -18,65 +18,65 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5분
  * @returns {Promise<Array>} 시나리오 카테고리 배열 (subCategories 포함)
  */
 export async function getScenarioCategories() {
-  const now = Date.now();
-  if (cachedScenarioCategories && (now - lastFetchTime < CACHE_DURATION)) {
-    return cachedScenarioCategories;
-  }
-
-  try {
-    const { TENANT_ID, STAGE_ID, SEC_OFC_ID } = API_DEFAULTS;
-    const params = new URLSearchParams({
-      ten_id: TENANT_ID,
-      stg_id: STAGE_ID,
-      sec_ofc_id: SEC_OFC_ID,
-    });
-
-    const response = await fetch(`${FASTAPI_BASE_URL}/shortcut?${params.toString()}`);
-    
-    if (response.ok) {
-      const data = await response.json();
-      // --- [수정] 백엔드 명세에 따라 응답 처리 ---
-      // API 응답 구조: Array of ShortcutResponse 또는 단일 ShortcutResponse
-      // ShortcutResponse: { id, name, order, subCategories }
-      let categoryData = data;
-      if (!Array.isArray(data)) {
-        categoryData = [data];
-      }
-      
-      cachedScenarioCategories = categoryData;
-      lastFetchTime = now;
-      console.log('[getScenarioCategories] FastAPI에서 로드 성공:', categoryData);
-      return cachedScenarioCategories;
-    } else {
-      throw new Error(`Failed with status ${response.status}`);
+    const now = Date.now();
+    if (cachedScenarioCategories && (now - lastFetchTime < CACHE_DURATION)) {
+        return cachedScenarioCategories;
     }
-  } catch (error) {
-    console.warn("Error fetching scenario categories from FastAPI:", error);
-    return [];
-  }
+
+    try {
+        const { TENANT_ID, STAGE_ID, SEC_OFC_ID } = API_DEFAULTS;
+        const params = new URLSearchParams({
+            ten_id: TENANT_ID,
+            stg_id: STAGE_ID,
+            sec_ofc_id: SEC_OFC_ID,
+        });
+
+        const response = await fetch(`${FASTAPI_BASE_URL}/shortcut?${params.toString()}`);
+
+        if (response.ok) {
+            const data = await response.json();
+            // --- [수정] 백엔드 명세에 따라 응답 처리 ---
+            // API 응답 구조: Array of ShortcutResponse 또는 단일 ShortcutResponse
+            // ShortcutResponse: { id, name, order, subCategories }
+            let categoryData = data;
+            if (!Array.isArray(data)) {
+                categoryData = [data];
+            }
+
+            cachedScenarioCategories = categoryData;
+            lastFetchTime = now;
+            console.log('[getScenarioCategories] FastAPI에서 로드 성공:', categoryData);
+            return cachedScenarioCategories;
+        } else {
+            throw new Error(`Failed with status ${response.status}`);
+        }
+    } catch (error) {
+        console.warn("Error fetching scenario categories from FastAPI:", error);
+        return [];
+    }
 }
 
 export async function findActionByTrigger(message) {
-  const scenarioCategories = await getScenarioCategories();
-  if (!scenarioCategories) return null;
+    const scenarioCategories = await getScenarioCategories();
+    if (!scenarioCategories) return null;
 
-  for (const category of scenarioCategories) {
-    for (const subCategory of category.subCategories) {
-        for (const item of subCategory.items) {
-            // 사용자가 입력한 텍스트가 아이템의 제목과 정확히 일치하는지 확인 (대소문자 무시, 공백 제거)
-            if (message.toLowerCase().trim() === item.title.toLowerCase().trim()) {
-                // action 객체 유효성 검사 추가 (type과 value가 있는지)
-                if (item.action && typeof item.action.type === 'string' && typeof item.action.value === 'string') {
-                    return item.action;
-                } else {
-                    console.warn(`Invalid action found for item "${item.title}":`, item.action);
-                    return null; // 유효하지 않으면 null 반환
+    for (const category of scenarioCategories) {
+        for (const subCategory of category.subCategories) {
+            for (const item of subCategory.items) {
+                // 사용자가 입력한 텍스트가 아이템의 제목과 정확히 일치하는지 확인 (대소문자 무시, 공백 제거)
+                if (message.toLowerCase().trim() === item.title.toLowerCase().trim()) {
+                    // action 객체 유효성 검사 추가 (type과 value가 있는지)
+                    if (item.action && typeof item.action.type === 'string' && typeof item.action.value === 'string') {
+                        return item.action;
+                    } else {
+                        console.warn(`Invalid action found for item "${item.title}":`, item.action);
+                        return null; // 유효하지 않으면 null 반환
+                    }
                 }
             }
         }
     }
-  }
-  return null; // 일치하는 아이템 없음
+    return null; // 일치하는 아이템 없음
 }
 
 export const getScenarioList = async () => {
@@ -90,10 +90,10 @@ export const getScenarioList = async () => {
 };
 
 export const getScenario = async (scenarioId) => {
-  // scenarioId 유효성 검사 추가
-  if (!scenarioId || typeof scenarioId !== 'string') {
-      throw new Error(`Invalid scenario ID provided: ${scenarioId}`);
-  }
+    // scenarioId 유효성 검사 추가
+    if (!scenarioId || typeof scenarioId !== 'string') {
+        throw new Error(`Invalid scenario ID provided: ${scenarioId}`);
+    }
     const scenarioData = await fetchScenario(scenarioId);
 
     // 스키마 버전 확인
@@ -114,19 +114,19 @@ export const getNextNode = (scenario, currentNodeId, sourceHandleId = null, slot
 
     // 시작 노드 결정
     if (!currentNodeId) {
-      // 명시적 시작 노드 ID 확인
-      if (scenario.startNodeId) {
-        const startNode = scenario.nodes.find(node => node.id === scenario.startNodeId);
-        if (startNode) return startNode;
-        console.warn(`Specified startNodeId "${scenario.startNodeId}" not found.`);
-      }
-      // 기본 시작 노드 (들어오는 엣지 없는 노드) 찾기
-      const edgeTargets = new Set(scenario.edges.map(edge => edge.target));
-      const defaultStartNode = scenario.nodes.find(node => !edgeTargets.has(node.id));
-      if (defaultStartNode) return defaultStartNode;
+        // 명시적 시작 노드 ID 확인
+        if (scenario.startNodeId) {
+            const startNode = scenario.nodes.find(node => node.id === scenario.startNodeId);
+            if (startNode) return startNode;
+            console.warn(`Specified startNodeId "${scenario.startNodeId}" not found.`);
+        }
+        // 기본 시작 노드 (들어오는 엣지 없는 노드) 찾기
+        const edgeTargets = new Set(scenario.edges.map(edge => edge.target));
+        const defaultStartNode = scenario.nodes.find(node => !edgeTargets.has(node.id));
+        if (defaultStartNode) return defaultStartNode;
 
-      console.error("Could not determine the start node.");
-      return null; // 시작 노드 못 찾으면 null
+        console.error("Could not determine the start node.");
+        return null; // 시작 노드 못 찾으면 null
     }
 
     // 현재 노드 찾기
@@ -160,17 +160,17 @@ export const getNextNode = (scenario, currentNodeId, sourceHandleId = null, slot
             }
         }
         // 조건 만족하는 엣지 없으면 default 엣지 확인
-         if (!nextEdge) {
-             nextEdge = scenario.edges.find(edge => edge.source === currentNodeId && edge.sourceHandle === 'default');
-             if (nextEdge) console.log(`Branch default handle matched, Edge: ${nextEdge.id}`);
-         }
+        if (!nextEdge) {
+            nextEdge = scenario.edges.find(edge => edge.source === currentNodeId && edge.sourceHandle === 'default');
+            if (nextEdge) console.log(`Branch default handle matched, Edge: ${nextEdge.id}`);
+        }
         // default도 없으면 아래 기본/fallback 엣지 로직으로 넘어감
     }
 
     // 2. 명시적 sourceHandleId가 있는 엣지 찾기 (예: 버튼 클릭)
     if (!nextEdge && sourceHandleId) {
         nextEdge = scenario.edges.find(
-          edge => edge.source === currentNodeId && edge.sourceHandle === sourceHandleId
+            edge => edge.source === currentNodeId && edge.sourceHandle === sourceHandleId
         );
         if (nextEdge) console.log(`Source handle matched: ${sourceHandleId}, Edge: ${nextEdge.id}`);
     }
@@ -215,8 +215,8 @@ export const getDeepValue = (obj, path) => {
         const bracketMatch = actualKey.match(/^\[(['"]?)(.+)\1\]$/);
         if (bracketMatch) {
             actualKey = bracketMatch[2];
-             const index = parseInt(actualKey, 10);
-             if (!isNaN(index) && String(index) === actualKey) actualKey = index;
+            const index = parseInt(actualKey, 10);
+            if (!isNaN(index) && String(index) === actualKey) actualKey = index;
         }
         if (Array.isArray(value)) {
             if (typeof actualKey === 'number' && actualKey >= 0 && actualKey < value.length) value = value[actualKey];
@@ -225,7 +225,7 @@ export const getDeepValue = (obj, path) => {
             if (actualKey in value) value = value[actualKey];
             else return undefined;
         } else {
-             return undefined;
+            return undefined;
         }
     }
     return value;
@@ -301,54 +301,54 @@ export const validateInput = (value, validation, language = 'ko') => {
                 }
             }
             if (validation.startDate && validation.endDate) {
-                 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-                 if (!dateRegex.test(valueStr)) return { isValid: false, message: getErrorMessage('validationFormat') };
-                 try {
-                     const selectedDate = new Date(valueStr);
-                     const startDate = new Date(validation.startDate);
-                     const endDate = new Date(validation.endDate);
-                     selectedDate.setHours(0, 0, 0, 0);
-                     startDate.setHours(0, 0, 0, 0);
-                     endDate.setHours(0, 0, 0, 0);
-                     const isValid = selectedDate >= startDate && selectedDate <= endDate;
-                     return { isValid, message: isValid ? '' : t('validationDateRange', validation.startDate, validation.endDate) };
-                 } catch (e) {
-                     console.error("Invalid date format for range validation:", valueStr, e);
-                     return { isValid: false, message: getErrorMessage('validationFormat') };
-                 }
+                const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+                if (!dateRegex.test(valueStr)) return { isValid: false, message: getErrorMessage('validationFormat') };
+                try {
+                    const selectedDate = new Date(valueStr);
+                    const startDate = new Date(validation.startDate);
+                    const endDate = new Date(validation.endDate);
+                    selectedDate.setHours(0, 0, 0, 0);
+                    startDate.setHours(0, 0, 0, 0);
+                    endDate.setHours(0, 0, 0, 0);
+                    const isValid = selectedDate >= startDate && selectedDate <= endDate;
+                    return { isValid, message: isValid ? '' : t('validationDateRange', validation.startDate, validation.endDate) };
+                } catch (e) {
+                    console.error("Invalid date format for range validation:", valueStr, e);
+                    return { isValid: false, message: getErrorMessage('validationFormat') };
+                }
             }
             return { isValid: true };
         case 'today after':
-             const dateRegexAfter = /^\d{4}-\d{2}-\d{2}$/;
-             if (!dateRegexAfter.test(valueStr)) return { isValid: false, message: getErrorMessage('validationFormat') };
-             try {
+            const dateRegexAfter = /^\d{4}-\d{2}-\d{2}$/;
+            if (!dateRegexAfter.test(valueStr)) return { isValid: false, message: getErrorMessage('validationFormat') };
+            try {
                 const selectedDate = new Date(valueStr);
                 const today = new Date();
                 selectedDate.setHours(0, 0, 0, 0);
                 today.setHours(0, 0, 0, 0);
                 const isValid = selectedDate >= today;
-                return { isValid, message: isValid ? '' : t('validationDateAfter')};
-             } catch (e) {
-                 console.error("Invalid date format for 'today after' validation:", valueStr, e);
-                 return { isValid: false, message: getErrorMessage('validationFormat') };
-             }
+                return { isValid, message: isValid ? '' : t('validationDateAfter') };
+            } catch (e) {
+                console.error("Invalid date format for 'today after' validation:", valueStr, e);
+                return { isValid: false, message: getErrorMessage('validationFormat') };
+            }
         case 'today before':
             const dateRegexBefore = /^\d{4}-\d{2}-\d{2}$/;
-             if (!dateRegexBefore.test(valueStr)) return { isValid: false, message: getErrorMessage('validationFormat') };
-             try {
+            if (!dateRegexBefore.test(valueStr)) return { isValid: false, message: getErrorMessage('validationFormat') };
+            try {
                 const selectedDate = new Date(valueStr);
                 const today = new Date();
                 selectedDate.setHours(0, 0, 0, 0);
                 today.setHours(0, 0, 0, 0);
                 const isValid = selectedDate <= today;
-                return { isValid, message: isValid ? '' : t('validationDateBefore')};
-             } catch (e) {
-                 console.error("Invalid date format for 'today before' validation:", valueStr, e);
-                 return { isValid: false, message: getErrorMessage('validationFormat') };
-             }
+                return { isValid, message: isValid ? '' : t('validationDateBefore') };
+            } catch (e) {
+                console.error("Invalid date format for 'today before' validation:", valueStr, e);
+                return { isValid: false, message: getErrorMessage('validationFormat') };
+            }
         default:
-          console.warn(`Unknown validation type: ${validation.type}`);
-          return { isValid: true };
+            console.warn(`Unknown validation type: ${validation.type}`);
+            return { isValid: true };
     }
 };
 
@@ -369,9 +369,9 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
     if (awaitingInput) {
         const currentNode = scenario.nodes?.find(n => n.id === currentId);
         if (!currentNode) {
-             console.error(`Error in runScenario: Current node "${currentId}" not found during input processing.`);
-             const errorMsg = locales[language]?.errorUnexpected || 'Scenario state error.';
-             return { type: 'scenario_end', message: errorMsg, scenarioState: null, slots: newSlots, events: [] };
+            console.error(`Error in runScenario: Current node "${currentId}" not found during input processing.`);
+            const errorMsg = locales[language]?.errorUnexpected || 'Scenario state error.';
+            return { type: 'scenario_end', message: errorMsg, scenarioState: null, slots: newSlots, events: [] };
         }
         // 입력값 유효성 검사
         const validation = currentNode.data?.validation;
@@ -393,7 +393,7 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
         if (currentNode.data?.slot) {
             newSlots[currentNode.data.slot] = inputText;
         } else {
-             console.warn(`Node "${currentId}" awaited input but has no slot defined.`);
+            console.warn(`Node "${currentId}" awaited input but has no slot defined.`);
         }
     }
 
@@ -428,7 +428,7 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
                 console.error(`Error executing handler for node ${currentNode?.id} (${currentNode?.type}):`, handlerError);
                 const errorMsg = locales[language]?.errorUnexpected || 'An error occurred during scenario execution.';
                 // 오류 발생 시 시나리오 종료 처리
-                 return { type: 'scenario_end', message: errorMsg, scenarioState: null, slots: newSlots, events: allEvents, status: 'failed' }; // status: 'failed' 추가
+                return { type: 'scenario_end', message: errorMsg, scenarioState: null, slots: newSlots, events: allEvents, status: 'failed' }; // status: 'failed' 추가
             }
         } else { // 핸들러가 없는 노드 타입일 경우
             console.warn(`No handler found for node type: ${currentNode.type}. Ending scenario flow.`);
@@ -441,22 +441,28 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
         console.log(`[runScenario] Interactive node ${currentNode.id} reached. Awaiting input.`);
 
         try {
-            const nodeToReturn = JSON.parse(JSON.stringify(currentNode)); // 원본 복사
+            let nodeToReturn;
+            try {
+                nodeToReturn = structuredClone(currentNode); // 원본 복사
+            } catch (e) {
+                console.warn("[runScenario] structuredClone failed for node, fallback to JSON.parse", e);
+                nodeToReturn = JSON.parse(JSON.stringify(currentNode));
+            }
 
             // Form 노드 기본값 슬롯 업데이트 로직
             if (nodeToReturn.type === 'form') {
                 let initialSlotsUpdate = {};
                 (nodeToReturn.data.elements || []).forEach(element => {
                     if (element.name && element.defaultValue !== undefined && element.defaultValue !== null && String(element.defaultValue).trim() !== '') {
-                         let resolvedValue = interpolateMessage(String(element.defaultValue), newSlots);
-                         if (element.type === 'checkbox' && !Array.isArray(element.defaultValue)) {
-                             resolvedValue = typeof element.defaultValue === 'string'
-                               ? element.defaultValue.split(',').map(s => s.trim())
-                               : [resolvedValue];
-                         }
-                         if (newSlots[element.name] === undefined) {
+                        let resolvedValue = interpolateMessage(String(element.defaultValue), newSlots);
+                        if (element.type === 'checkbox' && !Array.isArray(element.defaultValue)) {
+                            resolvedValue = typeof element.defaultValue === 'string'
+                                ? element.defaultValue.split(',').map(s => s.trim())
+                                : [resolvedValue];
+                        }
+                        if (newSlots[element.name] === undefined) {
                             initialSlotsUpdate[element.name] = resolvedValue;
-                         }
+                        }
                     }
                 });
                 if (Object.keys(initialSlotsUpdate).length > 0) {
@@ -476,19 +482,19 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
                         if (el.label) el.label = interpolateMessage(el.label, newSlots);
                         if (el.placeholder) el.placeholder = interpolateMessage(el.placeholder, newSlots);
                         if ((el.type === 'dropbox' || el.type === 'checkbox') && Array.isArray(el.options)) {
-                           el.options = el.options.map(opt => typeof opt === 'string' ? interpolateMessage(opt, newSlots) : opt);
+                            el.options = el.options.map(opt => typeof opt === 'string' ? interpolateMessage(opt, newSlots) : opt);
                         }
                     });
                 }
                 if (nodeToReturn.type === 'branch' && Array.isArray(nodeToReturn.data.replies)) {
-                     nodeToReturn.data.replies.forEach(reply => { if (reply.display) reply.display = interpolateMessage(reply.display, newSlots); });
+                    nodeToReturn.data.replies.forEach(reply => { if (reply.display) reply.display = interpolateMessage(reply.display, newSlots); });
                 }
             }
 
             // awaitingInput 상태 결정 로직 수정
             const isAwaiting = nodeToReturn.type === 'slotfilling' ||
-                               nodeToReturn.type === 'form' ||
-                               (nodeToReturn.type === 'branch' && nodeToReturn.data?.evaluationType !== 'CONDITION');
+                nodeToReturn.type === 'form' ||
+                (nodeToReturn.type === 'branch' && nodeToReturn.data?.evaluationType !== 'CONDITION');
 
 
             return {
@@ -499,9 +505,9 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
                 events: allEvents,
             };
         } catch (processingError) {
-             console.error(`Error during interactive node processing for node ${currentNode.id}:`, processingError);
-             const errorMsg = locales[language]?.errorUnexpected || 'Scenario data processing error.';
-             return { type: 'scenario_end', message: errorMsg, scenarioState: null, slots: newSlots, events: allEvents, status: 'failed' };
+            console.error(`Error during interactive node processing for node ${currentNode.id}:`, processingError);
+            const errorMsg = locales[language]?.errorUnexpected || 'Scenario data processing error.';
+            return { type: 'scenario_end', message: errorMsg, scenarioState: null, slots: newSlots, events: allEvents, status: 'failed' };
         }
 
     } else { // 시나리오 종료

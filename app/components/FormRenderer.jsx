@@ -208,7 +208,13 @@ const FormRenderer = ({
       if (hasDeepPath) {
           // 4-1. 루트 슬롯 객체를 깊은 복사
           const rootSlotKey = rootOptionsSlotKey;
-          let updatedRootSlot = JSON.parse(JSON.stringify(getDeepValue(slots, rootSlotKey) || {}));
+          let updatedRootSlot;
+          try {
+              updatedRootSlot = structuredClone(getDeepValue(slots, rootSlotKey) || {});
+          } catch(e) {
+              console.warn("[handleGridRowClick] structuredClone failed, falling back to JSON deep copy.", e);
+              updatedRootSlot = JSON.parse(JSON.stringify(getDeepValue(slots, rootSlotKey) || {}));
+          }
           
           // 4-2. 업데이트할 위치를 찾기 위한 경로 (vvdinfo.result.vvdInfo -> result.vvdInfo)
           const deepPathToClear = fullOptionsSlotPath.substring(rootSlotKey.length + 1); 
