@@ -40,13 +40,14 @@ export const createUISlice = (set, get) => ({
   isManualModalOpen: false,
   isHistoryPanelOpen: false,
   isScenarioPanelExpanded: false,
+  isSearchModalOpen: false,
   confirmModal: {
     isOpen: false,
     title: "",
     message: "",
     confirmText: "Confirm",
     cancelText: "Cancel",
-    onConfirm: () => {},
+    onConfirm: () => { },
     confirmVariant: "default",
   },
   activePanel: "main",
@@ -146,7 +147,7 @@ export const createUISlice = (set, get) => ({
       // 저장 실패 시 롤백
       logger.log("Rolling back settings due to error...", previousSettings);
       set(previousSettings);
-      
+
       return false;
     }
   },
@@ -218,6 +219,8 @@ export const createUISlice = (set, get) => ({
   closeNotificationModal: () => set({ isNotificationModalOpen: false }),
   openManualModal: () => set({ isManualModalOpen: true }),
   closeManualModal: () => set({ isManualModalOpen: false }),
+  openSearchModal: () => set({ isSearchModalOpen: true }),
+  closeSearchModal: () => set({ isSearchModalOpen: false }),
 
   openConfirmModal: (config) =>
     set((state) => ({
@@ -233,8 +236,7 @@ export const createUISlice = (set, get) => ({
     const willBeOpen = !isCurrentlyOpen;
     const width = willBeOpen ? 264 : -264;
     console.log(
-      `[Call Window Method] callChatbotResize(width: ${width}) to ${PARENT_ORIGIN} with ${
-        willBeOpen ? "Open" : "Close"
+      `[Call Window Method] callChatbotResize(width: ${width}) to ${PARENT_ORIGIN} with ${willBeOpen ? "Open" : "Close"
       } History Panel`
     );
     postToParent("callChatbotResize", { width });
@@ -312,7 +314,7 @@ export const createUISlice = (set, get) => ({
 
   focusChatInput: () =>
     set((state) => ({ focusRequest: state.focusRequest + 1 })),
-  
+
   clearUserAndData: () => {
     set({
       theme: "light",
@@ -327,7 +329,7 @@ export const createUISlice = (set, get) => ({
       dimUnfocusedPanels: true,
       showHistoryOnGreeting: false,
       mainInputPlaceholder: "",
-      headerTitle: "AI Chatbot", 
+      headerTitle: "AI Chatbot",
       enableMainChatMarkdown: true,
       showScenarioBubbles: true,
       mainInputValue: "",
@@ -339,13 +341,14 @@ export const createUISlice = (set, get) => ({
       isManualModalOpen: false,
       isHistoryPanelOpen: false,
       isScenarioPanelExpanded: false,
+      isSearchModalOpen: false,
       confirmModal: {
         isOpen: false,
         title: "",
         message: "",
         confirmText: "Confirm",
         cancelText: "Cancel",
-        onConfirm: () => {},
+        onConfirm: () => { },
         confirmVariant: "default",
       },
       activePanel: "main",

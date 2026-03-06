@@ -3,7 +3,7 @@ import { API_DEFAULTS, MESSAGE_LIMIT } from './constants';
 import { getUserId } from './utils';
 
 const REMOTE_URL = "http://202.20.84.65:8083";
-const API_PREFIX = "/api/v1"; 
+const API_PREFIX = "/api/v1";
 
 // 공통 헤더
 function getHeaders() {
@@ -16,7 +16,7 @@ function getHeaders() {
 function buildUrl(endpoint, params = {}) {
   const fullUrl = `${REMOTE_URL}${API_PREFIX}${endpoint}`;
   const urlObj = new URL(fullUrl);
-  
+
   Object.keys(params).forEach(key => {
     if (params[key] !== undefined && params[key] !== null) {
       urlObj.searchParams.append(key, params[key]);
@@ -36,19 +36,19 @@ function buildUrl(endpoint, params = {}) {
 export async function sendChatMessage(payload) {
   const url = buildUrl(`/chat`);
   console.log('[sendChatMessage] Request payload:', payload);
-  
+
   const res = await fetch(url, {
     method: "POST",
     headers: getHeaders(),
     body: JSON.stringify(payload)
   });
-  
+
   if (!res.ok) throw new Error(`Failed to send chat message: ${res.status}`);
-  
+
   const data = await res.json();
   console.log('[sendChatMessage] Response from server:', JSON.stringify(data, null, 2));
   console.log('[sendChatMessage] nextNode in response:', data.nextNode);
-  
+
   return data;
 }
 
@@ -69,7 +69,7 @@ export async function fetchConversations(offset = 0, limit = 50) {
 
 // 대화 생성
 export async function createConversation(title) {
-  const url = buildUrl(`/conversations`); 
+  const url = buildUrl(`/conversations`);
   const userId = getUserId();
   const body = { title: title || "New Chat", usr_id: userId };
   const res = await fetch(url, { method: "POST", headers: getHeaders(), body: JSON.stringify(body) });
@@ -90,7 +90,7 @@ export async function getConversation(conversationId) {
 export async function updateConversation(conversationId, { title, isPinned }) {
   const url = buildUrl(`/conversations/${conversationId}`);
   const userId = getUserId();
-  
+
   const payload = { usr_id: userId };
   if (title !== undefined) payload.title = title;
   if (isPinned !== undefined) payload.is_pinned = isPinned;
@@ -123,7 +123,7 @@ export async function deleteConversation(conversationId) {
 export async function fetchMessages({ queryKey, pageParam = 0 }) {
   const [_, conversationId] = queryKey;
   if (!conversationId) return [];
-  
+
   const userId = getUserId();
   const url = buildUrl(`/conversations/${conversationId}`, {
     skip: pageParam,
@@ -133,9 +133,9 @@ export async function fetchMessages({ queryKey, pageParam = 0 }) {
 
   const res = await fetch(url, { method: "GET", headers: getHeaders() });
   if (!res.ok) throw new Error(`Failed to fetch messages: ${res.status}`);
-  
+
   const data = await res.json();
-  
+
   if (data && Array.isArray(data.messages)) {
     return data.messages.map(msg => {
       const baseMessage = {
@@ -146,13 +146,13 @@ export async function fetchMessages({ queryKey, pageParam = 0 }) {
         selectedOption: msg.selected_option,
         feedback: msg.feedback
       };
-      
+
       // 시나리오 세션이 연결된 메시지는 scenario_bubble로 표시
       if (msg.scenario_session_id) {
         baseMessage.type = "scenario_bubble";
         baseMessage.scenarioSessionId = msg.scenario_session_id;
       }
-      
+
       return baseMessage;
     });
   }
@@ -172,23 +172,23 @@ export async function createMessage(conversationId, messageData) {
     type: messageData.type,
     scenario_session_id: messageData.scenarioSessionId,
     meta: messageData.meta || {},
-    usr_id: userId 
+    usr_id: userId
   };
 
   try {
-    const res = await fetch(url, { 
-      method: "POST", 
-      headers: getHeaders(), 
-      body: JSON.stringify(payload) 
+    const res = await fetch(url, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify(payload)
     });
 
     if (res.status === 404) {
       // 👈 [방어] 백엔드에 API가 없는 경우 경고만 띄우고 가상의 응답 반환
       console.warn(`[API] POST /messages not found (404). Check backend routing.`);
-      return { 
-        id: `temp_${Date.now()}`, 
+      return {
+        id: `temp_${Date.now()}`,
         ...payload,
-        created_at: new Date().toISOString() 
+        created_at: new Date().toISOString()
       };
     }
 
@@ -197,10 +197,10 @@ export async function createMessage(conversationId, messageData) {
   } catch (error) {
     console.error("[API] createMessage failed:", error);
     // 👈 네트워크 에러 등 발생 시에도 흐름 유지
-    return { 
-      id: `temp_${Date.now()}`, 
+    return {
+      id: `temp_${Date.now()}`,
       ...payload,
-      created_at: new Date().toISOString() 
+      created_at: new Date().toISOString()
     };
   }
 }
@@ -210,9 +210,9 @@ export async function updateMessage(conversationId, messageId, updates) {
   const url = buildUrl(`/conversations/${conversationId}/messages/${messageId}`);
   const userId = getUserId();
 
-  const payload = { 
+  const payload = {
     usr_id: userId,
-    ...updates 
+    ...updates
   };
 
   const res = await fetch(url, {
@@ -365,10 +365,10 @@ export async function fetchGeneralConfig() {
 export async function updateGeneralConfig(settings) {
   const url = buildUrl(`/config/general`);
   try {
-    const res = await fetch(url, { 
-      method: "PATCH", 
-      headers: getHeaders(), 
-      body: JSON.stringify(settings) 
+    const res = await fetch(url, {
+      method: "PATCH",
+      headers: getHeaders(),
+      body: JSON.stringify(settings)
     });
     if (!res.ok) {
       // 404는 백엔드 미구현이므로 에러 로그 출력 안 함
@@ -401,10 +401,10 @@ export async function fetchUserSettings(userId) {
 export async function updateUserSettings(userId, settings) {
   const url = buildUrl(`/settings/${userId}`);
   try {
-    const res = await fetch(url, { 
-      method: "PATCH", 
-      headers: getHeaders(), 
-      body: JSON.stringify(settings) 
+    const res = await fetch(url, {
+      method: "PATCH",
+      headers: getHeaders(),
+      body: JSON.stringify(settings)
     });
     if (!res.ok) {
       console.warn(`[API] Failed to update user settings: ${res.status}`);
@@ -424,9 +424,9 @@ export async function updateUserSettings(userId, settings) {
  */
 
 // 대화 내 메시지 검색
-export async function searchMessages(query) {
-  const userId = getUserId();
-  const url = buildUrl(`/search/messages`, { q: query, usr_id: userId });
+export async function searchMessages(query, userId) {
+  const finalUserId = userId || getUserId();
+  const url = buildUrl(`/search/messages`, { q: query, usr_id: finalUserId });
   try {
     const res = await fetch(url, { method: "GET", headers: getHeaders() });
     if (!res.ok) return [];
@@ -446,11 +446,11 @@ export async function searchMessages(query) {
 // 알림 목록 조회
 export async function fetchNotifications() {
   const userId = getUserId();
-  const url = buildUrl(`/users/notifications`, { 
-    usr_id: userId, 
-    ten_id: API_DEFAULTS.TENANT_ID, 
-    stg_id: API_DEFAULTS.STAGE_ID, 
-    sec_ofc_id: API_DEFAULTS.SEC_OFC_ID 
+  const url = buildUrl(`/users/notifications`, {
+    usr_id: userId,
+    ten_id: API_DEFAULTS.TENANT_ID,
+    stg_id: API_DEFAULTS.STAGE_ID,
+    sec_ofc_id: API_DEFAULTS.SEC_OFC_ID
   });
   try {
     const res = await fetch(url, { method: "GET", headers: getHeaders() });

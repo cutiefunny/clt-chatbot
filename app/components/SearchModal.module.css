@@ -1,0 +1,113 @@
+.searchContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.searchForm {
+    display: flex;
+    gap: 8px;
+}
+
+.searchInput {
+    flex-grow: 1;
+    padding: 10px 14px;
+    border: 1px solid var(--panel-border-color);
+    border-radius: 8px;
+    background-color: var(--input-bg, #fff);
+    color: var(--text-color);
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.searchInput:focus {
+    outline: none;
+    border-color: #806bf5;
+}
+
+.searchButton {
+    padding: 0 16px;
+    background-color: #806bf5;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.searchButton:hover {
+    background-color: #634ce2;
+}
+
+.searchButton:disabled {
+    background-color: var(--button-hover-bg);
+    cursor: not-allowed;
+}
+
+.resultsList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 400px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.resultItem {
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--panel-border-color);
+    background-color: var(--White-Opacity-48, rgba(255, 255, 255, 0.48));
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.resultItem:hover {
+    background-color: var(--button-hover-bg);
+    border-color: #806bf5;
+}
+
+.resultHeader {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    font-size: 12px;
+    color: var(--Gray-05, #8d9eba);
+}
+
+.convoTitle {
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.resultContent {
+    font-size: 14px;
+    color: var(--text-color);
+    line-height: 1.4;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.noResults {
+    text-align: center;
+    padding: 24px;
+    color: var(--Gray-05, #8d9eba);
+    font-size: 14px;
+}
+
+.loading {
+    text-align: center;
+    padding: 24px;
+    color: #806bf5;
+    font-size: 14px;
+}

@@ -17,6 +17,7 @@ import NewChatIcon from "./icons/NewChatIcon";
 const ProfileModal = dynamic(() => import("./ProfileModal"));
 const NotificationModal = dynamic(() => import("./NotificationModal"));
 const ManualModal = dynamic(() => import("./ManualModal"));
+const SearchModal = dynamic(() => import("./SearchModal"));
 
 export default function HistoryPanel() {
   const {
@@ -37,6 +38,8 @@ export default function HistoryPanel() {
     hasUnreadNotifications,
     isManualModalOpen,
     openManualModal,
+    isSearchModalOpen,
+    openSearchModal,
     scenariosForConversation,
     expandedConversationId,
     toggleConversationExpansion,
@@ -89,14 +92,12 @@ export default function HistoryPanel() {
         </defs>
       </svg>
       <div
-        className={`${styles.historyPanel} ${
-          isHistoryPanelOpen ? styles.open : styles.closed
-        }`}
+        className={`${styles.historyPanel} ${isHistoryPanelOpen ? styles.open : styles.closed
+          }`}
       >
         <button
-          className={`${styles.toggleButton} ${
-            !isHistoryPanelOpen ? styles.floatingToggleButton : ""
-          }`}
+          className={`${styles.toggleButton} ${!isHistoryPanelOpen ? styles.floatingToggleButton : ""
+            }`}
           onClick={toggleHistoryPanel}
         >
           <MenuIcon />
@@ -119,15 +120,13 @@ export default function HistoryPanel() {
             <div className={styles.headerTopRow}>
               <div className={styles.headerIconGroup}>
                 <button
-                  className={`${styles.iconButton} ${
-                    hasUnreadNotifications ? styles.unread : ""
-                  }`}
+                  className={`${styles.iconButton} ${hasUnreadNotifications ? styles.unread : ""
+                    }`}
                   onClick={openNotificationModal}
                 >
                   <BellIcon />
                 </button>
-                {/* TODO: 검색 기능 재구현 필요 (현재 Firestore 의존성 제거 중) */}
-                <button className={styles.iconButton} disabled title="검색 기능 준비 중">
+                <button className={styles.iconButton} onClick={openSearchModal} title={t("searchConversations")}>
                   <SearchIcon />
                 </button>
               </div>
@@ -172,7 +171,7 @@ export default function HistoryPanel() {
                       isPending={isPending}
                       // --- 👇 [추가] hasCompletedResponse 프롭 전달 ---
                       hasCompletedResponse={hasCompleted}
-                      // --- 👆 [추가] ---
+                    // --- 👆 [추가] ---
                     />
                   );
                 })}
@@ -206,6 +205,7 @@ export default function HistoryPanel() {
       {isProfileModalOpen && <ProfileModal />}
       {isNotificationModalOpen && <NotificationModal />}
       {isManualModalOpen && <ManualModal />}
+      {isSearchModalOpen && <SearchModal />}
     </>
   );
 }
