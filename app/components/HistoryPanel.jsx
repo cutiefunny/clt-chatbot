@@ -146,7 +146,7 @@ export default function HistoryPanel() {
             <div className={styles.conversationList}>
               {conversations.length > 0 &&
                 conversations.map((convo) => {
-                  const scenarios = scenariosForConversation[convo.id] || [];
+                  const scenarios = scenariosForConversation[convo.id];
                   const hasUnread = unreadConversations.has(convo.id);
                   const isPending = pendingResponses.has(convo.id);
                   // --- 👇 [추가] hasCompleted 계산 ---

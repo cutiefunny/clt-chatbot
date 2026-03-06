@@ -90,7 +90,7 @@ export const loadInitialMessages = async (get, set, conversationId) => {
                             scenariosList.push({
                                 sessionId: sessionId,
                                 scenarioId: data.scenario_id || sessionId,
-                                status: data.status,
+                                status: (data.status === 'starting' || !data.status) ? 'active' : data.status,
                                 title: data.title,
                                 messages: data.messages || [],
                                 updatedAt: data.updated_at || new Date(),
@@ -114,7 +114,7 @@ export const loadInitialMessages = async (get, set, conversationId) => {
                     scenariosList.push({
                         sessionId: sessionId,
                         scenarioId: existingData.scenario_id || sessionId,
-                        status: existingData.status,
+                        status: (existingData.status === 'starting' || !existingData.status) ? 'active' : existingData.status,
                         title: existingData.title,
                         messages: existingData.messages || [],
                         updatedAt: existingData.updated_at || new Date(),
@@ -129,6 +129,11 @@ export const loadInitialMessages = async (get, set, conversationId) => {
                         [conversationId]: scenariosList,
                     }
                 }));
+
+                // ✨ [Auto-expand] Only if scenarios found and it's the current conversation
+                if (get().currentConversationId === conversationId) {
+                    set({ expandedConversationId: conversationId });
+                }
             }
         }
     } catch (error) {

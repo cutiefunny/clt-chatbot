@@ -144,15 +144,20 @@ export default function ConversationItem({
     };
   }, []);
 
-  const wasActiveRef = useRef(isActive);
+  const [hasAutoExpanded, setHasAutoExpanded] = useState(false);
+
   useEffect(() => {
-    // 대화가 새로 선택되어 활성화될 때만 자동 확장 (이미 활성화된 상태에서 펼침 버튼 등으로 제어한 경우는 무시)
-    if (isActive && !wasActiveRef.current && hasScenarios && !isExpanded) {
-      console.log(`[ConversationItem] Auto-expanding scenarios for ${convo.id}`);
-      onToggleExpand?.(convo.id);
+    if (!isActive) {
+      setHasAutoExpanded(false);
+      return;
     }
-    wasActiveRef.current = isActive;
-  }, [isActive, hasScenarios, isExpanded, convo.id, onToggleExpand]);
+
+    if (isActive && hasScenarios && !isExpanded && !hasAutoExpanded) {
+      // 대화가 활성화된 상태에서 시나리오가 로드되면 한 번만 자동 확장
+      onToggleExpand?.(convo.id);
+      setHasAutoExpanded(true);
+    }
+  }, [isActive, hasScenarios, isExpanded, convo.id, onToggleExpand, hasAutoExpanded]);
 
   const handleUpdate = () => {
     if (title.trim() && title.trim() !== convo.title) {
@@ -200,11 +205,8 @@ export default function ConversationItem({
             // 이미 활성화된 대화인 경우 시나리오 목록 토글
             onToggleExpand?.(convo.id);
           } else {
-            // 다른 대화를 선택하는 경우: 로드하고 목록 펼침
+            // 다른 대화를 선택하는 경우: 로드 (로드 과정에서 자동 펼침 처리됨)
             onClick(convo.id);
-            if (hasScenarios) {
-              onToggleExpand?.(convo.id);
-            }
           }
         }}
       >

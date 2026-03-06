@@ -76,12 +76,36 @@ export const createScenarioSessionSlice = (set, get) => ({
           }
         }
 
+        // 🔴 [NEW] 각 메시지에 node 객체 복구 및 sender/role 동기화 (서버 데이터 정규화)
+        if (fullScenarioData.messages) {
+          fullScenarioData.messages = fullScenarioData.messages.map(msg => {
+            const normalizedMsg = { ...msg };
+
+            // role -> sender 동기화
+            if (normalizedMsg.role && !normalizedMsg.sender) {
+              normalizedMsg.sender = normalizedMsg.role;
+            } else if (normalizedMsg.sender && !normalizedMsg.role) {
+              normalizedMsg.role = normalizedMsg.sender;
+            }
+
+            // node 객체 복구
+            if (normalizedMsg.id && !normalizedMsg.node && fullScenarioData.nodes) {
+              const node = fullScenarioData.nodes.find(n => n.id === normalizedMsg.id || n.id === String(normalizedMsg.id));
+              if (node) {
+                console.log(`[subscribeToScenarioSession] Re-linked node to message: ${normalizedMsg.id}`);
+                normalizedMsg.node = node;
+              }
+            }
+            return normalizedMsg;
+          });
+        }
+
         set(state => {
           const currentLocalState = state.scenarioStates[sessionId];
 
           // 🔴 [NEW] 로컬 데이터가 이미 있으면 백엔드 빈 데이터로 덮어쓰지 않음
-          if (currentLocalState?.messages && currentLocalState?.state && currentLocalState?.nodes) {
-            console.log(`[subscribeToScenarioSession] Local state already exists, not overwriting with server data`);
+          if (currentLocalState?.messages?.length > 0 && currentLocalState?.state && currentLocalState?.nodes) {
+            console.log(`[subscribeToScenarioSession] Local state already exists (${currentLocalState.messages.length} msgs), not overwriting with server data`);
             return state;
           }
 
@@ -89,7 +113,8 @@ export const createScenarioSessionSlice = (set, get) => ({
             ...state.scenarioStates,
             [sessionId]: {
               ...(currentLocalState || {}),
-              ...fullScenarioData  // 로컬 데이터 없을 때만 서버 데이터 적용
+              ...fullScenarioData,  // 로컬 데이터 없을 때만 서버 데이터 적용
+              isLoading: false,     // 로딩 종료
             }
           };
           const newActiveSessions = Object.keys(newScenarioStates);
