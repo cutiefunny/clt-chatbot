@@ -19,14 +19,14 @@ export const createScenarioSessionSlice = (set, get) => ({
       hasState: !!existingScenario?.state,
       currentNodeId: existingScenario?.state?.current_node_id,
     });
-    
+
     if (existingScenario?.messages && existingScenario?.state) {
       console.log(`[subscribeToScenarioSession] ✓ Local state already exists, no fetch needed for ${sessionId}`);
       return;
     }
 
     console.log(`[subscribeToScenarioSession] Local state missing, fetching from server for ${sessionId}`);
-    
+
     // 🟢 [NEW] 재진입 시: 초기 조회만 (폴링 아님)
     const fetchScenarioState = async () => {
       try {
@@ -37,7 +37,7 @@ export const createScenarioSessionSlice = (set, get) => ({
             headers: { "Content-Type": "application/json" }
           }
         );
-        
+
         if (!response.ok) {
           if (response.status === 404) {
             console.log(`Scenario session ${sessionId} not found or deleted.`);
@@ -45,38 +45,59 @@ export const createScenarioSessionSlice = (set, get) => ({
           }
           return;
         }
-        
+
         const data = await response.json();
         const scenarioData = data.data || data;
-        
+
         console.log(`[subscribeToScenarioSession] ✅ Fetched state for ${sessionId}:`, {
           status: scenarioData.status,
+          scenario_id: scenarioData.scenario_id || scenarioData.scenarioId,
           current_node_id: scenarioData.state?.current_node_id,
           messages_count: scenarioData.messages?.length || 0,
         });
-        
-        set(state => {
-            const currentLocalState = state.scenarioStates[sessionId];
-            
-            // 🔴 [NEW] 로컬 데이터가 이미 있으면 백엔드 빈 데이터로 덮어쓰지 않음
-            if (currentLocalState?.messages && currentLocalState?.state) {
-              console.log(`[subscribeToScenarioSession] Local state already exists, not overwriting with server data`);
-              return state;
-            }
-            
-            const newScenarioStates = {
-                ...state.scenarioStates,
-                [sessionId]: {
-                    ...(currentLocalState || {}),
-                    ...scenarioData  // 로컬 데이터 없을 때만 서버 데이터 적용
-                }
-            };
-            const newActiveSessions = Object.keys(newScenarioStates);
 
-            return {
-                scenarioStates: newScenarioStates,
-                activeScenarioSessions: newActiveSessions,
-            };
+        // 🔴 [NEW] nodes/edges가 없으면 시나리오 정의를 가져와서 합침
+        let fullScenarioData = { ...scenarioData };
+        if (!fullScenarioData.nodes || !fullScenarioData.edges) {
+          const scenarioId = fullScenarioData.scenario_id || fullScenarioData.scenarioId;
+          if (scenarioId) {
+            try {
+              const { fetchScenario } = await import('../../lib/api');
+              const definition = await fetchScenario(scenarioId);
+              if (definition) {
+                fullScenarioData.nodes = definition.nodes;
+                fullScenarioData.edges = definition.edges;
+                fullScenarioData.version = definition.version;
+                if (!fullScenarioData.title) fullScenarioData.title = definition.name || definition.title;
+              }
+            } catch (err) {
+              console.warn(`[subscribeToScenarioSession] Failed to fetch definition for scenario ${scenarioId}:`, err);
+            }
+          }
+        }
+
+        set(state => {
+          const currentLocalState = state.scenarioStates[sessionId];
+
+          // 🔴 [NEW] 로컬 데이터가 이미 있으면 백엔드 빈 데이터로 덮어쓰지 않음
+          if (currentLocalState?.messages && currentLocalState?.state && currentLocalState?.nodes) {
+            console.log(`[subscribeToScenarioSession] Local state already exists, not overwriting with server data`);
+            return state;
+          }
+
+          const newScenarioStates = {
+            ...state.scenarioStates,
+            [sessionId]: {
+              ...(currentLocalState || {}),
+              ...fullScenarioData  // 로컬 데이터 없을 때만 서버 데이터 적용
+            }
+          };
+          const newActiveSessions = Object.keys(newScenarioStates);
+
+          return {
+            scenarioStates: newScenarioStates,
+            activeScenarioSessions: newActiveSessions,
+          };
         });
       } catch (error) {
         console.error(`Error fetching scenario session ${sessionId}:`, error);
@@ -86,48 +107,48 @@ export const createScenarioSessionSlice = (set, get) => ({
         get().unsubscribeFromScenarioSession(sessionId);
       }
     };
-    
+
     // 초기 조회 실행 (한 번만)
     fetchScenarioState();
-    
+
     // cleanup 함수 저장 (빈 함수, 폴링 없으므로)
     const unsubscribe = () => {
       // 폴링이 없으므로 정리할 것 없음
     };
-    
+
     set(state => ({
-        unsubscribeScenariosMap: {
-            ...state.unsubscribeScenariosMap,
-            [sessionId]: unsubscribe
-        }
+      unsubscribeScenariosMap: {
+        ...state.unsubscribeScenariosMap,
+        [sessionId]: unsubscribe
+      }
     }));
   },
 
   unsubscribeFromScenarioSession: (sessionId) => {
-      set(state => {
-          const newUnsubscribeMap = { ...state.unsubscribeScenariosMap };
-          if (newUnsubscribeMap[sessionId]) {
-              newUnsubscribeMap[sessionId]();
-              delete newUnsubscribeMap[sessionId];
-          }
+    set(state => {
+      const newUnsubscribeMap = { ...state.unsubscribeScenariosMap };
+      if (newUnsubscribeMap[sessionId]) {
+        newUnsubscribeMap[sessionId]();
+        delete newUnsubscribeMap[sessionId];
+      }
 
-          const updatedStates = { ...state.scenarioStates };
-          delete updatedStates[sessionId];
-          const updatedActiveSessions = Object.keys(updatedStates);
+      const updatedStates = { ...state.scenarioStates };
+      delete updatedStates[sessionId];
+      const updatedActiveSessions = Object.keys(updatedStates);
 
-          const shouldResetActivePanel = state.activeScenarioSessionId === sessionId || state.lastFocusedScenarioSessionId === sessionId;
+      const shouldResetActivePanel = state.activeScenarioSessionId === sessionId || state.lastFocusedScenarioSessionId === sessionId;
 
-          return {
-              unsubscribeScenariosMap: newUnsubscribeMap,
-              scenarioStates: updatedStates,
-              activeScenarioSessions: updatedActiveSessions,
-              ...(shouldResetActivePanel ? {
-                  activeScenarioSessionId: null,
-                  lastFocusedScenarioSessionId: null,
-                  activePanel: 'main'
-              } : {})
-          };
-      });
+      return {
+        unsubscribeScenariosMap: newUnsubscribeMap,
+        scenarioStates: updatedStates,
+        activeScenarioSessions: updatedActiveSessions,
+        ...(shouldResetActivePanel ? {
+          activeScenarioSessionId: null,
+          lastFocusedScenarioSessionId: null,
+          activePanel: 'main'
+        } : {})
+      };
+    });
   },
 
   unsubscribeAllScenarioListeners: () => {
@@ -138,74 +159,74 @@ export const createScenarioSessionSlice = (set, get) => ({
   },
 
   endScenario: async (scenarioSessionId, status = 'completed') => {
-    const { user, currentConversationId, language, showEphemeralToast } = get(); 
+    const { user, currentConversationId, language, showEphemeralToast } = get();
     if (!user || !currentConversationId || !scenarioSessionId) return;
-    
+
     try {
-        const currentScenario = get().scenarioStates[scenarioSessionId];
-        if (!currentScenario) return;
+      const currentScenario = get().scenarioStates[scenarioSessionId];
+      if (!currentScenario) return;
 
-        // 종료 메시지 결정
-        const messageKey = status === 'canceled' ? 'scenarioCanceled' : 'scenarioComplete';
-        const endMessage = locales[language]?.[messageKey] || 'Scenario has ended.';
-        
-        // 기존 메시지에 종료 메시지 추가
-        const messages = [...(currentScenario.messages || [])];
-        messages.push({
-          id: `bot-end-${Date.now()}`,
-          sender: 'bot',
-          text: endMessage,
-          type: 'scenario_message',
-        });
+      // 종료 메시지 결정
+      const messageKey = status === 'canceled' ? 'scenarioCanceled' : 'scenarioComplete';
+      const endMessage = locales[language]?.[messageKey] || 'Scenario has ended.';
 
-        // --- [수정] FastAPI로 업데이트 (정확한 경로: /conversations/{conversation_id}/scenario-sessions/{session_id}) ---
-        await fetch(
-            `${FASTAPI_BASE_URL}/conversations/${currentConversationId}/scenario-sessions/${scenarioSessionId}`,
-            {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    usr_id: user.uid,
-                    status: status,
-                    state: null,
-                    messages: messages,
-                }),
-            }
-        ).then(r => {
-            if (!r.ok) throw new Error(`Failed to update session: ${r.status}`);
-            return r.json();
-        });
-        // --- [수정] ---
-        
-        set(state => {
-            const updatedState = state.scenarioStates[scenarioSessionId]
-                ? { ...state.scenarioStates[scenarioSessionId], status: status, state: null, messages: messages } 
-                : { status: status, state: null, messages: messages };
+      // 기존 메시지에 종료 메시지 추가
+      const messages = [...(currentScenario.messages || [])];
+      messages.push({
+        id: `bot-end-${Date.now()}`,
+        sender: 'bot',
+        text: endMessage,
+        type: 'scenario_message',
+      });
 
-            // --- [추가] scenariosForConversation도 함께 업데이트 ---
-            const updatedScenarios = state.scenariosForConversation?.[currentConversationId]?.map(s => 
-              s.sessionId === scenarioSessionId ? { ...s, status: status } : s
-            ) || [];
+      // --- [수정] FastAPI로 업데이트 (정확한 경로: /conversations/{conversation_id}/scenario-sessions/{session_id}) ---
+      await fetch(
+        `${FASTAPI_BASE_URL}/conversations/${currentConversationId}/scenario-sessions/${scenarioSessionId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            usr_id: user.uid,
+            status: status,
+            state: null,
+            messages: messages,
+          }),
+        }
+      ).then(r => {
+        if (!r.ok) throw new Error(`Failed to update session: ${r.status}`);
+        return r.json();
+      });
+      // --- [수정] ---
 
-            return {
-                scenarioStates: {
-                    ...state.scenarioStates,
-                    [scenarioSessionId]: updatedState
-                },
-                scenariosForConversation: {
-                    ...state.scenariosForConversation,
-                    [currentConversationId]: updatedScenarios,
-                },
-            };
-        });
+      set(state => {
+        const updatedState = state.scenarioStates[scenarioSessionId]
+          ? { ...state.scenarioStates[scenarioSessionId], status: status, state: null, messages: messages }
+          : { status: status, state: null, messages: messages };
 
-        console.log(`[endScenario] Scenario ${scenarioSessionId} marked as ${status}. Panel will remain open.`);
+        // --- [추가] scenariosForConversation도 함께 업데이트 ---
+        const updatedScenarios = state.scenariosForConversation?.[currentConversationId]?.map(s =>
+          s.sessionId === scenarioSessionId ? { ...s, status: status } : s
+        ) || [];
+
+        return {
+          scenarioStates: {
+            ...state.scenarioStates,
+            [scenarioSessionId]: updatedState
+          },
+          scenariosForConversation: {
+            ...state.scenariosForConversation,
+            [currentConversationId]: updatedScenarios,
+          },
+        };
+      });
+
+      console.log(`[endScenario] Scenario ${scenarioSessionId} marked as ${status}. Panel will remain open.`);
 
     } catch (error) {
-        console.error(`Error ending scenario ${scenarioSessionId} with status ${status}:`, error);
-        const errorKey = getErrorKey(error);
-        const message = locales[language]?.[errorKey] || 'Failed to update scenario status.';
-        showEphemeralToast(message, 'error');
+      console.error(`Error ending scenario ${scenarioSessionId} with status ${status}:`, error);
+      const errorKey = getErrorKey(error);
+      const message = locales[language]?.[errorKey] || 'Failed to update scenario status.';
+      showEphemeralToast(message, 'error');
     }
   },
 });

@@ -19,21 +19,21 @@ const getNodeById = (nodes, nodeId) => {
 // ✅ 헬퍼 함수: 현재 노드에서 다음 노드 결정 (로컬 처리)
 const getNextNode = (nodes, edges, currentNodeId, sourceHandle = null, slots = {}) => {
   if (!nodes || !edges || !currentNodeId) return null;
-  
+
   // 현재 노드에서 출발하는 엣지 찾기
   const outgoingEdges = edges.filter(e => e.source === currentNodeId);
-  
+
   if (outgoingEdges.length === 0) {
     console.log(`[getNextNode] No outgoing edges from node ${currentNodeId}`);
     return null;
   }
-  
+
   console.log(`[getNextNode] Found ${outgoingEdges.length} outgoing edge(s) from node ${currentNodeId}`);
   console.log(`[getNextNode] sourceHandle provided: ${sourceHandle}`);
   console.log(`[getNextNode] Available edges:`, outgoingEdges.map(e => ({ source: e.source, sourceHandle: e.sourceHandle, target: e.target })));
-  
+
   const sourceNode = getNodeById(nodes, currentNodeId);
-  
+
   // --- 🔴 [NEW] Block A: Branch CONDITION 타입 조건 평가 ---
   if (sourceNode?.type === 'branch' && sourceNode.data?.evaluationType === 'CONDITION') {
     const conditions = sourceNode.data.conditions || [];
@@ -63,7 +63,7 @@ const getNextNode = (nodes, edges, currentNodeId, sourceHandle = null, slots = {
       return nextNode;
     }
   }
-  
+
   // Case 1: 단순 흐름 (엣지가 1개)
   if (outgoingEdges.length === 1) {
     console.log(`[getNextNode] Single edge found, using it`);
@@ -72,7 +72,7 @@ const getNextNode = (nodes, edges, currentNodeId, sourceHandle = null, slots = {
     console.log(`[getNextNode] Next node (single edge):`, nextNode?.id);
     return nextNode;
   }
-  
+
   // Case 2: 분기 (sourceHandle로 구분)
   if (sourceHandle) {
     const selectedEdge = outgoingEdges.find(e => e.sourceHandle === sourceHandle);
@@ -85,7 +85,7 @@ const getNextNode = (nodes, edges, currentNodeId, sourceHandle = null, slots = {
       console.warn(`[getNextNode] ⚠️ No edge found for sourceHandle: ${sourceHandle}. Available handles:`, outgoingEdges.map(e => e.sourceHandle));
     }
   }
-  
+
   // Case 3: 기본값 (첫 번째 엣지)
   console.log(`[getNextNode] Using first edge as fallback`);
   const nextNodeId = outgoingEdges[0].target;
@@ -97,7 +97,7 @@ const getNextNode = (nodes, edges, currentNodeId, sourceHandle = null, slots = {
 // ✅ 헬퍼 함수: 노드가 사용자 입력을 기다리는지 판정
 const isInteractiveNode = (node) => {
   if (!node) return false;
-  
+
   // message 타입: replies가 있으면 interactive, 없으면 non-interactive
   if (node.type === 'message') {
     const hasReplies = node.data?.replies && node.data.replies.length > 0;
@@ -116,7 +116,7 @@ const isInteractiveNode = (node) => {
     const evalType = node.data?.evaluationType;
     return evalType === 'BUTTON' || evalType === 'BUTTON_CLICK';
   }
-  
+
   return node.type === 'slotfilling';
 };
 
@@ -141,53 +141,53 @@ export const createScenarioHandlersSlice = (set, get) => ({
 
     const originalMessages = Array.isArray(scenarioState.messages) ? scenarioState.messages : [];
     const updatedMessages = originalMessages.map(msg => {
-        if (msg.node && msg.node.id === messageNodeId) {
-            return { ...msg, selectedOption: selectedValue };
-        }
-        return msg;
+      if (msg.node && msg.node.id === messageNodeId) {
+        return { ...msg, selectedOption: selectedValue };
+      }
+      return msg;
     });
 
     set(state => ({
-        scenarioStates: {
-            ...state.scenarioStates,
-            [scenarioSessionId]: {
-                ...state.scenarioStates[scenarioSessionId],
-                messages: updatedMessages,
-            },
+      scenarioStates: {
+        ...state.scenarioStates,
+        [scenarioSessionId]: {
+          ...state.scenarioStates[scenarioSessionId],
+          messages: updatedMessages,
         },
+      },
     }));
 
     try {
-        const currentScenario = get().scenarioStates[scenarioSessionId];
-        await fetch(
-            `${FASTAPI_BASE_URL}/conversations/${currentConversationId}/scenario-sessions/${scenarioSessionId}`,
-            {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    usr_id: user.uid,
-                    messages: updatedMessages,
-                    state: currentScenario?.state || {},
-                }),
-            }
-        ).then(r => {
-            if (!r.ok) console.warn(`[setScenarioSelectedOption] Session PATCH failed (${r.status}), continuing...`);
-            else return r.json();
-        });
+      const currentScenario = get().scenarioStates[scenarioSessionId];
+      await fetch(
+        `${FASTAPI_BASE_URL}/conversations/${currentConversationId}/scenario-sessions/${scenarioSessionId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            usr_id: user.uid,
+            messages: updatedMessages,
+            state: currentScenario?.state || {},
+          }),
+        }
+      ).then(r => {
+        if (!r.ok) console.warn(`[setScenarioSelectedOption] Session PATCH failed (${r.status}), continuing...`);
+        else return r.json();
+      });
     } catch (error) {
       console.error("Error updating scenario selected option via FastAPI:", error);
-        const errorKey = getErrorKey(error);
-        const message = locales[language]?.[errorKey] || 'Failed to save selection in scenario.';
-        showEphemeralToast(message, 'error');
-        set(state => ({
-            scenarioStates: {
-                ...state.scenarioStates,
-                [scenarioSessionId]: {
-                  ...state.scenarioStates[scenarioSessionId],
-                  messages: originalMessages,
-                }
-            },
-        }));
+      const errorKey = getErrorKey(error);
+      const message = locales[language]?.[errorKey] || 'Failed to save selection in scenario.';
+      showEphemeralToast(message, 'error');
+      set(state => ({
+        scenarioStates: {
+          ...state.scenarioStates,
+          [scenarioSessionId]: {
+            ...state.scenarioStates[scenarioSessionId],
+            messages: originalMessages,
+          }
+        },
+      }));
     }
   },
 
@@ -290,7 +290,8 @@ export const createScenarioHandlersSlice = (set, get) => ({
         });
       }
 
-      get().subscribeToScenarioSession(newScenarioSessionId);
+      // 🔴 [수정] 아래로 이동 (상태 초기화 이후)
+      // get().subscribeToScenarioSession(newScenarioSessionId);
 
       // ✅ [NEW] scenariosForConversation에 새로운 시나리오 세션 추가 (목록 맨 아래)
       set(state => {
@@ -305,7 +306,7 @@ export const createScenarioHandlersSlice = (set, get) => ({
           created_at: new Date().toISOString(),
           status: 'active',
         };
-        
+
         return {
           scenariosForConversation: {
             ...state.scenariosForConversation,
@@ -372,7 +373,7 @@ export const createScenarioHandlersSlice = (set, get) => ({
 
       // ✅ [NEW] 자동 진행 필요 여부 판정
       const shouldAutoProgress = firstNode && (isAutoPassthroughNode(firstNode) || !isInteractiveNode(firstNode));
-      
+
       if (shouldAutoProgress) {
         const reason = isAutoPassthroughNode(firstNode) ? 'auto-passthrough' : 'no-replies';
         console.log(`[openScenarioPanel] First node should auto-progress (${reason}), continuing...`);
@@ -381,6 +382,9 @@ export const createScenarioHandlersSlice = (set, get) => ({
       } else {
         console.log(`[openScenarioPanel] First node is interactive (has replies), waiting for user.`);
       }
+
+      // ✅ [NEW] 구독 시작 (모든 초기화 완료 후)
+      get().subscribeToScenarioSession(newScenarioSessionId);
 
       return;
 
@@ -442,9 +446,9 @@ export const createScenarioHandlersSlice = (set, get) => ({
 
     const currentScenario = get().scenarioStates[scenarioSessionId];
     if (!currentScenario) {
-        console.warn(`handleScenarioResponse called for non-existent session: ${scenarioSessionId}`);
-        showEphemeralToast(locales[language]?.errorUnexpected || 'An unexpected error occurred.', 'error');
-        return;
+      console.warn(`handleScenarioResponse called for non-existent session: ${scenarioSessionId}`);
+      showEphemeralToast(locales[language]?.errorUnexpected || 'An unexpected error occurred.', 'error');
+      return;
     }
 
     const { nodes, edges } = currentScenario;
@@ -457,211 +461,214 @@ export const createScenarioHandlersSlice = (set, get) => ({
     const currentNodeId = currentScenario.state?.current_node_id;
     const currentNode = getNodeById(nodes, currentNodeId);
 
-    console.log(`[handleScenarioResponse] Called with payload:`, { 
-      scenarioSessionId, 
-      sourceHandle: payload.sourceHandle, 
+    console.log(`[handleScenarioResponse] Called with payload:`, {
+      scenarioSessionId,
+      sourceHandle: payload.sourceHandle,
       userInput: payload.userInput,
       formData: payload.formData
     });
 
     set(state => ({
-        scenarioStates: { ...state.scenarioStates, [scenarioSessionId]: { ...currentScenario, isLoading: true } }
+      scenarioStates: { ...state.scenarioStates, [scenarioSessionId]: { ...currentScenario, isLoading: true } }
     }));
 
     try {
-        let newMessages = [...existingMessages];
+      let newMessages = [...existingMessages];
 
-        // ✅ [NEW] 사용자 입력 추가
-        if (payload.userInput) {
-            console.log(`[handleScenarioResponse] Adding user message:`, payload.userInput);
-            newMessages.push({ 
-              id: `user-${Date.now()}`, 
-              sender: 'user', 
-              text: payload.userInput,
-              type: 'scenario_message',  // ✅ 메타데이터 추가
-            });
-        }
+      // ✅ [NEW] 사용자 입력 추가
+      if (payload.userInput) {
+        console.log(`[handleScenarioResponse] Adding user message:`, payload.userInput);
+        newMessages.push({
+          id: `user-${Date.now()}`,
+          sender: 'user',
+          text: payload.userInput,
+          type: 'scenario_message',  // ✅ 메타데이터 추가
+        });
+      }
 
-        // ✅ [NEW] formData가 있으면 먼저 슬롯에 병합
-        const updatedSlots = payload.formData 
-          ? { ...currentScenario.slots, ...payload.formData } 
-          : currentScenario.slots;
-        
-        // ✅ [NEW] 프론트엔드에서 다음 노드 결정 (slots 전달)
-        console.log(`[handleScenarioResponse] Getting next node from currentNodeId: ${currentNodeId}`);
-        const nextNode = getNextNode(nodes, edges, currentNodeId, payload.sourceHandle, updatedSlots);
-        console.log(`[handleScenarioResponse] Result -> Current node: ${currentNodeId}, Next node: ${nextNode?.id || 'END'} (type: ${nextNode?.type})`);
+      // ✅ [NEW] formData가 있으면 먼저 슬롯에 병합
+      const updatedSlots = payload.formData
+        ? { ...currentScenario.slots, ...payload.formData }
+        : currentScenario.slots;
 
-        if (!nextNode) {
-          // 시나리오 종료
-          console.log(`[handleScenarioResponse] ✅ No next node, scenario complete.`);
-          newMessages.push({
-            id: `bot-complete-${Date.now()}`,
-            sender: 'bot',
-            text: locales[language]?.scenarioComplete || 'Scenario complete.',
-            type: 'scenario_message',  // ✅ 메타데이터 추가
-          });
+      // ✅ [NEW] 프론트엔드에서 다음 노드 결정 (slots 전달)
+      console.log(`[handleScenarioResponse] Getting next node from currentNodeId: ${currentNodeId}`);
+      const nextNode = getNextNode(nodes, edges, currentNodeId, payload.sourceHandle, updatedSlots);
+      console.log(`[handleScenarioResponse] Result -> Current node: ${currentNodeId}, Next node: ${nextNode?.id || 'END'} (type: ${nextNode?.type})`);
 
-          const updatePayload = {
-            messages: newMessages,
-            status: 'completed',
-            state: null,
-            slots: currentScenario.slots,
-          };
+      if (!nextNode) {
+        // 시나리오 종료
+        console.log(`[handleScenarioResponse] ✅ No next node, scenario complete.`);
+        newMessages.push({
+          id: `bot-complete-${Date.now()}`,
+          sender: 'bot',
+          text: locales[language]?.scenarioComplete || 'Scenario complete.',
+          type: 'scenario_message',  // ✅ 메타데이터 추가
+        });
 
-          await fetch(
-              `${FASTAPI_BASE_URL}/conversations/${currentConversationId}/scenario-sessions/${scenarioSessionId}`,
-              {
-                  method: "PATCH",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                      usr_id: user.uid,
-                      ...updatePayload
-                  }),
-              }
-          ).then(r => {
-              if (!r.ok) console.warn(`[handleScenarioResponse] Session PATCH failed (${r.status}), continuing...`);
-              else return r.json();
-          });
-
-          // 🔴 [NEW] 완료 상태를 store에 업데이트
-          set(state => {
-            // ✅ [NEW] scenariosForConversation도 함께 업데이트
-            const updatedScenarios = state.scenariosForConversation?.[currentConversationId]?.map(s => 
-              s.sessionId === scenarioSessionId ? { ...s, status: 'completed' } : s
-            ) || [];
-            
-            return {
-              scenarioStates: {
-                ...state.scenarioStates,
-                [scenarioSessionId]: {
-                  ...state.scenarioStates[scenarioSessionId],
-                  messages: newMessages,
-                  status: 'completed',
-                  state: null,
-                  isLoading: false,
-                }
-              },
-              scenariosForConversation: {
-                ...state.scenariosForConversation,
-                [currentConversationId]: updatedScenarios,
-              },
-            };
-          });
-
-          endScenario(scenarioSessionId, 'completed');
-          return;
-        }
-
-        // 다음 노드 메시지 추가
-        if (nextNode.type !== 'setSlot' && nextNode.type !== 'set-slot') {
-          newMessages.push({
-            id: nextNode.id,
-            sender: 'bot',
-            text: nextNode.data?.content || nextNode.data?.title || '', // 🔴 [NEW] title 폴백 추가
-            node: nextNode,
-            type: 'scenario_message',  // ✅ 메타데이터 추가
-          });
-        }
-
-        // ✅ [NEW] 상태 업데이트
         const updatePayload = {
-            messages: newMessages,
-            status: 'active',
-            state: {
-              scenario_id: currentScenario.scenario_id,
-              current_node_id: nextNode.id,
-              awaiting_input: isInteractiveNode(nextNode),
-            },
-            slots: payload.formData ? { ...currentScenario.slots, ...(payload.formData || {}) } : currentScenario.slots,
+          messages: newMessages,
+          status: 'completed',
+          state: null,
+          slots: currentScenario.slots,
         };
 
         await fetch(
-            `${FASTAPI_BASE_URL}/conversations/${currentConversationId}/scenario-sessions/${scenarioSessionId}`,
-            {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    usr_id: user.uid,
-                    ...updatePayload
-                }),
-            }
+          `${FASTAPI_BASE_URL}/conversations/${currentConversationId}/scenario-sessions/${scenarioSessionId}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              usr_id: user.uid,
+              ...updatePayload
+            }),
+          }
         ).then(r => {
-            if (!r.ok) console.warn(`[handleScenarioResponse] Session PATCH failed (${r.status}), continuing...`);
-            else return r.json();
+          if (!r.ok) console.warn(`[handleScenarioResponse] Session PATCH failed (${r.status}), continuing...`);
+          else return r.json();
         });
 
-        // 🔴 [NEW] 상태를 먼저 업데이트해야 continueScenarioIfNeeded에서 올바른 상태를 사용
-        set(state => ({
+        // 🔴 [NEW] 완료 상태를 store에 업데이트
+        set(state => {
+          // ✅ [NEW] scenariosForConversation도 함께 업데이트
+          const updatedScenarios = state.scenariosForConversation?.[currentConversationId]?.map(s =>
+            s.sessionId === scenarioSessionId ? { ...s, status: 'completed' } : s
+          ) || [];
+
+          return {
             scenarioStates: {
               ...state.scenarioStates,
               [scenarioSessionId]: {
                 ...state.scenarioStates[scenarioSessionId],
                 messages: newMessages,
-                state: updatePayload.state,
-                slots: updatePayload.slots,
+                status: 'completed',
+                state: null,
                 isLoading: false,
               }
-            }
-        }));
+            },
+            scenariosForConversation: {
+              ...state.scenariosForConversation,
+              [currentConversationId]: updatedScenarios,
+            },
+          };
+        });
 
-        // ✅ [NEW] 다음 노드가 비대화형이면 자동 진행
-        if (!isInteractiveNode(nextNode)) {
-          await sleep(300);
-          await get().continueScenarioIfNeeded(nextNode, scenarioSessionId);
+        endScenario(scenarioSessionId, 'completed');
+        return;
+      }
+
+      // 다음 노드 메시지 추가
+      if (nextNode.type !== 'setSlot' && nextNode.type !== 'set-slot') {
+        newMessages.push({
+          id: nextNode.id,
+          sender: 'bot',
+          text: nextNode.data?.content || nextNode.data?.title || '', // 🔴 [NEW] title 폴백 추가
+          node: nextNode,
+          type: 'scenario_message',  // ✅ 메타데이터 추가
+        });
+      }
+
+      // ✅ [NEW] 상태 업데이트
+      const updatePayload = {
+        messages: newMessages,
+        status: 'active',
+        state: {
+          scenario_id: currentScenario.scenario_id,
+          current_node_id: nextNode.id,
+          awaiting_input: isInteractiveNode(nextNode),
+        },
+        slots: payload.formData ? { ...currentScenario.slots, ...(payload.formData || {}) } : currentScenario.slots,
+      };
+
+      await fetch(
+        `${FASTAPI_BASE_URL}/conversations/${currentConversationId}/scenario-sessions/${scenarioSessionId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            usr_id: user.uid,
+            ...updatePayload
+          }),
         }
+      ).then(r => {
+        if (!r.ok) console.warn(`[handleScenarioResponse] Session PATCH failed (${r.status}), continuing...`);
+        else return r.json();
+      });
+
+      // 🔴 [NEW] 상태를 먼저 업데이트해야 continueScenarioIfNeeded에서 올바른 상태를 사용
+      set(state => ({
+        scenarioStates: {
+          ...state.scenarioStates,
+          [scenarioSessionId]: {
+            ...state.scenarioStates[scenarioSessionId],
+            messages: newMessages,
+            state: updatePayload.state,
+            slots: updatePayload.slots,
+            isLoading: false,
+          }
+        }
+      }));
+
+      // ✅ [NEW] 구독 시작 (상태 초기화 완료 후)
+      get().subscribeToScenarioSession(scenarioSessionId);
+
+      // ✅ [NEW] 다음 노드가 비대화형이면 자동 진행
+      if (!isInteractiveNode(nextNode)) {
+        await sleep(300);
+        await get().continueScenarioIfNeeded(nextNode, scenarioSessionId);
+      }
 
     } catch (error) {
-        console.error(`Error handling scenario response for ${scenarioSessionId}:`, error);
-        const errorKey = getErrorKey(error);
-        const errorMessage = locales[language]?.[errorKey] || 'An error occurred during the scenario.';
-        showEphemeralToast(errorMessage, 'error');
+      console.error(`Error handling scenario response for ${scenarioSessionId}:`, error);
+      const errorKey = getErrorKey(error);
+      const errorMessage = locales[language]?.[errorKey] || 'An error occurred during the scenario.';
+      showEphemeralToast(errorMessage, 'error');
 
-        const errorMessages = [...existingMessages, { id: `bot-error-${Date.now()}`, sender: 'bot', text: errorMessage }];
-        try {
-            await fetch(
-                `${FASTAPI_BASE_URL}/conversations/${currentConversationId}/scenario-sessions/${scenarioSessionId}`,
-                {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        usr_id: user.uid,
-                        messages: errorMessages,
-                        status: 'failed',
-                        state: null,
-                        slots: currentScenario.slots || {}
-                    }),
-                }
-            ).then(r => {
-                if (!r.ok) console.warn(`[handleScenarioResponse] Session PATCH failed (${r.status}), continuing...`);
-                else return r.json();
-            });
-            
-            endScenario(scenarioSessionId, 'failed');
-        } catch (updateError) {
-             console.error(`Failed to update scenario status to failed for ${scenarioSessionId}:`, updateError);
-              set(state => ({
-                scenarioStates: {
-                    ...state.scenarioStates,
-                    [scenarioSessionId]: {
-                        ...(state.scenarioStates[scenarioSessionId] || {}),
-                        messages: errorMessages,
-                        status: 'failed',
-                        state: null,
-                        isLoading: false
-                    }
-                }
-             }));
-             endScenario(scenarioSessionId, 'failed');
-        }
+      const errorMessages = [...existingMessages, { id: `bot-error-${Date.now()}`, sender: 'bot', text: errorMessage }];
+      try {
+        await fetch(
+          `${FASTAPI_BASE_URL}/conversations/${currentConversationId}/scenario-sessions/${scenarioSessionId}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              usr_id: user.uid,
+              messages: errorMessages,
+              status: 'failed',
+              state: null,
+              slots: currentScenario.slots || {}
+            }),
+          }
+        ).then(r => {
+          if (!r.ok) console.warn(`[handleScenarioResponse] Session PATCH failed (${r.status}), continuing...`);
+          else return r.json();
+        });
+
+        endScenario(scenarioSessionId, 'failed');
+      } catch (updateError) {
+        console.error(`Failed to update scenario status to failed for ${scenarioSessionId}:`, updateError);
+        set(state => ({
+          scenarioStates: {
+            ...state.scenarioStates,
+            [scenarioSessionId]: {
+              ...(state.scenarioStates[scenarioSessionId] || {}),
+              messages: errorMessages,
+              status: 'failed',
+              state: null,
+              isLoading: false
+            }
+          }
+        }));
+        endScenario(scenarioSessionId, 'failed');
+      }
     } finally {
       set(state => {
-         if(state.scenarioStates[scenarioSessionId]) {
-            return {
-                scenarioStates: { ...state.scenarioStates, [scenarioSessionId]: { ...state.scenarioStates[scenarioSessionId], isLoading: false } }
-            };
-         }
-         return state;
+        if (state.scenarioStates[scenarioSessionId]) {
+          return {
+            scenarioStates: { ...state.scenarioStates, [scenarioSessionId]: { ...state.scenarioStates[scenarioSessionId], isLoading: false } }
+          };
+        }
+        return state;
       });
     }
   },
@@ -699,7 +706,7 @@ export const createScenarioHandlersSlice = (set, get) => ({
       // 대화형 노드라면 종료 (사용자 입력 대기)
       if (isInteractiveNode(currentNode)) {
         console.log(`[continueScenarioIfNeeded] ✅ Reached interactive node: ${currentNode.id} (${currentNode.type}), stopping.`);
-        
+
         // 🔴 [NEW] 대화형 노드에 도달했을 때 현재 상태를 서버에 저장
         const currentScenario = get().scenarioStates[scenarioSessionId];
         if (currentScenario) {
@@ -730,7 +737,7 @@ export const createScenarioHandlersSlice = (set, get) => ({
             console.error(`[continueScenarioIfNeeded] Error saving final state:`, error);
           }
         }
-        
+
         // ✅ 다음 노드가 없으면 시나리오 완료 처리
         const nextNode = getNextNode(nodes, edges, currentNode.id, null, currentScenario.slots);
         if (!nextNode) {
@@ -738,7 +745,7 @@ export const createScenarioHandlersSlice = (set, get) => ({
           set(state => {
             const scenario = state.scenarioStates[scenarioSessionId];
             if (!scenario) return state;
-            
+
             return {
               scenarioStates: {
                 ...state.scenarioStates,
@@ -755,7 +762,7 @@ export const createScenarioHandlersSlice = (set, get) => ({
             };
           });
         }
-        
+
         isLoopActive = false;
         break;
       }
@@ -763,7 +770,7 @@ export const createScenarioHandlersSlice = (set, get) => ({
       // 종료 노드라면 시나리오 끝
       if (currentNode.id === 'end' || currentNode.type === 'end') {
         console.log(`[continueScenarioIfNeeded] ✅ Reached end node, scenario complete.`);
-        
+
         // 🔴 [NEW] 종료 전 최종 상태 저장
         const currentScenario = get().scenarioStates[scenarioSessionId];
         if (currentScenario) {
@@ -790,7 +797,7 @@ export const createScenarioHandlersSlice = (set, get) => ({
             console.error(`[continueScenarioIfNeeded] Error saving end node state:`, error);
           }
         }
-        
+
         isLoopActive = false;
         break;
       }
@@ -799,7 +806,7 @@ export const createScenarioHandlersSlice = (set, get) => ({
       // 1. replies가 없는 message 노드 (단순 표시만 하고 넘어감)
       if (currentNode.type === 'message' && !isInteractiveNode(currentNode)) {
         console.log(`[continueScenarioIfNeeded] Message node without replies (${currentNode.id}), auto-advancing...`);
-        
+
         // ✅ 메시지 추가 및 서버에 저장
         const currentScenario = get().scenarioStates[scenarioSessionId];
         if (currentScenario) {
@@ -813,7 +820,7 @@ export const createScenarioHandlersSlice = (set, get) => ({
               type: 'scenario_message',
             });
           }
-          
+
           // 🔴 로컬 상태 업데이트
           set(state => ({
             scenarioStates: {
@@ -858,14 +865,14 @@ export const createScenarioHandlersSlice = (set, get) => ({
             console.error(`[continueScenarioIfNeeded] Error saving node state to server:`, error);
           }
         }
-        
+
         const nextNode = getNextNode(nodes, edges, currentNode.id, null, currentScenario.slots);
         if (nextNode) {
           console.log(`[continueScenarioIfNeeded] Next node from edge: ${nextNode.id}`);
           currentNode = nextNode;
         } else {
           console.log(`[continueScenarioIfNeeded] No next node from edges, scenario complete.`);
-          
+
           // 🔴 [NEW] 시나리오 완료 메시지 추가
           const currentScenarioState = get().scenarioStates[scenarioSessionId];
           if (currentScenarioState) {
@@ -877,13 +884,13 @@ export const createScenarioHandlersSlice = (set, get) => ({
               text: locales[language]?.scenarioComplete || 'Scenario has ended.',
               type: 'scenario_message',
             });
-            
+
             set(state => {
               // ✅ [NEW] scenariosForConversation도 함께 업데이트
-              const updatedScenarios = state.scenariosForConversation?.[currentScenarioState.conversation_id]?.map(s => 
+              const updatedScenarios = state.scenariosForConversation?.[currentScenarioState.conversation_id]?.map(s =>
                 s.sessionId === scenarioSessionId ? { ...s, status: 'completed' } : s
               ) || [];
-              
+
               return {
                 scenarioStates: {
                   ...state.scenarioStates,
@@ -900,17 +907,17 @@ export const createScenarioHandlersSlice = (set, get) => ({
               };
             });
           }
-          
+
           isLoopActive = false;
           break;
         }
       }
       // ✅ [NEW] Branch 노드 자동 평가 (CONDITION, SLOT_CONDITION만 - BUTTON/BUTTON_CLICK은 제외)
-      else if (currentNode.type === 'branch' && 
-               currentNode.data?.evaluationType !== 'BUTTON' && 
-               currentNode.data?.evaluationType !== 'BUTTON_CLICK') {
+      else if (currentNode.type === 'branch' &&
+        currentNode.data?.evaluationType !== 'BUTTON' &&
+        currentNode.data?.evaluationType !== 'BUTTON_CLICK') {
         console.log(`[continueScenarioIfNeeded] Branch node (${currentNode.data?.evaluationType}), auto-evaluating...`);
-        
+
         // 조건 평가해서 다음 노드 결정
         const nextNode = getNextNode(nodes, edges, currentNode.id, null, currentScenario.slots);
         if (nextNode) {
@@ -925,15 +932,15 @@ export const createScenarioHandlersSlice = (set, get) => ({
       // 2. 자동 처리 노드 (delay, setSlot, api)
       else if (isAutoPassthroughNode(currentNode)) {
         console.log(`[continueScenarioIfNeeded] Auto-passthrough node (${currentNode.type}), processing...`);
-        
+
         // 🔴 [NEW] Delay 노드는 프론트엔드에서 처리
         if (currentNode.type === 'delay') {
           console.log(`[continueScenarioIfNeeded] Delay node, waiting...`);
-          
+
           get().setDelayLoading(true);
           await sleep(currentNode.data?.duration || currentNode.data?.delay_ms || currentNode.data?.delayMs || 1000);
           get().setDelayLoading(false);
-          
+
           const nextNode = getNextNode(nodes, edges, currentNode.id, null, currentScenario.slots);
           if (nextNode) {
             console.log(`[continueScenarioIfNeeded] After delay, next node: ${nextNode.id}`);
@@ -943,31 +950,31 @@ export const createScenarioHandlersSlice = (set, get) => ({
             isLoopActive = false;
             break;
           }
-        } 
+        }
         // setSlot 노드도 프론트엔드에서 처리 (상태만 업데이트)
         else if (currentNode.type === 'setSlot' || currentNode.type === 'set-slot') {
           console.log(`[continueScenarioIfNeeded] SetSlot node, updating slots...`);
           console.log(`[continueScenarioIfNeeded] SetSlot data:`, currentNode.data);
-          
+
           // slots 업데이트 (assignments 배열 처리)
           const assignments = currentNode.data?.assignments || [];
           if (assignments.length > 0) {
             const currentScenario = get().scenarioStates[scenarioSessionId];
             if (currentScenario) {
               const updatedSlots = { ...currentScenario.slots };
-              
+
               // 각 assignment 처리
               assignments.forEach(assignment => {
                 const key = assignment.key;
                 let value = assignment.value;
-                
+
                 // {{slotName}} 보간 처리 (interpolateMessage가 중첩 참조까지 처리)
                 value = interpolateMessage(value, currentScenario.slots);
-                
+
                 updatedSlots[key] = value;
                 console.log(`[continueScenarioIfNeeded] SetSlot updated: ${key} = ${value}`);
               });
-              
+
               set(state => ({
                 scenarioStates: {
                   ...state.scenarioStates,
@@ -979,7 +986,7 @@ export const createScenarioHandlersSlice = (set, get) => ({
               }));
             }
           }
-          
+
           const nextNode = getNextNode(nodes, edges, currentNode.id, null, currentScenario.slots);
           if (nextNode) {
             console.log(`[continueScenarioIfNeeded] After setSlot, next node: ${nextNode.id}`);
@@ -993,7 +1000,7 @@ export const createScenarioHandlersSlice = (set, get) => ({
         // ✅ [NEW] API 노드는 프론트엔드에서 직접 처리
         else if (currentNode.type === 'api') {
           console.log(`[continueScenarioIfNeeded] API node, executing directly...`);
-          
+
           try {
             const { method, url, headers, body, params, responseMapping, isMulti, apis } = currentNode.data;
             let isSuccess = false;
@@ -1006,16 +1013,16 @@ export const createScenarioHandlersSlice = (set, get) => ({
             const executeSingleApi = async (apiConfig) => {
               const targetUrl = buildApiUrl(apiConfig.url, apiConfig.method === 'GET' ? apiConfig.params : null, currentScenario.slots);
               const { options, debugBody } = buildFetchOptions(apiConfig.method, apiConfig.headers, apiConfig.body, currentScenario.slots);
-              
+
               console.log(`[continueScenarioIfNeeded] API request:`, { url: targetUrl, method: apiConfig.method, body: debugBody });
-              
+
               const response = await fetch(targetUrl, options);
               const responseText = await response.text();
 
               if (!response.ok) {
                 throw new Error(`API request failed: ${response.status}. URL: ${targetUrl}. Response: ${responseText}`);
               }
-              
+
               const result = responseText ? JSON.parse(responseText) : null;
               console.log(`[continueScenarioIfNeeded] API response:`, result);
               return { result, mapping: apiConfig.responseMapping };

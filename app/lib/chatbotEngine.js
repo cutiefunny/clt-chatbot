@@ -346,6 +346,13 @@ export const validateInput = (value, validation, language = 'ko') => {
                 console.error("Invalid date format for 'today before' validation:", valueStr, e);
                 return { isValid: false, message: getErrorMessage('validationFormat') };
             }
+        case 'text':
+            return { isValid: true };
+        case 'required':
+            return {
+                isValid: valueStr.trim().length > 0,
+                message: valueStr.trim().length > 0 ? '' : (t('validationRequired') || 'This field is required.')
+            };
         default:
             console.warn(`Unknown validation type: ${validation.type}`);
             return { isValid: true };

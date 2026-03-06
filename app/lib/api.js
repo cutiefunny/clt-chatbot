@@ -231,7 +231,7 @@ export async function updateMessage(conversationId, messageId, updates) {
  */
 
 export async function fetchScenarios() {
-  const url = buildUrl(`/scenarios`);
+  const url = buildUrl(`/builder/scenarios`);
   try {
     const res = await fetch(url, { method: "GET", headers: getHeaders() });
     if (!res.ok) return [];
@@ -244,7 +244,7 @@ export async function fetchScenarios() {
 
 // 개별 시나리오 상세 조회
 export async function fetchScenario(scenarioId) {
-  const url = buildUrl(`/scenarios/${scenarioId}`);
+  const url = buildUrl(`/builder/scenarios/${scenarioId}`);
   try {
     const res = await fetch(url, { method: "GET", headers: getHeaders() });
     if (!res.ok) throw new Error(`Scenario not found: ${scenarioId}`);
