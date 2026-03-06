@@ -19,6 +19,7 @@
   width: 56px;
   background-color: transparent;
 }
+
 .historyPanel.open {
   width: 320px;
 }
@@ -43,6 +44,7 @@
   opacity: 0;
   pointer-events: none;
 }
+
 /* --- 👆 [여기까지] --- */
 
 .header {
@@ -51,7 +53,8 @@
   flex-direction: column;
   gap: 0.5rem;
   align-items: flex-start;
-  position: relative; /* 아이콘 그룹 절대배치 기준 */
+  position: relative;
+  /* 아이콘 그룹 절대배치 기준 */
 }
 
 .headerTopRow {
@@ -72,7 +75,8 @@
   align-items: center;
   position: absolute;
   top: 12px;
-  right: 8px; /* 패널 우측 상단 고정 */
+  right: 8px;
+  /* 패널 우측 상단 고정 */
   /* 자연스러운 등장 애니메이션 */
   opacity: 0;
   transform: translateY(-4px);
@@ -156,7 +160,8 @@
   position: absolute;
   top: 12px;
   left: 8px;
-  z-index: 25; /* 아이콘 그룹보다 위에 위치 */
+  z-index: 25;
+  /* 아이콘 그룹보다 위에 위치 */
 }
 
 .historyPanel .newChatButton {
@@ -164,7 +169,8 @@
   top: 56px;
   left: 8px;
   padding: 0.5rem;
-  z-index: 25; /* 아이콘 그룹보다 위에 위치 */
+  z-index: 25;
+  /* 아이콘 그룹보다 위에 위치 */
   cursor: pointer;
 }
 
@@ -173,7 +179,8 @@
   top: 100px;
   left: 8px;
   padding: 0.5rem;
-  z-index: 25; /* 아이콘 그룹보다 위에 위치 */
+  z-index: 25;
+  /* 아이콘 그룹보다 위에 위치 */
   cursor: pointer;
 }
 
@@ -224,7 +231,8 @@
 }
 
 .sidePanelButton svg {
-  flex-shrink: 0; /* 아이콘 우그러짐 방지 */
+  flex-shrink: 0;
+  /* 아이콘 우그러짐 방지 */
 }
 
 .newChatText {
@@ -239,13 +247,12 @@
   transform: none;
   pointer-events: auto;
 }
+
 .sidePanelButton:hover {
   /* 라운드가 유지되는 그라디언트 보더 */
   border: 1px solid transparent;
-  background-image: linear-gradient(
-      var(--Gray-01, #f4f5fb),
-      var(--Gray-01, #f4f5fb)
-    ),
+  background-image: linear-gradient(var(--Gray-01, #f4f5fb),
+      var(--Gray-01, #f4f5fb)),
     linear-gradient(135deg, #3051ea 0%, #7f30c5 100%);
   background-origin: border-box;
   background-clip: padding-box, border-box;
@@ -254,10 +261,8 @@
 
 /* 텍스트는 별도로 그라디언트 적용 (선명한 텍스트 유지) */
 .sidePanelButton:hover span {
-  background: var(
-    --Color-Light-Gradation-03,
-    linear-gradient(135deg, #3051ea 0%, #7f30c5 100%)
-  );
+  background: var(--Color-Light-Gradation-03,
+      linear-gradient(135deg, #3051ea 0%, #7f30c5 100%));
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -306,37 +311,30 @@
 .historyPanel.open .newChatText {
   opacity: 1;
 }
+
 .historyPanel.closed .sidePanelButton:hover {
   background-color: var(--button-hover-bg);
 }
 
 /* 아이콘 그라디언트는 두께 변화 방지 위해 fill만 변경 */
-.sidePanelButton:not(:disabled):not([aria-disabled="true"]):hover
-  svg
-  [fill="currentColor"],
-.sidePanelButton:not(:disabled):not([aria-disabled="true"]):hover
-  svg
-  path[fill="currentColor"] {
+.sidePanelButton:not(:disabled):not([aria-disabled="true"]):hover svg [fill="currentColor"],
+.sidePanelButton:not(:disabled):not([aria-disabled="true"]):hover svg path[fill="currentColor"] {
   fill: url(#spbIconGradient);
 }
+
 /* svg 자체에 fill 속성이 있는 경우도 적용 */
-.sidePanelButton:not(:disabled):not([aria-disabled="true"]):hover
-  svg[fill="currentColor"] {
+.sidePanelButton:not(:disabled):not([aria-disabled="true"]):hover svg[fill="currentColor"] {
   fill: url(#spbIconGradient);
 }
 
 /* stroke 사용 아이콘도 그라디언트 적용 */
-.sidePanelButton:not(:disabled):not([aria-disabled="true"]):hover
-  svg
-  [stroke="currentColor"],
-.sidePanelButton:not(:disabled):not([aria-disabled="true"]):hover
-  svg
-  path[stroke="currentColor"] {
+.sidePanelButton:not(:disabled):not([aria-disabled="true"]):hover svg [stroke="currentColor"],
+.sidePanelButton:not(:disabled):not([aria-disabled="true"]):hover svg path[stroke="currentColor"] {
   stroke: url(#spbIconGradient);
 }
+
 /* svg 자체에 stroke 속성이 있는 경우도 적용 */
-.sidePanelButton:not(:disabled):not([aria-disabled="true"]):hover
-  svg[stroke="currentColor"] {
+.sidePanelButton:not(:disabled):not([aria-disabled="true"]):hover svg[stroke="currentColor"] {
   stroke: url(#spbIconGradient);
 }
 
@@ -397,6 +395,7 @@
     opacity: 0;
     transform: translateY(4px) scale(0.98);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -435,16 +434,17 @@
   display: flex;
   align-items: center;
   position: relative;
-  border-radius: 12px 12px 0 0;
+  border-radius: 12px;
+  transition: background-color 0.2s ease, border-radius 0.3s ease;
 }
 
 .conversationItem:hover {
   background: var(--Gray-01, #f4f5fb);
-  border-radius: 12px;
 }
 
 .conversationItem.active {
   border-radius: 12px 12px 0 0;
+  background: var(--Gray-01, #f4f5fb);
 }
 
 .convoMain {
@@ -464,6 +464,7 @@
   display: flex;
   align-items: center;
 }
+
 .convoTitle {
   white-space: nowrap;
   overflow: hidden;
@@ -476,6 +477,7 @@
   margin-left: 4px;
   color: var(--text-color);
 }
+
 .titleInput {
   background-color: var(--input-bg);
   border-radius: 4px;
@@ -538,6 +540,7 @@
   position: relative;
   padding-right: 4px;
 }
+
 .menuButton {
   background: none;
   border: none;
@@ -556,6 +559,7 @@
   color: var(--action-button-hover-color);
   background-color: var(--button-hover-bg);
 }
+
 .dropdownMenu {
   position: absolute;
   right: 8px;
@@ -589,34 +593,51 @@
   font-size: 14px;
   font-style: normal;
   font-weight: 400;
-  line-height: 20px; /* 142.857% */
+  line-height: 20px;
+  /* 142.857% */
   letter-spacing: -0.21px;
 }
+
 .dropdownMenu button:hover {
   background-color: var(--button-hover-bg);
 }
+
 .dropdownMenu button:last-child:hover {
   color: #fff;
   background-color: #e74c3c;
 }
 
+.scenarioSubListWrapper {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.scenarioSubListWrapper.expanded {
+  grid-template-rows: 1fr;
+}
+
 .scenarioSubList {
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  animation: fadeIn 0.3s ease-in-out;
   border-radius: 0 0 12px 12px;
   overflow: hidden;
 }
+
 @keyframes fadeIn {
   from {
     opacity: 0;
     transform: translateY(-5px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
+
 .scenarioItem {
   position: relative;
   display: flex;
@@ -629,9 +650,11 @@
   transition: background-color 0.2s;
   background: var(--Gray-01, #f4f5fb);
 }
+
 .scenarioItem:hover {
   background-color: var(--Gray-02, #e1e4f2);
 }
+
 .scenarioItem.selected {
   background-color: var(--Gray-02, #e1e4f2);
 }
@@ -642,12 +665,15 @@
   border-radius: 50%;
   flex-shrink: 0;
 }
+
 .scenarioStatusDot[data-status="completed"] {
   background-color: #8a8a8e;
 }
+
 .scenarioStatusDot[data-status="active"] {
   background-color: #2ecc71;
 }
+
 .scenarioTitle {
   flex-grow: 1;
   white-space: nowrap;
@@ -682,7 +708,8 @@
   flex-shrink: 0;
   font-size: 10px;
   font-weight: 500;
-  line-height: 12px; /* 120% */
+  line-height: 12px;
+  /* 120% */
   letter-spacing: -0.1px;
 }
 
@@ -691,24 +718,29 @@
   background: var(--Purple-01, #e0d7ff);
   color: var(--Purple-02, #806bf5);
 }
+
 /* --- 👆 [여기까지] --- */
 
 .scenarioBadge.inprogress {
   background: var(--Blue-01, #b2ebf2);
   color: var(--Blue-02, #005762);
 }
+
 .scenarioBadge.done {
   background: var(--Gray-03, #d8e0eb);
   color: var(--Gray-07, #5e7599);
 }
+
 .scenarioBadge.incomplete {
   background: var(--Yellow-01, #fff6aa);
   color: var(--Yellow-02, #f57f17);
 }
+
 .scenarioBadge.failed {
   background: var(--Error-01, #ffdbdb);
   color: var(--Error-02, #ff4f4f);
 }
+
 .scenarioBadge.generating {
   background: var(--Green-01, #c6eec2);
   color: var(--Green-02, #00770a);
@@ -761,26 +793,33 @@
   scrollbar-color: transparent transparent;
   transition: scrollbar-color 0.3s ease-out;
 }
+
 .conversationList:hover {
   scrollbar-color: #c1c1c1 transparent;
 }
+
 body.dark .conversationList:hover {
   scrollbar-color: #555 transparent;
 }
+
 .conversationList::-webkit-scrollbar {
   width: 8px;
 }
+
 .conversationList::-webkit-scrollbar-track {
   background: transparent;
 }
+
 .conversationList::-webkit-scrollbar-thumb {
   background-color: transparent;
   border-radius: 4px;
   transition: background-color 0.3s ease-out;
 }
+
 .conversationList:hover::-webkit-scrollbar-thumb {
   background-color: #c1c1c1;
 }
+
 body.dark .conversationList:hover::-webkit-scrollbar-thumb {
   background-color: #555;
 }
@@ -791,7 +830,8 @@ body.dark .conversationList:hover::-webkit-scrollbar-thumb {
 
 .loadingIndicator {
   flex-shrink: 0;
-  color: var(--login-button-bg); /* Use a noticeable color */
+  color: var(--login-button-bg);
+  /* Use a noticeable color */
   display: flex;
   align-items: center;
   /* --- 👇 [추가] GIF 크기 조정 --- */
@@ -803,10 +843,13 @@ body.dark .conversationList:hover::-webkit-scrollbar-thumb {
 /* --- 👇 [추가] 'Done' 뱃지 스타일 --- */
 .doneIndicator {
   flex-shrink: 0;
-  color: #2ecc71; /* Green color for 'done' */
+  color: #2ecc71;
+  /* Green color for 'done' */
   display: flex;
   align-items: center;
-  width: 16px; /* 로딩 아이콘과 크기 맞춤 */
+  width: 16px;
+  /* 로딩 아이콘과 크기 맞춤 */
   height: 16px;
 }
+
 /* --- 👆 [추가] --- */

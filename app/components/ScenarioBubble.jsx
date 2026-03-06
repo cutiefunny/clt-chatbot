@@ -35,7 +35,7 @@ export default function ScenarioBubble({ scenarioSessionId, messageData }) {
       );
     }
   );
-  
+
   const endScenario = useChatStore((state) => state.endScenario);
   const setActivePanel = useChatStore((state) => state.setActivePanel);
   const activePanel = useChatStore((state) => state.activePanel);
@@ -43,12 +43,12 @@ export default function ScenarioBubble({ scenarioSessionId, messageData }) {
   const dimUnfocusedPanels = useChatStore((state) => state.dimUnfocusedPanels);
   const openScenarioPanel = useChatStore((state) => state.openScenarioPanel);
   const { t } = useTranslations(); // language 제거
-  
+
   const isCompleted =
     activeScenario?.status === "completed" ||
     activeScenario?.status === "failed" ||
     activeScenario?.status === "canceled";
-  const scenarioTitle = activeScenario?.title || messageData?.text || "Scenario"; 
+  const scenarioTitle = activeScenario?.title || messageData?.text || "Scenario";
   const scenarioBody = activeScenario?.messages?.[0]?.text || activeScenario?.messages?.[0]?.node?.data?.content || messageData?.text || "";  // ✅ body content 가져오기
   const isFocused =
     activePanel === "scenario" && focusedSessionId === scenarioSessionId;
@@ -63,7 +63,7 @@ export default function ScenarioBubble({ scenarioSessionId, messageData }) {
       await store.subscribeToScenarioSession(scenarioSessionId);
       setActivePanel("scenario", scenarioSessionId);
     };
-    
+
     return (
       <div
         className={`${styles.messageRow} ${styles.userRow}`}
@@ -170,7 +170,7 @@ export default function ScenarioBubble({ scenarioSessionId, messageData }) {
     }
 
     e.stopPropagation();
-    
+
     // ✅ scenarioSessionId가 있으면 직접 활성화
     if (scenarioSessionId) {
       setActivePanel("scenario", scenarioSessionId);
@@ -185,12 +185,12 @@ export default function ScenarioBubble({ scenarioSessionId, messageData }) {
       style={{ cursor: "pointer" }}
     >
       <div
-        className={`GlassEffect ${styles.scenarioBubbleContainer} ${
-          styles.collapsed
-        } ${
-          // 항상 collapsed
-          !isFocused && dimUnfocusedPanels ? styles.dimmed : ""
-        } ${isFocused ? styles.focusedBubble : ""}`}
+        className={`GlassEffect ${styles.scenarioBubbleContainer} ${styles.collapsed
+          } ${
+          // !isFocused 이고 dimUnfocusedPanels 가 true인 경우 dimmed 처리
+          // 단, 종료된(completed, failed, canceled) 상태일 때만 dimmed 처리
+          !isFocused && dimUnfocusedPanels && isCompleted ? styles.dimmed : ""
+          } ${isFocused ? styles.focusedBubble : ""}`}
       >
         <div className={styles.header} style={{ cursor: "pointer" }}>
           <div className={styles.headerContent}>

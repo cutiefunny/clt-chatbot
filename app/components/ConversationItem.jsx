@@ -110,17 +110,17 @@ export default function ConversationItem({
   // 🔴 [NEW] filteredScenarios와 hasScenarios를 먼저 계산
   const filteredScenarios = scenarios
     ? scenarios.filter((s) => {
-        if (hideCompletedScenarios && s.status === "completed") {
-          const completedTime = s.updatedAt?.toDate?.() || s.updatedAt;
-          if (!completedTime) return false;
+      if (hideCompletedScenarios && s.status === "completed") {
+        const completedTime = s.updatedAt?.toDate?.() || s.updatedAt;
+        if (!completedTime) return false;
 
-          const now = new Date();
-          const hoursPassed = (now - completedTime) / (1000 * 60 * 60);
+        const now = new Date();
+        const hoursPassed = (now - completedTime) / (1000 * 60 * 60);
 
-          return hoursPassed < hideDelayInHours;
-        }
-        return true;
-      })
+        return hoursPassed < hideDelayInHours;
+      }
+      return true;
+    })
     : null;
 
   const hasScenarios = filteredScenarios && filteredScenarios.length > 0;
@@ -144,12 +144,14 @@ export default function ConversationItem({
     };
   }, []);
 
-  // 🔴 [NEW] 대화가 활성화되고 시나리오가 있으면 자동으로 확장
+  const wasActiveRef = useRef(isActive);
   useEffect(() => {
-    if (isActive && hasScenarios && !isExpanded) {
+    // 대화가 새로 선택되어 활성화될 때만 자동 확장 (이미 활성화된 상태에서 펼침 버튼 등으로 제어한 경우는 무시)
+    if (isActive && !wasActiveRef.current && hasScenarios && !isExpanded) {
       console.log(`[ConversationItem] Auto-expanding scenarios for ${convo.id}`);
       onToggleExpand?.(convo.id);
     }
+    wasActiveRef.current = isActive;
   }, [isActive, hasScenarios, isExpanded, convo.id, onToggleExpand]);
 
   const handleUpdate = () => {
@@ -190,12 +192,20 @@ export default function ConversationItem({
   return (
     <div className={styles.conversationItemWrapper}>
       <div
-        className={`${styles.conversationItem} ${
-          isExpanded ? styles.active : ""
-        }`}
+        className={`${styles.conversationItem} ${isExpanded ? styles.active : ""
+          }`}
         onClick={() => {
           if (isEditing) return;
-          onClick(convo.id);
+          if (isActive) {
+            // 이미 활성화된 대화인 경우 시나리오 목록 토글
+            onToggleExpand?.(convo.id);
+          } else {
+            // 다른 대화를 선택하는 경우: 로드하고 목록 펼침
+            onClick(convo.id);
+            if (hasScenarios) {
+              onToggleExpand?.(convo.id);
+            }
+          }
         }}
       >
         <div className={styles.convoMain}>
@@ -220,7 +230,7 @@ export default function ConversationItem({
           {hasUnreadScenarios && !isEditing && (
             <div className={styles.unreadDot}></div>
           )}
-          
+
           {convo.pinned && !isEditing && (
             <span className={styles.pinIndicator}>
               <PinIcon />
@@ -292,7 +302,7 @@ export default function ConversationItem({
           </div>
         )}
       </div>
-      {isExpanded && (
+      <div className={`${styles.scenarioSubListWrapper} ${isExpanded ? styles.expanded : ""}`}>
         <div className={styles.scenarioSubList}>
           {filteredScenarios ? (
             filteredScenarios.length > 0 ? (
@@ -305,9 +315,8 @@ export default function ConversationItem({
                 return (
                   <div
                     key={scenario.sessionId}
-                    className={`${styles.scenarioItem} ${
-                      isSelected ? styles.selected : ""
-                    }`}
+                    className={`${styles.scenarioItem} ${isSelected ? styles.selected : ""
+                      }`}
                     onClick={() => onScenarioClick(convo.id, scenario)}
                   >
                     {hasUnread && <div className={styles.unreadDot}></div>}
@@ -331,7 +340,7 @@ export default function ConversationItem({
             <div className={styles.noScenarios}>{t("loadingScenarios")}</div>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
