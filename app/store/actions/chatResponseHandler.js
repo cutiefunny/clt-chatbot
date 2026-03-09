@@ -19,10 +19,16 @@ const checkAndOpenUrl = (text) => {
 // responseHandlers는 이 스코프 내에서만 사용되므로 여기에 정의
 const responseHandlers = {
   scenario_list: (data, getFn) => {
-    getFn().addMessage("bot", { text: data.message, scenarios: data.scenarios, skipSave: true });
+    getFn().addMessage("bot", {
+      id: data.id || data.message_id,
+      text: data.message,
+      scenarios: data.scenarios,
+      skipSave: true,
+    });
   },
   canvas_trigger: (data, getFn) => {
     getFn().addMessage("bot", {
+      id: data.id || data.message_id,
       text:
         locales[getFn().language]?.scenarioStarted(data.scenarioId) ||
         `Starting '${data.scenarioId}'.`,
@@ -34,8 +40,13 @@ const responseHandlers = {
     getFn().showEphemeralToast(data.message, data.toastType || "info");
   },
   text: (data, getFn) => {
-    const responseText = data.message || data.text || data.content || "(No Content)";
-    getFn().addMessage("bot", { text: responseText, skipSave: true });
+    const responseText =
+      data.message || data.text || data.content || "(No Content)";
+    getFn().addMessage("bot", {
+      id: data.id || data.message_id,
+      text: responseText,
+      skipSave: true,
+    });
     checkAndOpenUrl(responseText);
     if (data.slots && Object.keys(data.slots).length > 0) {
       getFn().setExtractedSlots(data.slots);
@@ -76,7 +87,7 @@ export async function handleResponse(get, set, messagePayload) {
     updateConversationTitle,
     setForceScrollToBottom,
   } = get();
-  
+
   let conversationId = currentConversationId;
   if (!conversationId) {
     conversationId = await createNewConversation(true);
@@ -128,7 +139,7 @@ export async function handleResponse(get, set, messagePayload) {
       id,
       name: title,
     }));
-    
+
     await addMessage("bot", {
       text: locales[language]?.["selectScenario"] || "Select a scenario:",
       scenarios: scenarioList, // 객체 배열로 전달 (ID 포함)
@@ -201,7 +212,7 @@ export async function handleResponse(get, set, messagePayload) {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      
+
       // processFlowiseStream 사용
       const streamProcessor = processFlowiseStream(reader, decoder, language);
 
@@ -255,16 +266,14 @@ export async function handleResponse(get, set, messagePayload) {
           checkAndOpenUrl(responseText);
 
           if (conversationIdForBotResponse === get().currentConversationId) {
-            await addMessage("bot", { text: responseText, skipSave: true });
-          } else {
-            const botMessage = {
-              id: `temp_${Date.now()}`,
-              sender: "bot",
+            await addMessage("bot", {
+              id: data.id || data.message_id,
               text: responseText,
-              isStreaming: false,
-              feedback: null,
-            };
-            await saveMessage(botMessage, conversationIdForBotResponse);
+              skipSave: true,
+            });
+          } else {
+            // /prediction API가 서버에서 이미 저장하므로 클라이언트는 중복 저장하지 않음.
+            // 다른 대화인 경우 완료 상태만 업데이트.
             set((state) => ({
               completedResponses: new Set(state.completedResponses).add(
                 conversationIdForBotResponse
@@ -289,12 +298,12 @@ export async function handleResponse(get, set, messagePayload) {
 
     let errorMessage;
     if (error.name === 'AbortError') {
-        errorMessage = "응답을 찾지 못 했습니다";
+      errorMessage = "응답을 찾지 못 했습니다";
     } else {
-        errorMessage = error.message ||
-          locales[language]?.["errorLLMFail"] ||
-          locales["en"]?.["errorLLMFail"] ||
-          "There was a problem with the response. Please try again later.";
+      errorMessage = error.message ||
+        locales[language]?.["errorLLMFail"] ||
+        locales["en"]?.["errorLLMFail"] ||
+        "There was a problem with the response. Please try again later.";
     }
 
     let messageSaved = false;
@@ -422,16 +431,16 @@ export async function handleResponse(get, set, messagePayload) {
               lastMessage.id === finalMessageId) &&
             lastMessage.isStreaming
           ) {
-             const finalText =
+            const finalText =
               (llmProvider === "flowise" ? finalStreamText : lastMessage.text) ||
               "";
             const finalMessageText =
               finalText.trim() === "" ||
-              finalText.trim() === thinkingText.trim()
+                finalText.trim() === thinkingText.trim()
                 ? locales[language]?.["errorLLMFail"] ||
-                  "(Response failed. Please try again later.)"
+                "(Response failed. Please try again later.)"
                 : finalText;
-            
+
             checkAndOpenUrl(finalMessageText);
 
             const finalMessage = {
@@ -441,44 +450,42 @@ export async function handleResponse(get, set, messagePayload) {
               feedback: null,
             };
 
-             saveMessage(finalMessage, conversationIdForBotResponse).then(
-              (savedId) => {
-                 finalMessageId = savedId;
-                set((s) => {
-                  const newSet = new Set(s.pendingResponses);
-                  newSet.delete(conversationIdForBotResponse);
-                  return {
-                    messages: s.messages.map((m) => m.id === lastMessage.id ? {...finalMessage, id: savedId} : m), // Simplified
-                    isLoading: false,
-                    pendingResponses: newSet,
-                  };
-                });
-              }
-            );
-             return {
+            // /prediction API가 서버에서 메시지를 이미 저장하므로 클라이언트는 중복 저장하지 않음.
+            set((s) => {
+              const newSet = new Set(s.pendingResponses);
+              newSet.delete(conversationIdForBotResponse);
+              return {
+                messages: s.messages.map((m) =>
+                  m.id === lastMessage.id ? finalMessage : m
+                ),
+                isLoading: false,
+                pendingResponses: newSet,
+              };
+            });
+            return {
               messages: [
                 ...state.messages.slice(0, lastMessageIndex),
                 finalMessage,
               ],
             };
           }
-           const newSet = new Set(state.pendingResponses);
+          const newSet = new Set(state.pendingResponses);
           newSet.delete(conversationIdForBotResponse);
           if (state.isLoading) return { isLoading: false, pendingResponses: newSet };
           return {};
         });
       } else {
-         set((state) => {
-             if (finalStreamText) {
-                 checkAndOpenUrl(finalStreamText);
-             }
-             const newSet = new Set(state.pendingResponses);
-            newSet.delete(conversationIdForBotResponse);
-            return {
-                isLoading: false,
-                pendingResponses: newSet,
-            };
-         });
+        set((state) => {
+          if (finalStreamText) {
+            checkAndOpenUrl(finalStreamText);
+          }
+          const newSet = new Set(state.pendingResponses);
+          newSet.delete(conversationIdForBotResponse);
+          return {
+            isLoading: false,
+            pendingResponses: newSet,
+          };
+        });
       }
     }
   }
