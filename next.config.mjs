@@ -13,6 +13,7 @@ const nextConfig = {
       },
     ],
   },
+  transpilePackages: ["@clt-chatbot/scenario-core"],
 };
 
 export default withPWA({

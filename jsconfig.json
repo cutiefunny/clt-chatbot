@@ -1,7 +1,13 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": [
+        "./*"
+      ],
+      "@clt-chatbot/scenario-core": [
+        "node_modules/@clt-chatbot/scenario-core"
+      ]
     }
   }
 }

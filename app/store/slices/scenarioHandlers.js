@@ -5,14 +5,7 @@ import { locales } from "../../lib/locales";
 import { getErrorKey } from "../../lib/errorHandler";
 import { logger } from "../../lib/logger";
 import { FASTAPI_BASE_URL } from "../../lib/constants";
-import {
-  evaluateCondition,
-  getNodeById,
-  getNextNode,
-  isInteractiveNode,
-  isAutoPassthroughNode,
-} from "../../lib/scenarioHelpers";
-import { getDeepValue, interpolateMessage } from "../../lib/chatbotEngine";
+import { ChatbotEngine } from "@clt-chatbot/scenario-core";
 import { buildApiUrl, buildFetchOptions, interpolateObjectStrings } from "../../lib/nodeHandlers";
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -200,10 +193,12 @@ export const createScenarioHandlersSlice = (set, get) => ({
       const sessionData = await createSessionResponse.json();
       newScenarioSessionId = sessionData.id || sessionData.session_id;
 
+      const engine = new ChatbotEngine({ nodes: scenarioData.nodes, edges: scenarioData.edges || [] });
+
       // ✅ [NEW] 첫 번째 노드 결정 (상태 저장을 위해 앞당김)
       const firstNodeId = scenarioData.start_node_id || scenarioData.nodes[0].id;
-      const firstNode = getNodeById(scenarioData.nodes, firstNodeId);
-      const isInteractive = isInteractiveNode(firstNode);
+      const firstNode = engine.getNodeById(firstNodeId);
+      const isInteractive = engine.isInteractiveNode(firstNode);
 
       // ✨ [Auto-correction & Initial Save]
       // 초기 상태(첫 메시지 및 노드 정보)를 서버에 즉시 저장하여 새로고침 시에도 복구되도록 함
@@ -306,7 +301,7 @@ export const createScenarioHandlersSlice = (set, get) => ({
       await setActivePanel("scenario", newScenarioSessionId);
 
       // ✅ [NEW] 자동 진행 필요 여부 판정
-      const shouldAutoProgress = firstNode && (isAutoPassthroughNode(firstNode) || !isInteractive);
+      const shouldAutoProgress = firstNode && (engine.isAutoPassthroughNode(firstNode) || !isInteractive);
 
       if (shouldAutoProgress) {
         await sleep(300);
@@ -378,7 +373,9 @@ export const createScenarioHandlersSlice = (set, get) => ({
 
     const existingMessages = Array.isArray(currentScenario.messages) ? currentScenario.messages : [];
     const currentNodeId = currentScenario.state?.current_node_id;
-    const currentNode = getNodeById(nodes, currentNodeId);
+
+    const engine = new ChatbotEngine({ nodes: currentScenario.nodes, edges: currentScenario.edges || [] });
+    const currentNode = engine.getNodeById(currentNodeId);
 
     set(state => ({
       scenarioStates: { ...state.scenarioStates, [scenarioSessionId]: { ...currentScenario, isLoading: true } }
@@ -401,7 +398,7 @@ export const createScenarioHandlersSlice = (set, get) => ({
         ? { ...currentScenario.slots, ...payload.formData }
         : currentScenario.slots;
 
-      const nextNode = getNextNode(nodes, edges, currentNodeId, payload.sourceHandle, updatedSlots);
+      const nextNode = engine.getNextNode(currentNodeId, payload.sourceHandle, updatedSlots);
 
       if (!nextNode) {
         newMessages.push({
@@ -476,7 +473,7 @@ export const createScenarioHandlersSlice = (set, get) => ({
         state: {
           scenario_id: currentScenario.scenario_id,
           current_node_id: nextNode.id,
-          awaiting_input: isInteractiveNode(nextNode),
+          awaiting_input: engine.isInteractiveNode(nextNode),
         },
         slots: updatedSlots,
       };
@@ -508,7 +505,7 @@ export const createScenarioHandlersSlice = (set, get) => ({
 
       get().subscribeToScenarioSession(scenarioSessionId);
 
-      if (!isInteractiveNode(nextNode)) {
+      if (!engine.isInteractiveNode(nextNode)) {
         await sleep(300);
         await get().continueScenarioIfNeeded(nextNode, scenarioSessionId);
       }
@@ -544,10 +541,12 @@ export const createScenarioHandlersSlice = (set, get) => ({
     let loopCount = 0;
     const MAX_LOOP_ITERATIONS = 100;
 
+    const engine = new ChatbotEngine({ nodes: currentScenario.nodes, edges: currentScenario.edges || [] });
+
     while (isLoopActive && loopCount < MAX_LOOP_ITERATIONS) {
       loopCount++;
 
-      if (isInteractiveNode(currentNode)) {
+      if (engine.isInteractiveNode(currentNode)) {
         try {
           const { user, currentConversationId } = get();
           await fetch(
@@ -580,7 +579,7 @@ export const createScenarioHandlersSlice = (set, get) => ({
         break;
       }
 
-      if (currentNode.type === 'message' && !isInteractiveNode(currentNode)) {
+      if (currentNode.type === 'message' && !engine.isInteractiveNode(currentNode)) {
         const scenario = get().scenarioStates[scenarioSessionId];
         if (scenario) {
           const messages = [...(scenario.messages || [])];
@@ -611,7 +610,7 @@ export const createScenarioHandlersSlice = (set, get) => ({
           }));
         }
 
-        const nextNode = getNextNode(nodes, edges, currentNode.id, null, get().scenarioStates[scenarioSessionId].slots);
+        const nextNode = engine.getNextNode(currentNode.id, null, get().scenarioStates[scenarioSessionId].slots);
         if (nextNode) {
           currentNode = nextNode;
         } else {
@@ -622,7 +621,7 @@ export const createScenarioHandlersSlice = (set, get) => ({
       else if (currentNode.type === 'branch' &&
         currentNode.data?.evaluationType !== 'BUTTON' &&
         currentNode.data?.evaluationType !== 'BUTTON_CLICK') {
-        const nextNode = getNextNode(nodes, edges, currentNode.id, null, get().scenarioStates[scenarioSessionId].slots);
+        const nextNode = engine.getNextNode(currentNode.id, null, get().scenarioStates[scenarioSessionId].slots);
         if (nextNode) {
           currentNode = nextNode;
         } else {
@@ -630,7 +629,7 @@ export const createScenarioHandlersSlice = (set, get) => ({
           break;
         }
       }
-      else if (isAutoPassthroughNode(currentNode)) {
+      else if (engine.isAutoPassthroughNode(currentNode)) {
         if (currentNode.type === 'delay') {
           get().updateScenarioStatus(scenarioSessionId, 'generating');
           get().setDelayLoading(true);
@@ -638,7 +637,7 @@ export const createScenarioHandlersSlice = (set, get) => ({
           get().setDelayLoading(false);
           get().updateScenarioStatus(scenarioSessionId, 'active');
 
-          const nextNode = getNextNode(nodes, edges, currentNode.id, null, get().scenarioStates[scenarioSessionId].slots);
+          const nextNode = engine.getNextNode(currentNode.id, null, get().scenarioStates[scenarioSessionId].slots);
           if (nextNode) currentNode = nextNode;
           else { isLoopActive = false; break; }
         }
@@ -649,7 +648,7 @@ export const createScenarioHandlersSlice = (set, get) => ({
             if (scenario) {
               const updatedSlots = { ...scenario.slots };
               assignments.forEach(assignment => {
-                updatedSlots[assignment.key] = interpolateMessage(assignment.value, scenario.slots);
+                updatedSlots[assignment.key] = engine.interpolateMessage(assignment.value, scenario.slots);
               });
               set(state => ({
                 scenarioStates: {
@@ -662,7 +661,7 @@ export const createScenarioHandlersSlice = (set, get) => ({
               }));
             }
           }
-          const nextNode = getNextNode(nodes, edges, currentNode.id, null, get().scenarioStates[scenarioSessionId].slots);
+          const nextNode = engine.getNextNode(currentNode.id, null, get().scenarioStates[scenarioSessionId].slots);
           if (nextNode) currentNode = nextNode;
           else { isLoopActive = false; break; }
         }
@@ -677,15 +676,15 @@ export const createScenarioHandlersSlice = (set, get) => ({
             let finalSlots = { ...scenario.slots };
 
             const executeApi = async (config) => {
-              const targetUrl = buildApiUrl(config.url, config.method === 'GET' ? config.params : null, scenario.slots);
-              const { options } = buildFetchOptions(config.method, config.headers, config.body, scenario.slots);
+              const targetUrl = buildApiUrl(config.url, config.method === 'GET' ? config.params : null, scenario.slots, engine);
+              const { options } = buildFetchOptions(config.method, config.headers, config.body, scenario.slots, engine);
               const res = await fetch(targetUrl, options);
               if (!res.ok) throw new Error(`API error: ${res.status}`);
               const json = await res.json();
               const mapped = {};
               if (config.responseMapping) {
                 config.responseMapping.forEach(m => {
-                  const val = getDeepValue(json, m.path);
+                  const val = engine.getDeepValue(json, m.path);
                   if (val !== undefined) mapped[m.slot] = val;
                 });
               }
@@ -716,7 +715,7 @@ export const createScenarioHandlersSlice = (set, get) => ({
               },
             }));
 
-            const nextNode = getNextNode(nodes, edges, currentNode.id, apiSuccess ? 'onSuccess' : 'onError', finalSlots);
+            const nextNode = engine.getNextNode(currentNode.id, apiSuccess ? 'onSuccess' : 'onError', finalSlots);
             if (nextNode) currentNode = nextNode;
             else { isLoopActive = false; break; }
           } finally {
@@ -732,7 +731,7 @@ export const createScenarioHandlersSlice = (set, get) => ({
     }
 
     // Final update
-    const nextNode = getNextNode(nodes, edges, currentNode.id, null, get().scenarioStates[scenarioSessionId].slots);
+    const nextNode = engine.getNextNode(currentNode.id, null, get().scenarioStates[scenarioSessionId].slots);
     const isLast = !nextNode;
     const scenario = get().scenarioStates[scenarioSessionId];
     const messages = [...(scenario?.messages || [])];
@@ -753,7 +752,7 @@ export const createScenarioHandlersSlice = (set, get) => ({
       state: isLast ? null : {
         scenario_id: scenario.scenario_id,
         current_node_id: currentNode.id,
-        awaiting_input: isInteractiveNode(currentNode),
+        awaiting_input: engine.isInteractiveNode(currentNode),
       },
       slots: scenario.slots || {},
     };

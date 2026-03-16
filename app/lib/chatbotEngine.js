@@ -4,7 +4,7 @@ import { fetchScenario, fetchScenarios } from './api';
 import { locales } from './locales';
 import { nodeHandlers } from './nodeHandlers';
 import { FASTAPI_BASE_URL, API_DEFAULTS } from './constants';
-import { evaluateCondition } from './scenarioHelpers';
+import { ChatbotEngine } from "@clt-chatbot/scenario-core";
 
 const SUPPORTED_SCHEMA_VERSION = "1.0";
 
@@ -106,173 +106,14 @@ export const getScenario = async (scenarioId) => {
     return scenarioData;
 };
 
-export const getNextNode = (scenario, currentNodeId, sourceHandleId = null, slots = {}) => {
-    if (!scenario || !Array.isArray(scenario.nodes) || !Array.isArray(scenario.edges)) {
-        console.error("Invalid scenario object passed to getNextNode:", scenario);
-        return null; // 잘못된 시나리오 객체면 null 반환
-    }
+// [NEW] Helper instance for basic utilities that don't depend on specific scenario data
+const utilsEngine = new ChatbotEngine({ nodes: [], edges: [] });
 
-    // 시작 노드 결정
-    if (!currentNodeId) {
-        // 명시적 시작 노드 ID 확인
-        if (scenario.startNodeId) {
-            const startNode = scenario.nodes.find(node => node.id === scenario.startNodeId);
-            if (startNode) return startNode;
-            console.warn(`Specified startNodeId "${scenario.startNodeId}" not found.`);
-        }
-        // 기본 시작 노드 (들어오는 엣지 없는 노드) 찾기
-        const edgeTargets = new Set(scenario.edges.map(edge => edge.target));
-        const defaultStartNode = scenario.nodes.find(node => !edgeTargets.has(node.id));
-        if (defaultStartNode) return defaultStartNode;
-
-        console.error("Could not determine the start node.");
-        return null; // 시작 노드 못 찾으면 null
-    }
-
-    // 현재 노드 찾기
-    const sourceNode = scenario.nodes.find(n => n.id === currentNodeId);
-    if (!sourceNode) {
-        console.error(`Current node with ID "${currentNodeId}" not found.`);
-        return null;
-    }
-
-    let nextEdge = null; // 다음 엣지 초기화
-
-    // 1. 조건 분기(branch) 노드 처리
-    if (sourceNode.type === 'branch' && sourceNode.data.evaluationType === 'CONDITION') {
-        const conditions = sourceNode.data.conditions || [];
-        for (const condition of conditions) {
-            // 조건 값 가져오기 (슬롯 값 또는 직접 입력 값)
-            const slotValue = getDeepValue(slots, condition.slot); // getDeepValue 사용
-            const valueToCompare = condition.valueType === 'slot' ? getDeepValue(slots, condition.value) : condition.value; // getDeepValue 사용
-
-            if (evaluateCondition(slotValue, condition.operator, valueToCompare)) {
-                // 조건 만족 시 해당 핸들 ID 찾기
-                const conditionIndex = conditions.indexOf(condition);
-                const handleId = sourceNode.data.replies?.[conditionIndex]?.value;
-                if (handleId) {
-                    nextEdge = scenario.edges.find(edge => edge.source === currentNodeId && edge.sourceHandle === handleId);
-                    if (nextEdge) {
-                        console.log(`Branch condition met: Slot ${condition.slot} ${condition.operator} ${valueToCompare}, Handle: ${handleId}, Edge: ${nextEdge.id}`);
-                        break; // 첫 번째 만족하는 조건 사용
-                    }
-                }
-            }
-        }
-        // 조건 만족하는 엣지 없으면 default 엣지 확인
-        if (!nextEdge) {
-            nextEdge = scenario.edges.find(edge => edge.source === currentNodeId && edge.sourceHandle === 'default');
-            if (nextEdge) console.log(`Branch default handle matched, Edge: ${nextEdge.id}`);
-        }
-        // default도 없으면 아래 기본/fallback 엣지 로직으로 넘어감
-    }
-
-    // 2. 명시적 sourceHandleId가 있는 엣지 찾기 (예: 버튼 클릭)
-    if (!nextEdge && sourceHandleId) {
-        nextEdge = scenario.edges.find(
-            edge => edge.source === currentNodeId && edge.sourceHandle === sourceHandleId
-        );
-        if (nextEdge) console.log(`Source handle matched: ${sourceHandleId}, Edge: ${nextEdge.id}`);
-    }
-
-    // 3. sourceHandleId 없고 핸들 없는 엣지 찾기 (branch fallback / 기본 경로 통합)
-    if (!nextEdge && !sourceHandleId) {
-        nextEdge = scenario.edges.find(edge => edge.source === currentNodeId && !edge.sourceHandle);
-        if (nextEdge) console.log(`Default edge (no handle) matched for node type ${sourceNode.type}, Edge: ${nextEdge.id}`);
-    }
-
-    // 찾은 엣지에 연결된 다음 노드 반환
-    if (nextEdge) {
-        const nextNode = scenario.nodes.find(node => node.id === nextEdge.target);
-        if (!nextNode) {
-            console.error(`Next node ID "${nextEdge.target}" not found (from edge ${nextEdge.id}).`);
-            return null; // 다음 노드 없으면 null
-        }
-        return nextNode;
-    }
-
-    // 그룹 노드 처리
-    console.log(`No explicit next edge found for node "${currentNodeId}" (handle: "${sourceHandleId}").`);
-    if (sourceNode?.parentNode) {
-        console.log(`Node "${currentNodeId}" is inside group "${sourceNode.parentNode}". Checking parent node for outgoing edges.`);
-        return getNextNode(scenario, sourceNode.parentNode, null, slots);
-    } else {
-        console.log(`Node "${currentNodeId}" is not in a group or parent has no outgoing edges. Ending branch.`);
-        return null; // 다음 노드 없음
-    }
-};
-
-
-export const getDeepValue = (obj, path) => {
-    if (!path || typeof path !== 'string' || !obj || typeof obj !== 'object') return undefined;
-    let tempPath = path.replace(/\[([^\]]+)\]/g, (match, key) => `[${key.replace(/\./g, '__DOT__')}]`);
-    const keys = tempPath.match(/[^.[\]]+|\[[^\]]+\]/g);
-    if (!keys) return undefined;
-    let value = obj;
-    for (const key of keys) {
-        if (value === null || typeof value === 'undefined') return undefined;
-        let actualKey = key.replace(/__DOT__/g, '.');
-        const bracketMatch = actualKey.match(/^\[(['"]?)(.+)\1\]$/);
-        if (bracketMatch) {
-            actualKey = bracketMatch[2];
-            const index = parseInt(actualKey, 10);
-            if (!isNaN(index) && String(index) === actualKey) actualKey = index;
-        }
-        if (Array.isArray(value)) {
-            if (typeof actualKey === 'number' && actualKey >= 0 && actualKey < value.length) value = value[actualKey];
-            else return undefined;
-        } else if (typeof value === 'object') {
-            if (actualKey in value) value = value[actualKey];
-            else return undefined;
-        } else {
-            return undefined;
-        }
-    }
-    return value;
-};
-
-
-export const interpolateMessage = (message, slots) => {
-    if (message === null || typeof message === 'undefined') return '';
-    if (typeof message !== 'string') message = String(message);
-    let decodedMessage = message;
-    try { decodedMessage = decodedMessage.replace(/%7B%7B/g, '{{').replace(/%7D%7D/g, '}}'); } catch (e) { console.error("URL decoding error in interpolateMessage:", e); }
-
-    const result = decodedMessage.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
-        const path = key.trim();
-        const value = getDeepValue(slots, path);
-
-        if (value !== undefined && value !== null) {
-            let stringValue;
-            if (typeof value === 'object') {
-                try { stringValue = JSON.stringify(value); }
-                catch (e) { console.warn(`[interpolate] Failed to stringify object for slot "${path}". Using default string representation.`); stringValue = String(value); }
-            } else { stringValue = String(value); }
-
-            const matchIndex = decodedMessage.indexOf(match);
-            const precedingChar = matchIndex > 0 ? decodedMessage[matchIndex - 1] : '';
-            const isUrlParamValue = precedingChar === '=' || precedingChar === '&';
-
-            if (isUrlParamValue) {
-                try {
-                    let needsEncoding = true;
-                    try { if (decodeURIComponent(stringValue) === stringValue) needsEncoding = false; } catch (decodeError) { needsEncoding = true; }
-                    return needsEncoding ? encodeURIComponent(stringValue) : stringValue;
-                } catch (encodeError) {
-                    console.error(`Error encoding URL param "${path}":`, encodeError);
-                    return stringValue;
-                }
-            } else {
-                return stringValue;
-            }
-        } else {
-            console.warn(`[interpolate] Slot value not found for key: "${path}". Returning placeholder.`);
-            return match;
-        }
-    });
-    return result;
-};
-
+/**
+ * Re-exporting core utilities for compatibility with existing components.
+ */
+export const interpolateMessage = (message, slots) => utilsEngine.interpolateMessage(message, slots);
+export const getDeepValue = (obj, path) => utilsEngine.getDeepValue(obj, path);
 
 export const validateInput = (value, validation, language = 'ko') => {
     if (!validation) return { isValid: true };
@@ -371,6 +212,7 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
     let currentId = currentNodeId;
     let newSlots = { ...slots }; // 슬롯 복사
     const allEvents = []; // 이벤트 누적 배열
+    const engine = new ChatbotEngine({ nodes: scenario.nodes || [], edges: scenario.edges || [] });
 
     // 1. 사용자 입력 처리 (awaitingInput 상태일 때)
     if (awaitingInput) {
@@ -405,7 +247,7 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
     }
 
     // 2. 다음 노드 결정
-    let currentNode = getNextNode(scenario, currentId, message?.sourceHandle, newSlots);
+    let currentNode = engine.getNextNode(currentId, message?.sourceHandle, newSlots);
 
     // 3. 비대화형 노드 자동 진행 루프
     while (currentNode) {
@@ -414,7 +256,7 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
         if (handler) {
             try { // 핸들러 실행 오류 처리
                 // 핸들러 실행 (delay 핸들러는 await Promise 포함)
-                const result = await handler(currentNode, scenario, newSlots, scenarioSessionId, language); // language 전달
+                const result = await handler(currentNode, scenario, newSlots, scenarioSessionId, language, engine); // language, engine 전달
 
                 if (!result) { // 핸들러가 유효하지 않은 결과 반환 시
                     throw new Error(`Handler for node type "${currentNode.type}" (ID: ${currentNode.id}) returned invalid result.`);
@@ -461,7 +303,7 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
                 let initialSlotsUpdate = {};
                 (nodeToReturn.data.elements || []).forEach(element => {
                     if (element.name && element.defaultValue !== undefined && element.defaultValue !== null && String(element.defaultValue).trim() !== '') {
-                        let resolvedValue = interpolateMessage(String(element.defaultValue), newSlots);
+                        let resolvedValue = engine.interpolateMessage(String(element.defaultValue), newSlots);
                         if (element.type === 'checkbox' && !Array.isArray(element.defaultValue)) {
                             resolvedValue = typeof element.defaultValue === 'string'
                                 ? element.defaultValue.split(',').map(s => s.trim())
@@ -480,29 +322,26 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
 
             // 반환 전 보간 로직 강화 (업데이트된 newSlots 사용)
             if (nodeToReturn.data) {
-                if (nodeToReturn.data.content) nodeToReturn.data.content = interpolateMessage(nodeToReturn.data.content, newSlots);
-                if (nodeToReturn.type === 'iframe' && nodeToReturn.data.url) nodeToReturn.data.url = interpolateMessage(nodeToReturn.data.url, newSlots);
-                if (nodeToReturn.type === 'link' && nodeToReturn.data.display) nodeToReturn.data.display = interpolateMessage(nodeToReturn.data.display, newSlots);
-                if (nodeToReturn.type === 'form' && nodeToReturn.data.title) nodeToReturn.data.title = interpolateMessage(nodeToReturn.data.title, newSlots);
+                if (nodeToReturn.data.content) nodeToReturn.data.content = engine.interpolateMessage(nodeToReturn.data.content, newSlots);
+                if (nodeToReturn.type === 'iframe' && nodeToReturn.data.url) nodeToReturn.data.url = engine.interpolateMessage(nodeToReturn.data.url, newSlots);
+                if (nodeToReturn.type === 'link' && nodeToReturn.data.display) nodeToReturn.data.display = engine.interpolateMessage(nodeToReturn.data.display, newSlots);
+                if (nodeToReturn.type === 'form' && nodeToReturn.data.title) nodeToReturn.data.title = engine.interpolateMessage(nodeToReturn.data.title, newSlots);
                 if (nodeToReturn.type === 'form' && Array.isArray(nodeToReturn.data.elements)) {
                     nodeToReturn.data.elements.forEach(el => {
-                        if (el.label) el.label = interpolateMessage(el.label, newSlots);
-                        if (el.placeholder) el.placeholder = interpolateMessage(el.placeholder, newSlots);
+                        if (el.label) el.label = engine.interpolateMessage(el.label, newSlots);
+                        if (el.placeholder) el.placeholder = engine.interpolateMessage(el.placeholder, newSlots);
                         if ((el.type === 'dropbox' || el.type === 'checkbox') && Array.isArray(el.options)) {
-                            el.options = el.options.map(opt => typeof opt === 'string' ? interpolateMessage(opt, newSlots) : opt);
+                            el.options = el.options.map(opt => typeof opt === 'string' ? engine.interpolateMessage(opt, newSlots) : opt);
                         }
                     });
                 }
                 if (nodeToReturn.type === 'branch' && Array.isArray(nodeToReturn.data.replies)) {
-                    nodeToReturn.data.replies.forEach(reply => { if (reply.display) reply.display = interpolateMessage(reply.display, newSlots); });
+                    nodeToReturn.data.replies.forEach(reply => { if (reply.display) reply.display = engine.interpolateMessage(reply.display, newSlots); });
                 }
             }
 
             // awaitingInput 상태 결정 로직 수정
-            const isAwaiting = nodeToReturn.type === 'slotfilling' ||
-                nodeToReturn.type === 'form' ||
-                (nodeToReturn.type === 'branch' && nodeToReturn.data?.evaluationType !== 'CONDITION');
-
+            const isAwaiting = engine.isInteractiveNode(nodeToReturn);
 
             return {
                 type: 'scenario',
@@ -519,7 +358,7 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
 
     } else { // 시나리오 종료
         console.log(`[runScenario] Scenario ${scenarioId} ended.`);
-        const endMessage = interpolateMessage(locales[language]?.scenarioEnded(scenarioId) || 'Scenario ended.', newSlots);
+        const endMessage = engine.interpolateMessage(locales[language]?.scenarioEnded(scenarioId) || 'Scenario ended.', newSlots);
         return {
             type: 'scenario_end',
             message: endMessage,

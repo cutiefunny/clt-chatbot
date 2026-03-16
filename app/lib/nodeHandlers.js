@@ -1,8 +1,7 @@
 // app/lib/nodeHandlers.js
-import { getNextNode, interpolateMessage, getDeepValue } from './chatbotEngine';
 
 // [수정] JSON 내부 문자열 재귀 보간 함수 (순환 참조 방지 추가)
-function interpolateObjectStrings(obj, slots, visited = new WeakSet()) {
+function interpolateObjectStrings(obj, slots, engine, visited = new WeakSet()) {
     if (typeof obj !== 'object' || obj === null) {
         return obj;
     }
@@ -15,7 +14,7 @@ function interpolateObjectStrings(obj, slots, visited = new WeakSet()) {
     visited.add(obj);
 
     if (Array.isArray(obj)) {
-        return obj.map(item => interpolateObjectStrings(item, slots, visited));
+        return obj.map(item => interpolateObjectStrings(item, slots, engine, visited));
     }
 
     const newObj = {};
@@ -23,9 +22,9 @@ function interpolateObjectStrings(obj, slots, visited = new WeakSet()) {
         if (Object.hasOwnProperty.call(obj, key)) {
             const value = obj[key];
             if (typeof value === 'string') {
-                newObj[key] = interpolateMessage(value, slots);
+                newObj[key] = engine.interpolateMessage(value, slots);
             } else {
-                newObj[key] = interpolateObjectStrings(value, slots, visited);
+                newObj[key] = interpolateObjectStrings(value, slots, engine, visited);
             }
         }
     }
@@ -33,8 +32,8 @@ function interpolateObjectStrings(obj, slots, visited = new WeakSet()) {
 }
 
 // --- [신규] API URL 생성 헬퍼 함수 ---
-const buildApiUrl = (baseUrl, params, slots) => {
-    let currentUrl = interpolateMessage(baseUrl, slots);
+const buildApiUrl = (baseUrl, params, slots, engine) => {
+    let currentUrl = engine.interpolateMessage(baseUrl, slots);
 
     // 상대 경로 처리
     if (currentUrl.startsWith('/')) {
@@ -47,7 +46,7 @@ const buildApiUrl = (baseUrl, params, slots) => {
         const queryParams = new URLSearchParams();
         for (const key in params) {
             if (Object.hasOwnProperty.call(params, key)) {
-                const value = interpolateMessage(params[key], slots);
+                const value = engine.interpolateMessage(params[key], slots);
                 if (value) queryParams.append(key, value);
             }
         }
@@ -60,19 +59,19 @@ const buildApiUrl = (baseUrl, params, slots) => {
 };
 
 // --- [신규] Fetch 옵션 생성 헬퍼 함수 ---
-const buildFetchOptions = (method, headers, body, slots) => {
+const buildFetchOptions = (method, headers, body, slots, engine) => {
     let currentHeaders = {};
     if (headers) {
         if (typeof headers === 'string') {
             try {
-                currentHeaders = JSON.parse(interpolateMessage(headers, slots));
+                currentHeaders = JSON.parse(engine.interpolateMessage(headers, slots));
             } catch (e) {
                 console.error("Error parsing headers string:", e);
                 currentHeaders = {};
             }
         } else if (typeof headers === 'object') {
             // 이미 객체인 경우, 객체 내부 문자열들을 보간 처리 (필요시)
-            currentHeaders = interpolateObjectStrings(headers, slots);
+            currentHeaders = interpolateObjectStrings(headers, slots, engine);
         }
     }
     let finalBody = undefined;
@@ -82,12 +81,12 @@ const buildFetchOptions = (method, headers, body, slots) => {
         try {
             const bodyObject = JSON.parse(body);
             // 순환 참조 방지 버전의 interpolateObjectStrings 사용
-            const interpolatedBodyObject = interpolateObjectStrings(bodyObject, slots);
+            const interpolatedBodyObject = interpolateObjectStrings(bodyObject, slots, engine);
             finalBody = JSON.stringify(interpolatedBodyObject);
             debugBody = finalBody;
         } catch (e) {
             console.error("Error processing API body:", e);
-            finalBody = interpolateMessage(body, slots);
+            finalBody = engine.interpolateMessage(body, slots);
             debugBody = finalBody;
         }
     }
@@ -105,19 +104,19 @@ const buildFetchOptions = (method, headers, body, slots) => {
 
 // --- 각 노드 핸들러 함수 정의 ---
 
-async function handleToastNode(node, scenario, slots, scenarioSessionId) {
-    const interpolatedToastMessage = interpolateMessage(node.data.message, slots);
+async function handleToastNode(node, scenario, slots, scenarioSessionId, language, engine) {
+    const interpolatedToastMessage = engine.interpolateMessage(node.data.message, slots);
     const event = {
         type: 'toast',
         message: interpolatedToastMessage,
         toastType: node.data.toastType || 'info',
         scenarioSessionId: scenarioSessionId,
     };
-    const nextNode = getNextNode(scenario, node.id, null, slots);
+    const nextNode = engine.getNextNode(node.id, null, slots);
     return { nextNode, slots, events: [event] };
 }
 
-async function handleInteractiveNode(node, scenario, slots, scenarioSessionId) {
+async function handleInteractiveNode(node, scenario, slots, scenarioSessionId, language, engine) {
     if (node.type === 'iframe' && node.data.url && scenarioSessionId) {
         try {
             const url = new URL(node.data.url);
@@ -136,10 +135,10 @@ async function handleInteractiveNode(node, scenario, slots, scenarioSessionId) {
     return { nextNode: node, slots: slots, events: [] };
 }
 
-async function handleLinkNode(node, scenario, slots) {
+async function handleLinkNode(node, scenario, slots, scenarioSessionId, language, engine) {
     const events = [];
     if (node.data.content) {
-        const interpolatedUrl = interpolateMessage(node.data.content, slots);
+        const interpolatedUrl = engine.interpolateMessage(node.data.content, slots);
         events.push({
             type: 'open_link',
             url: interpolatedUrl,
@@ -148,19 +147,19 @@ async function handleLinkNode(node, scenario, slots) {
     } else {
         console.warn("[handleLinkNode] Link node has no content (URL).");
     }
-    const nextNode = getNextNode(scenario, node.id, null, slots);
+    const nextNode = engine.getNextNode(node.id, null, slots);
     return { nextNode, slots, events };
 }
 
 // [리팩토링] handleApiNode
-async function handleApiNode(node, scenario, slots) {
+async function handleApiNode(node, scenario, slots, scenarioSessionId, language, engine) {
     const { method, url, headers, body, params, responseMapping, isMulti, apis } = node.data;
     let lastRequestBodyForDebug = null;
 
     // 단일 API 호출 처리 함수 (헬퍼 함수 활용)
     const executeSingleApi = async (apiConfig) => {
-        const targetUrl = buildApiUrl(apiConfig.url, apiConfig.method === 'GET' ? apiConfig.params : null, slots);
-        const { options, debugBody } = buildFetchOptions(apiConfig.method, apiConfig.headers, apiConfig.body, slots);
+        const targetUrl = buildApiUrl(apiConfig.url, apiConfig.method === 'GET' ? apiConfig.params : null, slots, engine);
+        const { options, debugBody } = buildFetchOptions(apiConfig.method, apiConfig.headers, apiConfig.body, slots, engine);
 
         lastRequestBodyForDebug = debugBody; // 디버깅용 저장 (마지막 요청 본문)
 
@@ -200,7 +199,7 @@ async function handleApiNode(node, scenario, slots) {
             if (mapping && mapping.length > 0) {
                 mapping.forEach(m => {
                     if (m.slot && typeof m.slot === 'string' && m.slot.trim() !== '') {
-                        const value = getDeepValue(result, m.path);
+                        const value = engine.getDeepValue(result, m.path);
                         if (value !== undefined) {
                             combinedNewSlots[m.slot] = value;
                         }
@@ -226,20 +225,20 @@ async function handleApiNode(node, scenario, slots) {
         }
     }
 
-    const nextNode = getNextNode(scenario, node.id, isSuccess ? 'onSuccess' : 'onError', currentSlots);
+    const nextNode = engine.getNextNode(node.id, isSuccess ? 'onSuccess' : 'onError', currentSlots);
     return { nextNode, slots: currentSlots, events: [] };
 }
 
-async function handleBranchNode(node, scenario, slots) {
+async function handleBranchNode(node, scenario, slots, scenarioSessionId, language, engine) {
     if (node.data.evaluationType === 'CONDITION') {
-        const nextNode = getNextNode(scenario, node.id, null, slots);
+        const nextNode = engine.getNextNode(node.id, null, slots);
         return { nextNode, slots, events: [] };
     } else {
         return { nextNode: node, slots, events: [] };
     }
 }
 
-async function handleSetSlotNode(node, scenario, slots) {
+async function handleSetSlotNode(node, scenario, slots, scenarioSessionId, language, engine) {
     console.log('[handleSetSlotNode] Executing node:', node.id);
 
     const newSlots = { ...slots };
@@ -247,7 +246,7 @@ async function handleSetSlotNode(node, scenario, slots) {
 
     for (const assignment of assignments) {
         if (assignment.key) {
-            let interpolatedValue = interpolateMessage(assignment.value, newSlots);
+            let interpolatedValue = engine.interpolateMessage(assignment.value, newSlots);
 
             try {
                 const trimmedValue = interpolatedValue.trim();
@@ -274,11 +273,11 @@ async function handleSetSlotNode(node, scenario, slots) {
         }
     }
 
-    const nextNode = getNextNode(scenario, node.id, null, newSlots);
+    const nextNode = engine.getNextNode(node.id, null, newSlots);
     return { nextNode, slots: newSlots, events: [] };
 }
 
-async function handleDelayNode(node, scenario, slots) {
+async function handleDelayNode(node, scenario, slots, scenarioSessionId, language, engine) {
     const duration = node.data?.duration;
     if (typeof duration !== 'number' || duration < 0) {
         console.warn(`Invalid or missing duration in delay node ${node.id}: ${duration}. Skipping delay.`);
@@ -287,7 +286,7 @@ async function handleDelayNode(node, scenario, slots) {
         await new Promise(resolve => setTimeout(resolve, duration));
         console.log(`[handleDelayNode] Delay finished.`);
     }
-    const nextNode = getNextNode(scenario, node.id, null, slots);
+    const nextNode = engine.getNextNode(node.id, null, slots);
     return { nextNode, slots, events: [] };
 }
 

@@ -8,6 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@clt-chatbot/scenario-core": "latest",
     "@ducanh2912/next-pwa": "^10.2.9",
     "@google/generative-ai": "^0.24.1",
     "chart.js": "^4.5.1",
@@ -22,5 +23,8 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "tailwindcss": "^4"
+  },
+  "overrides": {
+    "serialize-javascript": "7.0.3"
   }
 }
