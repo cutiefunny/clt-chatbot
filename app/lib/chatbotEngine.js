@@ -4,7 +4,7 @@ import { fetchScenario, fetchScenarios } from './api';
 import { locales } from './locales';
 import { nodeHandlers } from './nodeHandlers';
 import { FASTAPI_BASE_URL, API_DEFAULTS } from './constants';
-import { ChatbotEngine } from "@clt-chatbot/scenario-core";
+import { ChatbotEngine } from "../../lib/scenario-core/dist/index";
 
 const SUPPORTED_SCHEMA_VERSION = "1.0";
 
@@ -250,40 +250,52 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
     let currentNode = engine.getNextNode(currentId, message?.sourceHandle, newSlots);
 
     // 3. 비대화형 노드 자동 진행 루프
-    while (currentNode) {
-        const handler = nodeHandlers[currentNode.type]; // nodeHandlers에서 핸들러 가져오기
-
-        if (handler) {
-            try { // 핸들러 실행 오류 처리
-                // 핸들러 실행 (delay 핸들러는 await Promise 포함)
-                const result = await handler(currentNode, scenario, newSlots, scenarioSessionId, language, engine); // language, engine 전달
-
-                if (!result) { // 핸들러가 유효하지 않은 결과 반환 시
-                    throw new Error(`Handler for node type "${currentNode.type}" (ID: ${currentNode.id}) returned invalid result.`);
-                }
-
-                newSlots = result.slots || newSlots; // 슬롯 업데이트
-                if (result.events) allEvents.push(...result.events); // 이벤트 누적
-
-                // 핸들러가 현재 노드를 다시 반환하면 (대화형 노드), 루프 중단
-                if (result.nextNode && result.nextNode.id === currentNode.id) {
-                    currentNode = result.nextNode;
-                    break;
-                }
-                // 다음 노드로 진행
-                currentNode = result.nextNode;
-
-            } catch (handlerError) { // 핸들러 실행 중 오류 발생 시
-                console.error(`Error executing handler for node ${currentNode?.id} (${currentNode?.type}):`, handlerError);
-                const errorMsg = locales[language]?.errorUnexpected || 'An error occurred during scenario execution.';
-                // 오류 발생 시 시나리오 종료 처리
-                return { type: 'scenario_end', message: errorMsg, scenarioState: null, slots: newSlots, events: allEvents, status: 'failed' }; // status: 'failed' 추가
+    const callbacks = {
+        onDelay: async (node) => {
+            const duration = node.data?.duration;
+            if (typeof duration === 'number' && duration >= 0) {
+                await new Promise(resolve => setTimeout(resolve, duration));
             }
-        } else { // 핸들러가 없는 노드 타입일 경우
-            console.warn(`No handler found for node type: ${currentNode.type}. Ending scenario flow.`);
-            currentNode = null; // 루프 종료
+        },
+        onApi: async (node, slots) => {
+            const handler = nodeHandlers['api'];
+            if (handler) {
+                const result = await handler(node, scenario, slots, scenarioSessionId, language, engine);
+                if (result.events) allEvents.push(...result.events);
+                return { success: !result.slots.apiFailed, newSlots: result.slots };
+            }
+            return { success: false, newSlots: slots };
+        },
+        onToast: (node, slots) => {
+            allEvents.push({
+                type: 'toast',
+                message: engine.interpolateMessage(node.data.message, slots),
+                toastType: node.data.toastType || 'info',
+                scenarioSessionId,
+            });
+        },
+        onLink: (node, slots) => {
+            if (node.data.content) {
+                allEvents.push({
+                    type: 'open_link',
+                    url: engine.interpolateMessage(node.data.content, slots),
+                });
+            }
         }
-    } // End of while loop
+    };
+
+    let runResult;
+    try {
+        if (currentNode) {
+            runResult = await engine.run(currentNode.id, newSlots, callbacks);
+            newSlots = runResult.slots;
+            currentNode = runResult.currentNodeId ? engine.getNodeById(runResult.currentNodeId) : null;
+        }
+    } catch (e) {
+        console.error(`Error executing engine run:`, e);
+        const errorMsg = locales[language]?.errorUnexpected || 'An error occurred during scenario execution.';
+        return { type: 'scenario_end', message: errorMsg, scenarioState: null, slots: newSlots, events: allEvents, status: 'failed' };
+    }
 
     // 4. 최종 결과 반환 (대화형 노드에서 멈췄거나, 시나리오 종료)
     if (currentNode) { // 대화형 노드에서 멈춘 경우
@@ -338,9 +350,24 @@ export async function runScenario(scenario, scenarioState, message, slots, scena
                 if (nodeToReturn.type === 'branch' && Array.isArray(nodeToReturn.data.replies)) {
                     nodeToReturn.data.replies.forEach(reply => { if (reply.display) reply.display = engine.interpolateMessage(reply.display, newSlots); });
                 }
+
+                // Iframe logic moved from handleInteractiveNode
+                if (nodeToReturn.type === 'iframe' && nodeToReturn.data.url && scenarioSessionId) {
+                    try {
+                        const urlObj = new URL(nodeToReturn.data.url);
+                        if (!urlObj.searchParams.has('scenario_session_id')) {
+                            urlObj.searchParams.set('scenario_session_id', scenarioSessionId);
+                            nodeToReturn.data.url = urlObj.toString();
+                        }
+                    } catch (e) {
+                        if (!nodeToReturn.data.url.includes('scenario_session_id=')) {
+                            const separator = nodeToReturn.data.url.includes('?') ? '&' : '?';
+                            nodeToReturn.data.url += `${separator}scenario_session_id=${scenarioSessionId}`;
+                        }
+                    }
+                }
             }
 
-            // awaitingInput 상태 결정 로직 수정
             const isAwaiting = engine.isInteractiveNode(nodeToReturn);
 
             return {

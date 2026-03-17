@@ -1,7 +1,7 @@
 // app/api/chat/route.js
 import { NextResponse } from 'next/server';
 import { getScenario, findActionByTrigger, getScenarioList, runScenario, getScenarioCategories } from '../../lib/chatbotEngine';
-import { ChatbotEngine } from "@clt-chatbot/scenario-core";
+import { ChatbotEngine } from "../../../lib/scenario-core/dist/index";
 import { getLlmResponse } from '../../lib/llm';
 import { locales } from '../../lib/locales';
 // --- 👇 [수정] getErrorKey 임포트 제거 ---

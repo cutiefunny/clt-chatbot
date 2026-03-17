@@ -5,7 +5,7 @@ import { locales } from "../../lib/locales";
 import { getErrorKey } from "../../lib/errorHandler";
 import { logger } from "../../lib/logger";
 import { FASTAPI_BASE_URL } from "../../lib/constants";
-import { ChatbotEngine } from "@clt-chatbot/scenario-core";
+import { ChatbotEngine } from "../../../lib/scenario-core/dist/index";
 import { buildApiUrl, buildFetchOptions, interpolateObjectStrings } from "../../lib/nodeHandlers";
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -283,7 +283,7 @@ export const createScenarioHandlersSlice = (set, get) => ({
               id: firstNode.id,
               role: 'bot',
               sender: 'bot',
-              text: firstNode.data?.content || firstNode.data?.title || '',
+              text: engine.interpolateMessage(firstNode.data?.content || firstNode.data?.title || '', initialSlots || {}),
               node: firstNode,
               type: 'scenario_message',
             }] : [],
@@ -532,232 +532,119 @@ export const createScenarioHandlersSlice = (set, get) => ({
   continueScenarioIfNeeded: async (lastNode, scenarioSessionId) => {
     if (!lastNode || !scenarioSessionId) return;
 
+    const { language, endScenario } = get();
     const currentScenario = get().scenarioStates[scenarioSessionId];
     if (!currentScenario) return;
 
     const { nodes, edges } = currentScenario;
     if (!nodes || !edges) return;
 
-    let currentNode = lastNode;
-    let isLoopActive = true;
-    let loopCount = 0;
-    const MAX_LOOP_ITERATIONS = 100;
-
     const engine = new ChatbotEngine({ nodes: currentScenario.nodes, edges: currentScenario.edges || [] });
 
-    while (isLoopActive && loopCount < MAX_LOOP_ITERATIONS) {
-      loopCount++;
-
-      if (engine.isInteractiveNode(currentNode)) {
-        try {
-          const { user, currentConversationId } = get();
-          await fetch(
-            `${FASTAPI_BASE_URL}/conversations/${currentConversationId}/scenario-sessions/${scenarioSessionId}`,
-            {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                usr_id: user.uid,
-                messages: get().scenarioStates[scenarioSessionId]?.messages || [],
-                status: 'active',
-                state: {
-                  scenario_id: currentScenario.scenario_id,
-                  current_node_id: currentNode.id,
-                  awaiting_input: true,
-                },
-                slots: get().scenarioStates[scenarioSessionId]?.slots || {},
-              }),
-            }
-          );
-        } catch (error) {
-          console.error(`[continueScenarioIfNeeded] Error saving state:`, error);
-        }
-        isLoopActive = false;
-        break;
-      }
-
-      if (currentNode.id === 'end' || currentNode.type === 'end') {
-        isLoopActive = false;
-        break;
-      }
-
-      if (currentNode.type === 'message' && !engine.isInteractiveNode(currentNode)) {
+    const callbacks = {
+      onMessage: (node, updatedSlots) => {
         const scenario = get().scenarioStates[scenarioSessionId];
         if (scenario) {
           const messages = [...(scenario.messages || [])];
-          if (!messages.find(m => m.node?.id === currentNode.id)) {
+          if (!messages.find(m => m.node?.id === node.id)) {
             messages.push({
-              id: currentNode.id,
+              id: node.id,
               role: 'bot',
               sender: 'bot',
-              text: currentNode.data?.content || currentNode.data?.title || '',
-              node: currentNode,
+              text: engine.interpolateMessage(node.data?.content || node.data?.title || '', updatedSlots),
+              node: node,
               type: 'scenario_message',
             });
+            set(state => ({
+              scenarioStates: { ...state.scenarioStates, [scenarioSessionId]: { ...state.scenarioStates[scenarioSessionId], messages, slots: updatedSlots } }
+            }));
+          }
+        }
+      },
+      onDelay: async (node) => {
+        get().updateScenarioStatus(scenarioSessionId, 'generating');
+        get().setDelayLoading(true);
+        await sleep(node.data?.duration || node.data?.delay_ms || 1000);
+        get().setDelayLoading(false);
+        get().updateScenarioStatus(scenarioSessionId, 'active');
+      },
+      onApi: async (node, slots) => {
+        get().updateScenarioStatus(scenarioSessionId, 'generating');
+        get().setDelayLoading(true);
+        try {
+          const { method, url, headers, body, params, responseMapping, isMulti, apis } = node.data;
+          let finalSlots = { ...slots };
+
+          const executeApi = async (config) => {
+            const targetUrl = buildApiUrl(config.url, config.method === 'GET' ? config.params : null, slots, engine);
+            const { options } = buildFetchOptions(config.method, config.headers, config.body, slots, engine);
+            const res = await fetch(targetUrl, options);
+            if (!res.ok) throw new Error(`API error: ${res.status}`);
+            const json = await res.json();
+            const mapped = {};
+            if (config.responseMapping) {
+              config.responseMapping.forEach(m => {
+                const val = engine.getDeepValue(json, m.path);
+                if (val !== undefined) mapped[m.slot] = val;
+              });
+            }
+            return mapped;
+          };
+
+          if (isMulti && Array.isArray(apis)) {
+            const results = await Promise.all(apis.map(a => executeApi(a)));
+            results.forEach(r => { finalSlots = { ...finalSlots, ...r }; });
+          } else {
+            const r = await executeApi({ method, url, headers, body, params, responseMapping });
+            finalSlots = { ...finalSlots, ...r };
           }
 
           set(state => ({
-            scenarioStates: {
-              ...state.scenarioStates,
-              [scenarioSessionId]: {
-                ...state.scenarioStates[scenarioSessionId],
-                messages,
-                state: {
-                  scenario_id: scenario.scenario_id,
-                  current_node_id: currentNode.id,
-                  awaiting_input: false,
-                },
-              },
-            },
+            scenarioStates: { ...state.scenarioStates, [scenarioSessionId]: { ...state.scenarioStates[scenarioSessionId], slots: finalSlots } }
           }));
-        }
 
-        const nextNode = engine.getNextNode(currentNode.id, null, get().scenarioStates[scenarioSessionId].slots);
-        if (nextNode) {
-          currentNode = nextNode;
-        } else {
-          isLoopActive = false;
-          break;
-        }
-      }
-      else if (currentNode.type === 'branch' &&
-        currentNode.data?.evaluationType !== 'BUTTON' &&
-        currentNode.data?.evaluationType !== 'BUTTON_CLICK') {
-        const nextNode = engine.getNextNode(currentNode.id, null, get().scenarioStates[scenarioSessionId].slots);
-        if (nextNode) {
-          currentNode = nextNode;
-        } else {
-          isLoopActive = false;
-          break;
-        }
-      }
-      else if (engine.isAutoPassthroughNode(currentNode)) {
-        if (currentNode.type === 'delay') {
-          get().updateScenarioStatus(scenarioSessionId, 'generating');
-          get().setDelayLoading(true);
-          await sleep(currentNode.data?.duration || currentNode.data?.delay_ms || 1000);
+          return { success: true, newSlots: finalSlots };
+        } catch (err) {
+          console.error('[continueScenarioIfNeeded] API error:', err);
+          return { success: false, newSlots: slots };
+        } finally {
           get().setDelayLoading(false);
           get().updateScenarioStatus(scenarioSessionId, 'active');
-
-          const nextNode = engine.getNextNode(currentNode.id, null, get().scenarioStates[scenarioSessionId].slots);
-          if (nextNode) currentNode = nextNode;
-          else { isLoopActive = false; break; }
         }
-        else if (currentNode.type === 'setSlot' || currentNode.type === 'set-slot') {
-          const assignments = currentNode.data?.assignments || [];
-          if (assignments.length > 0) {
-            const scenario = get().scenarioStates[scenarioSessionId];
-            if (scenario) {
-              const updatedSlots = { ...scenario.slots };
-              assignments.forEach(assignment => {
-                updatedSlots[assignment.key] = engine.interpolateMessage(assignment.value, scenario.slots);
-              });
-              set(state => ({
-                scenarioStates: {
-                  ...state.scenarioStates,
-                  [scenarioSessionId]: {
-                    ...state.scenarioStates[scenarioSessionId],
-                    slots: updatedSlots,
-                  },
-                },
-              }));
-            }
-          }
-          const nextNode = engine.getNextNode(currentNode.id, null, get().scenarioStates[scenarioSessionId].slots);
-          if (nextNode) currentNode = nextNode;
-          else { isLoopActive = false; break; }
-        }
-        else if (currentNode.type === 'api') {
-          try {
-            get().updateScenarioStatus(scenarioSessionId, 'generating');
-            get().setDelayLoading(true);
-
-            const { method, url, headers, body, params, responseMapping, isMulti, apis } = currentNode.data;
-            const scenario = get().scenarioStates[scenarioSessionId];
-            let apiSuccess = false;
-            let finalSlots = { ...scenario.slots };
-
-            const executeApi = async (config) => {
-              const targetUrl = buildApiUrl(config.url, config.method === 'GET' ? config.params : null, scenario.slots, engine);
-              const { options } = buildFetchOptions(config.method, config.headers, config.body, scenario.slots, engine);
-              const res = await fetch(targetUrl, options);
-              if (!res.ok) throw new Error(`API error: ${res.status}`);
-              const json = await res.json();
-              const mapped = {};
-              if (config.responseMapping) {
-                config.responseMapping.forEach(m => {
-                  const val = engine.getDeepValue(json, m.path);
-                  if (val !== undefined) mapped[m.slot] = val;
-                });
-              }
-              return mapped;
-            };
-
-            try {
-              if (isMulti && Array.isArray(apis)) {
-                const results = await Promise.all(apis.map(a => executeApi(a)));
-                results.forEach(r => { finalSlots = { ...finalSlots, ...r }; });
-              } else {
-                const r = await executeApi({ method, url, headers, body, params, responseMapping });
-                finalSlots = { ...finalSlots, ...r };
-              }
-              apiSuccess = true;
-            } catch (err) {
-              console.error(err);
-              apiSuccess = false;
-            }
-
-            set(state => ({
-              scenarioStates: {
-                ...state.scenarioStates,
-                [scenarioSessionId]: {
-                  ...state.scenarioStates[scenarioSessionId],
-                  slots: finalSlots,
-                },
-              },
-            }));
-
-            const nextNode = engine.getNextNode(currentNode.id, apiSuccess ? 'onSuccess' : 'onError', finalSlots);
-            if (nextNode) currentNode = nextNode;
-            else { isLoopActive = false; break; }
-          } finally {
-            get().setDelayLoading(false);
-            get().updateScenarioStatus(scenarioSessionId, 'active');
-          }
-        }
-      } else {
-        isLoopActive = false;
-        break;
+      },
+      onEnd: (slots) => {
+        // Will be handled by examining run result.
       }
-      await sleep(300);
-    }
+    };
 
-    // Final update
-    const nextNode = engine.getNextNode(currentNode.id, null, get().scenarioStates[scenarioSessionId].slots);
-    const isLast = !nextNode;
+    const runResult = await engine.run(lastNode.id, currentScenario.slots, callbacks);
     const scenario = get().scenarioStates[scenarioSessionId];
-    const messages = [...(scenario?.messages || [])];
+    const finalMessages = [...(scenario?.messages || [])];
 
-    if (!messages.find(m => m.node?.id === currentNode.id)) {
-      messages.push({
-        id: currentNode.id,
-        role: 'bot',
-        sender: 'bot',
-        text: currentNode.data?.content || currentNode.data?.title || '',
-        node: currentNode,
-        type: 'scenario_message',
-      });
+    // Ensure final interactive node is added to messages
+    if (runResult.status === 'active' && runResult.currentNodeId) {
+      const interactiveNode = engine.getNodeById(runResult.currentNodeId);
+      if (interactiveNode && !finalMessages.find(m => m.node?.id === interactiveNode.id)) {
+        finalMessages.push({
+          id: interactiveNode.id,
+          role: 'bot',
+          sender: 'bot',
+          text: engine.interpolateMessage(interactiveNode.data?.content || interactiveNode.data?.title || '', runResult.slots),
+          node: interactiveNode,
+          type: 'scenario_message',
+        });
+      }
     }
 
     const finalPayload = {
-      messages,
-      status: isLast ? 'completed' : 'active',
-      state: isLast ? null : {
+      messages: finalMessages,
+      status: runResult.status,
+      state: runResult.status === 'completed' ? null : {
         scenario_id: scenario.scenario_id,
-        current_node_id: currentNode.id,
-        awaiting_input: engine.isInteractiveNode(currentNode),
+        current_node_id: runResult.currentNodeId,
+        awaiting_input: runResult.status === 'active',
       },
-      slots: scenario.slots || {},
+      slots: runResult.slots || {},
     };
 
     set(state => ({
@@ -767,18 +654,22 @@ export const createScenarioHandlersSlice = (set, get) => ({
       }
     }));
 
-    try {
-      const { user, currentConversationId } = get();
-      await fetch(
-        `${FASTAPI_BASE_URL}/conversations/${currentConversationId}/scenario-sessions/${scenarioSessionId}`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ usr_id: user.uid, ...finalPayload }),
-        }
-      );
-    } catch (error) {
-      console.error(error);
+    if (runResult.status === 'completed') {
+      endScenario(scenarioSessionId, 'completed', finalMessages, runResult.slots);
+    } else {
+      try {
+        const { user, currentConversationId } = get();
+        await fetch(
+          `${FASTAPI_BASE_URL}/conversations/${currentConversationId}/scenario-sessions/${scenarioSessionId}`,
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usr_id: user.uid, ...finalPayload }),
+          }
+        );
+      } catch (error) {
+        console.error('[continueScenarioIfNeeded] Error saving state:', error);
+      }
     }
   },
 });

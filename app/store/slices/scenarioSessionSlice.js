@@ -195,14 +195,8 @@ export const createScenarioSessionSlice = (set, get) => ({
       const messageKey = status === 'canceled' ? 'scenarioCanceled' : 'scenarioComplete';
       const endMessage = locales[language]?.[messageKey] || 'Scenario has ended.';
 
-      // 기존 메시지에 종료 메시지 추가
+      // 기존 메시지에 종료 메시지 추가 제거 (이미 라이브러리에서 onMessage로 처리됨)
       const messages = [...(currentScenario.messages || [])];
-      messages.push({
-        id: `bot-end-${Date.now()}`,
-        sender: 'bot',
-        text: endMessage,
-        type: 'scenario_message',
-      });
 
       // --- [수정] FastAPI로 업데이트 (정확한 경로: /conversations/{conversation_id}/scenario-sessions/{session_id}) ---
       await fetch(

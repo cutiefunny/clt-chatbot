@@ -1,5 +1,16 @@
 import { ScenarioData, ScenarioNode } from '../types/index';
 
+export interface EngineCallbacks {
+  onMessage?: (node: ScenarioNode, updatedSlots: Record<string, any>) => void;
+  onDelay?: (node: ScenarioNode) => Promise<void>;
+  onApi?: (node: ScenarioNode, slots: Record<string, any>) => Promise<{ success: boolean; newSlots: Record<string, any> }>;
+  onLlm?: (node: ScenarioNode, slots: Record<string, any>) => Promise<{ success: boolean; newSlots: Record<string, any> }>;
+  onToast?: (node: ScenarioNode, slots: Record<string, any>) => void;
+  onLink?: (node: ScenarioNode, slots: Record<string, any>) => void;
+  onEnd?: (slots: Record<string, any>) => void;
+  onError?: (error: any) => void;
+}
+
 export class ChatbotEngine {
   constructor(private scenario: ScenarioData) { }
 
@@ -17,15 +28,30 @@ export class ChatbotEngine {
 
   getDeepValue(obj: any, path: string): any {
     if (!path || typeof path !== 'string') return undefined;
-    // [0] 형태의 배열 접근을 .0 형태로 정규화하고 불필요한 공백을 제거합니다.
-    const normalizedPath = path.replace(/\[(\w+)\]/g, '.$1').replace(/^\./, '');
+
+    // Try direct lookup first (if key exists as-is)
+    if (obj && typeof obj === 'object' && path in obj) {
+      return obj[path];
+    }
+
+    // Normalize [0] to .0 and handle leading dot
+    const normalizedPath = path.replace(/\[(\s*['"]?(\w+)['"]?\s*)\]/g, '.$2').replace(/^\./, '');
     const keys = normalizedPath.split('.').filter(k => k.trim() !== '').map(k => k.trim());
 
     let current = obj;
     for (const key of keys) {
-      if (current === null || current === undefined) return undefined;
-      current = current[key];
+      if (current === null || current === undefined) {
+        return undefined;
+      }
+
+      // Handle the case where current is an array and key is an index
+      if (Array.isArray(current) && !isNaN(Number(key))) {
+        current = current[Number(key)];
+      } else {
+        current = current[key];
+      }
     }
+
     return current;
   }
 
@@ -99,7 +125,16 @@ export class ChatbotEngine {
     }
 
     // Fallback to first edge
-    return this.getNodeById(outgoingEdges[0].target) || null;
+    if (outgoingEdges.length > 0) {
+      return this.getNodeById(outgoingEdges[0].target) || null;
+    }
+
+    // [New] Bubble up to parent node if current node is in a group and has no outgoing edges
+    if (sourceNode?.parentNode) {
+      return this.getNextNode(sourceNode.parentNode, sourceHandle, slots);
+    }
+
+    return null;
   }
 
   isInteractiveNode(node: ScenarioNode | undefined): boolean {
@@ -112,12 +147,144 @@ export class ChatbotEngine {
       const evalType = node.data?.evaluationType;
       return evalType === 'BUTTON' || evalType === 'BUTTON_CLICK';
     }
+    if (node.type === 'fixedmenu') return true;
     return node.type === 'slotfilling';
   }
 
   isAutoPassthroughNode(node: ScenarioNode | undefined): boolean {
     if (!node) return false;
-    return ['setSlot', 'set-slot', 'delay', 'api', 'toast', 'link'].includes(node.type);
+    return ['setSlot', 'set-slot', 'delay', 'api', 'llm', 'toast', 'link'].includes(node.type);
   }
 
+  applySetSlot(node: ScenarioNode, slots: Record<string, any>): Record<string, any> {
+    const newSlots = { ...slots };
+    const assignments = node?.data?.assignments || [];
+
+    for (const assignment of assignments) {
+      if (assignment.key) {
+        let interpolatedValue = this.interpolateMessage(assignment.value, newSlots);
+        try {
+          const trimmedValue = interpolatedValue.trim();
+          if ((trimmedValue.startsWith('{') && trimmedValue.endsWith('}')) || (trimmedValue.startsWith('[') && trimmedValue.endsWith(']'))) {
+            newSlots[assignment.key] = JSON.parse(trimmedValue);
+          } else if (trimmedValue.toLowerCase() === 'true') {
+            newSlots[assignment.key] = true;
+          } else if (trimmedValue.toLowerCase() === 'false') {
+            newSlots[assignment.key] = false;
+          } else if (!isNaN(Number(trimmedValue)) && trimmedValue !== '') {
+            newSlots[assignment.key] = Number(trimmedValue);
+          } else {
+            newSlots[assignment.key] = interpolatedValue;
+          }
+        } catch (e) {
+          newSlots[assignment.key] = interpolatedValue;
+        }
+      }
+    }
+    return newSlots;
+  }
+
+  async run(startNodeId: string | null | undefined, currentSlots: Record<string, any>, callbacks: EngineCallbacks = {}): Promise<{ status: 'active' | 'completed' | 'failed', currentNodeId: string | null, slots: Record<string, any> }> {
+    let currentNode: ScenarioNode | null | undefined = startNodeId ? this.getNodeById(startNodeId) : null;
+    let slots = { ...currentSlots };
+    let isLoopActive = !!currentNode;
+    let loopCount = 0;
+    const MAX_LOOP_ITERATIONS = 100;
+
+    while (isLoopActive && currentNode && loopCount < MAX_LOOP_ITERATIONS) {
+      if (loopCount > 0) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      loopCount++;
+
+      if (this.isInteractiveNode(currentNode)) {
+        return { status: 'active', currentNodeId: currentNode.id, slots };
+      }
+
+      if (currentNode.id === 'end' || currentNode.type === 'end') {
+        break;
+      }
+
+      if (currentNode.type === 'delay') {
+        if (callbacks.onDelay) await callbacks.onDelay(currentNode);
+        currentNode = this.getNextNode(currentNode.id, null, slots);
+      } else if (currentNode.type === 'api') {
+        const currentId = currentNode.id;
+        if (callbacks.onApi) {
+          try {
+            const result = await callbacks.onApi(currentNode, slots);
+            slots = result.newSlots || slots;
+            currentNode = this.getNextNode(currentId, result.success ? 'onSuccess' : 'onError', slots);
+          } catch (e) {
+            if (callbacks.onError) callbacks.onError(e);
+            currentNode = this.getNextNode(currentId, 'onError', slots);
+          }
+        } else {
+          currentNode = this.getNextNode(currentId, 'onError', slots);
+        }
+      } else if (currentNode.type === 'llm') {
+        const currentId = currentNode.id;
+        if (callbacks.onLlm) {
+          try {
+            const result = await callbacks.onLlm(currentNode, slots);
+            slots = result.newSlots || slots;
+            currentNode = this.getNextNode(currentId, result.success ? 'onSuccess' : 'onError', slots);
+          } catch (e) {
+            if (callbacks.onError) callbacks.onError(e);
+            currentNode = this.getNextNode(currentId, 'onError', slots);
+          }
+        } else {
+          currentNode = this.getNextNode(currentId, null, slots);
+        }
+      } else if (currentNode.type === 'setSlot' || currentNode.type === 'set-slot') {
+        slots = this.applySetSlot(currentNode, slots);
+        currentNode = this.getNextNode(currentNode.id, null, slots);
+      } else if (currentNode.type === 'scenario') {
+        const childNodes = this.scenario.nodes.filter(n => n.parentNode === currentNode?.id);
+        const childNodeIds = new Set(childNodes.map(n => n.id));
+        const innerStartNode = childNodes.find(n =>
+          !this.scenario.edges.some(e => e.target === n.id && childNodeIds.has(e.source))
+        );
+        if (innerStartNode) {
+          currentNode = innerStartNode;
+        } else {
+          currentNode = this.getNextNode(currentNode.id, null, slots);
+        }
+      } else if (currentNode.type === 'branch') {
+        currentNode = this.getNextNode(currentNode.id, null, slots);
+      } else if (currentNode.type === 'toast') {
+        if (callbacks.onToast) callbacks.onToast(currentNode, slots);
+        currentNode = this.getNextNode(currentNode.id, null, slots);
+      } else if (currentNode.type === 'link') {
+        if (callbacks.onLink) callbacks.onLink(currentNode, slots);
+        currentNode = this.getNextNode(currentNode.id, null, slots);
+      } else {
+        // Link, Message (non-interactive), Toast etc.
+        if (callbacks.onMessage) callbacks.onMessage(currentNode, slots);
+        currentNode = this.getNextNode(currentNode.id, null, slots);
+      }
+    }
+
+    // Termination Sequence
+    if (callbacks.onMessage || callbacks.onEnd) {
+      // 500ms delay before end message
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      if (callbacks.onMessage) {
+        callbacks.onMessage({
+          id: 'system-termination',
+          type: 'message',
+          data: { content: '시나리오가 종료되었습니다.', isSystem: true }
+        } as any, slots);
+      }
+
+      // Another 500ms delay before final onEnd callback
+      if (callbacks.onEnd) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        callbacks.onEnd(slots);
+      }
+    }
+
+    return { status: 'completed', currentNodeId: null, slots };
+  }
 }
