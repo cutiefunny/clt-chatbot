@@ -221,7 +221,6 @@ export const createScenarioSessionSlice = (set, get) => ({
         if (!r.ok) throw new Error(`Failed to update session: ${r.status}`);
         return r.json();
       });
-      // --- [수정] ---
 
       set(state => {
         const updatedState = state.scenarioStates[scenarioSessionId]

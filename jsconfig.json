@@ -6,7 +6,7 @@
         "./*"
       ],
       "@clt-chatbot/scenario-core": [
-        "node_modules/@clt-chatbot/scenario-core"
+        "lib/scenario-core"
       ]
     }
   }

@@ -401,11 +401,13 @@ export const createScenarioHandlersSlice = (set, get) => ({
       const nextNode = engine.getNextNode(currentNodeId, payload.sourceHandle, updatedSlots);
 
       if (!nextNode) {
+        const completeMessage = locales[language]?.scenarioComplete || 'Scenario complete.';
+
         newMessages.push({
           id: `bot-complete-${Date.now()}`,
           role: 'bot',
           sender: 'bot',
-          text: locales[language]?.scenarioComplete || 'Scenario complete.',
+          text: completeMessage,
           type: 'scenario_message',
         });
 
@@ -735,6 +737,7 @@ export const createScenarioHandlersSlice = (set, get) => ({
     const isLast = !nextNode;
     const scenario = get().scenarioStates[scenarioSessionId];
     const messages = [...(scenario?.messages || [])];
+
     if (!messages.find(m => m.node?.id === currentNode.id)) {
       messages.push({
         id: currentNode.id,

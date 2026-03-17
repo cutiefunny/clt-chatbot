@@ -16,8 +16,11 @@ export class ChatbotEngine {
   }
 
   getDeepValue(obj: any, path: string): any {
-    if (!path) return undefined;
-    const keys = path.split('.');
+    if (!path || typeof path !== 'string') return undefined;
+    // [0] 형태의 배열 접근을 .0 형태로 정규화하고 불필요한 공백을 제거합니다.
+    const normalizedPath = path.replace(/\[(\w+)\]/g, '.$1').replace(/^\./, '');
+    const keys = normalizedPath.split('.').filter(k => k.trim() !== '').map(k => k.trim());
+
     let current = obj;
     for (const key of keys) {
       if (current === null || current === undefined) return undefined;
@@ -116,4 +119,5 @@ export class ChatbotEngine {
     if (!node) return false;
     return ['setSlot', 'set-slot', 'delay', 'api', 'toast', 'link'].includes(node.type);
   }
+
 }

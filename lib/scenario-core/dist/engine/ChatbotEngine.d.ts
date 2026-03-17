@@ -9,4 +9,6 @@ export declare class ChatbotEngine {
     getNextNode(currentNodeId: string, sourceHandle?: string | null, slots?: any): ScenarioNode | null;
     isInteractiveNode(node: ScenarioNode | undefined): boolean;
     isAutoPassthroughNode(node: ScenarioNode | undefined): boolean;
+    getVersion(): string;
+    getCompletionMessage(): string;
 }
