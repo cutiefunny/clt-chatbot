@@ -193,7 +193,7 @@ export class ChatbotEngine {
 
     while (isLoopActive && currentNode && loopCount < MAX_LOOP_ITERATIONS) {
       if (loopCount > 0) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
       loopCount++;
 
@@ -267,7 +267,7 @@ export class ChatbotEngine {
 
     // Termination Sequence
     if (callbacks.onMessage || callbacks.onEnd) {
-      // 500ms delay before end message
+      // 1000ms delay before end message
       await new Promise(resolve => setTimeout(resolve, 500));
 
       if (callbacks.onMessage) {
@@ -278,7 +278,7 @@ export class ChatbotEngine {
         } as any, slots);
       }
 
-      // Another 500ms delay before final onEnd callback
+      // Another 1000ms delay before final onEnd callback
       if (callbacks.onEnd) {
         await new Promise(resolve => setTimeout(resolve, 500));
         callbacks.onEnd(slots);

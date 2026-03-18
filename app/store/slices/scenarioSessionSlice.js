@@ -20,7 +20,7 @@ export const createScenarioSessionSlice = (set, get) => ({
       currentNodeId: existingScenario?.state?.current_node_id,
     });
 
-    if (existingScenario?.messages && existingScenario?.state) {
+    if (existingScenario?.messages?.length > 0 && (existingScenario?.state || existingScenario?.status === 'completed')) {
       console.log(`[subscribeToScenarioSession] ✓ Local state already exists, no fetch needed for ${sessionId}`);
       return;
     }
@@ -104,7 +104,7 @@ export const createScenarioSessionSlice = (set, get) => ({
           const currentLocalState = state.scenarioStates[sessionId];
 
           // 🔴 [NEW] 로컬 데이터가 이미 있으면 백엔드 빈 데이터로 덮어쓰지 않음
-          if (currentLocalState?.messages?.length > 0 && currentLocalState?.state && currentLocalState?.nodes) {
+          if (currentLocalState?.messages?.length > 0 && currentLocalState?.nodes && (currentLocalState?.state || currentLocalState?.status === 'completed')) {
             console.log(`[subscribeToScenarioSession] Local state already exists (${currentLocalState.messages.length} msgs), not overwriting with server data`);
             return state;
           }
