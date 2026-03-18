@@ -8,7 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
-    "@clt-chatbot/scenario-core": "^1.0.5",
+    "@clt-chatbot/scenario-core": "1.0.5",
     "@ducanh2912/next-pwa": "^10.2.9",
     "@google/generative-ai": "^0.24.1",
     "chart.js": "^4.5.1",
