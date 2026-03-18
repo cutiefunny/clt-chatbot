@@ -193,7 +193,7 @@ export class ChatbotEngine {
 
     while (isLoopActive && currentNode && loopCount < MAX_LOOP_ITERATIONS) {
       if (loopCount > 0) {
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
       loopCount++;
 
