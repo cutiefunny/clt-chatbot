@@ -38,7 +38,8 @@
 .headerTitle {
   font-weight: bold;
   font-size: 16px;
-  color: var(--text-color); /* Themed */
+  color: var(--text-color);
+  /* Themed */
   line-height: 1.2;
   flex-grow: 1;
 }
@@ -46,7 +47,8 @@
 .scenarioHeaderTitle {
   font-weight: bold;
   font-size: 14px;
-  color: var(--text-color); /* Themed */
+  color: var(--text-color);
+  /* Themed */
   line-height: 1.2;
   flex-grow: 1;
 }
@@ -68,7 +70,8 @@
   padding: 8px 12px;
   font-size: 14px;
   font-weight: 500;
-  line-height: 14px; /* 116.667% */
+  line-height: 14px;
+  /* 116.667% */
   letter-spacing: -0.12px;
   color: var(--Gray-07, #5e7599);
   cursor: pointer;
@@ -99,7 +102,8 @@
 }
 
 .headerRestartButton:hover {
-  background-color: var(--button-hover-bg); /* Themed */
+  background-color: var(--button-hover-bg);
+  /* Themed */
 }
 
 .dangerButton {
@@ -107,6 +111,7 @@
   color: white;
   border-color: #d32f2f;
 }
+
 .dangerButton:hover {
   background-color: #b71c1c;
   border-color: #b71c1c;
@@ -117,22 +122,26 @@
   align-items: center;
   gap: 8px;
 }
+
 .settingLabel {
   font-size: 14px;
   color: var(--text-color);
   white-space: nowrap;
 }
+
 .switch {
   position: relative;
   display: inline-block;
   width: 34px;
   height: 20px;
 }
+
 .switch input {
   opacity: 0;
   width: 0;
   height: 0;
 }
+
 .slider {
   position: absolute;
   cursor: pointer;
@@ -144,6 +153,7 @@
   transition: 0.4s;
   border-radius: 34px;
 }
+
 .slider:before {
   position: absolute;
   content: "";
@@ -155,12 +165,15 @@
   transition: 0.4s;
   border-radius: 50%;
 }
-input:checked + .slider {
+
+input:checked+.slider {
   background-color: var(--Purple-03, #634de2);
 }
-input:checked + .slider:before {
+
+input:checked+.slider:before {
   transform: translateX(14px);
 }
+
 .separator {
   width: 1px;
   height: 16px;
@@ -186,6 +199,7 @@ input:checked + .slider:before {
   border-radius: 8px;
   padding: 2px;
 }
+
 .themeButton {
   padding: 2px 8px;
   font-size: 0.8rem;
@@ -196,6 +210,7 @@ input:checked + .slider:before {
   border-radius: 6px;
   transition: background-color 0.2s;
 }
+
 .themeButton.active {
   background-color: var(--panel-bg-color);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
@@ -217,7 +232,7 @@ input:checked + .slider:before {
   mask-image: linear-gradient(to bottom, black 95%, transparent 100%);
 }
 
-.mainChatDimmed > .messageRow {
+.mainChatDimmed>.messageRow {
   opacity: 0.4;
   transition: opacity 0.4s ease-out;
   pointer-events: none;
@@ -228,21 +243,25 @@ input:checked + .slider:before {
     max-width: 624px;
   }
 }
+
 @media (min-width: 768px) {
   .history {
     max-width: 736px;
   }
 }
+
 @media (min-width: 1024px) {
   .history {
     max-width: 896px;
   }
 }
+
 @media (min-width: 1280px) {
   .history {
     max-width: 1008px;
   }
 }
+
 @media (min-width: 1536px) {
   .history {
     max-width: 1046px;
@@ -260,10 +279,13 @@ input:checked + .slider:before {
 }
 
 .avatar {
-  width: 30px;
-  height: 30px;
-  margin-top: 10px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
   flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background: white;
+  border: 1px solid #e5e7eb;
 }
 
 .message {
@@ -282,7 +304,8 @@ input:checked + .slider:before {
 /* 30% 너비 */
 .width30 {
   width: 30%;
-  min-width: 200px; /* 너무 좁아지는 것 방지 */
+  min-width: 200px;
+  /* 너무 좁아지는 것 방지 */
   max-width: 30%;
 }
 
@@ -291,6 +314,7 @@ input:checked + .slider:before {
   width: 60%;
   max-width: 60%;
 }
+
 /* --- 👆 [추가] --- */
 
 /* 100% 단계 (90% 너비) */
@@ -325,7 +349,8 @@ input:checked + .slider:before {
   flex-direction: column;
   font-size: 14px;
   margin: 2px 0px;
-  line-height: 20px; /* 142.857% */
+  line-height: 20px;
+  /* 142.857% */
   letter-spacing: -0.14px;
   /* max-width: calc(100% - 32px); */
   max-width: 100%;
@@ -333,10 +358,13 @@ input:checked + .slider:before {
 }
 
 .botMessage {
-  color: var(--text-color); /* Themed */
+  background-color: var(--bot-message-bg, #f3f7fa);
+  color: var(--text-color, #111827);
+  border: 1px solid var(--panel-border-color, #e5e7eb);
+  border-radius: 2px 12px 12px 12px;
   transition: background-color 0.2s;
-  width: 100%;
-  max-width: 100%;
+  max-width: fit-content;
+  box-shadow: none;
 }
 
 .botMessageRichContent {
@@ -375,9 +403,12 @@ input:checked + .slider:before {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.2s, color 0.2s; /* color transition 추가 */
-  color: #babcd1; /* 아이콘 기본 색상 (하드코딩했던 색상) */
+  transition: background-color 0.2s, color 0.2s;
+  /* color transition 추가 */
+  color: #babcd1;
+  /* 아이콘 기본 색상 (하드코딩했던 색상) */
 }
+
 /* --- 👆 [수정] --- */
 
 .messageActionArea .actionButton svg {
@@ -388,17 +419,18 @@ input:checked + .slider:before {
 /* --- 👇 [수정] .actionButton:hover에 color 추가 --- */
 .messageActionArea .actionButton:hover {
   background-color: var(--button-hover-bg);
-  color: var(--action-button-hover-color); /* globals.css에 정의된 hover 색상 */
+  color: var(--action-button-hover-color);
+  /* globals.css에 정의된 hover 색상 */
 }
+
 /* --- 👆 [수정] --- */
 
 .userMessage {
-  padding: 12px 20px;
-  color: var(--White, #fff); /* Themed */
-  border-top-right-radius: 4px;
-  border-radius: var(--2, 16px);
-  background: #8362E9 !important;
-  box-shadow: 0 6px 16px 0 #DFE2FE;
+  padding: 10px 16px;
+  color: var(--user-message-text, #fff);
+  border-radius: 12px 12px 2px 12px;
+  background: var(--theme-blue, #1f2937) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   font-size: 14px;
 }
 
@@ -407,14 +439,17 @@ input:checked + .slider:before {
     opacity: 0;
     transform: translate(-50%, -50%) scale(0.8);
   }
+
   20% {
     opacity: 1;
     transform: translate(-50%, -50%) scale(1);
   }
+
   80% {
     opacity: 1;
     transform: translate(-50%, -50%) scale(1);
   }
+
   100% {
     opacity: 0;
     transform: translate(-50%, -50%) scale(0.8);
@@ -447,24 +482,22 @@ input:checked + .slider:before {
 .optionButton {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   flex-shrink: 0;
   min-width: var(--option-button-min-width, 160px);
   width: 100%;
-  padding: 12px 16px 12px 24px;
-  border-radius: 12px;
-  border: 1px solid var(--panel-border-color); /* Themed */
-  background-color: rgba(255, 255, 255, 0.1); /* Adjusted for dark mode */
-  color: var(--text-color); /* Themed */
+  padding: 10px 16px;
+  border-radius: 4px;
+  border: 1px solid var(--option-button-border, #e5e7eb);
+  background-color: var(--option-button-bg, #ffffff);
+  color: var(--theme-blue, #1f2937);
   cursor: pointer;
   font-size: 14px;
   font-weight: 600;
-  line-height: 14px; /* 116.667% */
-  letter-spacing: -0.12px;
-  transition: background-color 0.2s, border-color 0.2s;
+  line-height: 1.2;
+  transition: all 0.2s;
   white-space: nowrap;
-  text-align: center; /* 버튼 텍스트 중앙 정렬 */
-  overflow: hidden;
   box-sizing: border-box;
 }
 
@@ -482,7 +515,8 @@ input:checked + .slider:before {
 }
 
 .optionButton:hover {
-  background-color: #f0f2f5; /* Themed */
+  background-color: #f0f2f5;
+  /* Themed */
 }
 
 .optionButton:disabled {
@@ -490,6 +524,7 @@ input:checked + .slider:before {
   background-color: var(--button-hover-bg);
   border-color: var(--panel-border-color);
 }
+
 .optionButton.selected {
   border-color: #806bf5;
   color: #282166;
@@ -503,9 +538,11 @@ input:checked + .slider:before {
   opacity: 0.5;
   background-color: transparent;
 }
+
 .optionButton:disabled:hover {
   border-color: var(--panel-border-color);
 }
+
 .optionButton.selected:disabled:hover {
   border-color: #806bf5;
 }
@@ -520,22 +557,27 @@ input:checked + .slider:before {
 .formFileInput {
   display: none;
 }
+
 /* --- 👆 [추가] --- */
 
 /* --- 👇 [수정] 폼 헤더 및 엑셀 버튼 스타일 --- */
 .formHeader {
   display: flex;
   align-items: center;
-  padding: 12px 20px; /* h3에서 패딩 이동 */
+  padding: 12px 20px;
+  /* h3에서 패딩 이동 */
   gap: 8px;
 }
 
 .formHeader h3 {
-  padding: 0; /* h3 패딩 리셋 */
-  margin: 0; /* h3 마진 리셋 */
+  padding: 0;
+  /* h3 패딩 리셋 */
+  margin: 0;
+  /* h3 마진 리셋 */
   font-size: 16px;
   font-weight: 600;
-  line-height: 20px; /* 125% */
+  line-height: 20px;
+  /* 125% */
   letter-spacing: -0.24px;
 }
 
@@ -560,6 +602,7 @@ input:checked + .slider:before {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
 /* --- 👆 [수정] --- */
 
 .formContainerSeparator {
@@ -589,31 +632,33 @@ input:checked + .slider:before {
   display: flex;
   justify-content: flex-end;
   padding: 0px 20px 12px 20px;
-  gap: 8px; /* 버튼 사이 간격 추가 */
-  align-items: center; /* 버튼 정렬 */
+  gap: 8px;
+  /* 버튼 사이 간격 추가 */
+  align-items: center;
+  /* 버튼 정렬 */
 }
+
 /* --- 👆 [수정] --- */
 
 .formLabel {
   color: var(--Gray-05, #8d9eba);
   font-size: 12px;
   font-weight: 500;
-  line-height: 14px; /* 116.667% */
+  line-height: 14px;
+  /* 116.667% */
   letter-spacing: -0.18px;
 }
 
 .formInput,
 .formContainer select {
   width: 100%;
-  padding: 8px 12px 8px 16px;
-  border: 1px solid var(--panel-border-color); /* Themed */
-  color: var(--text-color); /* Themed */
-  border-radius: 6px;
+  padding: 8px 12px;
+  border: 1px solid var(--panel-border-color, #d1d5db);
+  background-color: #f9fafb;
+  color: var(--text-color);
+  border-radius: 4px;
   box-sizing: border-box;
   font-size: 14px;
-  font-weight: 400;
-  line-height: 20px; /* 142.857% */
-  letter-spacing: -0.21px;
 }
 
 .selectWrapper {
@@ -642,24 +687,27 @@ input:checked + .slider:before {
 
 /* --- 👇 [수정] formSubmitButton에서 align-self 제거 --- */
 .formSubmitButton {
-  /* align-self: flex-end; */ /* 부모(formActionArea)가 정렬을 제어하므로 제거 */
+  /* align-self: flex-end; */
+  /* 부모(formActionArea)가 정렬을 제어하므로 제거 */
   padding: 8px 16px;
-  color: var(--White, #fff); /* Themed */
+  color: var(--White, #fff);
+  /* Themed */
   border-radius: 8px;
-  background: var(
-    --Color-Light-Gradation-01,
-    linear-gradient(90deg, #BCA8FF 0%, #6941DF 100%)
-  );
+  background: var(--Color-Light-Gradation-01,
+      linear-gradient(90deg, #BCA8FF 0%, #6941DF 100%));
   cursor: pointer;
 }
+
 /* --- 👆 [수정] --- */
 
 .formSubmitButton:hover {
-  background-color: var(--login-button-hover-bg); /* Themed */
+  background-color: var(--login-button-hover-bg);
+  /* Themed */
 }
 
 .formSubmitButton:disabled {
-  background-color: var(--button-hover-bg); /* Themed */
+  background-color: var(--button-hover-bg);
+  /* Themed */
   cursor: not-allowed;
   opacity: 0.7;
 }
@@ -667,30 +715,38 @@ input:checked + .slider:before {
 .iframeContainer {
   padding: 0;
   background-color: transparent;
-  overflow: hidden; /* 추가: 내용이 넘칠 경우 숨김 */
+  overflow: hidden;
+  /* 추가: 내용이 넘칠 경우 숨김 */
 }
 
 .iframeContainer iframe {
-  display: block; /* 기본 스타일 유지 */
+  display: block;
+  /* 기본 스타일 유지 */
 }
 
 @keyframes wobble {
+
   0%,
   100% {
     transform: translateX(0%);
   }
+
   15% {
     transform: translateX(-10px) rotate(-3deg);
   }
+
   30% {
     transform: translateX(8px) rotate(2deg);
   }
+
   45% {
     transform: translateX(-6px) rotate(-1deg);
   }
+
   60% {
     transform: translateX(4px) rotate(0.5deg);
   }
+
   75% {
     transform: translateX(-2px) rotate(0deg);
   }
@@ -722,19 +778,23 @@ input:checked + .slider:before {
 }
 
 .statusActive {
-  background-color: #f39c12; /* Incomplete */
+  background-color: #f39c12;
+  /* Incomplete */
 }
 
 .statusCompleted {
-  background-color: #3498db; /* Done */
+  background-color: #3498db;
+  /* Done */
 }
 
 .statusFailed {
-  background-color: #e74c3c; /* Failed */
+  background-color: #e74c3c;
+  /* Failed */
 }
 
 .statusGenerating {
-  background-color: #27ae60; /* Generating */
+  background-color: #27ae60;
+  /* Generating */
 }
 
 .history {
@@ -742,26 +802,33 @@ input:checked + .slider:before {
   scrollbar-color: transparent transparent;
   transition: scrollbar-color 0.3s ease-out;
 }
+
 .history:hover {
   scrollbar-color: #c1c1c1 transparent;
 }
+
 body.dark .history:hover {
   scrollbar-color: #555 transparent;
 }
+
 .history::-webkit-scrollbar {
   width: 8px;
 }
+
 .history::-webkit-scrollbar-track {
   background: transparent;
 }
+
 .history::-webkit-scrollbar-thumb {
   background-color: transparent;
   border-radius: 4px;
   transition: background-color 0.3s ease-out;
 }
+
 .history:hover::-webkit-scrollbar-thumb {
   background-color: #c1c1c1;
 }
+
 body.dark .history:hover::-webkit-scrollbar-thumb {
   background-color: #555;
 }
@@ -798,25 +865,28 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
   flex-direction: column;
   width: 496;
   max-width: 496px;
-  height: 48px; /* 헤더 높이와 동일하게 고정 */
+  height: 48px;
+  /* 헤더 높이와 동일하게 고정 */
   border-radius: 16px;
   overflow: hidden;
   transition: opacity 0.4s ease-out, border-color 0.2s ease-out;
-  cursor: pointer; /* 클릭 가능하도록 커서 변경 */
+  cursor: pointer;
+  /* 클릭 가능하도록 커서 변경 */
 }
 
 .focusedBubble {
-  border: var(--stroke-weight-1, 1px) solid
-    var(--Color-Light-Gradation-03, #3051ea) !important;
+  border: var(--stroke-weight-1, 1px) solid var(--Color-Light-Gradation-03, #3051ea) !important;
 }
 
 .scenarioBubbleContainer .header {
   flex-shrink: 0;
   padding: 12px 20px;
-  height: 48px; /* 헤더 높이 유지 */
+  height: 48px;
+  /* 헤더 높이 유지 */
   display: flex;
   align-items: center;
-  justify-content: space-between; /* 양 끝 정렬 */
+  justify-content: space-between;
+  /* 양 끝 정렬 */
 }
 
 .scenarioBubbleContainer.dimmed {
@@ -831,7 +901,8 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
   flex-shrink: 0;
   font-size: 10px;
   font-weight: 500;
-  line-height: 12px; /* 120% */
+  line-height: 12px;
+  /* 120% */
   letter-spacing: -0.1px;
 }
 
@@ -839,22 +910,27 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
   background: var(--Blue-01, #b2ebf2);
   color: var(--Blue-02, #005762);
 }
+
 .scenarioBadge.done {
   background: var(--Gray-03, #d8e0eb);
   color: var(--Gray-07, #5e7599);
 }
+
 .scenarioBadge.incomplete {
   background: var(--Yellow-01, #fff6aa);
   color: var(--Yellow-02, #f57f17);
 }
+
 .scenarioBadge.failed {
   background: var(--Error-01, #ffdbdb);
   color: var(--Error-02, #ff4f4f);
 }
+
 .scenarioBadge.generating {
   background: var(--Green-01, #c6eec2);
   color: var(--Green-02, #00770a);
 }
+
 .scenarioBadge.canceled {
   background: var(--Error-01, #ffdbdb);
   color: var(--Error-02, #ff4f4f);
@@ -866,13 +942,16 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
   margin-top: 8px;
   font-size: 0.9rem;
   border: 1px solid var(--panel-border-color);
-  border-radius: 8px; /* 테이블 전체에 radius 적용 */
-  overflow: hidden; /* radius 적용 위해 추가 */
+  border-radius: 8px;
+  /* 테이블 전체에 radius 적용 */
+  overflow: hidden;
+  /* radius 적용 위해 추가 */
 }
 
 .formGridTable th {
   /* 헤더 스타일 추가 */
-  font-weight: 600; /* 헤더 폰트 두께 */
+  font-weight: 600;
+  /* 헤더 폰트 두께 */
   color: var(--text-color);
   border-bottom: 1px solid var(--panel-border-color);
   position: relative;
@@ -890,7 +969,8 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
 }
 
 .formGridTable tr {
-  transition: background-color 0.2s ease-out; /* hover 효과 트랜지션 */
+  transition: background-color 0.2s ease-out;
+  /* hover 효과 트랜지션 */
 }
 
 .formGridTable tbody tr:hover {
@@ -901,14 +981,14 @@ body.dark .history:hover::-webkit-scrollbar-thumb {
   border-bottom: none;
 }
 
-.formGridTable tbody tr:hover {
-}
+.formGridTable tbody tr:hover {}
 
 .formGridTable td,
 .formGridTable th {
   /* th 스타일도 함께 적용 */
   padding: 6px 4px 6px 10px;
-  text-align: left; /* 기본 정렬 왼쪽으로 변경 */
+  text-align: left;
+  /* 기본 정렬 왼쪽으로 변경 */
   font-size: 13px;
 }
 
@@ -929,7 +1009,8 @@ body.dark .formGridTable tbody tr:hover {
 .formInputGroup {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 16px; /* 필드 사이의 간격 */
+  gap: 16px;
+  /* 필드 사이의 간격 */
   width: 100%;
   padding: 12px 20px;
 }
@@ -938,9 +1019,11 @@ body.dark .formGridTable tbody tr:hover {
   0% {
     transform: scale(1);
   }
+
   50% {
     transform: scale(1.25);
   }
+
   100% {
     transform: scale(1);
   }
@@ -952,13 +1035,15 @@ body.dark .formGridTable tbody tr:hover {
 
 /* --- 👇 [수정] 활성화된 피드백 버튼 스타일 --- */
 .messageActionArea .actionButton.activeFeedback {
-  color: var(--Purple-03, #634de2); /* 활성 아이콘 색상 */
+  color: var(--Purple-03, #634de2);
+  /* 활성 아이콘 색상 */
 }
 
 /* --- [추가] 활성 버튼 hover 시에도 색상 유지 --- */
 .messageActionArea .actionButton.activeFeedback:hover {
   color: var(--Purple-03, #634de2);
 }
+
 /* --- 👆 [수정] --- */
 
 /* --- 👇 [추가] 봇 메시지 체이닝 스타일 --- */
@@ -979,6 +1064,7 @@ body.dark .formGridTable tbody tr:hover {
 .chainedMessageItem .formContainer {
   /* padding-top: 0; (FormRenderer 루트에 패딩이 없으므로 불필요) */
 }
+
 .chainedMessageItem:not(:first-child) .formContainer {
   /* padding-top: 12px; (FormRenderer 루트에 패딩이 없으므로 불필요) */
 }
@@ -1019,4 +1105,3 @@ body.dark .formGridTable tbody tr:hover {
   cursor: not-allowed;
   transform: none;
 }
-

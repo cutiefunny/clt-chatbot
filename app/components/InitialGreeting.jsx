@@ -8,9 +8,9 @@ export default function InitialGreeting() {
 
   return (
     <div className={styles.container}>
-      <LogoIcon className={styles.logo} /> {/* 로고 아이콘 */}
-      <h2 className={styles.title}>{t("initialGreetingTitle")}</h2> {/* "How can I help you?" */}
-      <p className={styles.subtitle}>{t("initialGreetingSubtitle")}</p> {/* "Talk to me naturally. For example, Give Feedback." */}
+      <img src="/images/avatar.png" alt="Chat Logo" className={styles.logo} />
+      <h2 className={styles.title}>{t("initialGreetingTitle")}</h2>
+      <p className={styles.subtitle}>{t("initialGreetingSubtitle")}</p>
     </div>
   );
 }

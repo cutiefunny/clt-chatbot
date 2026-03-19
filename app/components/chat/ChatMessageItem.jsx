@@ -231,7 +231,7 @@ export default function ChatMessageItem({ msg, isStreaming, copiedMessageId, han
                         <div className={styles.copyFeedback}>{t("copied")}</div>
                     )}
                     <div className={styles.messageContentWrapper}>
-                        {msg.sender === "bot" && <LogoIcon />}
+                        {msg.sender === "bot" && <img src="/images/avatar.png" alt="Bot" className={styles.avatar} />}
                         <div className={styles.messageContent}>
                             <MessageWithButtons msg={msg} />
                             {msg.sender === "bot" && msg.scenarios && (

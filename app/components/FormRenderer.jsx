@@ -19,7 +19,7 @@ const FormRenderer = ({
   language,
   slots,
   // --- 👇 [수정] props 변경 ---
-  setScenarioSlots, 
+  setScenarioSlots,
   activeScenarioSessionId,
   onFormElementApiCall,
   onGridRowClick, // (Fallback용 onGridRowClick은 유지)
@@ -39,11 +39,11 @@ const FormRenderer = ({
           // 1. 슬롯 값 우선 적용
           if (slots[el.name] !== undefined && slots[el.name] !== null) {
             initialValue = slots[el.name];
-          // 2. [수정] input/date/search 타입 제외하고 defaultValue 적용
+            // 2. [수정] input/date/search 타입 제외하고 defaultValue 적용
           } else if (
             el.defaultValue !== undefined &&
             el.defaultValue !== null &&
-            el.type !== "input" && 
+            el.type !== "input" &&
             el.type !== "date" &&
             el.type !== "search" // 💡 search 타입 추가
           ) {
@@ -68,7 +68,7 @@ const FormRenderer = ({
               initialValue = [];
             }
           }
-          
+
           // 4. [추가] input/date/search 타입의 초기값 설정 (슬롯 값 X, defaultValue O)
           if (
             (el.type === "input" || el.type === "date" || el.type === "search") &&
@@ -123,7 +123,7 @@ const FormRenderer = ({
       }
       valueToValidate = valueToValidate ?? "";
       if (element.type === "input" || element.type === "date" || element.type === "search") {
-      // --- 👆 [수정] ---
+        // --- 👆 [수정] ---
         const { isValid, message } = validateInput(
           valueToValidate,
           element.validation,
@@ -155,116 +155,116 @@ const FormRenderer = ({
 
   const handleInputDoubleClick = (e, el) => {
     e.stopPropagation();
-    if (disabled) return; 
+    if (disabled) return;
 
     if (el.defaultValue !== undefined && el.defaultValue !== null) {
       const interpolatedValue = interpolateMessage(String(el.defaultValue), slots);
       handleInputChange(el.name, interpolatedValue);
     }
   };
-  
+
   // --- 그리드 클릭 핸들러 (Deep Path 클리어 로직 강화) ---
   const handleGridRowClick = (gridElement, rowData) => {
     if (disabled) return;
 
     // optionsSlot이 유효하지 않으면 실행 중단 (가드 절 추가)
     if (!gridElement.optionsSlot) {
-        console.warn("[handleGridRowClick] Missing optionsSlot for grid element:", gridElement);
-        return;
+      console.warn("[handleGridRowClick] Missing optionsSlot for grid element:", gridElement);
+      return;
     }
 
     const fullOptionsSlotPath = gridElement.optionsSlot;
     const hasDeepPath = fullOptionsSlotPath && fullOptionsSlotPath.includes('.');
-    
+
     // 1. 루트 키 추출 (optionsSlot이 vvdinfo.result.vvdInfo 이면 vvdinfo)
-    const rootOptionsSlotKey = fullOptionsSlotPath 
-        ? fullOptionsSlotPath.split('.')[0] 
-        : null;
+    const rootOptionsSlotKey = fullOptionsSlotPath
+      ? fullOptionsSlotPath.split('.')[0]
+      : null;
 
     // 2. 연결된 'search' 엘리먼트 찾기
     const searchElement = node.data.elements.find(
       (e) => e.type === "search" && e.resultSlot === rootOptionsSlotKey
     );
-    
+
     // 3. 연결된 search가 있는 경우 (특수 동작 시작)
     if (searchElement && searchElement.name && setScenarioSlots && activeScenarioSessionId) {
-      
-      const gridKeys = (gridElement.displayKeys && gridElement.displayKeys.length > 0) 
-        ? gridElement.displayKeys.map(k => k.key) 
+
+      const gridKeys = (gridElement.displayKeys && gridElement.displayKeys.length > 0)
+        ? gridElement.displayKeys.map(k => k.key)
         : Object.keys(rowData);
-          
+
       const firstColumnKey = gridKeys[0];
 
       // inputFillKey 처리: null이면 채우지 않고, undefined/missing이면 firstColumnKey로 대체
       const fillKey = searchElement.inputFillKey === null
-          ? null 
-          : (searchElement.inputFillKey || firstColumnKey); 
+        ? null
+        : (searchElement.inputFillKey || firstColumnKey);
 
       let newSlotsUpdate = {
-          selectedRow: rowData // selectedRow 슬롯 저장
+        selectedRow: rowData // selectedRow 슬롯 저장
       };
 
       // 4. 그리드 슬롯 숨기기 로직 (심층 경로 지원)
       if (hasDeepPath) {
-          // 4-1. 루트 슬롯 객체를 깊은 복사
-          const rootSlotKey = rootOptionsSlotKey;
-          let updatedRootSlot;
-          try {
-              updatedRootSlot = structuredClone(getDeepValue(slots, rootSlotKey) || {});
-          } catch(e) {
-              console.warn("[handleGridRowClick] structuredClone failed, falling back to JSON deep copy.", e);
-              updatedRootSlot = JSON.parse(JSON.stringify(getDeepValue(slots, rootSlotKey) || {}));
-          }
-          
-          // 4-2. 업데이트할 위치를 찾기 위한 경로 (vvdinfo.result.vvdInfo -> result.vvdInfo)
-          const deepPathToClear = fullOptionsSlotPath.substring(rootSlotKey.length + 1); 
-          const deepKeys = deepPathToClear.split('.');
-          
-          let temp = updatedRootSlot;
-          let success = true;
+        // 4-1. 루트 슬롯 객체를 깊은 복사
+        const rootSlotKey = rootOptionsSlotKey;
+        let updatedRootSlot;
+        try {
+          updatedRootSlot = structuredClone(getDeepValue(slots, rootSlotKey) || {});
+        } catch (e) {
+          console.warn("[handleGridRowClick] structuredClone failed, falling back to JSON deep copy.", e);
+          updatedRootSlot = JSON.parse(JSON.stringify(getDeepValue(slots, rootSlotKey) || {}));
+        }
 
-          for (let i = 0; i < deepKeys.length; i++) {
-              const key = deepKeys[i];
-              if (i === deepKeys.length - 1) {
-                  // 마지막 키에 빈 배열 설정 (그리드 숨김)
-                  if (temp && typeof temp === 'object' && temp[key] !== undefined) {
-                      temp[key] = []; 
-                  } else {
-                      // 마지막 경로가 존재하지 않으면, 클리어할 대상이 없는 것.
-                      success = false; 
-                  }
-              } else {
-                  // 중간 경로 탐색
-                  if (temp[key] && typeof temp[key] === 'object') {
-                      temp = temp[key];
-                  } else {
-                      // 중간 경로가 없으면 클리어할 대상이 없는 것.
-                      success = false; 
-                      break;
-                  }
-              }
-          }
-          
-          // 4-3. 루트 객체를 업데이트 맵에 포함하여 기존 슬롯을 덮어쓰기
-          if (success) {
-              newSlotsUpdate[rootSlotKey] = updatedRootSlot; // 💡 루트 객체 전체를 업데이트
+        // 4-2. 업데이트할 위치를 찾기 위한 경로 (vvdinfo.result.vvdInfo -> result.vvdInfo)
+        const deepPathToClear = fullOptionsSlotPath.substring(rootSlotKey.length + 1);
+        const deepKeys = deepPathToClear.split('.');
+
+        let temp = updatedRootSlot;
+        let success = true;
+
+        for (let i = 0; i < deepKeys.length; i++) {
+          const key = deepKeys[i];
+          if (i === deepKeys.length - 1) {
+            // 마지막 키에 빈 배열 설정 (그리드 숨김)
+            if (temp && typeof temp === 'object' && temp[key] !== undefined) {
+              temp[key] = [];
+            } else {
+              // 마지막 경로가 존재하지 않으면, 클리어할 대상이 없는 것.
+              success = false;
+            }
           } else {
-             // 루트 객체 업데이트에 실패했더라도, 안전하게 shallow update 시도
-             newSlotsUpdate[fullOptionsSlotPath] = [];
-             console.warn(`[handleGridRowClick] Deep path clearing failed for ${fullOptionsSlotPath}. Falling back to shallow clear.`);
+            // 중간 경로 탐색
+            if (temp[key] && typeof temp[key] === 'object') {
+              temp = temp[key];
+            } else {
+              // 중간 경로가 없으면 클리어할 대상이 없는 것.
+              success = false;
+              break;
+            }
           }
+        }
+
+        // 4-3. 루트 객체를 업데이트 맵에 포함하여 기존 슬롯을 덮어쓰기
+        if (success) {
+          newSlotsUpdate[rootSlotKey] = updatedRootSlot; // 💡 루트 객체 전체를 업데이트
+        } else {
+          // 루트 객체 업데이트에 실패했더라도, 안전하게 shallow update 시도
+          newSlotsUpdate[fullOptionsSlotPath] = [];
+          console.warn(`[handleGridRowClick] Deep path clearing failed for ${fullOptionsSlotPath}. Falling back to shallow clear.`);
+        }
 
       } else {
-          // 단순 키인 경우: 기존 로직대로 빈 배열 설정
-          newSlotsUpdate[fullOptionsSlotPath] = [];   
+        // 단순 키인 경우: 기존 로직대로 빈 배열 설정
+        newSlotsUpdate[fullOptionsSlotPath] = [];
       }
-      
+
       // 5. 검색 필드 값 채우기
       if (fillKey) {
-          const valueToFill = rowData[fillKey] || '';
-          newSlotsUpdate[searchElement.name] = valueToFill; // 💡 검색창 슬롯 업데이트
-          // 로컬 폼 데이터도 업데이트하여 UI에 즉시 반영
-          setFormData((prev) => ({ ...prev, [searchElement.name]: valueToFill }));
+        const valueToFill = rowData[fillKey] || '';
+        newSlotsUpdate[searchElement.name] = valueToFill; // 💡 검색창 슬롯 업데이트
+        // 로컬 폼 데이터도 업데이트하여 UI에 즉시 반영
+        setFormData((prev) => ({ ...prev, [searchElement.name]: valueToFill }));
       }
 
       // 6. setScenarioSlots를 호출하여 슬롯을 업데이트
@@ -277,12 +277,12 @@ const FormRenderer = ({
 
     } else {
       // 8. (Fallback 로직: 연결된 search가 없는 경우)
-      if (onGridRowClick) { 
+      if (onGridRowClick) {
         onGridRowClick(gridElement, rowData);
       } else {
         // Fallback 시에는 다음 노드로 진행 (기존 Form 제출 로직)
         const finalSubmissionData = { ...formData, selectedRow: rowData };
-        onFormSubmit(finalSubmissionData); 
+        onFormSubmit(finalSubmissionData);
       }
     }
   };
@@ -290,13 +290,13 @@ const FormRenderer = ({
 
   const hasSlotBoundGrid = node.data.elements?.some(
     (el) => {
-        if (el.type !== "grid" || !el.optionsSlot) return false;
-        // --- 👇 [수정] getDeepValue를 사용하여 깊은 경로의 배열 데이터 확인 ---
-        const gridData = getDeepValue(slots, el.optionsSlot);
-        const hasData = Array.isArray(gridData) && gridData.length > 0;
-        const isObjectArray = hasData && typeof gridData[0] === "object" && gridData[0] !== null;
-        return isObjectArray;
-        // --- 👆 [수정] ---
+      if (el.type !== "grid" || !el.optionsSlot) return false;
+      // --- 👇 [수정] getDeepValue를 사용하여 깊은 경로의 배열 데이터 확인 ---
+      const gridData = getDeepValue(slots, el.optionsSlot);
+      const hasData = Array.isArray(gridData) && gridData.length > 0;
+      const isObjectArray = hasData && typeof gridData[0] === "object" && gridData[0] !== null;
+      return isObjectArray;
+      // --- 👆 [수정] ---
     }
   );
 
@@ -308,7 +308,7 @@ const FormRenderer = ({
     const isSimpleInput = (el) =>
       el &&
       (el.type === "input" || el.type === "date" || el.type === "dropbox" || el.type === "search");
-      
+
     while (i < elements.length) {
       const currentEl = elements[i];
       if (isSimpleInput(currentEl)) {
@@ -366,7 +366,7 @@ const FormRenderer = ({
                       }
                       disabled={disabled}
                       onClick={(e) => e.stopPropagation()}
-                      onDoubleClick={(e) => handleInputDoubleClick(e, el)} 
+                      onDoubleClick={(e) => handleInputDoubleClick(e, el)}
                     />
                   )}
                   {el.type === "date" && (
@@ -380,7 +380,7 @@ const FormRenderer = ({
                       onClick={handleDateInputClick}
                       disabled={disabled}
                       {...dateProps}
-                      onDoubleClick={(e) => handleInputDoubleClick(e, el)} 
+                      onDoubleClick={(e) => handleInputDoubleClick(e, el)}
                     />
                   )}
                   {/* --- 👇 [추가] 'search' 엘리먼트 렌더링 --- */}
@@ -390,20 +390,20 @@ const FormRenderer = ({
                         className={styles.formInput}
                         type="text"
                         placeholder={interpolateMessage(el.placeholder || "", slots)}
-                        value={formData[el.name] ?? ""} 
-                        onChange={(e) => handleInputChange(el.name, e.target.value)} 
+                        value={formData[el.name] ?? ""}
+                        onChange={(e) => handleInputChange(el.name, e.target.value)}
                         disabled={disabled}
                         onClick={(e) => e.stopPropagation()}
                         onDoubleClick={(e) => handleInputDoubleClick(e, el)}
                         style={{ flexGrow: 1 }}
                       />
-                      <button 
+                      <button
                         type="button" // 💡 [중요] form submit 방지
                         onClick={(e) => {
                           e.stopPropagation();
                           if (onFormElementApiCall) {
                             // 💡 로컬 formData 전달
-                            onFormElementApiCall(el, formData); 
+                            onFormElementApiCall(el, formData);
                           } else {
                             console.warn("onFormElementApiCall prop is missing.");
                           }
@@ -454,163 +454,109 @@ const FormRenderer = ({
             {/* --- 👇 [수정] Grid 렌더링 로직 (tableLayout: fixed + % width) --- */}
             {el.type === "grid"
               ? (() => {
-                  // --- 👇 [수정] getDeepValue를 사용하여 깊은 경로의 배열 데이터 확인 ---
-                  const gridDataFromSlot = el.optionsSlot
-                    ? getDeepValue(slots, el.optionsSlot) // <-- 수정: getDeepValue 사용
-                    : null;
-                  // --- 👆 [수정] ---
-                  const hasSlotData =
-                    Array.isArray(gridDataFromSlot) &&
-                    gridDataFromSlot.length > 0;
+                // --- 👇 [수정] getDeepValue를 사용하여 깊은 경로의 배열 데이터 확인 ---
+                const gridDataFromSlot = el.optionsSlot
+                  ? getDeepValue(slots, el.optionsSlot) // <-- 수정: getDeepValue 사용
+                  : null;
+                // --- 👆 [수정] ---
+                const hasSlotData =
+                  Array.isArray(gridDataFromSlot) &&
+                  gridDataFromSlot.length > 0;
 
-                  // 1. 슬롯 데이터가 있으면 (검색 후) -> 동적 그리드 렌더링
-                  if (
-                    hasSlotData &&
-                    typeof gridDataFromSlot[0] === "object" &&
-                    gridDataFromSlot[0] !== null &&
-                    !Array.isArray(gridDataFromSlot[0])
-                  ) {
-                    const useObjectKeys =
-                      el.displayKeys &&
-                      el.displayKeys.length > 0 &&
-                      typeof el.displayKeys[0] === "object" &&
-                      el.displayKeys[0] !== null &&
-                      el.displayKeys[0].hasOwnProperty("key");
-                    const originalDisplayConfigs = useObjectKeys
+                // 1. 슬롯 데이터가 있으면 (검색 후) -> 동적 그리드 렌더링
+                if (
+                  hasSlotData &&
+                  typeof gridDataFromSlot[0] === "object" &&
+                  gridDataFromSlot[0] !== null &&
+                  !Array.isArray(gridDataFromSlot[0])
+                ) {
+                  const useObjectKeys =
+                    el.displayKeys &&
+                    el.displayKeys.length > 0 &&
+                    typeof el.displayKeys[0] === "object" &&
+                    el.displayKeys[0] !== null &&
+                    el.displayKeys[0].hasOwnProperty("key");
+                  const originalDisplayConfigs = useObjectKeys
+                    ? el.displayKeys
+                    : (el.displayKeys && el.displayKeys.length > 0
                       ? el.displayKeys
-                      : (el.displayKeys && el.displayKeys.length > 0
-                          ? el.displayKeys
-                          : Object.keys(gridDataFromSlot[0] || {})
-                        ).map((k) => ({ key: k, label: k }));
-                    const filteredDisplayConfigs = el.hideNullColumns
-                      ? originalDisplayConfigs.filter((col) =>
-                          gridDataFromSlot.some(
-                            (obj) =>
-                              obj[col.key] !== null &&
-                              obj[col.key] !== undefined &&
-                              obj[col.key] !== ""
-                          )
-                        )
-                      : originalDisplayConfigs;
-                    if (filteredDisplayConfigs.length === 0)
-                      return (
-                        <div>
-                          {el.hideNullColumns
-                            ? "All columns hidden."
-                            : "No data columns found."}
-                        </div>
-                      );
-                    
-                    // --- 💡 [제거] 컬럼 너비 계산 로직 ---
-                    // const columnWidths = ...
-                    // const totalWidth = ...
-                    // --- 💡 [제거 완료] ---
-
+                      : Object.keys(gridDataFromSlot[0] || {})
+                    ).map((k) => ({ key: k, label: k }));
+                  const filteredDisplayConfigs = el.hideNullColumns
+                    ? originalDisplayConfigs.filter((col) =>
+                      gridDataFromSlot.some(
+                        (obj) =>
+                          obj[col.key] !== null &&
+                          obj[col.key] !== undefined &&
+                          obj[col.key] !== ""
+                      )
+                    )
+                    : originalDisplayConfigs;
+                  if (filteredDisplayConfigs.length === 0)
                     return (
-                      <div style={{ overflowX: "auto", width: "100%" }}>
-                        <table
-                          className={styles.formGridTable}
-                          // --- 💡 [수정] tableLayout: "fixed", width: "100%" ---
-                          style={{ tableLayout: "fixed", width: "100%" }}
-                        >
-                          <thead>
-                            <tr>
-                              {filteredDisplayConfigs.map((col) => (
-                                <th
-                                  key={col.key}
-                                  // --- 💡 [수정] 동적 width: '%' 제거 ---
-                                  style={{
-                                    // width: `${(columnWidths[col.key] / totalWidth) * 100}%`, // <-- REMOVED
-                                    textAlign: "left",
-                                    padding: "10px 12px",
-                                    whiteSpace: "nowrap", 
-                                    overflow: "hidden",
-                                    textOverflow: "ellipsis",
-                                  }}
-                                >
-                                  {interpolateMessage(col.label, slots)}{" "}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {gridDataFromSlot.map((dataObject, index) => (
-                              <tr
-                                key={`${el.id}-${index}`}
-                                onClick={() =>
-                                  !disabled && handleGridRowClick(el, dataObject)
-                                }
-                                style={{
-                                  cursor: disabled ? "default" : "pointer",
-                                }}
-                              >
-                                {filteredDisplayConfigs.map((col) => (
-                                  <td
-                                    key={col.key}
-                                    // --- 💡 [수정] maxWidth: "0px"가 없는지 재확인 ---
-                                    style={{
-                                      whiteSpace: "nowrap",
-                                      overflow: "hidden", 
-                                      textOverflow: "ellipsis",
-                                      // maxWidth: "0px", // (제거된 상태 유지)
-                                    }}
-                                  >
-                                    {interpolateMessage(
-                                      dataObject[col.key] || "",
-                                      slots
-                                    )}
-                                  </td>
-                                ))}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                      <div>
+                        {el.hideNullColumns
+                          ? "All columns hidden."
+                          : "No data columns found."}
                       </div>
                     );
-                  } else if (hasSlotData) {
-                      // (문자열 배열 데이터 렌더링 - 기존과 동일)
-                      const dataArray = gridDataFromSlot;
-                      const rows = dataArray.length;
-                      const columns = dataArray[0]?.length || 0;
-                      if (rows === 0 || columns === 0)
-                        return <div>Grid data is empty.</div>;
-                      return (
-                        <table className={styles.formGridTable}>
-                          <tbody>
-                            {[...Array(rows)].map((_, r) => (
-                              <tr key={r}>
-                                {[...Array(columns)].map((_, c) => (
-                                  <td key={c}>
-                                    {interpolateMessage(
-                                      dataArray[r]?.[c] || "",
-                                      slots
-                                    )}
-                                  </td>
-                                ))}
-                              </tr>
+
+                  // --- 💡 [제거] 컬럼 너비 계산 로직 ---
+                  // const columnWidths = ...
+                  // const totalWidth = ...
+                  // --- 💡 [제거 완료] ---
+
+                  return (
+                    <div style={{ overflowX: "auto", width: "100%" }}>
+                      <table
+                        className={styles.formGridTable}
+                        // --- 💡 [수정] tableLayout: "fixed", width: "100%" ---
+                        style={{ tableLayout: "fixed", width: "100%" }}
+                      >
+                        <thead>
+                          <tr>
+                            {filteredDisplayConfigs.map((col) => (
+                              <th
+                                key={col.key}
+                                // --- 💡 [수정] 동적 width: '%' 제거 ---
+                                style={{
+                                  // width: `${(columnWidths[col.key] / totalWidth) * 100}%`, // <-- REMOVED
+                                  textAlign: "left",
+                                  padding: "10px 12px",
+                                  whiteSpace: "nowrap",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                }}
+                              >
+                                {interpolateMessage(col.label, slots)}{" "}
+                              </th>
                             ))}
-                          </tbody>
-                        </table>
-                      );
-                  } else if (el.optionsSlot) {
-                      // 2. 슬롯이 설정되었지만 데이터가 없음 (검색 전/클릭 후) -> 그리드 숨김
-                      return null;
-                  } else {
-                    // 3. 슬롯이 설정되지 않음 (정적 그리드) -> 정적 렌더링 (기존과 동일)
-                    const dataArray = el.data || [];
-                    const rows = el.rows || 0;
-                    const columns = el.columns || 0;
-                    if (rows === 0 || columns === 0)
-                      return <div>Grid data is empty.</div>;
-                    return (
-                      <table className={styles.formGridTable}>
+                          </tr>
+                        </thead>
                         <tbody>
-                          {[...Array(rows)].map((_, r) => (
-                            <tr key={r}>
-                              {[...Array(columns)].map((_, c) => (
-                                <td key={c}>
+                          {gridDataFromSlot.map((dataObject, index) => (
+                            <tr
+                              key={`${el.id}-${index}`}
+                              onClick={() =>
+                                !disabled && handleGridRowClick(el, dataObject)
+                              }
+                              style={{
+                                cursor: disabled ? "default" : "pointer",
+                              }}
+                            >
+                              {filteredDisplayConfigs.map((col) => (
+                                <td
+                                  key={col.key}
+                                  // --- 💡 [수정] maxWidth: "0px"가 없는지 재확인 ---
+                                  style={{
+                                    whiteSpace: "nowrap",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    // maxWidth: "0px", // (제거된 상태 유지)
+                                  }}
+                                >
                                   {interpolateMessage(
-                                    dataArray[r * columns + c] || "",
+                                    dataObject[col.key] || "",
                                     slots
                                   )}
                                 </td>
@@ -619,9 +565,63 @@ const FormRenderer = ({
                           ))}
                         </tbody>
                       </table>
-                    );
-                  }
-                })()
+                    </div>
+                  );
+                } else if (hasSlotData) {
+                  // (문자열 배열 데이터 렌더링 - 기존과 동일)
+                  const dataArray = gridDataFromSlot;
+                  const rows = dataArray.length;
+                  const columns = dataArray[0]?.length || 0;
+                  if (rows === 0 || columns === 0)
+                    return <div>Grid data is empty.</div>;
+                  return (
+                    <table className={styles.formGridTable}>
+                      <tbody>
+                        {[...Array(rows)].map((_, r) => (
+                          <tr key={r}>
+                            {[...Array(columns)].map((_, c) => (
+                              <td key={c}>
+                                {interpolateMessage(
+                                  dataArray[r]?.[c] || "",
+                                  slots
+                                )}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  );
+                } else if (el.optionsSlot) {
+                  // 2. 슬롯이 설정되었지만 데이터가 없음 (검색 전/클릭 후) -> 그리드 숨김
+                  return null;
+                } else {
+                  // 3. 슬롯이 설정되지 않음 (정적 그리드) -> 정적 렌더링 (기존과 동일)
+                  const dataArray = el.data || [];
+                  const rows = el.rows || 0;
+                  const columns = el.columns || 0;
+                  if (rows === 0 || columns === 0)
+                    return <div>Grid data is empty.</div>;
+                  return (
+                    <table className={styles.formGridTable}>
+                      <tbody>
+                        {[...Array(rows)].map((_, r) => (
+                          <tr key={r}>
+                            {[...Array(columns)].map((_, c) => (
+                              <td key={c}>
+                                {interpolateMessage(
+                                  dataArray[r * columns + c] || "",
+                                  slots
+                                )}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  );
+                }
+              })()
               // --- 💡 [수정 완료] ---
               : (
                 <>
@@ -673,7 +673,7 @@ const FormRenderer = ({
     <form onSubmit={handleSubmit} className={styles.formContainer}>
 
       <div className={styles.formHeader}>
-        <LogoIcon className={styles.avatar} />
+        <img src="/images/avatar.png" alt="Bot Avatar" className={styles.avatar} />
         <h3>{interpolateMessage(node.data.title || "Form", slots)}</h3>
       </div>
       <div className={styles.formContainerSeparator} />

@@ -19,6 +19,7 @@ export declare class ChatbotEngine {
     private scenario;
     constructor(scenario: ScenarioData);
     getNodeById(nodeId: string): ScenarioNode | undefined;
+    resolveSpecialExpression(expr: string, slots: Record<string, any>): any;
     interpolateMessage(message: string, slots: Record<string, any>): string;
     getDeepValue(obj: any, path: string): any;
     evaluateCondition(slotValue: any, operator: string, conditionValue: any): boolean;
