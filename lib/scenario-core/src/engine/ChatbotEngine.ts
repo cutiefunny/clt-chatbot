@@ -18,9 +18,41 @@ export class ChatbotEngine {
     return this.scenario.nodes.find(n => n.id === nodeId);
   }
 
+  // ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+  // header(배열키, 컬럼키) 패턴 추가: {{header(key, columnId)}} - hyh
+  resolveSpecialExpression(expr: string, slots: Record<string, any>): any {
+    // header(a, b) 패턴
+    const headerMatch = /^header\(\s*([^,]+?)\s*,\s*([^)]+)\s*\)$/.exec(expr);
+    if (headerMatch) {
+      const arrayPath = headerMatch[1].trim();
+      const field = headerMatch[2].trim();
+  
+      const arr = this.getDeepValue(slots, arrayPath);
+      if (Array.isArray(arr)) {
+        return JSON.stringify(
+          arr
+            .map(row => row?.[field])
+            .filter(v => v !== undefined)
+        );
+      }
+      return null;
+    }
+  
+    // 다른 custom 문법들 여기 확장 예정
+    return null; // 처리할 문법이 없으면 null
+  }
+  // ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
+
   interpolateMessage(message: string, slots: Record<string, any>): string {
     if (typeof message !== 'string') return String(message ?? '');
     return message.replace(/\{\{([^}]+)\}\}/g, (_, path) => {
+      // ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+      // 커스텀 문법 처리 추가 - hyh
+      const trimmedKey = path.trim();
+      const special = this.resolveSpecialExpression(trimmedKey, slots);
+      if (special !== null) return special;
+      // ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
+
       const val = this.getDeepValue(slots, path.trim());
       return val !== undefined && val !== null ? String(val) : `{{${path}}}`;
     });
@@ -258,6 +290,30 @@ export class ChatbotEngine {
       } else if (currentNode.type === 'link') {
         if (callbacks.onLink) callbacks.onLink(currentNode, slots);
         currentNode = this.getNextNode(currentNode.id, null, slots);
+      // ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+      // selectionGroup 처리 추가 - hyh
+      } else if (currentNode.type === 'selectionGroup') { 
+        const childNodes = this.scenario.nodes.filter(n => n.parentNode === currentNode?.id);
+        const childNodeIds = new Set(childNodes.map(n => n.id));
+
+        let startNode: ScenarioNode | null = null;
+
+        if (currentNode.data?.entryNodeId) {
+          startNode = childNodes.find(n => n.id === currentNode?.data.entryNodeId) || null;
+        }
+
+        if (!startNode) {
+          startNode = childNodes.find(n =>
+            !this.scenario.edges.some(e => e.target === n.id && childNodeIds.has(e.source))
+          ) || null;
+        }
+
+        if (startNode) {
+          currentNode = startNode;
+        } else {
+          currentNode = this.getNextNode(currentNode.id, null, slots);
+        }
+      // ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
       } else {
         // Link, Message (non-interactive), Toast etc.
         if (callbacks.onMessage) callbacks.onMessage(currentNode, slots);
