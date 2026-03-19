@@ -54,20 +54,19 @@ export const createConversationSlice = (set, get) => ({
       !conversationId
     ) {
       console.warn(
-        `loadConversation called with invalid params: user=${!!user}, currentId=${
-          get().currentConversationId
+        `loadConversation called with invalid params: user=${!!user}, currentId=${get().currentConversationId
         }, targetId=${conversationId}`
       );
       return;
     }
 
     set((state) => {
-        if (state.completedResponses.has(conversationId)) {
-            const newCompletedSet = new Set(state.completedResponses);
-            newCompletedSet.delete(conversationId);
-            return { completedResponses: newCompletedSet };
-        }
-        return {};
+      if (state.completedResponses.has(conversationId)) {
+        const newCompletedSet = new Set(state.completedResponses);
+        newCompletedSet.delete(conversationId);
+        return { completedResponses: newCompletedSet };
+      }
+      return {};
     });
 
     set({
@@ -75,10 +74,10 @@ export const createConversationSlice = (set, get) => ({
       expandedConversationId: null,
     });
 
-    get().unsubscribeAllMessagesAndScenarios?.(); 
+    get().unsubscribeAllMessagesAndScenarios?.();
     get().resetMessages?.(language); // 메시지 초기화
     get().setIsLoading?.(true);
-    
+
     try {
       await get().loadInitialMessages(conversationId);
     } catch (error) {
@@ -122,17 +121,17 @@ export const createConversationSlice = (set, get) => ({
         }),
       });
       if (!response.ok) throw new Error("Failed to create conversation");
-      
+
       const newConvo = await response.json();
       const newConvoId = newConvo.id || newConvo.conversation_id;
-      
+
       if (!newConvoId) {
         throw new Error("No conversation ID in response");
       }
-      
+
       await get().loadConversations(user.uid); // 목록 갱신
-      await get().loadConversation(newConvoId); 
-      
+      await get().loadConversation(newConvoId);
+
       console.log(`New conversation (FastAPI) ${newConvoId} created and loaded.`);
       return returnId ? newConvoId : null;
     } catch (error) {
@@ -165,14 +164,14 @@ export const createConversationSlice = (set, get) => ({
       if (!response.ok) throw new Error("Failed to delete conversation");
 
       await get().loadConversations(user.uid); // 목록 갱신
-      
+
       if (get().currentConversationId === conversationId) {
-         get().unsubscribeAllMessagesAndScenarios?.();
-         get().resetMessages?.(get().language);
-         set({ 
-           currentConversationId: null, 
-           expandedConversationId: null 
-         });
+        get().unsubscribeAllMessagesAndScenarios?.();
+        get().resetMessages?.(get().language);
+        set({
+          currentConversationId: null,
+          expandedConversationId: null
+        });
       }
       showEphemeralToast("Conversation deleted.", "success");
     } catch (error) {
@@ -265,56 +264,56 @@ export const createConversationSlice = (set, get) => ({
     if (!user) return;
 
     try {
-        // 1. 모든 리스너 해제 및 UI 초기화 준비
-        unsubscribeAllMessagesAndScenarios();
-        resetMessages(language);
-        set({
-            currentConversationId: null,
-            expandedConversationId: null,
-            conversations: [], // Optimistic UI update
-        });
+      // 1. 모든 리스너 해제 및 UI 초기화 준비
+      unsubscribeAllMessagesAndScenarios();
+      resetMessages(language);
+      set({
+        currentConversationId: null,
+        expandedConversationId: null,
+        conversations: [], // Optimistic UI update
+      });
 
-        // 2. FastAPI를 통해 모든 대화 삭제
-        // 2-1. 사용자의 모든 conversations 조회
-        const allConversations = await fetchAllConversationsForUser(user.uid);
-        console.log(`[deleteAllConversations] Found ${allConversations.length} conversations for user ${user.uid}`);
+      // 2. FastAPI를 통해 모든 대화 삭제
+      // 2-1. 사용자의 모든 conversations 조회
+      const allConversations = await fetchAllConversationsForUser(user.uid);
+      console.log(`[deleteAllConversations] Found ${allConversations.length} conversations for user ${user.uid}`);
 
-        // 2-2. 각 conversation에 대해 scenario-sessions 삭제 후 conversation 삭제
-        for (const conversation of allConversations) {
-          const conversationId = conversation.id || conversation.conversation_id;
-          console.log(`[deleteAllConversations] Processing conversation: ${conversationId}`);
+      // 2-2. 각 conversation에 대해 scenario-sessions 삭제 후 conversation 삭제
+      for (const conversation of allConversations) {
+        const conversationId = conversation.id || conversation.conversation_id;
+        console.log(`[deleteAllConversations] Processing conversation: ${conversationId}`);
 
-          // 2-2-1. 해당 conversation의 모든 scenario-sessions 조회
-          const scenarioSessions = await fetchScenarioSessionsForConversation(conversationId, user.uid);
-          console.log(`[deleteAllConversations] Found ${scenarioSessions.length} scenario sessions in conversation ${conversationId}`);
+        // 2-2-1. 해당 conversation의 모든 scenario-sessions 조회
+        const scenarioSessions = await fetchScenarioSessionsForConversation(conversationId, user.uid);
+        console.log(`[deleteAllConversations] Found ${scenarioSessions.length} scenario sessions in conversation ${conversationId}`);
 
-          // 2-2-2. 각 scenario-session 삭제
-          for (const session of scenarioSessions) {
-            const sessionId = session.id || session.session_id;
-            console.log(`[deleteAllConversations] Deleting scenario session: ${sessionId}`);
-            const deleteResult = await deleteScenarioSession(conversationId, sessionId, user.uid);
-            console.log(`[deleteAllConversations] Scenario session deletion result: ${deleteResult}`);
-          }
-
-          // 2-2-3. conversation 삭제
-          console.log(`[deleteAllConversations] Deleting conversation: ${conversationId}`);
-          const convDeleteResult = await deleteConversationFull(conversationId, user.uid);
-          console.log(`[deleteAllConversations] Conversation deletion result: ${convDeleteResult}`);
+        // 2-2-2. 각 scenario-session 삭제
+        for (const session of scenarioSessions) {
+          const sessionId = session.id || session.session_id;
+          console.log(`[deleteAllConversations] Deleting scenario session: ${sessionId}`);
+          const deleteResult = await deleteScenarioSession(conversationId, sessionId, user.uid);
+          console.log(`[deleteAllConversations] Scenario session deletion result: ${deleteResult}`);
         }
 
-        console.log("[deleteAllConversations] All conversations and scenario sessions deleted successfully via FastAPI.");
-        showEphemeralToast(locales[language]?.deleteAllConvosSuccess || "All conversation history successfully deleted.", "success");
+        // 2-2-3. conversation 삭제
+        console.log(`[deleteAllConversations] Deleting conversation: ${conversationId}`);
+        const convDeleteResult = await deleteConversationFull(conversationId, user.uid);
+        console.log(`[deleteAllConversations] Conversation deletion result: ${convDeleteResult}`);
+      }
+
+      console.log("[deleteAllConversations] All conversations and scenario sessions deleted successfully via FastAPI.");
+      showEphemeralToast(locales[language]?.deleteAllConvosSuccess || "All conversation history successfully deleted.", "success");
 
     } catch (error) {
-        console.error("[deleteAllConversations] Error deleting all conversations:", error);
-        const errorKey = getErrorKey(error);
-        const message =
-          locales[language]?.[errorKey] ||
-          locales["en"]?.errorUnexpected ||
-          "Failed to delete all conversations.";
-        showEphemeralToast(message, "error");
+      console.error("[deleteAllConversations] Error deleting all conversations:", error);
+      const errorKey = getErrorKey(error);
+      const message =
+        locales[language]?.[errorKey] ||
+        locales["en"]?.errorUnexpected ||
+        "Failed to delete all conversations.";
+      showEphemeralToast(message, "error");
     }
-},
+  },
 
   handleScenarioItemClick: (conversationId, scenario) => {
     if (get().currentConversationId !== conversationId) {

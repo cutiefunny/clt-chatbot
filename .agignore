@@ -1,0 +1,13 @@
+# The Silver Searcher ignore file (.agignore)
+
+node_modules/
+.next/
+dist/
+build/
+.git/
+.swc/
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+*.log
+.env*

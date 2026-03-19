@@ -16,8 +16,16 @@ export async function* processFlowiseStream(reader, decoder, language) {
   // --- 👆 [제거] ---
 
   try {
+    let idleTimeoutId;
     while (true) {
-      const { value, done } = await reader.read();
+      const readPromise = reader.read();
+      const timeoutPromise = new Promise((_, reject) => {
+        idleTimeoutId = setTimeout(() => reject(new Error("Stream read timeout (idle for 30s)")), 30000);
+      });
+
+      const { value, done } = await Promise.race([readPromise, timeoutPromise]);
+      clearTimeout(idleTimeoutId);
+
       if (done) break; // 스트림 종료
       if (!value) continue;
 
@@ -30,26 +38,42 @@ export async function* processFlowiseStream(reader, decoder, language) {
       }
 
       buffer += chunk;
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
 
-      for (const line of lines) {
-        if (!line.trim() || line.toLowerCase().startsWith("message:")) continue;
+      let messageEndIndex;
+      while ((messageEndIndex = buffer.indexOf("\n\n")) !== -1) {
+        const messageChunk = buffer.slice(0, messageEndIndex);
+        buffer = buffer.slice(messageEndIndex + 2);
 
-        let jsonString = "";
-        if (line.toLowerCase().startsWith("data:")) {
-          jsonString = line.substring(line.indexOf(":") + 1).trim();
-        } else {
-          jsonString = line.trim();
+        if (!messageChunk.trim()) continue;
+
+        const lines = messageChunk.split("\n");
+        let eventType = "";
+        let dataPayload = "";
+
+        for (const line of lines) {
+          if (line.startsWith("event:")) {
+            eventType = line.substring(6).trim();
+          } else if (line.startsWith("data:")) {
+            dataPayload = line.substring(5).trim();
+          }
         }
 
-        if (!jsonString || jsonString === "[DONE]") continue;
+        if (dataPayload === "[DONE]") {
+          console.log("[Flowise Stream] Stream ended");
+          continue;
+        }
+
+        if (!dataPayload) continue;
 
         let data;
         try {
-          data = JSON.parse(jsonString);
+          data = JSON.parse(dataPayload);
+          // If the event type is provided, map it to the structure expected by the rest of the code
+          if (eventType && !data.event) {
+            data = { event: eventType, data: data };
+          }
         } catch (e) {
-          buffer = line + (buffer ? "\n" + buffer : "");
+          console.warn("[Flowise Stream] Failed to parse JSON data payload:", dataPayload);
           continue;
         }
 
@@ -127,7 +151,7 @@ export async function* processFlowiseStream(reader, decoder, language) {
                 toolOutput
               );
             }
-          } 
+          }
           // 2. 다른 tool이거나, tool 이름이 명시되지 않은 경우 (기존 로직)
           else if (toolOutput && typeof toolOutput === "string") {
             // scenarioId 또는 question 추출 시도 (차트 데이터가 아닐 경우)
@@ -157,7 +181,7 @@ export async function* processFlowiseStream(reader, decoder, language) {
           // 토큰 누적
           textChunk = data.data;
           collectedText += textChunk;
-          
+
           // 실시간으로 누적된 텍스트 전달
           if (textChunk.trim().length > 0) {
             yield { type: "text", data: collectedText, replace: !thinkingMessageReplaced };
@@ -167,7 +191,7 @@ export async function* processFlowiseStream(reader, decoder, language) {
           // 청크 데이터 처리
           textChunk = data.data.response;
           collectedText += textChunk;
-          
+
           // 실시간으로 누적된 텍스트 전달
           if (textChunk.trim().length > 0) {
             yield { type: "text", data: collectedText, replace: !thinkingMessageReplaced };
@@ -250,9 +274,16 @@ export async function* processGeminiStream(reader, decoder) {
   let buffer = "";
   let slotsFound = false;
   let thinkingMessageReplaced = false;
+  let idleTimeoutId;
   try {
     while (true) {
-      const { value, done } = await reader.read();
+      const readPromise = reader.read();
+      const timeoutPromise = new Promise((_, reject) => {
+        idleTimeoutId = setTimeout(() => reject(new Error("Stream read timeout (idle for 30s)")), 30000);
+      });
+      const { value, done } = await Promise.race([readPromise, timeoutPromise]);
+      clearTimeout(idleTimeoutId);
+
       if (done) break;
       const chunk = decoder.decode(value);
       if (!slotsFound) {

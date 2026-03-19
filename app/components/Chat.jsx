@@ -2,224 +2,13 @@
 "use client";
 
 import { useEffect, useRef, useCallback, useState } from "react";
-import dynamic from "next/dynamic";
 import { useChatStore } from "../store";
 import { useTranslations } from "../hooks/useTranslations";
 import { useAutoScroll } from "../hooks/useAutoScroll";
-import { TARGET_AUTO_OPEN_URL, AUTO_OPEN_COMPLETE_MESSAGE, escapeRegExp } from "../lib/constants";
 import styles from "./Chat.module.css";
-import ScenarioBubble from "./ScenarioBubble";
-import CheckCircle from "./icons/CheckCircle";
 import MoonIcon from "./icons/MoonIcon";
 import LogoIcon from "./icons/LogoIcon";
-import CopyIcon from "./icons/CopyIcon";
-import MarkdownRenderer from "./MarkdownRenderer";
-// import LikeIcon from "./icons/LikeIcon";
-// import DislikeIcon from "./icons/DislikeIcon";
-import mainMarkdownStyles from "./MainChatMarkdown.module.css";
-
-const ChartRenderer = dynamic(() => import("./ChartRenderer"), {
-  loading: () => <p>Loading chart...</p>,
-  ssr: false,
-});
-
-const tryParseJson = (text) => {
-  try {
-    if (
-      typeof text === "string" &&
-      text.startsWith("{") &&
-      text.endsWith("}")
-    ) {
-      const parsed = JSON.parse(text);
-      if (parsed && typeof parsed === "object") {
-        return parsed;
-      }
-    }
-  } catch (e) {}
-  return null;
-};
-
-const MessageWithButtons = ({ msg }) => {
-  // --- 👇 [유지] sender 추가 ---
-  const { text, id: messageId, isStreaming, chartData, sender } = msg; 
-  // --- 👆 [유지] ---
-  const { handleShortcutClick, scenarioCategories, selectedOptions } =
-    useChatStore();
-  const enableMainChatMarkdown = useChatStore(
-    (state) => state.enableMainChatMarkdown
-  );
-  const selectedOption = selectedOptions[messageId];
-
-  const findShortcutByTitle = useCallback(
-    (title) => {
-      if (!scenarioCategories) return null;
-      for (const category of scenarioCategories) {
-        for (const subCategory of category.subCategories) {
-          const item = subCategory.items.find((i) => i.title === title);
-          if (item) return item;
-        }
-      }
-      return null;
-    },
-    [scenarioCategories]
-  );
-
-  if (text === null || text === undefined) return null;
-
-  const showLoadingGifForLoopback =
-    typeof text === "string" && text.includes("Loop back to Supervisor");
-  if (showLoadingGifForLoopback) {
-    return (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "flex-start",
-        }}
-      >
-        <span>init flow..</span>
-        <img
-          src="/images/Loading.gif"
-          alt="Loading..."
-          style={{ width: "60px", height: "45px", marginTop: "8px" }}
-        />
-      </div>
-    );
-  }
-
-  const jsonContent = tryParseJson(text);
-  if (jsonContent && jsonContent.next && jsonContent.instructions) {
-    return (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "flex-start",
-        }}
-      >
-        <span>{jsonContent.instructions}</span>
-        <img
-          src="/images/Loading.gif"
-          alt="Loading..."
-          style={{ width: "60px", height: "45px", marginTop: "8px" }}
-        />
-      </div>
-    );
-  }
-
-  // --- 👇 [수정] 텍스트 치환 로직 강화 (중복 제거 로직 추가) ---
-  let processedText = text;
-
-  // 봇 메시지이고 URL이 포함된 경우에만 로직 수행 (성능 최적화)
-  if (sender === 'bot' && typeof processedText === "string" && 
-     (processedText.includes('172.20.130.91') || processedText.includes('BPM_P1002'))) {
-    
-    const replacement = AUTO_OPEN_COMPLETE_MESSAGE;
-
-    // 1. URL 자체를 문구로 치환 (HTML 엔티티 &amp; 대응)
-    const escapedUrl = escapeRegExp(TARGET_AUTO_OPEN_URL);
-    const flexibleUrlPattern = escapedUrl.replace(/&/g, '(&|&amp;)'); // & 또는 &amp; 허용
-    const urlRegex = new RegExp(flexibleUrlPattern, 'g');
-    
-    // 먼저 URL을 문구로 바꿉니다.
-    // 예: "링크는 http://... 입니다" -> "링크는 완료문구 입니다"
-    // 예: "[http://...](http://...)" -> "[완료문구](완료문구)"
-    processedText = processedText.replace(urlRegex, replacement);
-
-    // 2. Markdown 링크 형태 [텍스트](완료문구) 감지 및 제거
-    // URL 치환 후 남은 마크다운 래퍼([SomeText](Replacement))를 제거하여 Replacement만 남김
-    const escapedReplacement = escapeRegExp(replacement);
-    // \[.*?\] : 대괄호 안의 임의 텍스트 (Link Title)
-    // \(escapedReplacement\) : 소괄호 안의 치환된 문구 (Link URL 자리)
-    const markdownWrapperRegex = new RegExp(`\\[.*?\\]\\(${escapedReplacement}\\)`, 'g');
-    
-    if (markdownWrapperRegex.test(processedText)) {
-        processedText = processedText.replace(markdownWrapperRegex, replacement);
-    }
-    
-    // 3. "NN" 잔여 텍스트 제거 (이전 요청사항)
-    const nnTarget = `${replacement}NN`;
-    if (processedText.includes(nnTarget)) {
-       processedText = processedText.replaceAll(nnTarget, replacement);
-    }
-  }
-  // --- 👆 [수정] ---
-
-  const regex = /\[BUTTON:(.+?)\]/g;
-  const textParts = [];
-  const buttonParts = [];
-  let lastIndex = 0;
-  let match;
-
-  if (typeof processedText === "string") {
-    while ((match = regex.exec(processedText)) !== null) {
-      if (match.index > lastIndex) {
-        textParts.push(processedText.substring(lastIndex, match.index));
-      }
-      buttonParts.push(match[1]);
-      lastIndex = regex.lastIndex;
-    }
-    textParts.push(processedText.substring(lastIndex));
-  } else {
-    try {
-      textParts.push(JSON.stringify(processedText));
-    } catch (e) {
-      textParts.push(String(processedText));
-    }
-  }
-
-  const allTextContent = textParts.map(s => s.trim()).filter(Boolean).join("\n");
-
-  return (
-    <div>
-      {chartData && (
-        <ChartRenderer chartJsonString={chartData} />
-      )}
-
-      <MarkdownRenderer
-        content={allTextContent}
-        renderAsMarkdown={enableMainChatMarkdown}
-        wrapperClassName={mainMarkdownStyles.mainChatMarkdown}
-      />
-
-      {buttonParts.map((buttonText, index) => {
-        const shortcutItem = findShortcutByTitle(buttonText);
-        const isSelected = selectedOption === buttonText;
-        const isDimmed = selectedOption && !isSelected;
-
-        if (shortcutItem) {
-          return (
-            <button
-              key={`button-${index}`}
-              className={`${styles.optionButton} ${
-                isSelected ? styles.selected : ""
-              } ${isDimmed ? styles.dimmed : ""}`}
-              style={{ margin: "4px 4px 4px 0", display: "block" }}
-              onClick={() => handleShortcutClick(shortcutItem, messageId)}
-              disabled={!!selectedOption}
-            >
-              {buttonText}
-            </button>
-          );
-        }
-        return <span key={`button-text-${index}`}>{`[BUTTON:${buttonText}]`}</span>;
-      })}
-
-      {isStreaming && (
-        <img
-          src="/images/Loading.gif"
-          alt="Loading..."
-          style={{
-            width: "60px",
-            height: "45px",
-            marginLeft: "8px",
-            verticalAlign: "middle",
-          }}
-        />
-      )}
-    </div>
-  );
-};
+import ChatMessageItem from "./chat/ChatMessageItem";
 
 export default function Chat() {
   const messages = useChatStore((state) => state.messages);
@@ -244,7 +33,7 @@ export default function Chat() {
   const dimUnfocusedPanels = useChatStore((state) => state.dimUnfocusedPanels);
   // const setMessageFeedback = useChatStore((state) => state.setMessageFeedback);
   const showScenarioBubbles = useChatStore((state) => state.showScenarioBubbles);
-  
+
   const [copiedMessageId, setCopiedMessageId] = useState(null);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   // const [animatedButton, setAnimatedButton] = useState(null);
@@ -286,7 +75,7 @@ export default function Chat() {
 
     scrollContainer.addEventListener('scroll', handleFetchMoreScroll);
     return () => {
-        scrollContainer.removeEventListener('scroll', handleFetchMoreScroll);
+      scrollContainer.removeEventListener('scroll', handleFetchMoreScroll);
     };
   }, [handleFetchMoreScroll, scrollRef]);
 
@@ -294,9 +83,9 @@ export default function Chat() {
   // [리팩토링] Force Scroll to Bottom 처리 (Store 상태 연동)
   useEffect(() => {
     if (forceScrollToBottom) {
-        enableSmoothScroll();
-        scrollToBottom("smooth");
-        setForceScrollToBottom(false);
+      enableSmoothScroll();
+      scrollToBottom("smooth");
+      setForceScrollToBottom(false);
     }
   }, [forceScrollToBottom, setForceScrollToBottom, scrollToBottom, enableSmoothScroll]);
 
@@ -421,19 +210,17 @@ export default function Chat() {
       </div>
 
       <div
-        className={`${styles.history} ${
-          activePanel === "scenario" && dimUnfocusedPanels
+        className={`${styles.history} ${activePanel === "scenario" && dimUnfocusedPanels
             ? styles.mainChatDimmed
             : ""
-        }`}
-        ref={scrollRef} // [리팩토링] 훅에서 반환된 ref 연결
+          }`} ref={scrollRef} // [리팩토링] 훅에서 반환된 ref 연결
         onClick={handleHistoryClick}
       >
         {!hasMessages ? null : (
           <>
             {isFetchingMore && (
               <div className={styles.messageRow}>
-                <div className={`${styles.message} ${styles.botMessage}`}>
+                <div className={`${styles.message} ${styles.botMessage} `}>
                   <div className={styles.messageContentWrapper}>
                     <LogoIcon />
                     <div className={styles.messageContent}>
@@ -450,171 +237,20 @@ export default function Chat() {
             {messages.map((msg, index) => {
               if (msg.id === "initial") return null;
 
-              if (msg.type === "scenario_bubble" || msg.type === "scenario_message") {
-                if (!showScenarioBubbles) {
-                  return null;
-                }
-                return (
-                  <ScenarioBubble
-                    key={msg.id || msg.scenarioSessionId}
-                    scenarioSessionId={msg.scenarioSessionId}
-                    messageData={msg}  // ✅ 메시지 전체 데이터 전달
-                  />
-                );
-              } else {
-                const selectedOption = selectedOptions[msg.id];
-                // const currentFeedback = msg.feedback || null;
-                const isStreaming =
-                  index === messages.length - 1 &&
-                  msg.sender === "bot" &&
-                  msg.isStreaming === true;
-                const isBotMessage = msg.sender === "bot";
-                const hasRichContent =
-                  isBotMessage &&
-                  ((Array.isArray(msg.scenarios) && msg.scenarios.length > 0) ||
-                    msg.hasRichContent === true ||
-                    msg.contentLayout === "rich" ||
-                    msg.containsRichContent === true ||
-                    msg.type === "rich_content" ||
-                    (Array.isArray(msg.contentBlocks) &&
-                      msg.contentBlocks.length > 0) ||
-                    (Array.isArray(msg.attachments) &&
-                      msg.attachments.length > 0) ||
-                    msg.chartData);
-                const richContentMinWidthRaw =
-                  msg.minWidth ??
-                  msg.contentMinWidth ??
-                  msg.richContentMinWidth;
-                const shouldApplyMinWidth =
-                  richContentMinWidthRaw !== null &&
-                  richContentMinWidthRaw !== undefined &&
-                  richContentMinWidthRaw !== "";
-                const resolvedMinWidth = shouldApplyMinWidth
-                  ? typeof richContentMinWidthRaw === "number"
-                    ? `${richContentMinWidthRaw}px`
-                    : richContentMinWidthRaw
-                  : undefined;
-                const messageClassName = [
-                  "GlassEffect",
-                  styles.message,
-                  isBotMessage ? styles.botMessage : styles.userMessage,
-                  isBotMessage && hasRichContent
-                    ? styles.botMessageRichContent
-                    : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ");
-                const messageInlineStyle =
-                  isBotMessage &&
-                  hasRichContent &&
-                  shouldApplyMinWidth &&
-                  resolvedMinWidth
-                    ? { minWidth: resolvedMinWidth }
-                    : undefined;
-                return (
-                  <div
-                    key={msg.id}
-                    className={`${styles.messageRow} ${
-                      msg.sender === "user" ? styles.userRow : ""
-                    }`}
-                    data-message-id={msg.id}
-                  >
-                    <div
-                      className={messageClassName}
-                      style={messageInlineStyle}
-                    >
-                      {copiedMessageId === msg.id && (
-                        <div className={styles.copyFeedback}>{t("copied")}</div>
-                      )}
-                      <div className={styles.messageContentWrapper}>
-                        {msg.sender === "bot" && <LogoIcon />}
-                        <div className={styles.messageContent}>
-                          <MessageWithButtons
-                            msg={msg}
-                          />
-                          {msg.sender === "bot" && msg.scenarios && (
-                            <div className={styles.scenarioList}>
-                              {msg.scenarios.map((scenario) => {
-                                // 시나리오가 객체인 경우 (ID 포함) 또는 문자열인 경우 모두 처리
-                                const scenarioId = typeof scenario === 'object' ? scenario.id : scenario;
-                                const scenarioName = typeof scenario === 'object' ? scenario.name : scenario;
-                                const isSelected = selectedOption === scenarioName;
-                                const isDimmed = selectedOption && !isSelected;
-                                return (
-                                  <button
-                                    key={scenarioId}
-                                    className={`${styles.optionButton} ${
-                                      isSelected ? styles.selected : ""
-                                    } ${isDimmed ? styles.dimmed : ""}`}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setSelectedOption(msg.id, scenarioName);
-                                      openScenarioPanel(scenarioId); // ID 사용
-                                    }}
-                                    disabled={!!selectedOption}
-                                  >
-                                    <span className={styles.optionButtonText}>
-                                      {scenarioName}
-                                    </span>
-                                    <CheckCircle />
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      {msg.sender === "bot" && msg.text && !isStreaming && (
-                        <div className={styles.messageActionArea}>
-                          <button
-                            className={styles.actionButton}
-                            onClick={() => handleCopy(msg.text, msg.id)}
-                          >
-                            <CopyIcon />
-                          </button>
-                          {/* Feedback buttons disabled */}
-                          {false && (
-                          <>
-                          <button
-                            className={`${styles.actionButton} ${
-                              currentFeedback === "like"
-                                ? styles.activeFeedback
-                                : ""
-                            } ${
-                              animatedButton?.messageId === msg.id &&
-                              animatedButton?.type === "like"
-                                ? styles.popAnimation
-                                : ""
-                            }`}
-                            onClick={() => handleFeedbackClick(msg.id, "like")}
-                          >
-                            <LikeIcon />
-                          </button>
-                          <button
-                            className={`${styles.actionButton} ${
-                              currentFeedback === "dislike"
-                                ? styles.activeFeedback
-                                : ""
-                            } ${
-                              animatedButton?.messageId === msg.id &&
-                              animatedButton?.type === "dislike"
-                                ? styles.popAnimation
-                                : ""
-                            }`}
-                            onClick={() =>
-                              handleFeedbackClick(msg.id, "dislike")
-                            }
-                          >
-                            <DislikeIcon />
-                          </button>
-                          </>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              }
+              const isStreaming =
+                index === messages.length - 1 &&
+                msg.sender === "bot" &&
+                msg.isStreaming === true;
+
+              return (
+                <ChatMessageItem
+                  key={msg.id || msg.scenarioSessionId || index}
+                  msg={msg}
+                  isStreaming={isStreaming}
+                  copiedMessageId={copiedMessageId}
+                  handleCopy={handleCopy}
+                />
+              );
             })}
             {isLoading && !messages[messages.length - 1]?.isStreaming && (
               <div className={styles.messageRow}>

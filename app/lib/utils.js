@@ -8,8 +8,18 @@
  */
 export function getUserId() {
   if (typeof window !== "undefined") {
-    const stored = localStorage.getItem("userId");
-    return stored ? stored.replace(/['"]+/g, '').trim() : "";
+    const userId = localStorage.getItem("userId");
+    if (userId) return userId.replace(/['"]+/g, '').trim();
+
+    const testUser = localStorage.getItem("testUser");
+    if (testUser) {
+      try {
+        const parsed = JSON.parse(testUser);
+        return parsed.uid || "";
+      } catch (e) {
+        return "";
+      }
+    }
   }
   return "";
 }

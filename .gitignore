@@ -2,6 +2,8 @@
 
 # dependencies
 /node_modules
+/lib/scenario-core/node_modules
+/lib/scenario-core/dist
 /.pnp
 .pnp.*
 .yarn/*
