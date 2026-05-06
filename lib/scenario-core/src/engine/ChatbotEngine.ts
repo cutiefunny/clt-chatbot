@@ -291,7 +291,7 @@ export class ChatbotEngine {
         if (callbacks.onLink) callbacks.onLink(currentNode, slots);
         currentNode = this.getNextNode(currentNode.id, null, slots);
       // ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
-      // selectionGroup 처리 추가 - hyh
+      // selectionGroup 처리 추가 - hyh 
       } else if (currentNode.type === 'selectionGroup') { 
         const childNodes = this.scenario.nodes.filter(n => n.parentNode === currentNode?.id);
         const childNodeIds = new Set(childNodes.map(n => n.id));
