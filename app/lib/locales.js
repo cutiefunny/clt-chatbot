@@ -1,42 +1,42 @@
 export const locales = {
-  ko: {
-    // General
-    welcome: "안녕하세요!",
-    hello: "안녕하세요",
-    submit: "제출",
-    cancel: "취소",
-    logout: "로그아웃",
-    loading: "로딩 중...",
-    copied: "복사되었습니다!",
+    ko: {
+        // General
+        welcome: "안녕하세요!",
+        hello: "안녕하세요",
+        submit: "제출",
+        cancel: "취소",
+        logout: "로그아웃",
+        loading: "로딩 중...",
+        copied: "복사되었습니다!",
 
-    // Scenario
-    scenarioComplete: "시나리오가 종료되었습니다.",
-    scenarioCanceled: "시나리오가 취소되었습니다.",
+        // Scenario
+        scenarioComplete: "시나리오가 종료되었습니다.",
+        scenarioCanceled: "시나리오가 취소되었습니다.",
 
-    // Error Messages
-    errorNetwork: "네트워크 연결을 확인해주세요. 인터넷이 불안정한 것 같아요.",
-    errorApiRequest: "API 요청에 실패했습니다. 네트워크 연결을 확인하거나 관리자에게 문의해주세요.",
-    errorServer:
-      "서버에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요.",
-    errorLLMFail: "응답에 문제가 발생했습니다. 잠시 후 다시 시도해주세요.",
-    errorUnexpected: "예상치 못한 오류가 발생했습니다. 다시 시도해주세요.",
-    errorScenarioNotFound:
-      "연결된 시나리오를 찾을 수 없습니다. 시나리오 메뉴 편집 페이지에서 해당 숏컷을 확인해주세요.",
+        // Error Messages
+        errorNetwork: "네트워크 연결을 확인해주세요. 인터넷이 불안정한 것 같아요.",
+        errorApiRequest: "API 요청에 실패했습니다. 네트워크 연결을 확인하거나 관리자에게 문의해주세요.",
+        errorServer:
+            "서버에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요.",
+        errorLLMFail: "응답에 문제가 발생했습니다. 잠시 후 다시 시도해주세요.",
+        errorUnexpected: "예상치 못한 오류가 발생했습니다. 다시 시도해주세요.",
+        errorScenarioNotFound:
+            "연결된 시나리오를 찾을 수 없습니다. 시나리오 메뉴 편집 페이지에서 해당 숏컷을 확인해주세요.",
 
-    // Validation Messages
-    validationEmail: "유효한 이메일 주소를 입력해주세요.",
-    validationPhone: "유효한 전화번호(XXX-XXXX-XXXX)를 입력해주세요.",
-    validationFormat: "입력 형식이 올바르지 않습니다.",
-    validationRegexError: "시나리오에 설정된 정규식이 올바르지 않습니다.",
-    validationDateRange: (startDate, endDate) =>
-      `'${startDate}'와 '${endDate}' 사이의 날짜를 입력해주세요.`,
-    validationDateAfter: "오늘 또는 미래의 날짜를 선택해야 합니다.",
-    validationDateBefore: "오늘 또는 과거의 날짜를 선택해야 합니다.",
+        // Validation Messages
+        validationEmail: "유효한 이메일 주소를 입력해주세요.",
+        validationPhone: "유효한 전화번호(XXX-XXXX-XXXX)를 입력해주세요.",
+        validationFormat: "입력 형식이 올바르지 않습니다.",
+        validationRegexError: "시나리오에 설정된 정규식이 올바르지 않습니다.",
+        validationDateRange: (startDate, endDate) =>
+            `'${startDate}'와 '${endDate}' 사이의 날짜를 입력해주세요.`,
+        validationDateAfter: "오늘 또는 미래의 날짜를 선택해야 합니다.",
+        validationDateBefore: "오늘 또는 과거의 날짜를 선택해야 합니다.",
 
-    //Manual
-    manualTitle: "챗봇 상세 사용 매뉴얼",
-    manualContent: {
-      ko: `
+        //Manual
+        manualTitle: "챗봇 상세 사용 매뉴얼",
+        manualContent: {
+            ko: `
         <div class="manual-section">
             <h3>1. 챗봇 개요</h3>
             <p>이 챗봇은 <strong>LLM(거대 언어 모델) 기반의 자연어 대화</strong>와 <strong>정해진 규칙에 따른 시나리오</strong>를 결합한 하이브리드 시스템입니다. 단순한 질의응답뿐만 아니라 복잡한 업무 프로세스 처리, 데이터 조회, 폼 입력 등을 대화형 인터페이스로 수행할 수 있습니다.</p>
@@ -89,7 +89,7 @@ export const locales = {
             </ul>
         </div>
         `,
-      en: `
+            en: `
         <div class="manual-section">
             <h3>1. Overview</h3>
             <p>This chatbot is a hybrid system combining <strong>LLM-based natural language conversation</strong> with <strong>rule-based scenarios</strong>. It handles not only simple Q&A but also complex business processes, data retrieval, and form inputs through an interactive interface.</p>
@@ -142,129 +142,129 @@ export const locales = {
             </ul>
         </div>
         `,
+        },
+
+        // Login
+        loginPrompt: "계속하려면 로그인해주세요.",
+        signInWithGoogle: "Google 계정으로 로그인",
+        signInWithTestId: "테스트 ID로 로그인",
+        testIdPlaceholder: "테스트 ID 입력",
+        loginMethodToggle: "또는",
+
+        // Logout Modal
+        logoutConfirm: "정말로 로그아웃하시겠습니까?",
+
+        // Chat
+        initialBotMessage: "안녕하세요! 무엇을 도와드릴까요?",
+        askAboutService: "메시지를 입력하세요",
+        scenarioResume: (scenarioId) => `'${scenarioId}' 시나리오 이어하기`,
+        scenarioEnded: (scenarioId) => `'${scenarioId}' 시나리오가 종료되었습니다.`,
+        scenarioStarted: (scenarioId) =>
+            `'${scenarioId}' 시나리오가 시작되었습니다.`,
+        scenarioStatus: "상태:",
+        statusActive: "진행 중",
+        statusCompleted: "완료",
+        statusFailed: "실패",
+        statusGenerating: "생성 중...",
+        statusRequesting: "요청 중...",
+        statusCanceled: "취소됨",
+        statusSelected: "선택됨",
+        viewMore: "더 보기",
+        viewLess: "간략히 보기",
+
+        // Chat Input
+        enterResponse: "응답을 입력하세요...",
+
+        // History Panel
+        history: "대화 내역",
+        newChat: "새로운 대화",
+        deleteConvoConfirm: "정말로 이 대화를 삭제하시겠습니까?",
+        deleteAllConvos: "대화 목록 전체 삭제",
+        deleteAllConvosConfirm: "모든 대화 기록(메시지, 시나리오 기록 포함)을 영구적으로 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+        deleteAllConvosSuccess: "모든 대화 기록이 성공적으로 삭제되었습니다.",
+        noScenariosFound: "실행된 시나리오가 없습니다.",
+        loadingScenarios: "시나리오 로딩 중...",
+        noHistory: "생성된 채팅 내역이 없습니다.",
+        pin: "고정",
+        unpin: "고정 해제",
+        rename: "이름 변경",
+        delete: "삭제",
+
+        // Profile Modal
+        greeting: (displayName) => `안녕하세요 ${displayName} 님`,
+        screenStyle: "화면 스타일",
+        lightMode: "라이트 모드",
+        darkMode: "다크 모드",
+        fontSize: "글자 크기",
+        fontSmall: "축소",
+        fontDefault: "기본",
+        languageSetting: "언어 설정",
+        korean: "한국어",
+        english: "English",
+
+        // Scenario Panel
+        scenarioTitle: (scenarioId) => `시나리오: ${scenarioId}`,
+        hide: "숨기기",
+        end: "종료",
+        select: "선택...",
+
+        // Scenario Modal
+        startScenario: "시나리오 시작하기",
+
+        // Search Modal
+        searchConversations: "대화 내용 검색...",
+        searching: "검색 중...",
+        noResults: "검색 결과가 없습니다.",
+
+        // Notifications
+        notificationHistory: "알림 내역",
+        noNotifications: "표시할 알림이 없습니다.",
+
+        // API Messages
+        scenarioListMessage: "실행할 시나리오를 선택해주세요.",
+
+        initialBotMessage: "무엇을 도와드릴까요?",
+        initialGreetingTitle: "내 업무에 지능을 더하는 새로운 답변.",
+        initialGreetingSubtitle: "자연어로 저에게 말해보세요. 예를 들어, '피드백 주기'.",
     },
+    en: {
+        // General
+        welcome: "Welcome to",
+        hello: "Hello",
+        submit: "Submit",
+        cancel: "Cancel",
+        logout: "Log Out",
+        loading: "Loading...",
+        copied: "Copied!",
 
-    // Login
-    loginPrompt: "계속하려면 로그인해주세요.",
-    signInWithGoogle: "Google 계정으로 로그인",
-    signInWithTestId: "테스트 ID로 로그인",
-    testIdPlaceholder: "테스트 ID 입력",
-    loginMethodToggle: "또는",
+        // Scenario
+        scenarioComplete: "Scenario has ended.",
+        scenarioCanceled: "Scenario has been canceled.",
 
-    // Logout Modal
-    logoutConfirm: "정말로 로그아웃하시겠습니까?",
+        // Error Messages
+        errorApiRequest: "API request failed. Please check your network connection or contact an administrator.",
+        errorNetwork: "Network error. Please check your internet connection.",
+        errorServer: "There was a problem with the server. Please try again later.",
+        errorLLMFail: "There was a problem with the response. Please try again later.",
+        errorUnexpected: "An unexpected error occurred. Please try again.",
+        errorScenarioNotFound:
+            "The linked scenario could not be found. Please check the shortcut in the scenario menu edit page.",
 
-    // Chat
-    initialBotMessage: "안녕하세요! 무엇을 도와드릴까요?",
-    askAboutService: "서비스에 대해 질문해주세요.",
-    scenarioResume: (scenarioId) => `'${scenarioId}' 시나리오 이어하기`,
-    scenarioEnded: (scenarioId) => `'${scenarioId}' 시나리오가 종료되었습니다.`,
-    scenarioStarted: (scenarioId) =>
-      `'${scenarioId}' 시나리오가 시작되었습니다.`,
-    scenarioStatus: "상태:",
-    statusActive: "진행 중",
-    statusCompleted: "완료",
-    statusFailed: "실패",
-    statusGenerating: "생성 중...",
-    statusRequesting: "요청 중...",
-    statusCanceled: "취소됨",
-    statusSelected: "선택됨",
-    viewMore: "더 보기",
-    viewLess: "간략히 보기",
+        // Validation Messages
+        validationEmail: "Please enter a valid email address.",
+        validationPhone: "Please enter a valid phone number (e.g., XXX-XXXX-XXXX).",
+        validationFormat: "The input format is incorrect.",
+        validationRegexError:
+            "The regular expression set in the scenario is invalid.",
+        validationDateRange: (startDate, endDate) =>
+            `Please enter a date between ${startDate} and ${endDate}.`,
+        validationDateAfter: "You must select today or a future date.",
+        validationDateBefore: "You must select today or a past date.",
 
-    // Chat Input
-    enterResponse: "응답을 입력하세요...",
-
-    // History Panel
-    history: "대화 내역",
-    newChat: "새로운 대화",
-    deleteConvoConfirm: "정말로 이 대화를 삭제하시겠습니까?",
-    deleteAllConvos: "대화 목록 전체 삭제",
-    deleteAllConvosConfirm: "모든 대화 기록(메시지, 시나리오 기록 포함)을 영구적으로 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
-    deleteAllConvosSuccess: "모든 대화 기록이 성공적으로 삭제되었습니다.",
-    noScenariosFound: "실행된 시나리오가 없습니다.",
-    loadingScenarios: "시나리오 로딩 중...",
-    noHistory: "생성된 채팅 내역이 없습니다.",
-    pin: "고정",
-    unpin: "고정 해제",
-    rename: "이름 변경",
-    delete: "삭제",
-
-    // Profile Modal
-    greeting: (displayName) => `안녕하세요 ${displayName} 님`,
-    screenStyle: "화면 스타일",
-    lightMode: "라이트 모드",
-    darkMode: "다크 모드",
-    fontSize: "글자 크기",
-    fontSmall: "축소",
-    fontDefault: "기본",
-    languageSetting: "언어 설정",
-    korean: "한국어",
-    english: "English",
-
-    // Scenario Panel
-    scenarioTitle: (scenarioId) => `시나리오: ${scenarioId}`,
-    hide: "숨기기",
-    end: "종료",
-    select: "선택...",
-
-    // Scenario Modal
-    startScenario: "시나리오 시작하기",
-
-    // Search Modal
-    searchConversations: "대화 내용 검색...",
-    searching: "검색 중...",
-    noResults: "검색 결과가 없습니다.",
-
-    // Notifications
-    notificationHistory: "알림 내역",
-    noNotifications: "표시할 알림이 없습니다.",
-
-    // API Messages
-    scenarioListMessage: "실행할 시나리오를 선택해주세요.",
-
-    initialBotMessage: "무엇을 도와드릴까요?",
-    initialGreetingTitle: "무엇을 도와드릴까요?",
-    initialGreetingSubtitle: "자연어로 저에게 말해보세요. 예를 들어, '피드백 주기'.",
-  },
-  en: {
-    // General
-    welcome: "Welcome to",
-    hello: "Hello",
-    submit: "Submit",
-    cancel: "Cancel",
-    logout: "Log Out",
-    loading: "Loading...",
-    copied: "Copied!",
-
-    // Scenario
-    scenarioComplete: "Scenario has ended.",
-    scenarioCanceled: "Scenario has been canceled.",
-
-    // Error Messages
-    errorApiRequest: "API request failed. Please check your network connection or contact an administrator.",
-    errorNetwork: "Network error. Please check your internet connection.",
-    errorServer: "There was a problem with the server. Please try again later.",
-    errorLLMFail: "There was a problem with the response. Please try again later.",
-    errorUnexpected: "An unexpected error occurred. Please try again.",
-    errorScenarioNotFound:
-      "The linked scenario could not be found. Please check the shortcut in the scenario menu edit page.",
-
-    // Validation Messages
-    validationEmail: "Please enter a valid email address.",
-    validationPhone: "Please enter a valid phone number (e.g., XXX-XXXX-XXXX).",
-    validationFormat: "The input format is incorrect.",
-    validationRegexError:
-      "The regular expression set in the scenario is invalid.",
-    validationDateRange: (startDate, endDate) =>
-      `Please enter a date between ${startDate} and ${endDate}.`,
-    validationDateAfter: "You must select today or a future date.",
-    validationDateBefore: "You must select today or a past date.",
-
-    //Manual
-    manualTitle: "Detailed User Manual",
-    manualContent: {
-      ko: `
+        //Manual
+        manualTitle: "Detailed User Manual",
+        manualContent: {
+            ko: `
         <div class="manual-section">
             <h3>1. 챗봇 개요</h3>
             <p>이 챗봇은 <strong>LLM(거대 언어 모델) 기반의 자연어 대화</strong>와 <strong>정해진 규칙에 따른 시나리오</strong>를 결합한 하이브리드 시스템입니다. 단순한 질의응답뿐만 아니라 복잡한 업무 프로세스 처리, 데이터 조회, 폼 입력 등을 대화형 인터페이스로 수행할 수 있습니다.</p>
@@ -317,7 +317,7 @@ export const locales = {
             </ul>
         </div>
         `,
-      en: `
+            en: `
         <div class="manual-section">
             <h3>1. Overview</h3>
             <p>This chatbot is a hybrid system combining <strong>LLM-based natural language conversation</strong> with <strong>rule-based scenarios</strong>. It handles not only simple Q&A but also complex business processes, data retrieval, and form inputs through an interactive interface.</p>
@@ -370,90 +370,90 @@ export const locales = {
             </ul>
         </div>
         `,
+        },
+
+        // Login
+        loginPrompt: "NX AI Chatbot",
+        signInWithGoogle: "Sign in with Google",
+        signInWithTestId: "Sign in with Test ID",
+        testIdPlaceholder: "Enter Test ID",
+        loginMethodToggle: "OR",
+
+        // Logout Modal
+        logoutConfirm: "Are you sure you want to log out?",
+
+        // Chat
+        initialBotMessage: "Hello! How can I help you?",
+        askAboutService: "Chatbot Message",
+        scenarioResume: (scenarioId) => `Resume '${scenarioId}' scenario`,
+        scenarioEnded: (scenarioId) => `Scenario '${scenarioId}' has ended.`,
+        scenarioStarted: (scenarioId) => `Scenario '${scenarioId}' has started.`,
+        scenarioStatus: "Status:",
+        statusActive: "In Progress",
+        statusCompleted: "Completed",
+        statusFailed: "Failed",
+        statusGenerating: "Generating...",
+        statusRequesting: "Requesting...",
+        statusCanceled: "Canceled",
+        statusSelected: "Selected",
+        viewMore: "View More",
+        viewLess: "View Less",
+
+        // Chat Input
+        enterResponse: "Enter your response...",
+
+        // History Panel
+        history: "History",
+        newChat: "New Chat",
+        deleteConvoConfirm:
+            "Are you sure you want to delete the conversation details?",
+        deleteAllConvos: "Delete All Conversations",
+        deleteAllConvosConfirm: "Are you sure you want to permanently delete ALL conversation history (including messages and scenarios)? This action cannot be undone.",
+        deleteAllConvosSuccess: "All conversation history successfully deleted.",
+        noScenariosFound: "No scenarios were run.",
+        loadingScenarios: "Loading scenarios...",
+        noHistory: "No chat history has been created.",
+        pin: "Pin",
+        unpin: "Unpin",
+        rename: "Rename",
+        delete: "Delete",
+
+        // Profile Modal
+        greeting: (displayName) => `Hello, ${displayName}`,
+        screenStyle: "Screen Style",
+        lightMode: "Light Mode",
+        darkMode: "Dark Mode",
+        fontSize: "Font Size",
+        fontSmall: "Small",
+        fontDefault: "Default",
+        languageSetting: "Language",
+        korean: "한국어",
+        english: "English",
+
+        // Scenario Panel
+        scenarioTitle: (scenarioId) => `Scenario: ${scenarioId}`,
+        hide: "Hide",
+        end: "End",
+        cancel: "Cancel",
+        select: "Select...",
+
+        // Scenario Modal
+        startScenario: "Start a Scenario",
+
+        // Search Modal
+        searchConversations: "Search conversations...",
+        searching: "Searching...",
+        noResults: "No results found.",
+
+        // Notifications
+        notificationHistory: "Notifications",
+        noNotifications: "No notifications to display.",
+
+        // API Messages
+        scenarioListMessage: "Please select a scenario to run.",
+
+        initialBotMessage: "How can I guide you?",
+        initialGreetingTitle: "The new answer that adds intelligence to your workspace.",
+        initialGreetingSubtitle: "Talk to me naturally. For example, 'Give Feedback'."
     },
-
-    // Login
-    loginPrompt: "NX AI Chatbot",
-    signInWithGoogle: "Sign in with Google",
-    signInWithTestId: "Sign in with Test ID",
-    testIdPlaceholder: "Enter Test ID",
-    loginMethodToggle: "OR",
-
-    // Logout Modal
-    logoutConfirm: "Are you sure you want to log out?",
-
-    // Chat
-    initialBotMessage: "Hello! How can I help you?",
-    askAboutService: "Ask about this Booking Master Page",
-    scenarioResume: (scenarioId) => `Resume '${scenarioId}' scenario`,
-    scenarioEnded: (scenarioId) => `Scenario '${scenarioId}' has ended.`,
-    scenarioStarted: (scenarioId) => `Scenario '${scenarioId}' has started.`,
-    scenarioStatus: "Status:",
-    statusActive: "In Progress",
-    statusCompleted: "Completed",
-    statusFailed: "Failed",
-    statusGenerating: "Generating...",
-    statusRequesting: "Requesting...",
-    statusCanceled: "Canceled",
-    statusSelected: "Selected",
-    viewMore: "View More",
-    viewLess: "View Less",
-
-    // Chat Input
-    enterResponse: "Enter your response...",
-
-    // History Panel
-    history: "History",
-    newChat: "New Chat",
-    deleteConvoConfirm:
-      "Are you sure you want to delete the conversation details?",
-    deleteAllConvos: "Delete All Conversations",
-    deleteAllConvosConfirm: "Are you sure you want to permanently delete ALL conversation history (including messages and scenarios)? This action cannot be undone.",
-    deleteAllConvosSuccess: "All conversation history successfully deleted.",
-    noScenariosFound: "No scenarios were run.",
-    loadingScenarios: "Loading scenarios...",
-    noHistory: "No chat history has been created.",
-    pin: "Pin",
-    unpin: "Unpin",
-    rename: "Rename",
-    delete: "Delete",
-
-    // Profile Modal
-    greeting: (displayName) => `Hello, ${displayName}`,
-    screenStyle: "Screen Style",
-    lightMode: "Light Mode",
-    darkMode: "Dark Mode",
-    fontSize: "Font Size",
-    fontSmall: "Small",
-    fontDefault: "Default",
-    languageSetting: "Language",
-    korean: "한국어",
-    english: "English",
-
-    // Scenario Panel
-    scenarioTitle: (scenarioId) => `Scenario: ${scenarioId}`,
-    hide: "Hide",
-    end: "End",
-    cancel: "Cancel",
-    select: "Select...",
-
-    // Scenario Modal
-    startScenario: "Start a Scenario",
-
-    // Search Modal
-    searchConversations: "Search conversations...",
-    searching: "Searching...",
-    noResults: "No results found.",
-
-    // Notifications
-    notificationHistory: "Notifications",
-    noNotifications: "No notifications to display.",
-
-    // API Messages
-    scenarioListMessage: "Please select a scenario to run.",
-
-    initialBotMessage: "How can I guide you?",
-    initialGreetingTitle: "How can I guide you?",
-    initialGreetingSubtitle: "Talk to me naturally. For example, 'Give Feedback'."
-  },
 };

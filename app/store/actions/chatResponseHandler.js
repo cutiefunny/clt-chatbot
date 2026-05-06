@@ -152,7 +152,7 @@ export async function handleResponse(get, set, messagePayload) {
   const shouldShowBubble = true;
 
   const thinkingText = locales[language]?.["statusRequesting"] || "Requesting...";
-  const tempBotMessageId = `temp_pending_${conversationIdForBotResponse}`;
+  const tempBotMessageId = `temp_pending_${conversationIdForBotResponse}_${Date.now()}`;
   const tempBotMessage = {
     id: tempBotMessageId,
     sender: "bot",

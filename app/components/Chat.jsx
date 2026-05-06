@@ -9,6 +9,7 @@ import styles from "./Chat.module.css";
 import MoonIcon from "./icons/MoonIcon";
 import LogoIcon from "./icons/LogoIcon";
 import ChatMessageItem from "./chat/ChatMessageItem";
+import InitialGreeting from "./InitialGreeting";
 
 export default function Chat() {
   const messages = useChatStore((state) => state.messages);
@@ -211,23 +212,25 @@ export default function Chat() {
 
       <div
         className={`${styles.history} ${activePanel === "scenario" && dimUnfocusedPanels
-            ? styles.mainChatDimmed
-            : ""
+          ? styles.mainChatDimmed
+          : ""
           }`} ref={scrollRef} // [리팩토링] 훅에서 반환된 ref 연결
         onClick={handleHistoryClick}
       >
-        {!hasMessages ? null : (
+        {!hasMessages ? (
+          <InitialGreeting />
+        ) : (
           <>
             {isFetchingMore && (
               <div className={styles.messageRow}>
                 <div className={`${styles.message} ${styles.botMessage} `}>
                   <div className={styles.messageContentWrapper}>
-                    <LogoIcon />
+                    <img src="/images/avatar.png" alt="Bot" className={styles.avatar} />
                     <div className={styles.messageContent}>
                       <img
                         src="/images/Loading.gif"
                         alt={"loading"}
-                        style={{ width: "60px", height: "45px" }}
+                        style={{ width: "40px", height: "30px" }}
                       />
                     </div>
                   </div>
@@ -256,12 +259,12 @@ export default function Chat() {
               <div className={styles.messageRow}>
                 <div className={`${styles.message} ${styles.botMessage}`}>
                   <div className={styles.messageContentWrapper}>
-                    <LogoIcon />
+                    <img src="/images/avatar.png" alt="Bot" className={styles.avatar} />
                     <div className={styles.messageContent}>
                       <img
                         src="/images/Loading.gif"
                         alt={"loading"}
-                        style={{ width: "60px", height: "45px" }}
+                        style={{ width: "40px", height: "30px" }}
                       />
                     </div>
                   </div>

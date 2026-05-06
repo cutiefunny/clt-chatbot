@@ -26,7 +26,7 @@ import {
 
 export default function ScenarioChat() {
   const activeScenarioSessionId = useChatStore((state) => state.activeScenarioSessionId);
-  
+
   // ✅ [최적화] selector를 사용하여 특정 시나리오 상태만 구독
   // 다른 시나리오의 상태 변경 시 이 컴포넌트는 리렌더링되지 않음
   const activeScenario = useChatStore(
@@ -46,7 +46,7 @@ export default function ScenarioChat() {
       );
     }
   );
-  
+
   const handleScenarioResponse = useChatStore((state) => state.handleScenarioResponse);
   const endScenario = useChatStore((state) => state.endScenario);
   const setActivePanel = useChatStore((state) => state.setActivePanel);
@@ -98,15 +98,15 @@ export default function ScenarioChat() {
 
   const handleFormElementApiCall = async (element, localFormData) => {
     const currentNode = activeScenario?.messages
-        .find(msg => msg.node?.id === currentScenarioNodeId)?.node;
+      .find(msg => msg.node?.id === currentScenarioNodeId)?.node;
 
     if (!currentNode || currentNode.type !== 'form') {
-        console.warn("API Call ABORTED: currentNode is not the form node.");
-        return;
+      console.warn("API Call ABORTED: currentNode is not the form node.");
+      return;
     }
     const formElements = currentNode.data.elements;
     const elementConfig = formElements.find(e => e.id === element.id);
-    
+
     if (!elementConfig || !elementConfig.apiConfig || !elementConfig.resultSlot) {
       alert("Search element is not configured correctly. (Missing API URL or Result Slot)");
       return;
@@ -114,80 +114,80 @@ export default function ScenarioChat() {
 
     const { apiConfig, resultSlot } = elementConfig;
     const searchTerm = localFormData[elementConfig.name] || '';
-    
+
     let formSlotUpdates = {};
     if (Array.isArray(formElements)) {
-        formElements.forEach(el => {
-            if (el.name && localFormData.hasOwnProperty(el.name)) {
-                formSlotUpdates[el.name] = localFormData[el.name];
-            }
-        });
+      formElements.forEach(el => {
+        if (el.name && localFormData.hasOwnProperty(el.name)) {
+          formSlotUpdates[el.name] = localFormData[el.name];
+        }
+      });
     }
 
     let updatedSlotsForApi = { ...currentSlots, ...formSlotUpdates };
     setScenarioSlots(activeScenarioSessionId, updatedSlotsForApi);
 
     const allValues = { ...updatedSlotsForApi, value: searchTerm };
-    const method = apiConfig.method || 'POST'; 
-    
+    const method = apiConfig.method || 'POST';
+
     const { showEphemeralToast } = useChatStore.getState();
 
     try {
       const interpolatedUrl = interpolateMessage(apiConfig.url, allValues);
-      
+
       let customHeaders = {};
       if (apiConfig.headers) {
-          try {
-              const interpolatedHeadersString = interpolateMessage(apiConfig.headers, allValues);
-              customHeaders = JSON.parse(interpolatedHeadersString);
-          } catch (e) {
-              console.error("Error processing or parsing API headers JSON:", e, apiConfig.headers);
-          }
+        try {
+          const interpolatedHeadersString = interpolateMessage(apiConfig.headers, allValues);
+          customHeaders = JSON.parse(interpolatedHeadersString);
+        } catch (e) {
+          console.error("Error processing or parsing API headers JSON:", e, apiConfig.headers);
+        }
       }
 
       const fetchOptions = {
         method: method,
         headers: {
-            ...customHeaders
+          ...customHeaders
         },
       };
 
       if (method === 'POST') {
         const interpolatedBody = interpolateMessage(apiConfig.bodyTemplate, allValues);
         fetchOptions.headers = {
-            'Content-Type': 'application/json',
-            ...fetchOptions.headers
+          'Content-Type': 'application/json',
+          ...fetchOptions.headers
         };
         fetchOptions.body = interpolatedBody;
       }
-      
+
       const response = await fetch(interpolatedUrl, fetchOptions);
 
       if (!response.ok) {
         let errorBody = await response.text();
         let errorMessage = `(${response.status}) `;
         try {
-            const errorJson = JSON.parse(errorBody);
-            errorMessage += errorJson.message || t('errorServer');
+          const errorJson = JSON.parse(errorBody);
+          errorMessage += errorJson.message || t('errorServer');
         } catch (e) {
-            errorMessage += t('errorServer');
+          errorMessage += t('errorServer');
         }
-        throw new Error(errorMessage); 
+        throw new Error(errorMessage);
       }
 
       const responseData = await response.json();
       setScenarioSlots(activeScenarioSessionId, { ...updatedSlotsForApi, [resultSlot]: responseData });
-      
-    } catch (error) { 
+
+    } catch (error) {
       console.error("Form element API call failed:", error);
       let toastMessage;
-      
+
       if (error.name === 'AbortError' || error.message.includes('fetch failed') || error.message.includes('Failed to fetch')) {
-          toastMessage = t('errorApiRequest'); 
+        toastMessage = t('errorApiRequest');
       } else if (error.message.includes('(')) {
-          toastMessage = `${t('errorApiRequest')} ${error.message}`;
+        toastMessage = `${t('errorApiRequest')} ${error.message}`;
       } else {
-          toastMessage = t('errorUnexpected');
+        toastMessage = t('errorUnexpected');
       }
 
       showEphemeralToast(toastMessage, 'error');
@@ -236,7 +236,7 @@ export default function ScenarioChat() {
             status={activeScenario?.status}
             t={t}
             styles={styles}
-            isSelected={true} 
+            isSelected={true}
           />
           <span className={styles.headerTitle}>
             {t("scenarioTitle")(
@@ -257,11 +257,9 @@ export default function ScenarioChat() {
             </button>
           )}
           <button
-            className={`${styles.headerCloseButton} ${
-              styles.headerExpandButton
-            } ${
-              isScenarioPanelExpanded ? styles.headerExpandButtonActive : ""
-            }`}
+            className={`${styles.headerCloseButton} ${styles.headerExpandButton
+              } ${isScenarioPanelExpanded ? styles.headerExpandButtonActive : ""
+              }`}
             onClick={(e) => {
               e.stopPropagation();
               toggleScenarioPanelExpanded();
@@ -299,7 +297,7 @@ export default function ScenarioChat() {
           <div className={styles.messageRow}>
             <div className={`${styles.message} ${styles.botMessage}`}>
               <div className={styles.scenarioMessageContentWrapper}>
-                <LogoIcon className={styles.avatar} />
+                <img src="/images/avatar.png" alt="Bot Avatar" className={styles.avatar} />
                 <div className={styles.messageContent}>
                   <p>{t("loading")}</p>
                 </div>
@@ -332,198 +330,196 @@ export default function ScenarioChat() {
             }
 
             const chain = group;
-          const isRichContent = chain.some(
-            (msg) =>
-              msg.node?.type === "form" ||
-              (msg.node?.data?.elements && 
-                msg.node.data.elements.some((el) => el.type === "grid")) ||
-              msg.node?.type === "iframe" ||
-              containsMarkdownTable(msg)
-          );
+            const isRichContent = chain.some(
+              (msg) =>
+                msg.node?.type === "form" ||
+                (msg.node?.data?.elements &&
+                  msg.node.data.elements.some((el) => el.type === "grid")) ||
+                msg.node?.type === "iframe" ||
+                containsMarkdownTable(msg)
+            );
 
-          let widthClass = "";
-          if (isRichContent) {
-            widthClass = styles.gridMessage;
-          } else {
-            const allTextContents = chain.map((msg) => {
-              return String(msg.text || msg.node?.data?.content || "");
-            });
-            const lines = allTextContents.join("\n").split("\n");
-            const maxLineLength = lines.reduce((maxLength, currentLine) => {
-              return Math.max(maxLength, currentLine.length);
-            }, 0);
-            const SHORT_THRESHOLD = 10;
-            const MEDIUM_THRESHOLD = 30;
-            if (maxLineLength < SHORT_THRESHOLD) {
-              widthClass = styles.width30;
-            } else if (maxLineLength < MEDIUM_THRESHOLD) {
-              widthClass = styles.width60;
-            } else {
+            let widthClass = "";
+            if (isRichContent) {
               widthClass = styles.gridMessage;
+            } else {
+              const allTextContents = chain.map((msg) => {
+                return String(msg.text || msg.node?.data?.content || "");
+              });
+              const lines = allTextContents.join("\n").split("\n");
+              const maxLineLength = lines.reduce((maxLength, currentLine) => {
+                return Math.max(maxLength, currentLine.length);
+              }, 0);
+              const SHORT_THRESHOLD = 10;
+              const MEDIUM_THRESHOLD = 30;
+              if (maxLineLength < SHORT_THRESHOLD) {
+                widthClass = styles.width30;
+              } else if (maxLineLength < MEDIUM_THRESHOLD) {
+                widthClass = styles.width60;
+              } else {
+                widthClass = styles.gridMessage;
+              }
             }
-          }
 
 
-          return (
-            <div
-              key={chain[0].id || `${activeScenarioSessionId}-chain-${index}`}
-              className={`${styles.messageRow}`}
-            >
+            return (
               <div
-                className={`GlassEffect ${styles.message} ${
-                  styles.botMessage
-                } ${widthClass}`}
+                key={chain[0].id || `${activeScenarioSessionId}-chain-${index}`}
+                className={`${styles.messageRow}`}
               >
                 <div
-                  className={
-                    chain.some((msg) => msg.node?.type === "form")
-                      ? styles.scenarioFormMessageContentWrapper
-                      : styles.scenarioMessageContentWrapper
-                  }
+                  className={`GlassEffect ${styles.message} ${styles.botMessage
+                    } ${widthClass}`}
                 >
-                  {chain.some((msg) => msg.node?.type !== "form") && (
-                    <LogoIcon className={styles.avatar} />
-                  )}
+                  <div
+                    className={
+                      chain.some((msg) => msg.node?.type === "form")
+                        ? styles.scenarioFormMessageContentWrapper
+                        : styles.scenarioMessageContentWrapper
+                    }
+                  >
+                    {chain.some((msg) => msg.node?.type !== "form") && (
+                      <img src="/images/avatar.png" alt="Bot Avatar" className={styles.avatar} />
+                    )}
 
-                  <div className={styles.messageContent}>
-                    {chain.map((msg) => (
-                      <div
-                        key={msg.id}
-                        className={styles.chainedMessageItem}
-                      >
-                        {msg.node?.type === "form" ? (
-                          <FormRenderer
-                            node={msg.node}
-                            onFormSubmit={handleFormSubmit}
-                            disabled={isCompleted}
-                            language={language}
-                            slots={currentSlots}
-                            setScenarioSlots={setScenarioSlots}
-                            activeScenarioSessionId={activeScenarioSessionId}
-                            onFormElementApiCall={handleFormElementApiCall}
-                          />
-                        ) : msg.node?.type === "iframe" ? (
-                          <div className={styles.iframeContainer}>
-                            <iframe
-                              src={interpolateMessage(
-                                msg.node.data.url,
-                                activeScenario.slots
-                              )}
-                              width={msg.node.data.width || "604px"}
-                              height={msg.node.data.height || "250"}
-                              style={{ border: "none", borderRadius: "8px" }}
-                              title="chatbot-iframe"
-                            ></iframe>
-                          </div>
-                        ) : msg.node?.type === "link" ? (
-                          <div>
-                            <button
-                              onClick={(e) => {
-                                e.preventDefault();
-                                openLinkThroughParent(
-                                  interpolateMessage(
-                                    msg.node.data.content,
-                                    activeScenario.slots
-                                  )
-                                );
-                              }}
-                              className={styles.linkButton}
-                              title={interpolateMessage(
-                                msg.node.data.content,
-                                activeScenario.slots
-                              )}
-                            >
-                              <span>{interpolateMessage(
-                                msg.node.data.display || msg.node.data.content,
-                                activeScenario.slots
-                              )}</span>
-                              <OpenInNewIcon
-                                style={{
-                                  marginLeft: "4px",
-                                  verticalAlign: "middle",
-                                  width: "16px",
-                                  height: "16px",
-                                }}
-                              />
-                            </button>
-                          </div>
-                        ) : (
-                          <MarkdownRenderer
-                            content={interpolateMessage(
-                              msg.text || msg.node?.data?.content,
-                              activeScenario.slots
-                            )}
-                          />
-                        )}
-                        {msg.node?.type === "branch" &&
-                          msg.node.data.replies &&
-                          (msg.node.data.evaluationType === "BUTTON" || 
-                           msg.node.data.evaluationType === "BUTTON_CLICK") && (
-                            <div className={styles.scenarioList}>
-                              {msg.node.data.replies.map((reply) => {
-                                const selectedOption = msg.selectedOption;
-                                const interpolatedDisplayText =
-                                  interpolateMessage(
-                                    reply.display,
-                                    activeScenario?.slots
-                                  );
-                                const isSelected =
-                                  selectedOption === interpolatedDisplayText;
-                                const isDimmed = selectedOption && !isSelected;
-                                return (
-                                  <button
-                                    key={reply.value}
-                                    className={`${styles.optionButton} ${
-                                      isSelected ? styles.selected : ""
-                                    } ${isDimmed ? styles.dimmed : ""}`}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (selectedOption || isCompleted) return;
-                                      console.log(`[ScenarioChat] Reply clicked:`, {
-                                        nodeId: msg.node.id,
-                                        replyValue: reply.value,
-                                        displayText: interpolatedDisplayText,
-                                      });
-                                      setScenarioSelectedOption(
-                                        activeScenarioSessionId,
-                                        msg.node.id,
-                                        interpolatedDisplayText
-                                      );
-                                      handleScenarioResponse({
-                                        scenarioSessionId:
-                                          activeScenarioSessionId,
-                                        currentNodeId: msg.node.id,
-                                        sourceHandle: reply.value,
-                                        userInput: interpolatedDisplayText,
-                                      });
-                                    }}
-                                    disabled={isCompleted || !!selectedOption}
-                                  >
-                                    <span className={styles.optionButtonText}>
-                                      {interpolatedDisplayText}
-                                    </span>
-                                    {interpolatedDisplayText
-                                      .toLowerCase()
-                                      .includes("link") ? (
-                                      <OpenInNewIcon
-                                        style={{ color: "currentColor" }}
-                                      />
-                                    ) : (
-                                      <CheckCircle />
-                                    )}
-                                  </button>
-                                );
-                              })}
+                    <div className={styles.messageContent}>
+                      {chain.map((msg) => (
+                        <div
+                          key={msg.id}
+                          className={styles.chainedMessageItem}
+                        >
+                          {msg.node?.type === "form" ? (
+                            <FormRenderer
+                              node={msg.node}
+                              onFormSubmit={handleFormSubmit}
+                              disabled={isCompleted}
+                              language={language}
+                              slots={currentSlots}
+                              setScenarioSlots={setScenarioSlots}
+                              activeScenarioSessionId={activeScenarioSessionId}
+                              onFormElementApiCall={handleFormElementApiCall}
+                            />
+                          ) : msg.node?.type === "iframe" ? (
+                            <div className={styles.iframeContainer}>
+                              <iframe
+                                src={interpolateMessage(
+                                  msg.node.data.url,
+                                  activeScenario.slots
+                                )}
+                                width={msg.node.data.width || "604px"}
+                                height={msg.node.data.height || "250"}
+                                style={{ border: "none", borderRadius: "8px" }}
+                                title="chatbot-iframe"
+                              ></iframe>
                             </div>
+                          ) : msg.node?.type === "link" ? (
+                            <div>
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  openLinkThroughParent(
+                                    interpolateMessage(
+                                      msg.node.data.content,
+                                      activeScenario.slots
+                                    )
+                                  );
+                                }}
+                                className={styles.linkButton}
+                                title={interpolateMessage(
+                                  msg.node.data.content,
+                                  activeScenario.slots
+                                )}
+                              >
+                                <span>{interpolateMessage(
+                                  msg.node.data.display || msg.node.data.content,
+                                  activeScenario.slots
+                                )}</span>
+                                <OpenInNewIcon
+                                  style={{
+                                    marginLeft: "4px",
+                                    verticalAlign: "middle",
+                                    width: "16px",
+                                    height: "16px",
+                                  }}
+                                />
+                              </button>
+                            </div>
+                          ) : (
+                            <MarkdownRenderer
+                              content={interpolateMessage(
+                                msg.text || msg.node?.data?.content,
+                                activeScenario.slots
+                              )}
+                            />
                           )}
-                      </div>
-                    ))}
+                          {msg.node?.type === "branch" &&
+                            msg.node.data.replies &&
+                            (msg.node.data.evaluationType === "BUTTON" ||
+                              msg.node.data.evaluationType === "BUTTON_CLICK") && (
+                              <div className={styles.scenarioList}>
+                                {msg.node.data.replies.map((reply) => {
+                                  const selectedOption = msg.selectedOption;
+                                  const interpolatedDisplayText =
+                                    interpolateMessage(
+                                      reply.display,
+                                      activeScenario?.slots
+                                    );
+                                  const isSelected =
+                                    selectedOption === interpolatedDisplayText;
+                                  const isDimmed = selectedOption && !isSelected;
+                                  return (
+                                    <button
+                                      key={reply.value}
+                                      className={`${styles.optionButton} ${isSelected ? styles.selected : ""
+                                        } ${isDimmed ? styles.dimmed : ""}`}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (selectedOption || isCompleted) return;
+                                        console.log(`[ScenarioChat] Reply clicked:`, {
+                                          nodeId: msg.node.id,
+                                          replyValue: reply.value,
+                                          displayText: interpolatedDisplayText,
+                                        });
+                                        setScenarioSelectedOption(
+                                          activeScenarioSessionId,
+                                          msg.node.id,
+                                          interpolatedDisplayText
+                                        );
+                                        handleScenarioResponse({
+                                          scenarioSessionId:
+                                            activeScenarioSessionId,
+                                          currentNodeId: msg.node.id,
+                                          sourceHandle: reply.value,
+                                          userInput: interpolatedDisplayText,
+                                        });
+                                      }}
+                                      disabled={isCompleted || !!selectedOption}
+                                    >
+                                      <span className={styles.optionButtonText}>
+                                        {interpolatedDisplayText}
+                                      </span>
+                                      {interpolatedDisplayText
+                                        .toLowerCase()
+                                        .includes("link") ? (
+                                        <OpenInNewIcon
+                                          style={{ color: "currentColor" }}
+                                        />
+                                      ) : (
+                                        <CheckCircle />
+                                      )}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          );
-        })
+            );
+          })
         )}
 
         {(isScenarioLoading || isDelayLoading) && (
@@ -532,7 +528,7 @@ export default function ScenarioChat() {
               className={`GlassEffect ${styles.message} ${styles.botMessage}`}
             >
               <div className={styles.scenarioMessageContentWrapper}>
-                <LogoIcon className={styles.avatar} />
+                <img src="/images/avatar.png" alt="Bot Avatar" className={styles.avatar} />
                 <div className={styles.messageContent}>
                   <img
                     src="/images/Loading.gif"
