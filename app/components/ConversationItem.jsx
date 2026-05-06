@@ -110,17 +110,17 @@ export default function ConversationItem({
   // 🔴 [NEW] filteredScenarios와 hasScenarios를 먼저 계산
   const filteredScenarios = scenarios
     ? scenarios.filter((s) => {
-        if (hideCompletedScenarios && s.status === "completed") {
-          const completedTime = s.updatedAt?.toDate?.() || s.updatedAt;
-          if (!completedTime) return false;
+      if (hideCompletedScenarios && s.status === "completed") {
+        const completedTime = s.updatedAt?.toDate?.() || s.updatedAt;
+        if (!completedTime) return false;
 
-          const now = new Date();
-          const hoursPassed = (now - completedTime) / (1000 * 60 * 60);
+        const now = new Date();
+        const hoursPassed = (now - completedTime) / (1000 * 60 * 60);
 
-          return hoursPassed < hideDelayInHours;
-        }
-        return true;
-      })
+        return hoursPassed < hideDelayInHours;
+      }
+      return true;
+    })
     : null;
 
   const hasScenarios = filteredScenarios && filteredScenarios.length > 0;
@@ -144,13 +144,20 @@ export default function ConversationItem({
     };
   }, []);
 
-  // 🔴 [NEW] 대화가 활성화되고 시나리오가 있으면 자동으로 확장
+  const [hasAutoExpanded, setHasAutoExpanded] = useState(false);
+
   useEffect(() => {
-    if (isActive && hasScenarios && !isExpanded) {
-      console.log(`[ConversationItem] Auto-expanding scenarios for ${convo.id}`);
-      onToggleExpand?.(convo.id);
+    if (!isActive) {
+      setHasAutoExpanded(false);
+      return;
     }
-  }, [isActive, hasScenarios, isExpanded, convo.id, onToggleExpand]);
+
+    if (isActive && hasScenarios && !isExpanded && !hasAutoExpanded) {
+      // 대화가 활성화된 상태에서 시나리오가 로드되면 한 번만 자동 확장
+      onToggleExpand?.(convo.id);
+      setHasAutoExpanded(true);
+    }
+  }, [isActive, hasScenarios, isExpanded, convo.id, onToggleExpand, hasAutoExpanded]);
 
   const handleUpdate = () => {
     if (title.trim() && title.trim() !== convo.title) {
@@ -190,12 +197,17 @@ export default function ConversationItem({
   return (
     <div className={styles.conversationItemWrapper}>
       <div
-        className={`${styles.conversationItem} ${
-          isExpanded ? styles.active : ""
-        }`}
+        className={`${styles.conversationItem} ${isExpanded ? styles.active : ""
+          }`}
         onClick={() => {
           if (isEditing) return;
-          onClick(convo.id);
+          if (isActive) {
+            // 이미 활성화된 대화인 경우 시나리오 목록 토글
+            onToggleExpand?.(convo.id);
+          } else {
+            // 다른 대화를 선택하는 경우: 로드 (로드 과정에서 자동 펼침 처리됨)
+            onClick(convo.id);
+          }
         }}
       >
         <div className={styles.convoMain}>
@@ -220,7 +232,7 @@ export default function ConversationItem({
           {hasUnreadScenarios && !isEditing && (
             <div className={styles.unreadDot}></div>
           )}
-          
+
           {convo.pinned && !isEditing && (
             <span className={styles.pinIndicator}>
               <PinIcon />
@@ -292,7 +304,7 @@ export default function ConversationItem({
           </div>
         )}
       </div>
-      {isExpanded && (
+      <div className={`${styles.scenarioSubListWrapper} ${isExpanded ? styles.expanded : ""}`}>
         <div className={styles.scenarioSubList}>
           {filteredScenarios ? (
             filteredScenarios.length > 0 ? (
@@ -305,9 +317,8 @@ export default function ConversationItem({
                 return (
                   <div
                     key={scenario.sessionId}
-                    className={`${styles.scenarioItem} ${
-                      isSelected ? styles.selected : ""
-                    }`}
+                    className={`${styles.scenarioItem} ${isSelected ? styles.selected : ""
+                      }`}
                     onClick={() => onScenarioClick(convo.id, scenario)}
                   >
                     {hasUnread && <div className={styles.unreadDot}></div>}
@@ -331,7 +342,7 @@ export default function ConversationItem({
             <div className={styles.noScenarios}>{t("loadingScenarios")}</div>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

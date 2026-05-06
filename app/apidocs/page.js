@@ -27,7 +27,7 @@ export default function ApiDocsPage() {
       <header className={styles.header}>
         <h1>CLT Chatbot API Documentation</h1>
         <p>
-          이 문서는 <strong>FastAPI</strong>로 마이그레이션된 백엔드 서버 API를 설명합니다.<br/>
+          이 문서는 <strong>FastAPI</strong>로 마이그레이션된 백엔드 서버 API를 설명합니다.<br />
           <strong>Note:</strong> 현재 개발 버전은 <u>인증(Authentication)이 비활성화</u>되어 있어 토큰 없이 호출 가능합니다.
         </p>
       </header>
@@ -41,7 +41,7 @@ export default function ApiDocsPage() {
         <div className={styles.endpointBody}>
           <h2>메시지 전송 및 응답 생성</h2>
           <p>
-            사용자의 메시지를 처리하고 AI 응답을 생성합니다.<br/>
+            사용자의 메시지를 처리하고 AI 응답을 생성합니다.<br />
             LLM 응답의 경우 <strong>Streaming Response</strong>가 반환될 수 있습니다.
           </p>
           <dl>
@@ -58,15 +58,15 @@ export default function ApiDocsPage() {
 }`}</pre></dd>
             <dt>응답 (Response):</dt>
             <dd>
-                <p><strong>Case 1: 일반/시나리오 응답 (JSON)</strong></p>
-                <pre>{`{
+              <p><strong>Case 1: 일반/시나리오 응답 (JSON)</strong></p>
+              <pre>{`{
   "type": "text" | "scenario",
   "message": "string",
   "slots": { ... },
   "next_node": { ... } // 시나리오 진행 시
 }`}</pre>
-                <p><strong>Case 2: LLM 스트리밍 (Server-Sent Events)</strong></p>
-                <pre>{`data: {"type": "token", "content": "안녕"}\n\n...`}</pre>
+              <p><strong>Case 2: LLM 스트리밍 (Server-Sent Events)</strong></p>
+              <pre>{`data: {"type": "token", "content": "안녕"}\n\n...`}</pre>
             </dd>
           </dl>
         </div>
@@ -134,8 +134,8 @@ export default function ApiDocsPage() {
             <dd><code>conversation_id</code>: 조회할 대화방 ID</dd>
             <dt>Query Parameters:</dt>
             <dd>
-                <code>limit</code>: 조회할 메시지 개수 (Default: 50)<br/>
-                <code>offset</code>: 페이징 처리를 위한 오프셋
+              <code>limit</code>: 조회할 메시지 개수 (Default: 50)<br />
+              <code>offset</code>: 페이징 처리를 위한 오프셋
             </dd>
             <dt>응답 (200 OK):</dt>
             <dd><pre>{`{
@@ -214,13 +214,44 @@ export default function ApiDocsPage() {
         </div>
       </section>
 
+      {/* --- Search --- */}
+      <section className={styles.endpoint}>
+        <div className={styles.endpointHeader}>
+          <span className={`${styles.method} ${styles.get}`}>GET</span>
+          <span className={styles.path}>/search/messages</span>
+        </div>
+        <div className={styles.endpointBody}>
+          <h2>전체 메시지 검색</h2>
+          <p>모든 대화 내역에서 특정 키워드가 포함된 메시지를 검색합니다.</p>
+          <dl>
+            <dt>Query Parameters:</dt>
+            <dd>
+              <code>q</code>: 검색어 (필수)<br />
+              <code>usr_id</code>: 사용자 ID (필수)
+            </dd>
+            <dt>응답 (200 OK):</dt>
+            <dd><pre>{`[
+  {
+    "id": "message-uuid",
+    "conversation_id": "uuid-string",
+    "conversation_title": "string",
+    "role": "user" | "assistant",
+    "content": "string",
+    "created_at": "2024-05-20T10:00:00Z"
+  },
+  ...
+]`}</pre></dd>
+          </dl>
+        </div>
+      </section>
+
       {/* --- 추가 요청: Scenario Sessions --- */}
       <section style={{ marginTop: '40px', paddingTop: '20px', borderTop: '2px solid #ddd' }}>
         <h1 style={{ fontSize: '1.8em', marginBottom: '20px' }}>
           📋 추가 요청: Scenario Sessions 관리 API
         </h1>
         <p style={{ fontSize: '1.1em', color: '#555', marginBottom: '30px' }}>
-          다음은 <strong>Firebase에서 FastAPI로의 마이그레이션</strong>을 완료하기 위해 
+          다음은 <strong>Firebase에서 FastAPI로의 마이그레이션</strong>을 완료하기 위해
           백엔드에서 구현이 필요한 시나리오 세션 관리 엔드포인트입니다.
         </p>
 
@@ -233,14 +264,14 @@ export default function ApiDocsPage() {
           <div className={styles.endpointBody}>
             <h2>숏컷 카테고리 목록 조회</h2>
             <p>
-              채팅 입력창 좌측에 표시되는 숏컷 카테고리 메뉴 구조를 조회합니다.<br/>
+              채팅 입력창 좌측에 표시되는 숏컷 카테고리 메뉴 구조를 조회합니다.<br />
               테넌트별, 스테이지별로 다른 메뉴 구조를 반환할 수 있습니다.
             </p>
             <dl>
               <dt>Query Parameters:</dt>
               <dd>
-                <code>ten_id</code> (string, optional): 테넌트 ID (기본값: "1000")<br/>
-                <code>stg_id</code> (string, optional): 스테이지 ID (기본값: "DEV")<br/>
+                <code>ten_id</code> (string, optional): 테넌트 ID (기본값: "1000")<br />
+                <code>stg_id</code> (string, optional): 스테이지 ID (기본값: "DEV")<br />
                 <code>sec_ofc_id</code> (string, optional): 부서/오피스 ID (기본값: "000025")
               </dd>
               <dt>응답 (200 OK) - Dictionary&lt;string, Array of CategoryResponse&gt;:</dt>
@@ -294,7 +325,7 @@ export default function ApiDocsPage() {
           <div className={styles.endpointBody}>
             <h2>숏컷 카테고리 저장</h2>
             <p>
-              채팅 입력창 좌측의 숏컷 카테고리 메뉴 구조를 업데이트합니다.<br/>
+              채팅 입력창 좌측의 숏컷 카테고리 메뉴 구조를 업데이트합니다.<br />
               기존 데이터는 완전히 대체됩니다. (Upsert)
             </p>
             <dl>
@@ -357,14 +388,14 @@ export default function ApiDocsPage() {
           <div className={styles.endpointBody}>
             <h2>숏컷 카테고리 목록 조회</h2>
             <p>
-              채팅 입력창 좌측에 표시되는 숏컷 카테고리 메뉴 구조를 조회합니다.<br/>
+              채팅 입력창 좌측에 표시되는 숏컷 카테고리 메뉴 구조를 조회합니다.<br />
               테넌트별, 스테이지별로 다른 메뉴 구조를 반환할 수 있습니다.
             </p>
             <dl>
               <dt>Query Parameters:</dt>
               <dd>
-                <code>ten_id</code> (string, optional): 테넌트 ID (기본값: "1000")<br/>
-                <code>stg_id</code> (string, optional): 스테이지 ID (기본값: "DEV")<br/>
+                <code>ten_id</code> (string, optional): 테넌트 ID (기본값: "1000")<br />
+                <code>stg_id</code> (string, optional): 스테이지 ID (기본값: "DEV")<br />
                 <code>sec_ofc_id</code> (string, optional): 부서/오피스 ID (기본값: "000025")
               </dd>
               <dt>응답 (200 OK) - Dictionary&lt;string, Array of CategoryResponse&gt;:</dt>
@@ -418,7 +449,7 @@ export default function ApiDocsPage() {
           <div className={styles.endpointBody}>
             <h2>숏컷 카테고리 저장</h2>
             <p>
-              채팅 입력창 좌측의 숏컷 카테고리 메뉴 구조를 업데이트합니다.<br/>
+              채팅 입력창 좌측의 숏컷 카테고리 메뉴 구조를 업데이트합니다.<br />
               기존 데이터는 완전히 대체됩니다. (Upsert)
             </p>
             <dl>
@@ -481,14 +512,14 @@ export default function ApiDocsPage() {
           <div className={styles.endpointBody}>
             <h2>저장된 숏컷 목록 조회</h2>
             <p>
-              숏컷(바로가기) 목록을 조회합니다.<br/>
+              숏컷(바로가기) 목록을 조회합니다.<br />
               테넌트별, 스테이지별로 다른 숏컷 목록을 반환할 수 있습니다.
             </p>
             <dl>
               <dt>Query Parameters:</dt>
               <dd>
-                <code>ten_id</code> (string, optional): 테넌트 ID (기본값: "1000")<br/>
-                <code>stg_id</code> (string, optional): 스테이지 ID (기본값: "DEV")<br/>
+                <code>ten_id</code> (string, optional): 테넌트 ID (기본값: "1000")<br />
+                <code>stg_id</code> (string, optional): 스테이지 ID (기본값: "DEV")<br />
                 <code>sec_ofc_id</code> (string, optional): 부서/오피스 ID (기본값: "000025")
               </dd>
               <dt>응답 (200 OK) - Array of ShortcutResponse:</dt>
@@ -540,7 +571,7 @@ export default function ApiDocsPage() {
           <div className={styles.endpointBody}>
             <h2>저장된 숏컷 목록 저장</h2>
             <p>
-              숏컷(바로가기) 목록을 업데이트합니다.<br/>
+              숏컷(바로가기) 목록을 업데이트합니다.<br />
               기존 데이터는 완전히 대체됩니다. (Upsert)
             </p>
             <dl>
@@ -625,7 +656,7 @@ export default function ApiDocsPage() {
           <div className={styles.endpointBody}>
             <h2>시나리오 세션 생성</h2>
             <p>
-              새로운 시나리오 세션을 생성합니다. 
+              새로운 시나리오 세션을 생성합니다.
               (Firestore <code>addDoc(scenarioSessions)</code> 대체)
             </p>
             <dl>
@@ -668,7 +699,7 @@ export default function ApiDocsPage() {
             <dl>
               <dt>Path Parameters:</dt>
               <dd>
-                <code>conversation_id</code>: 대화방 ID<br/>
+                <code>conversation_id</code>: 대화방 ID<br />
                 <code>session_id</code>: 시나리오 세션 ID
               </dd>
               <dt>응답 (200 OK):</dt>
@@ -709,13 +740,13 @@ export default function ApiDocsPage() {
           <div className={styles.endpointBody}>
             <h2>시나리오 세션 업데이트</h2>
             <p>
-              시나리오 세션의 상태, 슬롯, 메시지, 상태를 업데이트합니다. 
+              시나리오 세션의 상태, 슬롯, 메시지, 상태를 업데이트합니다.
               (Firestore <code>updateDoc(sessionRef)</code> 대체)
             </p>
             <dl>
               <dt>Path Parameters:</dt>
               <dd>
-                <code>conversation_id</code>: 대화방 ID<br/>
+                <code>conversation_id</code>: 대화방 ID<br />
                 <code>session_id</code>: 시나리오 세션 ID
               </dd>
               <dt>요청 본문 (모두 Optional):</dt>
@@ -755,14 +786,14 @@ export default function ApiDocsPage() {
           <div className={styles.endpointBody}>
             <h2>시나리오 세션 삭제</h2>
             <p>
-              특정 시나리오 세션을 삭제합니다. 
-              실패한 세션 정리나 사용자 취소 시 사용. 
+              특정 시나리오 세션을 삭제합니다.
+              실패한 세션 정리나 사용자 취소 시 사용.
               (Firestore <code>deleteDoc(sessionRef)</code> 대체)
             </p>
             <dl>
               <dt>Path Parameters:</dt>
               <dd>
-                <code>conversation_id</code>: 대화방 ID<br/>
+                <code>conversation_id</code>: 대화방 ID<br />
                 <code>session_id</code>: 시나리오 세션 ID
               </dd>
               <dt>응답 (204 No Content):</dt>
@@ -782,8 +813,8 @@ export default function ApiDocsPage() {
           <h3>📌 구현 시 고려사항</h3>
           <ul>
             <li>
-              <strong>실시간 동기화:</strong> 
-              현재 코드에서 Firebase의 <code>onSnapshot</code>을 사용 중입니다. 
+              <strong>실시간 동기화:</strong>
+              현재 코드에서 Firebase의 <code>onSnapshot</code>을 사용 중입니다.
               마이그레이션 전략:
               <ul>
                 <li><strong>폴링 방식:</strong> GET 엔드포인트를 1-2초 간격으로 호출 (간단함, 부하 증가)</li>
@@ -792,11 +823,11 @@ export default function ApiDocsPage() {
               </ul>
             </li>
             <li>
-              <strong>Timestamp 처리:</strong> 
+              <strong>Timestamp 처리:</strong>
               모든 응답의 <code>created_at</code>, <code>updated_at</code>은 서버 시간 사용 (UTC ISO 8601 형식)
             </li>
             <li>
-              <strong>에러 응답:</strong> 
+              <strong>에러 응답:</strong>
               일관된 에러 형식 필요:
               <pre>{`{
   "error": "error_code",
@@ -805,8 +836,8 @@ export default function ApiDocsPage() {
 }`}</pre>
             </li>
             <li>
-              <strong>권한 검증:</strong> 
-              현재 인증 비활성화 상태이지만, 향후 각 엔드포인트에서 
+              <strong>권한 검증:</strong>
+              현재 인증 비활성화 상태이지만, 향후 각 엔드포인트에서
               사용자가 해당 리소스에 접근 권한이 있는지 검증 필요
             </li>
             <li>

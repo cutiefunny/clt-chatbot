@@ -17,24 +17,14 @@
 
 .chatHeader {
   flex-shrink: 0;
-  height: 48px;
+  height: 52px;
   position: relative;
   z-index: 15;
   width: 100%;
-  background: linear-gradient(90deg, #BCA8FF 0%, #6941DF 100%);
+  background: var(--theme-orange, #f37321);
   overflow: hidden;
   isolation: isolate;
-  transition: height 0.3s ease-in-out;
-}
-
-.chatHeader::before {
-  content: "";
-  position: absolute;
-  inset: -48px;
-  background: url("/images/background.png") lightgray 50% / cover no-repeat;
-  opacity: 0.12;
-  filter: blur(28px);
-  pointer-events: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .headerButton {
@@ -53,8 +43,8 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
-  height: 48px;
+  gap: 12px;
+  height: 52px;
   color: #fff;
   padding: 0 16px;
 }
@@ -64,20 +54,10 @@
   font-weight: 600;
   line-height: 1.2;
   flex-grow: 1;
-  align-self: left;
+  align-self: center;
 }
 
 .splashContainer {
   flex-grow: 1;
   flex: 1;
 }
-
-.full {
-  height: 100%;
-}
-
-.half {
-  height: calc(100% - 184px);
-}
-
-
